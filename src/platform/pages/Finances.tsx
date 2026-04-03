@@ -7,8 +7,8 @@ import { Wallet, TrendingUp, ArrowDownCircle, Download, Filter } from 'lucide-re
 import { accounts, orders, transactions, Transaction } from '@/platform/data/demoData';
 
 const CARD: React.CSSProperties = {
-  background: '#0a1428',
-  border: '1px solid rgba(0,121,255,0.18)',
+  background: 'var(--pf-surface)',
+  border: '1px solid var(--pf-border)',
   borderRadius: '12px',
   padding: '20px',
 };
@@ -22,7 +22,7 @@ const typeLabelMap: Record<string, string> = {
 
 const typeColorMap: Record<string, string> = {
   sale:       '#22c55e',
-  withdrawal: '#0079FF',
+  withdrawal: 'var(--pf-accent)',
   refund:     '#ef4444',
   fee:        '#6b7280',
 };
@@ -79,7 +79,7 @@ export default function Finances() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      style={{ padding: '24px', minHeight: '100vh', background: '#050C1C', color: '#fff', fontFamily: 'Syne, sans-serif' }}
+      style={{ padding: '24px', minHeight: '100vh', background: 'transparent', color: '#fff', fontFamily: 'var(--font-sans)' }}
     >
       <h1 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '24px' }}>Финансы</h1>
 
@@ -95,13 +95,13 @@ export default function Finances() {
         {/* Balance */}
         <div style={{
           background: 'linear-gradient(135deg, rgba(0,79,255,0.35) 0%, rgba(0,52,244,0.20) 100%)',
-          border: '1px solid rgba(0,121,255,0.4)',
+          border: '1px solid rgba(96,165,250,0.44)',
           borderRadius: '12px',
           padding: '22px',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-            <div style={{ background: 'rgba(0,121,255,0.2)', borderRadius: '8px', padding: '8px' }}>
-              <Wallet size={20} color="#0079FF" />
+            <div style={{ background: 'rgba(96,165,250,0.28)', borderRadius: '8px', padding: '8px' }}>
+              <Wallet size={20} color="var(--pf-accent)" />
             </div>
             <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px' }}>Доступный баланс</span>
           </div>
@@ -119,10 +119,10 @@ export default function Finances() {
             <div style={{ background: 'rgba(234,179,8,0.15)', borderRadius: '8px', padding: '8px' }}>
               <TrendingUp size={20} color="#eab308" />
             </div>
-            <span style={{ color: '#7DC8FF', fontSize: '13px' }}>Заморожено</span>
+            <span style={{ color: 'var(--pf-text-muted)', fontSize: '13px' }}>Заморожено</span>
           </div>
           <div style={{ fontSize: '28px', fontWeight: 700 }}>{frozenAmount.toLocaleString('ru-RU')}₽</div>
-          <div style={{ color: '#7DC8FF', fontSize: '12px', marginTop: '6px' }}>в активных заказах</div>
+          <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px', marginTop: '6px' }}>в активных заказах</div>
         </div>
 
         {/* Withdrawn */}
@@ -131,31 +131,31 @@ export default function Finances() {
             <div style={{ background: 'rgba(34,197,94,0.15)', borderRadius: '8px', padding: '8px' }}>
               <ArrowDownCircle size={20} color="#22c55e" />
             </div>
-            <span style={{ color: '#7DC8FF', fontSize: '13px' }}>Выведено за апрель</span>
+            <span style={{ color: 'var(--pf-text-muted)', fontSize: '13px' }}>Выведено за апрель</span>
           </div>
           <div style={{ fontSize: '28px', fontWeight: 700 }}>{withdrawnThisMonth.toLocaleString('ru-RU')}₽</div>
-          <div style={{ color: '#7DC8FF', fontSize: '12px', marginTop: '6px' }}>апрель 2026</div>
+          <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px', marginTop: '6px' }}>апрель 2026</div>
         </div>
       </div>
 
       {/* Monthly Chart */}
       <div style={{ ...CARD, marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-          <TrendingUp size={18} color="#0079FF" />
+          <TrendingUp size={18} color="var(--pf-accent)" />
           <span style={{ fontWeight: 600, fontSize: '16px' }}>Поступления по месяцам</span>
         </div>
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={monthlyData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,121,255,0.1)" />
-            <XAxis dataKey="name" tick={{ fill: '#7DC8FF', fontSize: 12 }} />
-            <YAxis tick={{ fill: '#7DC8FF', fontSize: 12 }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(59,130,246,0.12)" />
+            <XAxis dataKey="name" tick={{ fill: 'var(--pf-text-muted)', fontSize: 12 }} />
+            <YAxis tick={{ fill: 'var(--pf-text-muted)', fontSize: 12 }} />
             <Tooltip
-              contentStyle={{ background: '#0a1428', border: '1px solid rgba(0,121,255,0.3)', borderRadius: '8px', color: '#fff' }}
+              contentStyle={{ background: 'var(--pf-surface)', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '8px', color: '#fff' }}
               formatter={(v: number) => [`${v.toLocaleString('ru-RU')}₽`, 'Выручка']}
             />
             <Bar dataKey="revenue" radius={[4, 4, 0, 0]}>
               {monthlyData.map((_, i) => (
-                <Cell key={i} fill={i === monthlyData.length - 1 ? '#0079FF' : 'rgba(0,121,255,0.5)'} />
+                <Cell key={i} fill={i === monthlyData.length - 1 ? 'var(--pf-accent)' : 'rgba(0,121,255,0.5)'} />
               ))}
             </Bar>
           </BarChart>
@@ -166,7 +166,7 @@ export default function Finances() {
       <div style={CARD}>
         {/* Filter bar */}
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#7DC8FF', fontSize: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--pf-text-muted)', fontSize: '14px' }}>
             <Filter size={15} />
             Фильтры:
           </div>
@@ -174,7 +174,7 @@ export default function Finances() {
           <select
             value={accountFilter}
             onChange={e => setAccountFilter(e.target.value)}
-            style={{ background: '#0d1e38', border: '1px solid rgba(0,121,255,0.25)', borderRadius: '8px', padding: '6px 12px', color: '#fff', fontSize: '13px', cursor: 'pointer', outline: 'none' }}
+            style={{ background: '#0d1e38', border: '1px solid rgba(96,165,250,0.32)', borderRadius: '8px', padding: '6px 12px', color: '#fff', fontSize: '13px', cursor: 'pointer', outline: 'none' }}
           >
             <option value="all">Все аккаунты</option>
             {accounts.map(a => <option key={a.id} value={a.id}>{a.username}</option>)}
@@ -183,7 +183,7 @@ export default function Finances() {
           <select
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value)}
-            style={{ background: '#0d1e38', border: '1px solid rgba(0,121,255,0.25)', borderRadius: '8px', padding: '6px 12px', color: '#fff', fontSize: '13px', cursor: 'pointer', outline: 'none' }}
+            style={{ background: '#0d1e38', border: '1px solid rgba(96,165,250,0.32)', borderRadius: '8px', padding: '6px 12px', color: '#fff', fontSize: '13px', cursor: 'pointer', outline: 'none' }}
           >
             <option value="all">Все операции</option>
             <option value="sale">Продажи</option>
@@ -194,7 +194,7 @@ export default function Finances() {
           <div style={{ marginLeft: 'auto' }}>
             <button
               onClick={handleExport}
-              style={{ background: 'rgba(0,121,255,0.12)', border: '1px solid rgba(0,121,255,0.3)', borderRadius: '8px', padding: '7px 14px', color: '#7DC8FF', cursor: 'pointer', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
+              style={{ background: 'rgba(59,130,246,0.14)', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '8px', padding: '7px 14px', color: 'var(--pf-text-muted)', cursor: 'pointer', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               <Download size={14} />
               Экспорт CSV
@@ -207,7 +207,7 @@ export default function Finances() {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', minWidth: '560px' }}>
             <thead>
-              <tr style={{ color: '#7DC8FF', borderBottom: '1px solid rgba(0,121,255,0.15)' }}>
+              <tr style={{ color: 'var(--pf-text-muted)', borderBottom: '1px solid rgba(59,130,246,0.18)' }}>
                 <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 500 }}>Дата</th>
                 <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 500 }}>Тип</th>
                 <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 500 }}>Описание</th>
@@ -221,11 +221,11 @@ export default function Finances() {
                 const color = typeColorMap[tx.type];
                 const amountSign = tx.type === 'sale' ? '+' : tx.type === 'fee' || tx.type === 'withdrawal' ? '-' : '-';
                 return (
-                  <tr key={tx.id} style={{ borderBottom: '1px solid rgba(0,121,255,0.07)' }}
+                  <tr key={tx.id} style={{ borderBottom: '1px solid rgba(59,130,246,0.1)' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,121,255,0.05)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >
-                    <td style={{ padding: '11px 10px', color: '#7DC8FF', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '11px 10px', color: 'var(--pf-text-muted)', whiteSpace: 'nowrap' }}>
                       {new Date(tx.date).toLocaleDateString('ru-RU')}
                     </td>
                     <td style={{ padding: '11px 10px' }}>
@@ -242,7 +242,7 @@ export default function Finances() {
                       </span>
                     </td>
                     <td style={{ padding: '11px 10px', color: '#fff' }}>{tx.description}</td>
-                    <td style={{ padding: '11px 10px', color: '#7DC8FF' }}>
+                    <td style={{ padding: '11px 10px', color: 'var(--pf-text-muted)' }}>
                       {accounts.find(a => a.id === tx.accountId)?.username ?? tx.accountId}
                     </td>
                     <td style={{ padding: '11px 10px', textAlign: 'right', fontWeight: 700, color: isPositive ? '#22c55e' : '#ef4444', whiteSpace: 'nowrap' }}>
@@ -253,7 +253,7 @@ export default function Finances() {
               })}
               {filteredTxs.length === 0 && (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '32px', color: '#7DC8FF' }}>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '32px', color: 'var(--pf-text-muted)' }}>
                     Транзакции не найдены
                   </td>
                 </tr>

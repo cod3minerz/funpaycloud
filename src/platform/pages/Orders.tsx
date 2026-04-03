@@ -5,8 +5,8 @@ import { orders, accounts, Order } from '@/platform/data/demoData';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 
 const CARD_STYLE: React.CSSProperties = {
-  background: '#0a1428',
-  border: '1px solid rgba(0,121,255,0.18)',
+  background: 'var(--pf-surface)',
+  border: '1px solid var(--pf-border)',
   borderRadius: '12px',
   padding: '20px',
 };
@@ -85,7 +85,7 @@ export default function Orders() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      style={{ padding: '24px', minHeight: '100vh', background: '#050C1C', color: '#fff', fontFamily: 'Syne, sans-serif' }}
+      style={{ padding: '24px', minHeight: '100vh', background: 'transparent', color: '#fff', fontFamily: 'var(--font-sans)' }}
     >
       <h1 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '20px' }}>Заказы</h1>
 
@@ -96,7 +96,7 @@ export default function Orders() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            style={{ background: 'linear-gradient(135deg, #007BFF, #0052F4)', borderRadius: '10px', padding: '12px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}
+            style={{ background: 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))', borderRadius: '10px', padding: '12px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}
           >
             <span style={{ fontWeight: 600 }}>Выбрано {selected.length} заказов</span>
             <button
@@ -117,7 +117,7 @@ export default function Orders() {
           <select
             value={accountFilter}
             onChange={e => { setAccountFilter(e.target.value); setPage(1); }}
-            style={{ background: 'rgba(0,121,255,0.1)', border: '1px solid rgba(0,121,255,0.3)', borderRadius: '8px', padding: '8px 12px', color: '#fff', fontSize: '13px', cursor: 'pointer', outline: 'none' }}
+            style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '8px', padding: '8px 12px', color: '#fff', fontSize: '13px', cursor: 'pointer', outline: 'none' }}
           >
             <option value="all">Все аккаунты</option>
             {accounts.map(a => <option key={a.id} value={a.id}>{a.username}</option>)}
@@ -131,8 +131,8 @@ export default function Orders() {
                 style={{
                   padding: '7px 12px',
                   borderRadius: '7px',
-                  border: statusFilter === s ? 'none' : '1px solid rgba(0,121,255,0.2)',
-                  background: statusFilter === s ? 'linear-gradient(135deg, #007BFF, #0052F4)' : 'transparent',
+                  border: statusFilter === s ? 'none' : '1px solid rgba(96,165,250,0.28)',
+                  background: statusFilter === s ? 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))' : 'transparent',
                   color: '#fff',
                   cursor: 'pointer',
                   fontSize: '13px',
@@ -145,7 +145,7 @@ export default function Orders() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '180px' }}>
-            <Search size={16} color="#7DC8FF" />
+            <Search size={16} color="var(--pf-text-muted)" />
             <input
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
@@ -162,8 +162,8 @@ export default function Orders() {
                 style={{
                   padding: '7px 10px',
                   borderRadius: '7px',
-                  border: dateFilter === d ? 'none' : '1px solid rgba(0,121,255,0.2)',
-                  background: dateFilter === d ? 'linear-gradient(135deg, #007BFF, #0052F4)' : 'transparent',
+                  border: dateFilter === d ? 'none' : '1px solid rgba(96,165,250,0.28)',
+                  background: dateFilter === d ? 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))' : 'transparent',
                   color: '#fff',
                   cursor: 'pointer',
                   fontSize: '12px',
@@ -182,13 +182,13 @@ export default function Orders() {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
             <thead>
-              <tr style={{ color: '#7DC8FF', borderBottom: '1px solid rgba(0,121,255,0.15)' }}>
+              <tr style={{ color: 'var(--pf-text-muted)', borderBottom: '1px solid rgba(59,130,246,0.18)' }}>
                 <th style={{ padding: '10px 8px', textAlign: 'left', width: '36px' }}>
                   <input
                     type="checkbox"
                     checked={selected.length === paginated.length && paginated.length > 0}
                     onChange={toggleAll}
-                    style={{ cursor: 'pointer', accentColor: '#0079FF' }}
+                    style={{ cursor: 'pointer', accentColor: 'var(--pf-accent)' }}
                   />
                 </th>
                 <th style={{ padding: '10px 8px', textAlign: 'left', fontWeight: 500 }}>#</th>
@@ -207,34 +207,34 @@ export default function Orders() {
                 return (
                   <tr
                     key={o.id}
-                    style={{ borderBottom: '1px solid rgba(0,121,255,0.07)', background: selected.includes(o.id) ? 'rgba(0,121,255,0.07)' : 'transparent' }}
+                    style={{ borderBottom: '1px solid rgba(59,130,246,0.1)', background: selected.includes(o.id) ? 'rgba(59,130,246,0.1)' : 'transparent' }}
                   >
                     <td style={{ padding: '10px 8px' }}>
                       <input
                         type="checkbox"
                         checked={selected.includes(o.id)}
                         onChange={() => toggleSelect(o.id)}
-                        style={{ cursor: 'pointer', accentColor: '#0079FF' }}
+                        style={{ cursor: 'pointer', accentColor: 'var(--pf-accent)' }}
                       />
                     </td>
-                    <td style={{ padding: '10px 8px', color: '#7DC8FF', fontFamily: 'monospace' }}>{o.id}</td>
+                    <td style={{ padding: '10px 8px', color: 'var(--pf-text-muted)', fontFamily: 'monospace' }}>{o.id}</td>
                     <td style={{ padding: '10px 8px', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.lot}</td>
                     <td style={{ padding: '10px 8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'linear-gradient(135deg, #007BFF, #0052F4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, flexShrink: 0 }}>
+                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, flexShrink: 0 }}>
                           {o.buyerAvatar}
                         </div>
                         {o.buyer}
                       </div>
                     </td>
-                    <td style={{ padding: '10px 8px', color: '#7DC8FF' }}>{acc?.username}</td>
+                    <td style={{ padding: '10px 8px', color: 'var(--pf-text-muted)' }}>{acc?.username}</td>
                     <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 600 }}>{o.amount}₽</td>
                     <td style={{ padding: '10px 8px', textAlign: 'center' }}>
                       <span style={{ background: `${statusColor[o.status]}20`, color: statusColor[o.status], borderRadius: '6px', padding: '3px 8px', fontSize: '12px', fontWeight: 600 }}>
                         {statusLabel[o.status]}
                       </span>
                     </td>
-                    <td style={{ padding: '10px 8px', textAlign: 'right', color: '#7DC8FF', whiteSpace: 'nowrap' }}>{formatDt(o.createdAt)}</td>
+                    <td style={{ padding: '10px 8px', textAlign: 'right', color: 'var(--pf-text-muted)', whiteSpace: 'nowrap' }}>{formatDt(o.createdAt)}</td>
                     <td style={{ padding: '10px 8px' }}>
                       <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
                         <button
@@ -245,14 +245,14 @@ export default function Orders() {
                         </button>
                         <button
                           title="Написать"
-                          style={{ background: 'rgba(0,121,255,0.15)', border: '1px solid rgba(0,121,255,0.3)', borderRadius: '6px', padding: '5px 7px', color: '#7DC8FF', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                          style={{ background: 'rgba(59,130,246,0.18)', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '6px', padding: '5px 7px', color: 'var(--pf-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                         >
                           <MessageSquare size={13} />
                         </button>
                         <button
                           title="Детали"
                           onClick={() => setDetailOrder(o)}
-                          style={{ background: 'rgba(0,121,255,0.15)', border: '1px solid rgba(0,121,255,0.3)', borderRadius: '6px', padding: '5px 7px', color: '#7DC8FF', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                          style={{ background: 'rgba(59,130,246,0.18)', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '6px', padding: '5px 7px', color: 'var(--pf-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                         >
                           <Info size={13} />
                         </button>
@@ -263,7 +263,7 @@ export default function Orders() {
               })}
               {paginated.length === 0 && (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: '#7DC8FF' }}>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: 'var(--pf-text-muted)' }}>
                     Заказы не найдены
                   </td>
                 </tr>
@@ -273,15 +273,15 @@ export default function Orders() {
         </div>
 
         {/* Pagination */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid rgba(0,121,255,0.1)' }}>
-          <span style={{ color: '#7DC8FF', fontSize: '13px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid rgba(59,130,246,0.12)' }}>
+          <span style={{ color: 'var(--pf-text-muted)', fontSize: '13px' }}>
             Показано {Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)}–{Math.min(page * PAGE_SIZE, filtered.length)} из {filtered.length}
           </span>
           <div style={{ display: 'flex', gap: '6px' }}>
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
-              style={{ background: 'rgba(0,121,255,0.1)', border: '1px solid rgba(0,121,255,0.2)', borderRadius: '6px', padding: '6px 14px', color: page === 1 ? '#4b5563' : '#fff', cursor: page === 1 ? 'not-allowed' : 'pointer', fontSize: '13px' }}
+              style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(96,165,250,0.28)', borderRadius: '6px', padding: '6px 14px', color: page === 1 ? '#4b5563' : '#fff', cursor: page === 1 ? 'not-allowed' : 'pointer', fontSize: '13px' }}
             >
               ← Назад
             </button>
@@ -289,7 +289,7 @@ export default function Orders() {
               <button
                 key={p}
                 onClick={() => setPage(p)}
-                style={{ background: page === p ? 'linear-gradient(135deg, #007BFF, #0052F4)' : 'rgba(0,121,255,0.1)', border: '1px solid rgba(0,121,255,0.2)', borderRadius: '6px', padding: '6px 12px', color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: page === p ? 700 : 400 }}
+                style={{ background: page === p ? 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))' : 'rgba(59,130,246,0.12)', border: '1px solid rgba(96,165,250,0.28)', borderRadius: '6px', padding: '6px 12px', color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: page === p ? 700 : 400 }}
               >
                 {p}
               </button>
@@ -297,7 +297,7 @@ export default function Orders() {
             <button
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              style={{ background: 'rgba(0,121,255,0.1)', border: '1px solid rgba(0,121,255,0.2)', borderRadius: '6px', padding: '6px 14px', color: page === totalPages ? '#4b5563' : '#fff', cursor: page === totalPages ? 'not-allowed' : 'pointer', fontSize: '13px' }}
+              style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(96,165,250,0.28)', borderRadius: '6px', padding: '6px 14px', color: page === totalPages ? '#4b5563' : '#fff', cursor: page === totalPages ? 'not-allowed' : 'pointer', fontSize: '13px' }}
             >
               Вперёд →
             </button>
@@ -307,7 +307,7 @@ export default function Orders() {
 
       {/* Order Detail Dialog */}
       <Dialog open={!!detailOrder} onOpenChange={() => setDetailOrder(null)}>
-        <DialogContent style={{ background: '#0a1428', border: '1px solid rgba(0,121,255,0.3)', color: '#fff', maxWidth: '520px' }}>
+        <DialogContent style={{ background: 'var(--pf-surface)', border: '1px solid rgba(96,165,250,0.4)', color: '#fff', maxWidth: '520px' }}>
           <DialogHeader>
             <DialogTitle style={{ color: '#fff' }}>Детали заказа {detailOrder?.id}</DialogTitle>
           </DialogHeader>
@@ -315,44 +315,44 @@ export default function Orders() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <div style={{ color: '#7DC8FF', fontSize: '12px', marginBottom: '4px' }}>Покупатель</div>
+                  <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px', marginBottom: '4px' }}>Покупатель</div>
                   <div style={{ fontWeight: 600 }}>{detailOrder.buyer}</div>
                 </div>
                 <div>
-                  <div style={{ color: '#7DC8FF', fontSize: '12px', marginBottom: '4px' }}>Сумма</div>
+                  <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px', marginBottom: '4px' }}>Сумма</div>
                   <div style={{ fontWeight: 700, fontSize: '18px', color: '#22c55e' }}>{detailOrder.amount}₽</div>
                 </div>
                 <div>
-                  <div style={{ color: '#7DC8FF', fontSize: '12px', marginBottom: '4px' }}>Статус</div>
+                  <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px', marginBottom: '4px' }}>Статус</div>
                   <span style={{ background: `${statusColor[detailOrder.status]}20`, color: statusColor[detailOrder.status], borderRadius: '6px', padding: '3px 10px', fontSize: '13px', fontWeight: 600 }}>
                     {statusLabel[detailOrder.status]}
                   </span>
                 </div>
                 <div>
-                  <div style={{ color: '#7DC8FF', fontSize: '12px', marginBottom: '4px' }}>Дата</div>
+                  <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px', marginBottom: '4px' }}>Дата</div>
                   <div>{formatDt(detailOrder.createdAt)}</div>
                 </div>
                 <div style={{ gridColumn: '1/-1' }}>
-                  <div style={{ color: '#7DC8FF', fontSize: '12px', marginBottom: '4px' }}>Товар</div>
+                  <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px', marginBottom: '4px' }}>Товар</div>
                   <div style={{ fontWeight: 600 }}>{detailOrder.lot}</div>
                 </div>
                 <div style={{ gridColumn: '1/-1' }}>
-                  <div style={{ color: '#7DC8FF', fontSize: '12px', marginBottom: '4px' }}>Описание</div>
+                  <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px', marginBottom: '4px' }}>Описание</div>
                   <div style={{ color: '#ccc' }}>{detailOrder.description}</div>
                 </div>
               </div>
 
-              <div style={{ borderTop: '1px solid rgba(0,121,255,0.15)', paddingTop: '16px' }}>
-                <div style={{ color: '#7DC8FF', fontSize: '13px', marginBottom: '8px', fontWeight: 600 }}>Выдать товар</div>
+              <div style={{ borderTop: '1px solid rgba(59,130,246,0.18)', paddingTop: '16px' }}>
+                <div style={{ color: 'var(--pf-text-muted)', fontSize: '13px', marginBottom: '8px', fontWeight: 600 }}>Выдать товар</div>
                 <textarea
                   value={deliveryText}
                   onChange={e => setDeliveryText(e.target.value)}
                   placeholder="Введите товар для выдачи..."
                   rows={3}
-                  style={{ width: '100%', background: 'rgba(0,121,255,0.08)', border: '1px solid rgba(0,121,255,0.2)', borderRadius: '8px', padding: '10px 12px', color: '#fff', fontSize: '13px', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
+                  style={{ width: '100%', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(96,165,250,0.28)', borderRadius: '8px', padding: '10px 12px', color: '#fff', fontSize: '13px', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
                 />
                 <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                  <button style={{ flex: 1, background: 'linear-gradient(135deg, #007BFF, #0052F4)', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                  <button style={{ flex: 1, background: 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
                     <Send size={14} /> Выдать товар
                   </button>
                   <button style={{ flex: 1, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', color: '#ef4444' }}>

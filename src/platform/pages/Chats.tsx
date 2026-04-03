@@ -1,296 +1,394 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { Send, ArrowLeft, Bot, FileText, ExternalLink, ChevronDown } from 'lucide-react';
-import { chats as initialChats, Chat, ChatMessage } from '@/platform/data/demoData';
-
-const CARD_STYLE: React.CSSProperties = {
-  background: '#0a1428',
-  border: '1px solid rgba(0,121,255,0.18)',
-  borderRadius: '12px',
-};
+import { ArrowLeft, Bot, FileText, Search, Send, Sparkles, UserRound } from 'lucide-react';
+import { chats as initialChats, ChatMessage } from '@/platform/data/demoData';
 
 const CANNED = [
   'Добрый день! Ваш товар уже готов к выдаче.',
   'Спасибо за покупку! Если будут вопросы — пишите.',
-  'Извините за неудобства, мы решим вашу проблему.',
+  'Извините за неудобства, уже решаем вашу проблему.',
+  'Проверьте, пожалуйста, папку “сообщения от продавца” в заказе.',
 ];
+
+function accountGradient(accountId: string) {
+  return accountId === 'acc1'
+    ? 'linear-gradient(145deg, #60a5fa 0%, #2563eb 100%)'
+    : 'linear-gradient(145deg, #38bdf8 0%, #1d4ed8 100%)';
+}
 
 export default function Chats() {
   const [chats, setChats] = useState(initialChats);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialChats[0]?.id ?? null);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'unread' | 'orders'>('all');
   const [inputValue, setInputValue] = useState('');
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showInfoMobile, setShowInfoMobile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const selectedChat = chats.find(c => c.id === selectedId) ?? null;
 
-  const filteredChats = chats.filter(c => {
-    if (filter === 'unread' && c.unread === 0) return false;
-    if (filter === 'orders' && !c.orderId) return false;
-    if (search && !c.buyer.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  const filteredChats = useMemo(() => {
+    return chats.filter(c => {
+      if (filter === 'unread' && c.unread === 0) return false;
+      if (filter === 'orders' && !c.orderId) return false;
+      if (search && !c.buyer.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+  }, [chats, filter, search]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [selectedId, selectedChat?.messages.length]);
 
+  useEffect(() => {
+    if (!selectedId) return;
+    setChats(prev => prev.map(chat => (chat.id === selectedId ? { ...chat, unread: 0 } : chat)));
+  }, [selectedId]);
+
   function sendMessage() {
-    if (!inputValue.trim() || !selectedId) return;
-    const newMsg: ChatMessage = {
+    if (!selectedId || !inputValue.trim()) return;
+    const message: ChatMessage = {
       id: `msg-${Date.now()}`,
       fromUser: true,
       text: inputValue.trim(),
       time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
       read: true,
     };
-    setChats(prev => prev.map(c =>
-      c.id === selectedId
-        ? { ...c, messages: [...c.messages, newMsg], lastMessage: newMsg.text, lastTime: newMsg.time, unread: 0 }
-        : c
-    ));
-    setInputValue('');
-  }
 
-  function useCanned(text: string) {
-    setInputValue(text);
+    setChats(prev =>
+      prev.map(chat =>
+        chat.id === selectedId
+          ? {
+              ...chat,
+              lastMessage: message.text,
+              lastTime: message.time,
+              messages: [...chat.messages, message],
+              unread: 0,
+            }
+          : chat,
+      ),
+    );
+
+    setInputValue('');
     setShowTemplates(false);
   }
 
-  const avatarColor = (accountId: string) =>
-    accountId === 'acc1'
-      ? 'linear-gradient(135deg, #007BFF, #0052F4)'
-      : 'linear-gradient(135deg, #7c3aed, #4f46e5)';
+  function openChat(chatId: string) {
+    setSelectedId(chatId);
+    setShowInfoMobile(false);
+  }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
-      style={{ display: 'flex', height: 'calc(100vh - 0px)', background: '#050C1C', fontFamily: 'Syne, sans-serif', overflow: 'hidden' }}
-    >
-      {/* Left panel */}
-      <div style={{
-        width: '320px',
-        minWidth: '320px',
-        borderRight: '1px solid rgba(0,121,255,0.18)',
-        display: selectedId ? 'none' : 'flex',
-        flexDirection: 'column',
-        background: '#0a1428',
-      }}
-        className="lg:flex"
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }} style={{ paddingTop: 18 }}>
+      <div
+        style={{
+          display: 'grid',
+          gap: 14,
+          gridTemplateColumns: '1fr',
+        }}
+        className="lg:grid-cols-[310px_1fr_290px]"
       >
-        <div style={{ padding: '16px', borderBottom: '1px solid rgba(0,121,255,0.12)' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#fff', marginBottom: '12px' }}>Чаты</h2>
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Поиск по покупателю..."
-            style={{
-              width: '100%',
-              background: 'rgba(0,121,255,0.08)',
-              border: '1px solid rgba(0,121,255,0.2)',
-              borderRadius: '8px',
-              padding: '8px 12px',
-              color: '#fff',
-              fontSize: '13px',
-              outline: 'none',
-              boxSizing: 'border-box',
-            }}
-          />
-          <div style={{ display: 'flex', gap: '6px', marginTop: '10px' }}>
-            {(['all', 'unread', 'orders'] as const).map(f => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
+        <aside
+          className={`platform-card ${selectedId ? 'hidden lg:block' : 'block'}`}
+          style={{
+            padding: 0,
+            overflow: 'hidden',
+          }}
+        >
+          <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid var(--pf-border)' }}>
+            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Чаты</h1>
+            <p style={{ margin: '6px 0 0', color: 'var(--pf-text-muted)', fontSize: 13 }}>
+              Центр поддержки, автоответов и выдачи.
+            </p>
+            <label className="platform-search max-w-none" style={{ marginTop: 12 }}>
+              <Search size={14} color="var(--pf-text-dim)" />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск покупателя" />
+            </label>
+            <div className="flex gap-2 mt-3">
+              {([
+                ['all', 'Все'],
+                ['unread', 'Непрочитанные'],
+                ['orders', 'С заказом'],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  className={filter === value ? 'platform-btn-primary' : 'platform-btn-secondary'}
+                  style={{ minHeight: 34, fontSize: 12, padding: '0 10px' }}
+                  onClick={() => setFilter(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ maxHeight: 'calc(100vh - 280px)', overflowY: 'auto' }}>
+            {filteredChats.map(chat => {
+              const isActive = chat.id === selectedId;
+              return (
+                <button
+                  key={chat.id}
+                  onClick={() => openChat(chat.id)}
+                  style={{
+                    width: '100%',
+                    border: 0,
+                    textAlign: 'left',
+                    padding: '12px 14px',
+                    borderBottom: '1px solid rgba(148,163,184,0.12)',
+                    background: isActive ? 'rgba(59,130,246,0.14)' : 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 999,
+                      background: accountGradient(chat.accountId),
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#fff',
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {chat.buyerAvatar}
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                      <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--pf-text)' }}>{chat.buyer}</span>
+                      <span style={{ color: 'var(--pf-text-dim)', fontSize: 11 }}>{chat.lastTime}</span>
+                    </span>
+                    <span
+                      style={{
+                        display: 'block',
+                        marginTop: 3,
+                        color: 'var(--pf-text-muted)',
+                        fontSize: 12,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {chat.lastMessage}
+                    </span>
+                  </span>
+                  {chat.unread > 0 && (
+                    <span
+                      style={{
+                        minWidth: 20,
+                        height: 20,
+                        borderRadius: 999,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: '#ef4444',
+                        color: '#fff',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: '0 6px',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {chat.unread}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+
+            {filteredChats.length === 0 && (
+              <div style={{ padding: 24, color: 'var(--pf-text-muted)', textAlign: 'center', fontSize: 13 }}>
+                Ничего не найдено по текущему фильтру.
+              </div>
+            )}
+          </div>
+        </aside>
+
+        <section
+          className={`platform-card ${selectedId ? 'flex' : 'hidden lg:flex'}`}
+          style={{
+            padding: 0,
+            overflow: 'hidden',
+            minHeight: 600,
+            flexDirection: 'column',
+          }}
+        >
+          {!selectedChat ? (
+            <div style={{ padding: 30, color: 'var(--pf-text-muted)' }}>Выберите чат для начала работы.</div>
+          ) : (
+            <>
+              <header
                 style={{
-                  flex: 1,
-                  padding: '5px 6px',
-                  borderRadius: '6px',
-                  border: filter === f ? 'none' : '1px solid rgba(0,121,255,0.2)',
-                  background: filter === f ? 'linear-gradient(135deg, #007BFF, #0052F4)' : 'transparent',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: 600,
+                  padding: '12px 16px',
+                  borderBottom: '1px solid var(--pf-border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
                 }}
               >
-                {f === 'all' ? 'Все' : f === 'unread' ? 'Непрочитанные' : 'С заказами'}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          {filteredChats.map(chat => (
-            <div
-              key={chat.id}
-              onClick={() => setSelectedId(chat.id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '12px 16px',
-                cursor: 'pointer',
-                borderLeft: `3px solid ${chat.accountId === 'acc1' ? '#0079FF' : '#7c3aed'}`,
-                background: selectedId === chat.id ? 'rgba(0,121,255,0.15)' : 'transparent',
-                borderBottom: '1px solid rgba(0,121,255,0.06)',
-                transition: 'background 0.15s',
-              }}
-            >
-              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: avatarColor(chat.accountId), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 700, flexShrink: 0 }}>
-                {chat.buyerAvatar}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 600, fontSize: '14px', color: '#fff' }}>{chat.buyer}</span>
-                  <span style={{ color: '#7DC8FF', fontSize: '11px' }}>{chat.lastTime}</span>
-                </div>
-                <div style={{ color: '#7DC8FF', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
-                  {chat.lastMessage}
-                </div>
-              </div>
-              {chat.unread > 0 && (
-                <span style={{ background: '#ef4444', color: '#fff', borderRadius: '12px', padding: '2px 7px', fontSize: '11px', fontWeight: 700, flexShrink: 0 }}>
-                  {chat.unread}
-                </span>
-              )}
-            </div>
-          ))}
-          {filteredChats.length === 0 && (
-            <div style={{ textAlign: 'center', color: '#7DC8FF', padding: '40px 16px', fontSize: '14px' }}>
-              Чаты не найдены
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Right panel */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#050C1C', minWidth: 0 }}>
-        {!selectedChat ? (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#7DC8FF' }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>💬</div>
-            <div style={{ fontSize: '18px', fontWeight: 600, color: '#fff', marginBottom: '8px' }}>Выберите чат</div>
-            <div style={{ fontSize: '14px' }}>Выберите чат из списка слева для начала общения</div>
-          </div>
-        ) : (
-          <>
-            {/* Chat Header */}
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(0,121,255,0.18)', display: 'flex', alignItems: 'center', gap: '12px', background: '#0a1428' }}>
-              <button
-                onClick={() => setSelectedId(null)}
-                style={{ background: 'transparent', border: 'none', color: '#7DC8FF', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
-              >
-                <ArrowLeft size={20} />
-              </button>
-              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: avatarColor(selectedChat.accountId), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 700 }}>
-                {selectedChat.buyerAvatar}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: '15px', color: '#fff' }}>{selectedChat.buyer}</div>
-                <a href="#" style={{ color: '#7DC8FF', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  Профиль FunPay <ExternalLink size={11} />
-                </a>
-              </div>
-              {selectedChat.orderId && (
-                <span style={{ background: 'rgba(0,121,255,0.15)', color: '#7DC8FF', borderRadius: '8px', padding: '4px 10px', fontSize: '12px', fontWeight: 600, border: '1px solid rgba(0,121,255,0.3)' }}>
-                  {selectedChat.orderId}
-                </span>
-              )}
-            </div>
-
-            {/* Messages */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {selectedChat.messages.map(msg => (
-                <div
-                  key={msg.id}
-                  style={{ display: 'flex', justifyContent: msg.fromUser ? 'flex-end' : 'flex-start' }}
+                <button
+                  className="platform-topbar-btn lg:hidden"
+                  onClick={() => setSelectedId(null)}
+                  aria-label="Назад к списку"
                 >
-                  <div style={{
-                    maxWidth: '70%',
-                    background: msg.fromUser ? '#0079FF' : '#0d1e38',
-                    color: '#fff',
-                    borderRadius: msg.fromUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                    padding: '10px 14px',
-                    border: msg.fromUser ? 'none' : '1px solid rgba(0,121,255,0.2)',
-                  }}>
-                    <div style={{ fontSize: '14px', lineHeight: 1.5 }}>{msg.text}</div>
-                    <div style={{ color: msg.fromUser ? 'rgba(255,255,255,0.6)' : '#7DC8FF', fontSize: '11px', marginTop: '4px', textAlign: 'right' }}>{msg.time}</div>
-                  </div>
-                </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Input bar */}
-            <div style={{ padding: '14px 20px', borderTop: '1px solid rgba(0,121,255,0.18)', background: '#0a1428', position: 'relative' }}>
-              {showTemplates && (
-                <div style={{
-                  position: 'absolute',
-                  bottom: '100%',
-                  left: '20px',
-                  background: '#0d1e38',
-                  border: '1px solid rgba(0,121,255,0.3)',
-                  borderRadius: '10px',
-                  padding: '8px',
-                  zIndex: 10,
-                  width: '340px',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                }}>
-                  <div style={{ color: '#7DC8FF', fontSize: '12px', padding: '4px 8px', marginBottom: '4px', fontWeight: 600 }}>Шаблоны ответов</div>
-                  {CANNED.map((t, i) => (
-                    <div
-                      key={i}
-                      onClick={() => useCanned(t)}
-                      style={{ padding: '8px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', color: '#fff' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,121,255,0.15)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                    >
-                      {t}
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <input
-                  value={inputValue}
-                  onChange={e => setInputValue(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-                  placeholder="Написать сообщение..."
+                  <ArrowLeft size={16} />
+                </button>
+                <span
                   style={{
-                    flex: 1,
-                    background: 'rgba(0,121,255,0.08)',
-                    border: '1px solid rgba(0,121,255,0.2)',
-                    borderRadius: '8px',
-                    padding: '10px 14px',
+                    width: 40,
+                    height: 40,
+                    borderRadius: 999,
+                    background: accountGradient(selectedChat.accountId),
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     color: '#fff',
-                    fontSize: '14px',
-                    outline: 'none',
+                    fontWeight: 700,
+                    fontSize: 14,
                   }}
-                />
-                <button
-                  onClick={() => setShowTemplates(v => !v)}
-                  style={{ background: 'rgba(0,121,255,0.15)', border: '1px solid rgba(0,121,255,0.3)', borderRadius: '8px', padding: '10px 12px', color: '#7DC8FF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600 }}
                 >
-                  <FileText size={15} /> Шаблоны <ChevronDown size={13} />
+                  {selectedChat.buyerAvatar}
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: 15, fontWeight: 700 }}>{selectedChat.buyer}</span>
+                  <span style={{ display: 'block', fontSize: 12, color: 'var(--pf-text-muted)' }}>
+                    {selectedChat.orderId ? `Заказ: ${selectedChat.orderId}` : 'Диалог без заказа'}
+                  </span>
+                </span>
+                <button className="platform-topbar-btn lg:hidden" onClick={() => setShowInfoMobile(v => !v)}>
+                  <UserRound size={15} />
                 </button>
-                <button
-                  style={{ background: 'linear-gradient(135deg, #007BFF, #0052F4)', border: 'none', borderRadius: '8px', padding: '10px 12px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600 }}
-                >
-                  <Bot size={15} /> AI
-                </button>
-                <button
-                  onClick={sendMessage}
-                  style={{ background: 'linear-gradient(135deg, #007BFF, #0052F4)', border: 'none', borderRadius: '8px', padding: '10px 12px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                >
-                  <Send size={16} />
-                </button>
+              </header>
+
+              <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {selectedChat.messages.map(message => (
+                  <div key={message.id} style={{ display: 'flex', justifyContent: message.fromUser ? 'flex-end' : 'flex-start' }}>
+                    <div
+                      style={{
+                        maxWidth: '78%',
+                        borderRadius: message.fromUser ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                        background: message.fromUser ? 'linear-gradient(145deg,#3b82f6,#2563eb)' : 'rgba(15,23,42,0.9)',
+                        border: message.fromUser ? '1px solid rgba(147,197,253,0.25)' : '1px solid var(--pf-border)',
+                        padding: '9px 12px',
+                      }}
+                    >
+                      <div style={{ fontSize: 14, lineHeight: 1.45 }}>{message.text}</div>
+                      <div
+                        style={{
+                          marginTop: 4,
+                          textAlign: 'right',
+                          fontSize: 11,
+                          color: message.fromUser ? 'rgba(255,255,255,0.75)' : 'var(--pf-text-dim)',
+                        }}
+                      >
+                        {message.time}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
               </div>
-            </div>
-          </>
-        )}
+
+              <footer style={{ borderTop: '1px solid var(--pf-border)', padding: 12 }}>
+                {showTemplates && (
+                  <div className="platform-card" style={{ marginBottom: 10, padding: 10 }}>
+                    <div style={{ marginBottom: 8, fontSize: 12, color: 'var(--pf-text-muted)', fontWeight: 700 }}>
+                      Быстрые шаблоны
+                    </div>
+                    <div className="grid gap-2">
+                      {CANNED.map(template => (
+                        <button
+                          key={template}
+                          className="platform-btn-secondary"
+                          style={{ justifyContent: 'flex-start', textAlign: 'left', minHeight: 36 }}
+                          onClick={() => {
+                            setInputValue(template);
+                            setShowTemplates(false);
+                          }}
+                        >
+                          {template}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <input
+                    className="platform-input"
+                    value={inputValue}
+                    onChange={e => setInputValue(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                      }
+                    }}
+                    placeholder="Написать сообщение..."
+                  />
+                  <button className="platform-topbar-btn" onClick={() => setShowTemplates(v => !v)} aria-label="Шаблоны">
+                    <FileText size={15} />
+                  </button>
+                  <button className="platform-topbar-btn" aria-label="AI-подсказка">
+                    <Sparkles size={15} />
+                  </button>
+                  <button className="platform-btn-primary" onClick={sendMessage} aria-label="Отправить">
+                    <Send size={15} />
+                  </button>
+                </div>
+              </footer>
+            </>
+          )}
+        </section>
+
+        <aside
+          className={`platform-card ${
+            selectedId ? (showInfoMobile ? 'block lg:block' : 'hidden lg:block') : 'hidden lg:block'
+          }`}
+          style={{
+            padding: 16,
+          }}
+        >
+          {selectedChat && (
+            <>
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Контекст диалога</h2>
+              <p style={{ margin: '6px 0 0', color: 'var(--pf-text-muted)', fontSize: 13 }}>
+                Быстрые действия и подсказки по текущему клиенту.
+              </p>
+
+              <div className="platform-card" style={{ marginTop: 12, padding: 12 }}>
+                <div className="platform-chip">{selectedChat.orderId ?? 'Без заказа'}</div>
+                <div style={{ marginTop: 10, color: 'var(--pf-text-muted)', fontSize: 13 }}>
+                  Последняя активность: {selectedChat.lastTime}
+                </div>
+                <div style={{ marginTop: 8, color: 'var(--pf-text-muted)', fontSize: 13 }}>
+                  Непрочитанных: {selectedChat.unread}
+                </div>
+              </div>
+
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 12, letterSpacing: '0.08em', color: 'var(--pf-text-dim)', fontWeight: 700 }}>
+                  БЫСТРЫЕ КОМАНДЫ
+                </div>
+                <div className="grid gap-2 mt-2">
+                  <button className="platform-btn-secondary">Выдать товар повторно</button>
+                  <button className="platform-btn-secondary">Отправить инструкцию</button>
+                  <button className="platform-btn-secondary">Передать менеджеру</button>
+                  <button className="platform-btn-primary inline-flex items-center justify-center gap-2">
+                    <Bot size={14} /> Сгенерировать ответ AI
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </aside>
       </div>
+
     </motion.div>
   );
 }

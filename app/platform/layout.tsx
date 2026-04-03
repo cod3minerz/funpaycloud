@@ -1,28 +1,26 @@
 'use client';
 
+import { useState } from 'react';
 import Sidebar from '@/platform/layout/Sidebar';
 import MobileBottomBar from '@/platform/layout/MobileBottomBar';
+import PlatformTopBar from '@/platform/layout/PlatformTopBar';
 
 export default function PlatformLayout({ children }: { children: React.ReactNode }) {
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
   return (
-    <div
-      className="platform-scope"
-      style={{ minHeight: '100vh', background: '#050C1C', color: '#fff', display: 'flex', position: 'relative' }}
-    >
-      {/* Desktop sidebar */}
-      <div className="hidden md:block">
-        <Sidebar />
+    <div className="platform-scope platform-shell">
+      <Sidebar />
+
+      {mobileSidebarOpen && <button className="platform-mobile-overlay md:hidden" onClick={() => setMobileSidebarOpen(false)} aria-label="Закрыть меню" />}
+
+      <Sidebar mobile open={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
+
+      <div className="platform-main md:ml-[248px]">
+        <PlatformTopBar onOpenMobileSidebar={() => setMobileSidebarOpen(true)} />
+        <main className="platform-main-scroll">{children}</main>
       </div>
 
-      {/* Main content */}
-      <main
-        className="md:ml-[240px] pb-20 md:pb-0"
-        style={{ flex: 1, minWidth: 0, overflowY: 'auto', height: '100vh' }}
-      >
-        {children}
-      </main>
-
-      {/* Mobile bottom navigation */}
       <div className="md:hidden">
         <MobileBottomBar />
       </div>

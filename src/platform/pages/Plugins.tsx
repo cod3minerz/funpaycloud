@@ -6,8 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/componen
 import { Switch } from '@/app/components/ui/switch';
 
 const CARD_STYLE: React.CSSProperties = {
-  background: '#0a1428',
-  border: '1px solid rgba(0,121,255,0.18)',
+  background: 'var(--pf-surface)',
+  border: '1px solid var(--pf-border)',
   borderRadius: '12px',
   padding: '20px',
 };
@@ -15,7 +15,7 @@ const CARD_STYLE: React.CSSProperties = {
 const CATEGORIES = ['Все', 'Автоматизация', 'Игровые товары', 'SMM', 'Финансы', 'Интеграции'];
 
 const categoryColors: Record<string, string> = {
-  'Автоматизация': '#0079FF',
+  'Автоматизация': 'var(--pf-accent)',
   'Игровые товары': '#22c55e',
   'SMM': '#7c3aed',
   'Финансы': '#eab308',
@@ -64,14 +64,14 @@ export default function Plugins() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      style={{ padding: '24px', minHeight: '100vh', background: '#050C1C', color: '#fff', fontFamily: 'Syne, sans-serif' }}
+      style={{ padding: '24px', minHeight: '100vh', background: 'transparent', color: '#fff', fontFamily: 'var(--font-sans)' }}
     >
       <h1 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '24px' }}>Плагины</h1>
 
       {/* Installed plugins */}
       {installed.length > 0 && (
         <div style={{ marginBottom: '28px' }}>
-          <div style={{ color: '#7DC8FF', fontSize: '13px', fontWeight: 600, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ color: 'var(--pf-text-muted)', fontSize: '13px', fontWeight: 600, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Установленные ({installed.length})
           </div>
           <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '8px' }}>
@@ -81,7 +81,7 @@ export default function Plugins() {
                   <span style={{ fontSize: '28px' }}>{p.icon}</span>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: '14px' }}>{p.name}</div>
-                    <div style={{ color: '#7DC8FF', fontSize: '11px' }}>{p.category}</div>
+                    <div style={{ color: 'var(--pf-text-muted)', fontSize: '11px' }}>{p.category}</div>
                   </div>
                   <Switch
                     checked={installedEnabled[p.id] ?? true}
@@ -89,7 +89,7 @@ export default function Plugins() {
                   />
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button style={{ flex: 1, background: 'rgba(0,121,255,0.12)', border: '1px solid rgba(0,121,255,0.25)', borderRadius: '7px', padding: '6px', color: '#7DC8FF', cursor: 'pointer', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
+                  <button style={{ flex: 1, background: 'rgba(59,130,246,0.14)', border: '1px solid rgba(96,165,250,0.32)', borderRadius: '7px', padding: '6px', color: 'var(--pf-text-muted)', cursor: 'pointer', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
                     <Settings size={12} /> Настройки
                   </button>
                   <button
@@ -114,8 +114,8 @@ export default function Plugins() {
             style={{
               padding: '7px 14px',
               borderRadius: '20px',
-              border: category === cat ? 'none' : '1px solid rgba(0,121,255,0.2)',
-              background: category === cat ? 'linear-gradient(135deg, #007BFF, #0052F4)' : 'transparent',
+              border: category === cat ? 'none' : '1px solid rgba(96,165,250,0.28)',
+              background: category === cat ? 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))' : 'transparent',
               color: '#fff',
               cursor: 'pointer',
               fontSize: '13px',
@@ -134,8 +134,8 @@ export default function Plugins() {
             key={p.id}
             onClick={() => setSelectedPlugin(p)}
             style={{ ...CARD_STYLE, cursor: 'pointer', transition: 'border-color 0.2s', position: 'relative' }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(0,121,255,0.4)')}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(0,121,255,0.18)')}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(96,165,250,0.44)')}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--pf-border)')}
           >
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
               <span style={{ fontSize: '36px', lineHeight: 1 }}>{p.icon}</span>
@@ -144,8 +144,8 @@ export default function Plugins() {
                   <span style={{ fontWeight: 700, fontSize: '15px' }}>{p.name}</span>
                 </div>
                 <span style={{
-                  background: `${categoryColors[p.category] ?? '#7DC8FF'}20`,
-                  color: categoryColors[p.category] ?? '#7DC8FF',
+                  background: `${categoryColors[p.category] ?? 'var(--pf-text-muted)'}20`,
+                  color: categoryColors[p.category] ?? 'var(--pf-text-muted)',
                   borderRadius: '12px',
                   padding: '2px 8px',
                   fontSize: '11px',
@@ -156,24 +156,24 @@ export default function Plugins() {
               </div>
             </div>
 
-            <p style={{ color: '#7DC8FF', fontSize: '13px', lineHeight: 1.5, marginBottom: '12px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+            <p style={{ color: 'var(--pf-text-muted)', fontSize: '13px', lineHeight: 1.5, marginBottom: '12px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
               {p.description}
             </p>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
               <Stars rating={p.rating} />
               <span style={{ color: '#eab308', fontWeight: 600, fontSize: '13px' }}>{p.rating}</span>
-              <span style={{ color: '#7DC8FF', fontSize: '12px' }}>({p.reviews} отзывов)</span>
+              <span style={{ color: 'var(--pf-text-muted)', fontSize: '12px' }}>({p.reviews} отзывов)</span>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: 700, fontSize: '15px', color: p.price === 'free' ? '#22c55e' : '#0079FF' }}>
+              <span style={{ fontWeight: 700, fontSize: '15px', color: p.price === 'free' ? '#22c55e' : 'var(--pf-accent)' }}>
                 {p.price === 'free' ? 'Бесплатно' : `${p.price}₽/мес`}
               </span>
               <button
                 onClick={e => { e.stopPropagation(); toggleInstall(p.id); }}
                 style={{
-                  background: p.installed ? 'rgba(239,68,68,0.12)' : 'linear-gradient(135deg, #007BFF, #0052F4)',
+                  background: p.installed ? 'rgba(239,68,68,0.12)' : 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))',
                   border: p.installed ? '1px solid rgba(239,68,68,0.3)' : 'none',
                   borderRadius: '7px',
                   padding: '7px 14px',
@@ -195,7 +195,7 @@ export default function Plugins() {
 
       {/* Plugin Detail Dialog */}
       <Dialog open={!!selectedPlugin} onOpenChange={() => setSelectedPlugin(null)}>
-        <DialogContent style={{ background: '#0a1428', border: '1px solid rgba(0,121,255,0.3)', color: '#fff', maxWidth: '560px', maxHeight: '80vh', overflowY: 'auto' }}>
+        <DialogContent style={{ background: 'var(--pf-surface)', border: '1px solid rgba(96,165,250,0.4)', color: '#fff', maxWidth: '560px', maxHeight: '80vh', overflowY: 'auto' }}>
           <DialogHeader>
             <DialogTitle style={{ color: '#fff' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -205,7 +205,7 @@ export default function Plugins() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
                     <Stars rating={selectedPlugin?.rating ?? 0} />
                     <span style={{ color: '#eab308', fontSize: '13px', fontWeight: 600 }}>{selectedPlugin?.rating}</span>
-                    <span style={{ color: '#7DC8FF', fontSize: '12px', fontWeight: 400 }}>({selectedPlugin?.reviews} отзывов)</span>
+                    <span style={{ color: 'var(--pf-text-muted)', fontSize: '12px', fontWeight: 400 }}>({selectedPlugin?.reviews} отзывов)</span>
                   </div>
                 </div>
               </div>
@@ -216,9 +216,9 @@ export default function Plugins() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <p style={{ color: '#ccc', fontSize: '14px', lineHeight: 1.6 }}>{selectedPlugin.description}</p>
 
-              <div style={{ background: 'rgba(0,121,255,0.08)', border: '1px solid rgba(0,121,255,0.2)', borderRadius: '10px', padding: '14px' }}>
+              <div style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(96,165,250,0.28)', borderRadius: '10px', padding: '14px' }}>
                 <div style={{ fontWeight: 600, marginBottom: '10px', fontSize: '14px' }}>Как настроить</div>
-                <ol style={{ color: '#7DC8FF', fontSize: '13px', paddingLeft: '18px', lineHeight: 2 }}>
+                <ol style={{ color: 'var(--pf-text-muted)', fontSize: '13px', paddingLeft: '18px', lineHeight: 2 }}>
                   <li>Установите плагин и перейдите в раздел настроек</li>
                   <li>Введите необходимые параметры в конфигурации</li>
                   <li>Включите плагин и проверьте работу</li>
@@ -230,9 +230,9 @@ export default function Plugins() {
                 <div style={{ fontWeight: 600, marginBottom: '12px', fontSize: '14px' }}>Отзывы</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {MOCK_REVIEWS.map((r, i) => (
-                    <div key={i} style={{ background: 'rgba(0,121,255,0.06)', borderRadius: '8px', padding: '12px' }}>
+                    <div key={i} style={{ background: 'rgba(59,130,246,0.08)', borderRadius: '8px', padding: '12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                        <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, #007BFF, #0052F4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700 }}>
+                        <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700 }}>
                           {r.user[0].toUpperCase()}
                         </div>
                         <span style={{ fontWeight: 600, fontSize: '13px' }}>{r.user}</span>
@@ -247,7 +247,7 @@ export default function Plugins() {
               <button
                 onClick={() => { toggleInstall(selectedPlugin.id); setSelectedPlugin(null); }}
                 style={{
-                  background: selectedPlugin.installed ? 'rgba(239,68,68,0.15)' : 'linear-gradient(135deg, #007BFF, #0052F4)',
+                  background: selectedPlugin.installed ? 'rgba(239,68,68,0.15)' : 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))',
                   border: selectedPlugin.installed ? '1px solid rgba(239,68,68,0.3)' : 'none',
                   borderRadius: '8px',
                   padding: '12px',

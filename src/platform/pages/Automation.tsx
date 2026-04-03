@@ -6,8 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/componen
 import { Switch } from '@/app/components/ui/switch';
 
 const CARD_STYLE: React.CSSProperties = {
-  background: '#0a1428',
-  border: '1px solid rgba(0,121,255,0.18)',
+  background: 'var(--pf-surface)',
+  border: '1px solid var(--pf-border)',
   borderRadius: '12px',
   padding: '20px',
 };
@@ -112,8 +112,8 @@ export default function Automation() {
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
-    background: 'rgba(0,121,255,0.08)',
-    border: '1px solid rgba(0,121,255,0.2)',
+    background: 'rgba(59,130,246,0.1)',
+    border: '1px solid rgba(96,165,250,0.28)',
     borderRadius: '8px',
     padding: '9px 12px',
     color: '#fff',
@@ -127,13 +127,13 @@ export default function Automation() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      style={{ padding: '24px', minHeight: '100vh', background: '#050C1C', color: '#fff', fontFamily: 'Syne, sans-serif' }}
+      style={{ padding: '24px', minHeight: '100vh', background: 'transparent', color: '#fff', fontFamily: 'var(--font-sans)' }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
         <h1 style={{ fontSize: '24px', fontWeight: 700 }}>Автоматизация</h1>
         <button
           onClick={openNewRule}
-          style={{ background: 'linear-gradient(135deg, #007BFF, #0052F4)', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 18px', cursor: 'pointer', fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}
+          style={{ background: 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 18px', cursor: 'pointer', fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}
         >
           <Plus size={16} /> Добавить правило
         </button>
@@ -141,7 +141,7 @@ export default function Automation() {
 
       {/* Presets */}
       <div style={{ marginBottom: '24px' }}>
-        <div style={{ color: '#7DC8FF', fontSize: '13px', fontWeight: 600, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div style={{ color: 'var(--pf-text-muted)', fontSize: '13px', fontWeight: 600, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           Готовые сценарии
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
@@ -156,11 +156,11 @@ export default function Automation() {
                 <span style={{ fontSize: '24px' }}>{p.icon}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '3px' }}>{p.name}</div>
-                  <div style={{ color: '#7DC8FF', fontSize: '11px' }}>{p.triggerLabel} → {p.actionLabel}</div>
+                  <div style={{ color: 'var(--pf-text-muted)', fontSize: '11px' }}>{p.triggerLabel} → {p.actionLabel}</div>
                 </div>
                 <div style={{
                   width: '28px', height: '28px', borderRadius: '50%',
-                  background: added ? 'rgba(34,197,94,0.2)' : 'linear-gradient(135deg, #007BFF, #0052F4)',
+                  background: added ? 'rgba(34,197,94,0.2)' : 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                 }}>
                   {added ? <Check size={14} color="#22c55e" /> : <Plus size={14} color="#fff" />}
@@ -173,7 +173,7 @@ export default function Automation() {
 
       {/* Rules */}
       <div>
-        <div style={{ color: '#7DC8FF', fontSize: '13px', fontWeight: 600, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div style={{ color: 'var(--pf-text-muted)', fontSize: '13px', fontWeight: 600, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           Мои правила ({rules.length})
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -188,14 +188,14 @@ export default function Automation() {
               >
                 {/* Header */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-                  <div style={{ background: 'rgba(0,121,255,0.15)', borderRadius: '8px', padding: '7px' }}>
-                    <Zap size={15} color="#0079FF" />
+                  <div style={{ background: 'rgba(59,130,246,0.18)', borderRadius: '8px', padding: '7px' }}>
+                    <Zap size={15} color="var(--pf-accent)" />
                   </div>
                   <span style={{ fontWeight: 700, fontSize: '15px', flex: 1 }}>{rule.name}</span>
                   <Switch checked={rule.enabled} onCheckedChange={() => toggleRule(rule.id)} />
                   <button
                     onClick={() => startEditRule(rule)}
-                    style={{ background: 'transparent', border: 'none', color: '#7DC8FF', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--pf-text-muted)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
                   >
                     <Edit2 size={15} />
                   </button>
@@ -210,12 +210,12 @@ export default function Automation() {
                 {/* Flow */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   {/* Trigger */}
-                  <div style={{ background: 'rgba(0,121,255,0.12)', border: '1px solid rgba(0,121,255,0.3)', borderRadius: '8px', padding: '8px 12px', minWidth: '160px' }}>
-                    <div style={{ color: '#7DC8FF', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Триггер</div>
+                  <div style={{ background: 'rgba(59,130,246,0.14)', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '8px', padding: '8px 12px', minWidth: '160px' }}>
+                    <div style={{ color: 'var(--pf-text-muted)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Триггер</div>
                     <div style={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>{rule.triggerLabel}</div>
                   </div>
 
-                  <ChevronRight size={16} color="#7DC8FF" />
+                  <ChevronRight size={16} color="var(--pf-text-muted)" />
 
                   {/* Condition (optional) */}
                   {rule.condition && (
@@ -224,7 +224,7 @@ export default function Automation() {
                         <div style={{ color: '#eab308', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Условие</div>
                         <div style={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>{rule.condition}</div>
                       </div>
-                      <ChevronRight size={16} color="#7DC8FF" />
+                      <ChevronRight size={16} color="var(--pf-text-muted)" />
                     </>
                   )}
 
@@ -233,7 +233,7 @@ export default function Automation() {
                     <div style={{ color: '#22c55e', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Действие</div>
                     <div style={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>{rule.actionLabel}</div>
                     {rule.actionText && (
-                      <div style={{ fontSize: '12px', color: '#7DC8FF', marginTop: '4px', fontStyle: 'italic' }}>«{rule.actionText}»</div>
+                      <div style={{ fontSize: '12px', color: 'var(--pf-text-muted)', marginTop: '4px', fontStyle: 'italic' }}>«{rule.actionText}»</div>
                     )}
                   </div>
                 </div>
@@ -251,13 +251,13 @@ export default function Automation() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent style={{ background: '#0a1428', border: '1px solid rgba(0,121,255,0.3)', color: '#fff', maxWidth: '520px' }}>
+        <DialogContent style={{ background: 'var(--pf-surface)', border: '1px solid rgba(96,165,250,0.4)', color: '#fff', maxWidth: '520px' }}>
           <DialogHeader>
             <DialogTitle style={{ color: '#fff' }}>{editingId ? 'Редактировать правило' : 'Новое правило'}</DialogTitle>
           </DialogHeader>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div>
-              <label style={{ color: '#7DC8FF', fontSize: '13px', display: 'block', marginBottom: '6px' }}>Название правила</label>
+              <label style={{ color: 'var(--pf-text-muted)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>Название правила</label>
               <input
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
@@ -266,7 +266,7 @@ export default function Automation() {
               />
             </div>
             <div>
-              <label style={{ color: '#7DC8FF', fontSize: '13px', display: 'block', marginBottom: '6px' }}>Триггер</label>
+              <label style={{ color: 'var(--pf-text-muted)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>Триггер</label>
               <select
                 value={form.trigger}
                 onChange={e => setForm(f => ({ ...f, trigger: e.target.value }))}
@@ -276,7 +276,7 @@ export default function Automation() {
               </select>
             </div>
             <div>
-              <label style={{ color: '#7DC8FF', fontSize: '13px', display: 'block', marginBottom: '6px' }}>Условие (необязательно)</label>
+              <label style={{ color: 'var(--pf-text-muted)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>Условие (необязательно)</label>
               <input
                 value={form.condition}
                 onChange={e => setForm(f => ({ ...f, condition: e.target.value }))}
@@ -285,7 +285,7 @@ export default function Automation() {
               />
             </div>
             <div>
-              <label style={{ color: '#7DC8FF', fontSize: '13px', display: 'block', marginBottom: '6px' }}>Действие</label>
+              <label style={{ color: 'var(--pf-text-muted)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>Действие</label>
               <select
                 value={form.action}
                 onChange={e => setForm(f => ({ ...f, action: e.target.value }))}
@@ -296,7 +296,7 @@ export default function Automation() {
             </div>
             {form.action === 'send_message' && (
               <div>
-                <label style={{ color: '#7DC8FF', fontSize: '13px', display: 'block', marginBottom: '6px' }}>Текст сообщения</label>
+                <label style={{ color: 'var(--pf-text-muted)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>Текст сообщения</label>
                 <textarea
                   value={form.actionText}
                   onChange={e => setForm(f => ({ ...f, actionText: e.target.value }))}
@@ -307,10 +307,10 @@ export default function Automation() {
               </div>
             )}
             <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
-              <button onClick={saveRule} style={{ flex: 1, background: 'linear-gradient(135deg, #007BFF, #0052F4)', color: '#fff', border: 'none', borderRadius: '8px', padding: '11px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
+              <button onClick={saveRule} style={{ flex: 1, background: 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))', color: '#fff', border: 'none', borderRadius: '8px', padding: '11px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
                 {editingId ? 'Сохранить' : 'Создать правило'}
               </button>
-              <button onClick={() => setDialogOpen(false)} style={{ flex: 1, background: 'transparent', color: '#7DC8FF', border: '1px solid rgba(0,121,255,0.3)', borderRadius: '8px', padding: '11px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
+              <button onClick={() => setDialogOpen(false)} style={{ flex: 1, background: 'transparent', color: 'var(--pf-text-muted)', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '8px', padding: '11px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
                 Отмена
               </button>
             </div>
