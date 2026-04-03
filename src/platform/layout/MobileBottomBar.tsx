@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router';
 import { useState } from 'react';
 import {
   LayoutDashboard, MessageSquare, ShoppingCart, Tag, MoreHorizontal,
