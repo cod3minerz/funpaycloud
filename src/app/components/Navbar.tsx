@@ -50,14 +50,14 @@ export function Navbar() {
           {/* Desktop auth */}
           <div className="hidden md:flex items-center gap-4 justify-self-end">
             <a
-              href="#"
+              href="/platform"
               className="text-slate-300 hover:text-white text-sm font-semibold transition-colors"
               style={{ fontFamily: "Manrope, sans-serif" }}
             >
               Войти
             </a>
             <a
-              href="#pricing"
+              href="/platform"
               className="bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold text-sm px-5 py-2.5 rounded-xl block hover:opacity-95 transition-opacity border border-blue-200/20"
               style={{ fontFamily: "Manrope, sans-serif" }}
             >
@@ -95,14 +95,14 @@ export function Navbar() {
             </div>
             <div className="flex flex-col gap-3 pt-5">
               <a
-                href="#"
+                href="/platform"
                 className="text-white text-sm font-semibold text-center py-2.5 border border-slate-200/20 rounded-xl"
                 style={{ fontFamily: "Manrope, sans-serif" }}
               >
                 Войти
               </a>
               <a
-                href="#pricing"
+                href="/platform"
                 onClick={() => setMobileOpen(false)}
                 className="bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold text-sm py-3 rounded-xl text-center border border-blue-200/20"
                 style={{ fontFamily: "Manrope, sans-serif" }}
