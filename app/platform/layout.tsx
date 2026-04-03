@@ -1,25 +1,25 @@
-import { Outlet } from 'react-router';
-import Sidebar from './Sidebar';
-import MobileBottomBar from './MobileBottomBar';
-import '../../styles/platform.css';
+'use client';
 
-export default function PlatformLayout() {
+import Sidebar from '@/platform/layout/Sidebar';
+import MobileBottomBar from '@/platform/layout/MobileBottomBar';
+
+export default function PlatformLayout({ children }: { children: React.ReactNode }) {
   return (
     <div
       className="platform-scope"
       style={{ minHeight: '100vh', background: '#050C1C', color: '#fff', display: 'flex', position: 'relative' }}
     >
-      {/* Desktop sidebar — hidden on mobile */}
+      {/* Desktop sidebar */}
       <div className="hidden md:block">
         <Sidebar />
       </div>
 
-      {/* Main content area */}
+      {/* Main content */}
       <main
         className="md:ml-[240px] pb-20 md:pb-0"
         style={{ flex: 1, minWidth: 0, overflowY: 'auto', height: '100vh' }}
       >
-        <Outlet />
+        {children}
       </main>
 
       {/* Mobile bottom navigation */}

@@ -1,4 +1,7 @@
-import { NavLink } from 'react-router';
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import {
   LayoutDashboard, MessageSquare, ShoppingCart, Tag, Package,
@@ -23,6 +26,7 @@ const navItems = [
 export default function Sidebar() {
   const [activeAccount, setActiveAccount] = useState(accounts[0]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <aside
@@ -74,7 +78,6 @@ export default function Sidebar() {
             color: '#fff',
           }}
         >
-          {/* Avatar */}
           <div style={{
             width: '32px', height: '32px', borderRadius: '50%',
             background: 'linear-gradient(135deg, #0079FF, #0052F4)',
@@ -91,7 +94,6 @@ export default function Sidebar() {
               {activeAccount.balance.toLocaleString('ru-RU')}₽
             </div>
           </div>
-          {/* Online dot */}
           <div style={{
             width: '8px', height: '8px', borderRadius: '50%',
             background: activeAccount.online ? '#22c55e' : '#6b7280',
@@ -168,26 +170,26 @@ export default function Sidebar() {
       <nav style={{ flex: 1, padding: '10px 10px', overflowY: 'auto' }}>
         <div style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(125,200,255,0.4)', letterSpacing: '0.1em', padding: '8px 10px 4px', textTransform: 'uppercase' }}>Управление</div>
         {navItems.slice(0, 5).map(({ icon: Icon, label, path }) => (
-          <NavLink
+          <Link
             key={path}
-            to={path}
-            className={({ isActive }) => `platform-nav-item${isActive ? ' active' : ''}`}
+            href={path}
+            className={`platform-nav-item${pathname === path ? ' active' : ''}`}
           >
             <Icon size={17} />
             <span>{label}</span>
-          </NavLink>
+          </Link>
         ))}
 
         <div style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(125,200,255,0.4)', letterSpacing: '0.1em', padding: '12px 10px 4px', textTransform: 'uppercase' }}>Инструменты</div>
         {navItems.slice(5).map(({ icon: Icon, label, path }) => (
-          <NavLink
+          <Link
             key={path}
-            to={path}
-            className={({ isActive }) => `platform-nav-item${isActive ? ' active' : ''}`}
+            href={path}
+            className={`platform-nav-item${pathname === path ? ' active' : ''}`}
           >
             <Icon size={17} />
             <span>{label}</span>
-          </NavLink>
+          </Link>
         ))}
       </nav>
 

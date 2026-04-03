@@ -1,4 +1,7 @@
-import { NavLink, useNavigate } from 'react-router';
+'use client';
+
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import {
   LayoutDashboard, MessageSquare, ShoppingCart, Tag, MoreHorizontal,
@@ -23,21 +26,22 @@ const moreItems = [
 
 export default function MobileBottomBar() {
   const [sheetOpen, setSheetOpen] = useState(false);
-  const navigate = useNavigate();
+  const router = useRouter();
+  const pathname = usePathname();
 
   return (
     <>
       {/* Bottom bar */}
       <div className="mobile-bottom-bar">
         {mainItems.map(({ icon: Icon, label, path }) => (
-          <NavLink
+          <Link
             key={path}
-            to={path}
-            className={({ isActive }) => `mobile-bottom-item${isActive ? ' active' : ''}`}
+            href={path}
+            className={`mobile-bottom-item${pathname === path ? ' active' : ''}`}
           >
             <Icon size={22} />
             <span>{label}</span>
-          </NavLink>
+          </Link>
         ))}
         <button
           className="mobile-bottom-item"
@@ -82,7 +86,7 @@ export default function MobileBottomBar() {
               {moreItems.map(({ icon: Icon, label, path }) => (
                 <button
                   key={path}
-                  onClick={() => { navigate(path); setSheetOpen(false); }}
+                  onClick={() => { router.push(path); setSheetOpen(false); }}
                   style={{
                     background: 'rgba(0,121,255,0.08)',
                     border: '1px solid rgba(0,121,255,0.15)',

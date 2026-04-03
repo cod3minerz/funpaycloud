@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -49,7 +49,7 @@ function formatDate(iso: string) {
 }
 
 export default function Dashboard() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [period, setPeriod] = useState<7 | 30 | 90>(30);
 
   const totalBalance = accounts.reduce((sum, a) => sum + a.balance, 0);
@@ -313,7 +313,7 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
-            <button onClick={() => navigate('/platform/chats')} style={{ ...BTN_PRIMARY, width: '100%' }}>
+            <button onClick={() => router.push('/platform/chats')} style={{ ...BTN_PRIMARY, width: '100%' }}>
               Перейти в чаты
             </button>
           </div>

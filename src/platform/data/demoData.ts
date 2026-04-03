@@ -293,16 +293,21 @@ export const warehouseLots: WarehouseLot[] = [
   },
 ];
 
+// Deterministic pseudo-random — SSR-safe (no Math.random at module level)
+function pseudoRandom(seed: number): number {
+  const x = Math.sin(seed + 1) * 10000;
+  return x - Math.floor(x);
+}
+
 function generateSalesData(): SalesPoint[] {
   const data: SalesPoint[] = [];
   const now = new Date('2026-04-02');
   for (let i = 89; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
-    const month = d.getMonth();
     const base = 3000 + Math.sin(i / 10) * 1000;
-    const revenue = Math.round(base + Math.random() * 2000);
-    const ordersCount = Math.round(revenue / 400 + Math.random() * 5);
+    const revenue = Math.round(base + pseudoRandom(i * 3) * 2000);
+    const ordersCount = Math.round(revenue / 400 + pseudoRandom(i * 7 + 1) * 5);
     data.push({
       date: d.toISOString().slice(0, 10),
       revenue,
