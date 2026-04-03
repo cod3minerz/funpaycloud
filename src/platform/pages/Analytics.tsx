@@ -113,7 +113,7 @@ export default function Analytics() {
                 padding: '7px 14px',
                 borderRadius: '7px',
                 border: period === p ? 'none' : '1px solid rgba(96,165,250,0.28)',
-                background: period === p ? 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))' : 'transparent',
+                background: period === p ? 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))' : 'transparent',
                 color: '#fff',
                 cursor: 'pointer',
                 fontSize: '13px',
@@ -153,7 +153,7 @@ export default function Analytics() {
                 <button
                   key={t}
                   onClick={() => setChartType(t)}
-                  style={{ padding: '4px 10px', borderRadius: '6px', border: chartType === t ? 'none' : '1px solid rgba(96,165,250,0.28)', background: chartType === t ? 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))' : 'transparent', color: '#fff', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
+                  style={{ padding: '4px 10px', borderRadius: '6px', border: chartType === t ? 'none' : '1px solid rgba(96,165,250,0.28)', background: chartType === t ? 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))' : 'transparent', color: '#fff', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
                 >
                   {t === 'area' ? 'Линейный' : 'Столбчатый'}
                 </button>
@@ -224,7 +224,7 @@ export default function Analytics() {
                 <div
                   title={`${hour}:00 — активность ${Math.round(level * 100)}%`}
                   style={{
-                    background: `rgba(0,121,255,${0.1 + level * 0.85})`,
+                    background: `rgba(91,140,255,${0.1 + level * 0.75})`,
                     borderRadius: '6px',
                     height: '36px',
                     display: 'flex',
@@ -243,7 +243,7 @@ export default function Analytics() {
             ))}
           </div>
           <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ height: '10px', flex: 1, background: 'linear-gradient(to right, rgba(59,130,246,0.12), rgba(0,121,255,0.95))', borderRadius: '4px' }} />
+            <div style={{ height: '10px', flex: 1, background: 'linear-gradient(to right, rgba(59,130,246,0.12), rgba(91,140,255,0.82))', borderRadius: '4px' }} />
             <span style={{ color: 'var(--pf-text-muted)', fontSize: '11px', whiteSpace: 'nowrap' }}>Низкая → Высокая</span>
           </div>
         </div>
@@ -284,7 +284,7 @@ export default function Analytics() {
                   <td style={{ padding: '9px 8px', color: i < 3 ? '#eab308' : 'var(--pf-text-muted)', fontWeight: 700 }}>{i + 1}</td>
                   <td style={{ padding: '9px 8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700 }}>
+                      <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700 }}>
                         {b.avatar}
                       </div>
                       <span style={{ fontWeight: 600 }}>{b.username}</span>

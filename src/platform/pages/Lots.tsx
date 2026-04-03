@@ -13,7 +13,7 @@ const CARD_STYLE: React.CSSProperties = {
 };
 
 const BTN_PRIMARY: React.CSSProperties = {
-  background: 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))',
+  background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))',
   color: '#fff',
   border: 'none',
   borderRadius: '8px',
@@ -294,7 +294,7 @@ export default function Lots() {
                 </span>
               </div>
               <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
-                <button onClick={saveEdit} style={{ flex: 1, background: 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
+                <button onClick={saveEdit} style={{ flex: 1, background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
                   Сохранить
                 </button>
                 <button onClick={() => setEditLot(null)} style={{ flex: 1, background: 'transparent', color: 'var(--pf-text-muted)', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '8px', padding: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>

@@ -96,7 +96,7 @@ export default function Orders() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            style={{ background: 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))', borderRadius: '10px', padding: '12px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}
+            style={{ background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))', borderRadius: '10px', padding: '12px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}
           >
             <span style={{ fontWeight: 600 }}>Выбрано {selected.length} заказов</span>
             <button
@@ -132,7 +132,7 @@ export default function Orders() {
                   padding: '7px 12px',
                   borderRadius: '7px',
                   border: statusFilter === s ? 'none' : '1px solid rgba(96,165,250,0.28)',
-                  background: statusFilter === s ? 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))' : 'transparent',
+                  background: statusFilter === s ? 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))' : 'transparent',
                   color: '#fff',
                   cursor: 'pointer',
                   fontSize: '13px',
@@ -163,7 +163,7 @@ export default function Orders() {
                   padding: '7px 10px',
                   borderRadius: '7px',
                   border: dateFilter === d ? 'none' : '1px solid rgba(96,165,250,0.28)',
-                  background: dateFilter === d ? 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))' : 'transparent',
+                  background: dateFilter === d ? 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))' : 'transparent',
                   color: '#fff',
                   cursor: 'pointer',
                   fontSize: '12px',
@@ -221,7 +221,7 @@ export default function Orders() {
                     <td style={{ padding: '10px 8px', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.lot}</td>
                     <td style={{ padding: '10px 8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, flexShrink: 0 }}>
+                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, flexShrink: 0 }}>
                           {o.buyerAvatar}
                         </div>
                         {o.buyer}
@@ -289,7 +289,7 @@ export default function Orders() {
               <button
                 key={p}
                 onClick={() => setPage(p)}
-                style={{ background: page === p ? 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))' : 'rgba(59,130,246,0.12)', border: '1px solid rgba(96,165,250,0.28)', borderRadius: '6px', padding: '6px 12px', color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: page === p ? 700 : 400 }}
+                style={{ background: page === p ? 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))' : 'rgba(59,130,246,0.12)', border: '1px solid rgba(96,165,250,0.28)', borderRadius: '6px', padding: '6px 12px', color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: page === p ? 700 : 400 }}
               >
                 {p}
               </button>
@@ -352,7 +352,7 @@ export default function Orders() {
                   style={{ width: '100%', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(96,165,250,0.28)', borderRadius: '8px', padding: '10px 12px', color: '#fff', fontSize: '13px', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
                 />
                 <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                  <button style={{ flex: 1, background: 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                  <button style={{ flex: 1, background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
                     <Send size={14} /> Выдать товар
                   </button>
                   <button style={{ flex: 1, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', color: '#ef4444' }}>

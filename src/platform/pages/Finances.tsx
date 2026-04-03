@@ -155,7 +155,7 @@ export default function Finances() {
             />
             <Bar dataKey="revenue" radius={[4, 4, 0, 0]}>
               {monthlyData.map((_, i) => (
-                <Cell key={i} fill={i === monthlyData.length - 1 ? 'var(--pf-accent)' : 'rgba(0,121,255,0.5)'} />
+                <Cell key={i} fill={i === monthlyData.length - 1 ? 'var(--pf-accent)' : 'rgba(91,140,255,0.45)'} />
               ))}
             </Bar>
           </BarChart>
@@ -174,7 +174,7 @@ export default function Finances() {
           <select
             value={accountFilter}
             onChange={e => setAccountFilter(e.target.value)}
-            style={{ background: '#0d1e38', border: '1px solid rgba(96,165,250,0.32)', borderRadius: '8px', padding: '6px 12px', color: '#fff', fontSize: '13px', cursor: 'pointer', outline: 'none' }}
+            style={{ background: 'var(--pf-surface-2)', border: '1px solid rgba(96,165,250,0.32)', borderRadius: '8px', padding: '6px 12px', color: '#fff', fontSize: '13px', cursor: 'pointer', outline: 'none' }}
           >
             <option value="all">Все аккаунты</option>
             {accounts.map(a => <option key={a.id} value={a.id}>{a.username}</option>)}
@@ -183,7 +183,7 @@ export default function Finances() {
           <select
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value)}
-            style={{ background: '#0d1e38', border: '1px solid rgba(96,165,250,0.32)', borderRadius: '8px', padding: '6px 12px', color: '#fff', fontSize: '13px', cursor: 'pointer', outline: 'none' }}
+            style={{ background: 'var(--pf-surface-2)', border: '1px solid rgba(96,165,250,0.32)', borderRadius: '8px', padding: '6px 12px', color: '#fff', fontSize: '13px', cursor: 'pointer', outline: 'none' }}
           >
             <option value="all">Все операции</option>
             <option value="sale">Продажи</option>
@@ -222,7 +222,7 @@ export default function Finances() {
                 const amountSign = tx.type === 'sale' ? '+' : tx.type === 'fee' || tx.type === 'withdrawal' ? '-' : '-';
                 return (
                   <tr key={tx.id} style={{ borderBottom: '1px solid rgba(59,130,246,0.1)' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,121,255,0.05)')}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >
                     <td style={{ padding: '11px 10px', color: 'var(--pf-text-muted)', whiteSpace: 'nowrap' }}>

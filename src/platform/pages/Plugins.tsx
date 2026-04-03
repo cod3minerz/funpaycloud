@@ -115,7 +115,7 @@ export default function Plugins() {
               padding: '7px 14px',
               borderRadius: '20px',
               border: category === cat ? 'none' : '1px solid rgba(96,165,250,0.28)',
-              background: category === cat ? 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))' : 'transparent',
+              background: category === cat ? 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))' : 'transparent',
               color: '#fff',
               cursor: 'pointer',
               fontSize: '13px',
@@ -173,7 +173,7 @@ export default function Plugins() {
               <button
                 onClick={e => { e.stopPropagation(); toggleInstall(p.id); }}
                 style={{
-                  background: p.installed ? 'rgba(239,68,68,0.12)' : 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))',
+                  background: p.installed ? 'rgba(239,68,68,0.12)' : 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))',
                   border: p.installed ? '1px solid rgba(239,68,68,0.3)' : 'none',
                   borderRadius: '7px',
                   padding: '7px 14px',
@@ -232,7 +232,7 @@ export default function Plugins() {
                   {MOCK_REVIEWS.map((r, i) => (
                     <div key={i} style={{ background: 'rgba(59,130,246,0.08)', borderRadius: '8px', padding: '12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                        <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700 }}>
+                        <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700 }}>
                           {r.user[0].toUpperCase()}
                         </div>
                         <span style={{ fontWeight: 600, fontSize: '13px' }}>{r.user}</span>
@@ -247,7 +247,7 @@ export default function Plugins() {
               <button
                 onClick={() => { toggleInstall(selectedPlugin.id); setSelectedPlugin(null); }}
                 style={{
-                  background: selectedPlugin.installed ? 'rgba(239,68,68,0.15)' : 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))',
+                  background: selectedPlugin.installed ? 'rgba(239,68,68,0.15)' : 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))',
                   border: selectedPlugin.installed ? '1px solid rgba(239,68,68,0.3)' : 'none',
                   borderRadius: '8px',
                   padding: '12px',

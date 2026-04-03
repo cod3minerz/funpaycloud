@@ -165,7 +165,7 @@ export default function Warehouse() {
                       padding: '7px 14px',
                       borderRadius: '7px',
                       border: addTab === tab ? 'none' : '1px solid rgba(96,165,250,0.28)',
-                      background: addTab === tab ? 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))' : 'transparent',
+                      background: addTab === tab ? 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))' : 'transparent',
                       color: '#fff',
                       cursor: 'pointer',
                       fontSize: '13px',
@@ -186,7 +186,7 @@ export default function Warehouse() {
                     placeholder="Введите товар (ключ, аккаунт, etc.)..."
                     style={{ flex: 1, background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(96,165,250,0.28)', borderRadius: '8px', padding: '10px 12px', color: '#fff', fontSize: '13px', outline: 'none' }}
                   />
-                  <button onClick={addSingle} style={{ background: 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))', border: 'none', borderRadius: '8px', padding: '10px 18px', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}>
+                  <button onClick={addSingle} style={{ background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))', border: 'none', borderRadius: '8px', padding: '10px 18px', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}>
                     Добавить
                   </button>
                 </div>
@@ -201,7 +201,7 @@ export default function Warehouse() {
                     rows={5}
                     style={{ width: '100%', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(96,165,250,0.28)', borderRadius: '8px', padding: '10px 12px', color: '#fff', fontSize: '13px', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
                   />
-                  <button onClick={addList} style={{ alignSelf: 'flex-start', background: 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))', border: 'none', borderRadius: '8px', padding: '10px 18px', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}>
+                  <button onClick={addList} style={{ alignSelf: 'flex-start', background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))', border: 'none', borderRadius: '8px', padding: '10px 18px', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}>
                     Добавить список
                   </button>
                 </div>

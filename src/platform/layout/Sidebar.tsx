@@ -14,7 +14,6 @@ import {
   Wallet,
   Settings,
   Users,
-  Crown,
   X,
 } from 'lucide-react';
 import { BrandLogo } from '@/app/components/BrandLogo';
@@ -54,7 +53,7 @@ export default function Sidebar({ mobile = false, open = false, onClose }: Sideb
 
   const asideClass = mobile
     ? `platform-sidebar platform-mobile-sidebar ${open ? 'open' : ''}`
-    : 'platform-sidebar fixed left-0 top-0 h-screen z-40 hidden md:flex';
+    : 'platform-sidebar fixed left-0 top-0 h-screen z-40 hidden lg:flex';
 
   return (
     <aside className={asideClass} aria-label="Навигация платформы">
@@ -65,13 +64,13 @@ export default function Sidebar({ mobile = false, open = false, onClose }: Sideb
           </Link>
           {mobile && (
             <button type="button" className="platform-topbar-btn" onClick={onClose} aria-label="Закрыть меню">
-              <X size={16} />
+              <X size={15} />
             </button>
           )}
         </div>
       </div>
 
-      <nav style={{ paddingBottom: 10 }}>
+      <nav className="platform-nav-wrap">
         {navGroups.map(group => (
           <div key={group.title}>
             <div className="platform-nav-section">{group.title}</div>
@@ -84,7 +83,7 @@ export default function Sidebar({ mobile = false, open = false, onClose }: Sideb
                   className={`platform-nav-item${isActive ? ' active' : ''}`}
                   onClick={onClose}
                 >
-                  <Icon size={17} />
+                  <Icon size={16} />
                   <span>{label}</span>
                 </Link>
               );
@@ -94,13 +93,7 @@ export default function Sidebar({ mobile = false, open = false, onClose }: Sideb
       </nav>
 
       <div className="platform-sidebar-footer">
-        <div className="platform-plan">
-          <div className="flex items-center gap-2" style={{ color: 'var(--pf-text)' }}>
-            <Crown size={15} color="#fbbf24" />
-            <span style={{ fontWeight: 700 }}>План Business</span>
-          </div>
-          <div style={{ marginTop: 4, color: 'var(--pf-text-muted)' }}>Активен до 01.05.2026</div>
-        </div>
+        <div className="platform-footer-note">FunPay Cloud Platform · premium workspace</div>
       </div>
     </aside>
   );

@@ -18,7 +18,7 @@ const CARD_STYLE: React.CSSProperties = {
 };
 
 const BTN_PRIMARY: React.CSSProperties = {
-  background: 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))',
+  background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))',
   color: '#fff',
   border: 'none',
   borderRadius: '8px',
@@ -166,7 +166,7 @@ export default function Dashboard() {
                       padding: '5px 12px',
                       borderRadius: '6px',
                       border: period === p ? 'none' : '1px solid rgba(96,165,250,0.4)',
-                      background: period === p ? 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))' : 'transparent',
+                      background: period === p ? 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))' : 'transparent',
                       color: '#fff',
                       cursor: 'pointer',
                       fontSize: '13px',
@@ -228,7 +228,7 @@ export default function Dashboard() {
                       <td style={{ padding: '10px 6px', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.lot}</td>
                       <td style={{ padding: '10px 6px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700 }}>
+                          <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700 }}>
                             {o.buyerAvatar}
                           </div>
                           {o.buyer}
@@ -268,7 +268,7 @@ export default function Dashboard() {
               {accounts.map(acc => (
                 <div key={acc.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(59,130,246,0.08)', borderRadius: '10px', border: '1px solid rgba(59,130,246,0.14)' }}>
                   <div style={{ position: 'relative' }}>
-                    <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 700 }}>
+                    <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 700 }}>
                       {acc.avatar}
                     </div>
                     <span style={{ position: 'absolute', bottom: '0', right: '0', width: '12px', height: '12px', borderRadius: '50%', background: acc.online ? '#22c55e' : '#6b7280', border: '2px solid var(--pf-surface)' }} />
@@ -294,8 +294,8 @@ export default function Dashboard() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
               {recentChats.map(chat => (
-                <div key={chat.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', background: 'rgba(0,121,255,0.05)', borderRadius: '8px', cursor: 'pointer' }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: chat.accountId === 'acc1' ? 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))' : 'linear-gradient(135deg, #7c3aed, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, flexShrink: 0 }}>
+                <div key={chat.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', cursor: 'pointer' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: chat.accountId === 'acc1' ? 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))' : 'linear-gradient(135deg, #7c3aed, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, flexShrink: 0 }}>
                     {chat.buyerAvatar}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>

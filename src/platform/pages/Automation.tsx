@@ -133,7 +133,7 @@ export default function Automation() {
         <h1 style={{ fontSize: '24px', fontWeight: 700 }}>Автоматизация</h1>
         <button
           onClick={openNewRule}
-          style={{ background: 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 18px', cursor: 'pointer', fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}
+          style={{ background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 18px', cursor: 'pointer', fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}
         >
           <Plus size={16} /> Добавить правило
         </button>
@@ -160,7 +160,7 @@ export default function Automation() {
                 </div>
                 <div style={{
                   width: '28px', height: '28px', borderRadius: '50%',
-                  background: added ? 'rgba(34,197,94,0.2)' : 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))',
+                  background: added ? 'rgba(34,197,94,0.2)' : 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                 }}>
                   {added ? <Check size={14} color="#22c55e" /> : <Plus size={14} color="#fff" />}
@@ -307,7 +307,7 @@ export default function Automation() {
               </div>
             )}
             <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
-              <button onClick={saveRule} style={{ flex: 1, background: 'linear-gradient(135deg, #007BFF, var(--pf-accent-2))', color: '#fff', border: 'none', borderRadius: '8px', padding: '11px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
+              <button onClick={saveRule} style={{ flex: 1, background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))', color: '#fff', border: 'none', borderRadius: '8px', padding: '11px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
                 {editingId ? 'Сохранить' : 'Создать правило'}
               </button>
               <button onClick={() => setDialogOpen(false)} style={{ flex: 1, background: 'transparent', color: 'var(--pf-text-muted)', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '8px', padding: '11px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
