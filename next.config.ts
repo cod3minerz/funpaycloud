@@ -2,18 +2,13 @@ import type { NextConfig } from 'next';
 import path from 'path';
 
 const config: NextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     ignoreBuildErrors: true,
   },
-  webpack(webpackConfig) {
-    webpackConfig.resolve.alias = {
-      ...webpackConfig.resolve.alias,
+  turbopack: {
+    resolveAlias: {
       '@': path.resolve(__dirname, 'src'),
-    };
-    return webpackConfig;
+    },
   },
 };
 
