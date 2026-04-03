@@ -14,62 +14,70 @@ export function P2PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <header className="p2-page-header">
+    <header className="p2-page-head">
       <div>
         <h1 className="p2-page-title">{title}</h1>
-        <p className="p2-page-desc">{description}</p>
+        <p className="p2-page-sub">{description}</p>
       </div>
       {actions ? <div className="inline-flex items-center gap-2">{actions}</div> : null}
     </header>
   );
 }
 
-export function P2Card({
+export function P2Panel({
   title,
   subtitle,
   right,
-  children,
-  bodyClassName,
   className,
+  bodyClassName,
+  children,
 }: {
   title?: string;
   subtitle?: string;
   right?: ReactNode;
-  children: ReactNode;
-  bodyClassName?: string;
   className?: string;
+  bodyClassName?: string;
+  children: ReactNode;
 }) {
   return (
-    <section className={cn('p2-card', className)}>
+    <section className={cn('p2-panel', className)}>
       {title || subtitle || right ? (
-        <div className="p2-card-head flex items-start justify-between gap-3">
+        <div className="p2-panel-head">
           <div>
-            {title ? <h3 className="p2-card-title">{title}</h3> : null}
-            {subtitle ? <p className="p2-card-sub">{subtitle}</p> : null}
+            {title ? <h3 className="p2-panel-title">{title}</h3> : null}
+            {subtitle ? <p className="p2-panel-sub">{subtitle}</p> : null}
           </div>
           {right}
         </div>
       ) : null}
-      <div className={cn('p2-card-body', bodyClassName)}>{children}</div>
+      <div className={cn('p2-panel-body', bodyClassName)}>{children}</div>
     </section>
   );
 }
 
-export function P2Stat({
-  label,
-  value,
-  foot,
-}: {
-  label: string;
-  value: string;
-  foot?: ReactNode;
-}) {
+export function P2KPI({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
     <article className="p2-kpi">
       <p className="p2-kpi-label">{label}</p>
       <p className="p2-kpi-value">{value}</p>
-      {foot ? <div className="p2-kpi-foot">{foot}</div> : null}
+      {note ? <p className="p2-kpi-note">{note}</p> : null}
     </article>
+  );
+}
+
+export function P2PrimaryAction({ children, className, ...props }: ComponentProps<typeof Button>) {
+  return (
+    <Button className={cn('p2-btn-primary', className)} {...props}>
+      {children}
+    </Button>
+  );
+}
+
+export function P2SecondaryAction({ children, className, ...props }: ComponentProps<typeof Button>) {
+  return (
+    <Button variant="outline" className={cn('p2-btn-soft', className)} {...props}>
+      {children}
+    </Button>
   );
 }
 
@@ -91,18 +99,11 @@ export function statusLabelByOrder(status: 'paid' | 'completed' | 'refund' | 'di
   return 'Спор';
 }
 
-export function P2PrimaryAction({ children, className, ...props }: ComponentProps<typeof Button>) {
-  return (
-    <Button className={cn('p2-primary-btn', className)} {...props}>
-      {children}
-    </Button>
-  );
-}
-
-export function P2SecondaryAction({ children, className, ...props }: ComponentProps<typeof Button>) {
-  return (
-    <Button variant="outline" className={cn('p2-secondary-btn', className)} {...props}>
-      {children}
-    </Button>
-  );
+export function p2FormatDate(value: string) {
+  return new Date(value).toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }

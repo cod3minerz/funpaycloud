@@ -6,7 +6,7 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { Switch } from '@/app/components/ui/switch';
 import type { WarehouseLot } from '@/platform/data/demoData';
 import { warehouseLots as initialLots } from '@/platform/data/demoData';
-import { P2Card, P2PageHeader, P2PrimaryAction } from '@/platform2/components/primitives';
+import { P2Panel, P2PageHeader, P2PrimaryAction } from '@/platform2/components/primitives';
 
 export default function Warehouse2() {
   const [lots, setLots] = useState<WarehouseLot[]>(initialLots);
@@ -50,7 +50,7 @@ export default function Warehouse2() {
       <P2PageHeader title="Warehouse" description="Manage stock pools and delivery templates for each lot." />
 
       <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)]">
-        <P2Card title="Lots" subtitle="Select lot for stock control">
+        <P2Panel title="Lots" subtitle="Select lot for stock control">
           <div className="space-y-2 max-h-[680px] overflow-y-auto p2-scroll">
             {lots.map(lot => {
               const available = lot.items.filter(item => item.status === 'available').length;
@@ -74,11 +74,11 @@ export default function Warehouse2() {
               );
             })}
           </div>
-        </P2Card>
+        </P2Panel>
 
         {selectedLot ? (
           <div className="space-y-4">
-            <P2Card title={selectedLot.lotTitle} subtitle="Stock operations and template settings">
+            <P2Panel title={selectedLot.lotTitle} subtitle="Stock operations and template settings">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-xl border border-[var(--p2-border-soft)] bg-[var(--p2-surface-2)] p-3">
                   <p className="text-xs text-[var(--p2-text-dim)]">Available</p>
@@ -101,9 +101,9 @@ export default function Warehouse2() {
                 </div>
                 <Switch checked={selectedLot.autoDeliveryEnabled} onCheckedChange={toggleAuto} />
               </div>
-            </P2Card>
+            </P2Panel>
 
-            <P2Card title="Add stock" subtitle="Single item or bulk insert">
+            <P2Panel title="Add stock" subtitle="Single item or bulk insert">
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-2">
                   <Input className="p2-input" value={singleItem} onChange={event => setSingleItem(event.target.value)} placeholder="Single key / account" />
@@ -120,17 +120,17 @@ export default function Warehouse2() {
                   <P2PrimaryAction className="w-full" onClick={addBulk}>Add bulk</P2PrimaryAction>
                 </div>
               </div>
-            </P2Card>
+            </P2Panel>
 
-            <P2Card title="Message template" subtitle="Variables: {товар}, {имя_покупателя}, {номер_заказа}">
+            <P2Panel title="Message template" subtitle="Variables: {товар}, {имя_покупателя}, {номер_заказа}">
               <Textarea
                 className="p2-input min-h-28"
                 value={selectedLot.messageTemplate}
                 onChange={event => updateTemplate(event.target.value)}
               />
-            </P2Card>
+            </P2Panel>
 
-            <P2Card title="Stock list" subtitle="Recent inventory values">
+            <P2Panel title="Stock list" subtitle="Recent inventory values">
               <div className="p2-table-wrap p2-scroll">
                 <table className="p2-table">
                   <thead>
@@ -155,7 +155,7 @@ export default function Warehouse2() {
                   </tbody>
                 </table>
               </div>
-            </P2Card>
+            </P2Panel>
           </div>
         ) : null}
       </div>

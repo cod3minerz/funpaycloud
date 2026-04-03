@@ -9,7 +9,7 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { Switch } from '@/app/components/ui/switch';
 import type { AutomationRule } from '@/platform/data/demoData';
 import { automationRules as initialRules } from '@/platform/data/demoData';
-import { P2Card, P2PageHeader, P2PrimaryAction, P2SecondaryAction } from '@/platform2/components/primitives';
+import { P2Panel, P2PageHeader, P2PrimaryAction, P2SecondaryAction } from '@/platform2/components/primitives';
 
 export default function Automation2() {
   const [rules, setRules] = useState<AutomationRule[]>(initialRules);
@@ -60,7 +60,7 @@ export default function Automation2() {
         }
       />
 
-      <P2Card title="Rules" subtitle="Enable or disable automation pipelines">
+      <P2Panel title="Rules" subtitle="Enable or disable automation pipelines">
         <div className="grid gap-3 md:grid-cols-2">
           {rules.map(rule => (
             <article key={rule.id} className="rounded-xl border border-[var(--p2-border-soft)] bg-[var(--p2-surface-2)] p-4">
@@ -77,7 +77,7 @@ export default function Automation2() {
             </article>
           ))}
         </div>
-      </P2Card>
+      </P2Panel>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="p2-dialog max-w-lg">

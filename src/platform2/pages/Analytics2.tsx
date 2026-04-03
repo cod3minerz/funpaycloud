@@ -13,7 +13,7 @@ import {
   YAxis,
 } from 'recharts';
 import { salesData, topBuyers } from '@/platform/data/demoData';
-import { P2Card, P2PageHeader, P2PrimaryAction } from '@/platform2/components/primitives';
+import { P2Panel, P2PageHeader, P2PrimaryAction } from '@/platform2/components/primitives';
 
 type Period = 'week' | 'month' | 'quarter';
 
@@ -64,7 +64,7 @@ export default function Analytics2() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.7fr_1fr]">
-        <P2Card title="Revenue trend" subtitle="Area chart by day">
+        <P2Panel title="Revenue trend" subtitle="Area chart by day">
           <div className="h-[320px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={periodData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
@@ -89,9 +89,9 @@ export default function Analytics2() {
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </P2Card>
+        </P2Panel>
 
-        <P2Card title="Top buyers" subtitle="Best users by total spend">
+        <P2Panel title="Top buyers" subtitle="Best users by total spend">
           <div className="space-y-2">
             {topBuyers.slice(0, 6).map(buyer => (
               <div key={buyer.username} className="rounded-xl border border-[var(--p2-border-soft)] bg-[var(--p2-surface-2)] p-3">
@@ -103,10 +103,10 @@ export default function Analytics2() {
               </div>
             ))}
           </div>
-        </P2Card>
+        </P2Panel>
       </div>
 
-      <P2Card title="Orders volume" subtitle="Bar chart by day">
+      <P2Panel title="Orders volume" subtitle="Bar chart by day">
         <div className="h-[280px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={periodData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
@@ -125,7 +125,7 @@ export default function Analytics2() {
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </P2Card>
+      </P2Panel>
     </div>
   );
 }

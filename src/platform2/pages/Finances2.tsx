@@ -5,7 +5,7 @@ import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { Input } from '@/app/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { accounts, transactions } from '@/platform/data/demoData';
-import { P2Card, P2PageHeader, P2PrimaryAction, P2Status } from '@/platform2/components/primitives';
+import { P2Panel, P2PageHeader, P2PrimaryAction, P2Status } from '@/platform2/components/primitives';
 
 export default function Finances2() {
   const [accountFilter, setAccountFilter] = useState('all');
@@ -55,7 +55,7 @@ export default function Finances2() {
         </article>
       </div>
 
-      <P2Card title="Transactions" subtitle="Filters and detailed movement table">
+      <P2Panel title="Transactions" subtitle="Filters and detailed movement table">
         <div className="p2-toolbar">
           <label className="p2-search max-w-none w-full">
             <Input
@@ -130,7 +130,7 @@ export default function Finances2() {
             </tbody>
           </table>
         </div>
-      </P2Card>
+      </P2Panel>
     </div>
   );
 }

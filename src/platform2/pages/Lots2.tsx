@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/app/components/ui/textarea';
 import type { Lot } from '@/platform/data/demoData';
 import { lots as initialLots } from '@/platform/data/demoData';
-import { P2Card, P2PageHeader, P2PrimaryAction, P2SecondaryAction } from '@/platform2/components/primitives';
+import { P2Panel, P2PageHeader, P2PrimaryAction, P2SecondaryAction } from '@/platform2/components/primitives';
 
 export default function Lots2() {
   const [lots, setLots] = useState<Lot[]>(initialLots);
@@ -43,7 +43,7 @@ export default function Lots2() {
     <div className="space-y-4 md:space-y-5">
       <P2PageHeader title="Lots" description="Control product catalog, visibility and pricing." />
 
-      <P2Card title="Filters" subtitle="Search by title and status">
+      <P2Panel title="Filters" subtitle="Search by title and status">
         <div className="p2-toolbar">
           <label className="p2-search max-w-none w-full">
             <Input
@@ -65,9 +65,9 @@ export default function Lots2() {
             </SelectContent>
           </Select>
         </div>
-      </P2Card>
+      </P2Panel>
 
-      <P2Card title="Lot list" subtitle="Product matrix with direct edits">
+      <P2Panel title="Lot list" subtitle="Product matrix with direct edits">
         <div className="p2-table-wrap p2-scroll">
           <table className="p2-table">
             <thead>
@@ -103,7 +103,7 @@ export default function Lots2() {
             </tbody>
           </table>
         </div>
-      </P2Card>
+      </P2Panel>
 
       <Dialog open={Boolean(editLot)} onOpenChange={() => setEditLot(null)}>
         <DialogContent className="p2-dialog max-w-xl">

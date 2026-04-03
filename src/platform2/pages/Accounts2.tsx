@@ -6,7 +6,7 @@ import { Input } from '@/app/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import type { Account } from '@/platform/data/demoData';
 import { accounts as initialAccounts } from '@/platform/data/demoData';
-import { P2Card, P2PageHeader, P2PrimaryAction, P2SecondaryAction } from '@/platform2/components/primitives';
+import { P2Panel, P2PageHeader, P2PrimaryAction, P2SecondaryAction } from '@/platform2/components/primitives';
 
 export default function Accounts2() {
   const [accounts, setAccounts] = useState<Account[]>(initialAccounts);
@@ -63,7 +63,7 @@ export default function Accounts2() {
         }
       />
 
-      <P2Card title="Filters" subtitle="Search by username and connection state">
+      <P2Panel title="Filters" subtitle="Search by username and connection state">
         <div className="p2-toolbar">
           <label className="p2-search max-w-none w-full">
             <Input
@@ -85,9 +85,9 @@ export default function Accounts2() {
             </SelectContent>
           </Select>
         </div>
-      </P2Card>
+      </P2Panel>
 
-      <P2Card title="Account List" subtitle="Performance and health status by account">
+      <P2Panel title="Account List" subtitle="Performance and health status by account">
         <div className="p2-table-wrap p2-scroll">
           <table className="p2-table">
             <thead>
@@ -118,10 +118,10 @@ export default function Accounts2() {
             </tbody>
           </table>
         </div>
-      </P2Card>
+      </P2Panel>
 
       {showCreate ? (
-        <P2Card title="Create Account" subtitle="Add new farm account">
+        <P2Panel title="Create Account" subtitle="Add new farm account">
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="space-y-1.5">
               <span className="text-xs text-[var(--p2-text-dim)]">Username</span>
@@ -137,7 +137,7 @@ export default function Accounts2() {
             <P2SecondaryAction onClick={() => setShowCreate(false)}>Cancel</P2SecondaryAction>
             <P2PrimaryAction onClick={createAccount}>Create</P2PrimaryAction>
           </div>
-        </P2Card>
+        </P2Panel>
       ) : null}
     </div>
   );

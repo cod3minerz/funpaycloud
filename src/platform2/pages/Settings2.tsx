@@ -1,5 +1,6 @@
 'use client';
 
+import type { ComponentType, SVGProps } from 'react';
 import { useState } from 'react';
 import {
   BellAlertIcon,
@@ -9,40 +10,38 @@ import {
 } from '@heroicons/react/24/outline';
 import { Input } from '@/app/components/ui/input';
 import { Switch } from '@/app/components/ui/switch';
-import { P2Card, P2PageHeader, P2PrimaryAction, P2SecondaryAction } from '@/platform2/components/primitives';
+import { P2PageHeader, P2Panel, P2PrimaryAction, P2SecondaryAction } from '@/platform2/components/primitives';
 
-type SectionKey = 'profile' | 'notifications' | 'plan' | 'security';
+type Section = 'profile' | 'notifications' | 'plan' | 'security';
 
-const sections: Array<{ key: SectionKey; label: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }> = [
-  { key: 'profile', label: 'Profile', icon: UserCircleIcon },
-  { key: 'notifications', label: 'Notifications', icon: BellAlertIcon },
-  { key: 'plan', label: 'Subscription', icon: CreditCardIcon },
-  { key: 'security', label: 'Security', icon: ShieldCheckIcon },
+const sections: Array<{ key: Section; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> }> = [
+  { key: 'profile', label: 'Профиль', icon: UserCircleIcon },
+  { key: 'notifications', label: 'Уведомления', icon: BellAlertIcon },
+  { key: 'plan', label: 'Подписка', icon: CreditCardIcon },
+  { key: 'security', label: 'Безопасность', icon: ShieldCheckIcon },
 ];
 
 export default function Settings2() {
-  const [section, setSection] = useState<SectionKey>('profile');
+  const [section, setSection] = useState<Section>('profile');
   const [telegram, setTelegram] = useState(true);
   const [email, setEmail] = useState(false);
   const [night, setNight] = useState(true);
 
   return (
     <div className="space-y-4 md:space-y-5">
-      <P2PageHeader title="Settings" description="Manage profile, billing and security from one control center." />
+      <P2PageHeader title="Настройки" description="Профиль, уведомления и безопасность в одном рабочем контуре." />
 
       <div className="grid gap-4 md:grid-cols-[240px_minmax(0,1fr)]">
-        <P2Card title="Sections" subtitle="Navigation">
-          <div className="space-y-1.5">
+        <P2Panel title="Разделы" subtitle="Навигация">
+          <div className="space-y-1">
             {sections.map(item => {
               const Icon = item.icon;
               const active = section === item.key;
-
               return (
                 <button
                   key={item.key}
-                  type="button"
-                  className={active ? 'p2-primary-btn w-full justify-start px-3' : 'p2-secondary-btn w-full justify-start px-3'}
                   onClick={() => setSection(item.key)}
+                  className={active ? 'p2-btn-primary w-full justify-start px-3' : 'p2-btn-soft w-full justify-start px-3'}
                 >
                   <Icon className="size-4" />
                   {item.label}
@@ -50,14 +49,14 @@ export default function Settings2() {
               );
             })}
           </div>
-        </P2Card>
+        </P2Panel>
 
         <div className="space-y-4">
           {section === 'profile' ? (
-            <P2Card title="Profile" subtitle="Update account data used in the platform.">
+            <P2Panel title="Профиль" subtitle="Базовые данные владельца платформы">
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="space-y-1.5">
-                  <span className="text-xs text-[var(--p2-text-dim)]">Display name</span>
+                  <span className="text-xs text-[var(--p2-text-dim)]">Имя</span>
                   <Input className="p2-input" defaultValue="Kirill" />
                 </label>
                 <label className="space-y-1.5">
@@ -69,88 +68,86 @@ export default function Settings2() {
                   <Input className="p2-input" defaultValue="@kirill" />
                 </label>
                 <label className="space-y-1.5">
-                  <span className="text-xs text-[var(--p2-text-dim)]">Timezone</span>
+                  <span className="text-xs text-[var(--p2-text-dim)]">Часовой пояс</span>
                   <Input className="p2-input" defaultValue="Europe/Moscow" />
                 </label>
               </div>
-
               <div className="mt-4 flex justify-end">
-                <P2PrimaryAction>Save changes</P2PrimaryAction>
+                <P2PrimaryAction>Сохранить</P2PrimaryAction>
               </div>
-            </P2Card>
+            </P2Panel>
           ) : null}
 
           {section === 'notifications' ? (
-            <P2Card title="Notifications" subtitle="Tune channel-specific alert preferences.">
+            <P2Panel title="Уведомления" subtitle="Каналы и приоритеты событий">
               <div className="space-y-2.5">
-                <div className="rounded-xl border border-[var(--p2-border-soft)] bg-[var(--p2-surface-2)] p-3 flex items-center justify-between gap-3">
+                <div className="rounded-xl border border-[var(--p2-border-soft)] bg-[var(--p2-surface-2)] p-3 flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-white">Telegram alerts</p>
-                    <p className="text-xs text-[var(--p2-text-dim)]">Disputes and critical order events</p>
+                    <p className="text-sm font-semibold text-[var(--p2-text)]">Telegram alerts</p>
+                    <p className="text-xs text-[var(--p2-text-dim)]">Новые заказы, споры, критические события</p>
                   </div>
                   <Switch checked={telegram} onCheckedChange={setTelegram} />
                 </div>
 
-                <div className="rounded-xl border border-[var(--p2-border-soft)] bg-[var(--p2-surface-2)] p-3 flex items-center justify-between gap-3">
+                <div className="rounded-xl border border-[var(--p2-border-soft)] bg-[var(--p2-surface-2)] p-3 flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-white">Email digest</p>
-                    <p className="text-xs text-[var(--p2-text-dim)]">Daily metrics and conversion summary</p>
+                    <p className="text-sm font-semibold text-[var(--p2-text)]">Email digest</p>
+                    <p className="text-xs text-[var(--p2-text-dim)]">Сводка за день и недельные отчеты</p>
                   </div>
                   <Switch checked={email} onCheckedChange={setEmail} />
                 </div>
 
-                <div className="rounded-xl border border-[var(--p2-border-soft)] bg-[var(--p2-surface-2)] p-3 flex items-center justify-between gap-3">
+                <div className="rounded-xl border border-[var(--p2-border-soft)] bg-[var(--p2-surface-2)] p-3 flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-white">Night push alerts</p>
-                    <p className="text-xs text-[var(--p2-text-dim)]">Only high-priority incidents at night</p>
+                    <p className="text-sm font-semibold text-[var(--p2-text)]">Ночной режим</p>
+                    <p className="text-xs text-[var(--p2-text-dim)]">Только high-priority push ночью</p>
                   </div>
                   <Switch checked={night} onCheckedChange={setNight} />
                 </div>
               </div>
-            </P2Card>
+            </P2Panel>
           ) : null}
 
           {section === 'plan' ? (
             <div className="grid gap-4 xl:grid-cols-3">
               {[
-                { name: 'Start', price: 299, description: 'For solo sellers', current: false },
-                { name: 'Pro', price: 699, description: 'For active stores', current: true },
-                { name: 'Business', price: 1499, description: 'For scale teams', current: false },
+                { name: 'Start', price: 299, text: 'Для старта и одного магазина', current: false },
+                { name: 'Pro', price: 699, text: 'Для активных продавцов', current: true },
+                { name: 'Scale', price: 1499, text: 'Для команд и мультиаккаунтов', current: false },
               ].map(plan => (
-                <P2Card key={plan.name} title={plan.name} subtitle={plan.description}>
-                  <p className="text-3xl font-bold text-white">{plan.price} ₽/mo</p>
-                  <ul className="mt-3 space-y-1 text-sm text-[var(--p2-text-muted)]">
-                    <li>• Multi account operations</li>
-                    <li>• Full chat automation</li>
-                    <li>• Growth analytics</li>
+                <P2Panel key={plan.name} title={plan.name} subtitle={plan.text}>
+                  <p className="text-3xl font-bold text-[var(--p2-text)]">{plan.price} ₽ / мес</p>
+                  <ul className="mt-3 space-y-1 text-sm text-[var(--p2-text-soft)]">
+                    <li>• Мультиаккаунты</li>
+                    <li>• Автоматизация чатов и выдачи</li>
+                    <li>• Расширенная аналитика</li>
                   </ul>
-
                   <div className="mt-4">
                     {plan.current ? (
-                      <P2SecondaryAction className="w-full">Current plan</P2SecondaryAction>
+                      <P2SecondaryAction className="w-full">Текущий план</P2SecondaryAction>
                     ) : (
-                      <P2PrimaryAction className="w-full">Switch plan</P2PrimaryAction>
+                      <P2PrimaryAction className="w-full">Переключить</P2PrimaryAction>
                     )}
                   </div>
-                </P2Card>
+                </P2Panel>
               ))}
             </div>
           ) : null}
 
           {section === 'security' ? (
-            <P2Card title="Security" subtitle="Credentials, sessions and access control.">
+            <P2Panel title="Безопасность" subtitle="Сессии, вход и защита аккаунта">
               <div className="grid gap-2 sm:grid-cols-2">
-                <P2PrimaryAction className="justify-center">Change password</P2PrimaryAction>
-                <P2SecondaryAction className="justify-center">Enable 2FA</P2SecondaryAction>
+                <P2PrimaryAction className="justify-center">Сменить пароль</P2PrimaryAction>
+                <P2SecondaryAction className="justify-center">Включить 2FA</P2SecondaryAction>
               </div>
 
               <div className="mt-4 p2-table-wrap p2-scroll">
                 <table className="p2-table min-w-0">
                   <thead>
                     <tr>
-                      <th>Device</th>
+                      <th>Устройство</th>
                       <th>IP</th>
-                      <th>Last activity</th>
+                      <th>Последняя активность</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -168,7 +165,7 @@ export default function Settings2() {
                   </tbody>
                 </table>
               </div>
-            </P2Card>
+            </P2Panel>
           ) : null}
         </div>
       </div>
