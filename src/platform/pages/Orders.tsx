@@ -96,7 +96,7 @@ export default function Orders() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            style={{ background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))', borderRadius: '10px', padding: '12px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}
+            style={{ background: 'var(--pf-surface-2)', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '10px', padding: '12px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}
           >
             <span style={{ fontWeight: 600 }}>Выбрано {selected.length} заказов</span>
             <button
@@ -115,9 +115,10 @@ export default function Orders() {
       <div style={{ ...CARD_STYLE, marginBottom: '20px' }}>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
           <select
+            className="platform-select"
             value={accountFilter}
             onChange={e => { setAccountFilter(e.target.value); setPage(1); }}
-            style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '8px', padding: '8px 12px', color: '#fff', fontSize: '13px', cursor: 'pointer', outline: 'none' }}
+            style={{ width: 180, cursor: 'pointer' }}
           >
             <option value="all">Все аккаунты</option>
             {accounts.map(a => <option key={a.id} value={a.id}>{a.username}</option>)}
@@ -131,8 +132,8 @@ export default function Orders() {
                 style={{
                   padding: '7px 12px',
                   borderRadius: '7px',
-                  border: statusFilter === s ? 'none' : '1px solid rgba(96,165,250,0.28)',
-                  background: statusFilter === s ? 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))' : 'transparent',
+                  border: statusFilter === s ? '1px solid rgba(96,165,250,0.46)' : '1px solid rgba(96,165,250,0.28)',
+                  background: statusFilter === s ? 'rgba(59,130,246,0.2)' : 'transparent',
                   color: '#fff',
                   cursor: 'pointer',
                   fontSize: '13px',
@@ -162,8 +163,8 @@ export default function Orders() {
                 style={{
                   padding: '7px 10px',
                   borderRadius: '7px',
-                  border: dateFilter === d ? 'none' : '1px solid rgba(96,165,250,0.28)',
-                  background: dateFilter === d ? 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))' : 'transparent',
+                  border: dateFilter === d ? '1px solid rgba(96,165,250,0.46)' : '1px solid rgba(96,165,250,0.28)',
+                  background: dateFilter === d ? 'rgba(59,130,246,0.2)' : 'transparent',
                   color: '#fff',
                   cursor: 'pointer',
                   fontSize: '12px',
@@ -221,7 +222,7 @@ export default function Orders() {
                     <td style={{ padding: '10px 8px', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.lot}</td>
                     <td style={{ padding: '10px 8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, flexShrink: 0 }}>
+                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, flexShrink: 0 }}>
                           {o.buyerAvatar}
                         </div>
                         {o.buyer}
@@ -307,7 +308,7 @@ export default function Orders() {
 
       {/* Order Detail Dialog */}
       <Dialog open={!!detailOrder} onOpenChange={() => setDetailOrder(null)}>
-        <DialogContent style={{ background: 'var(--pf-surface)', border: '1px solid rgba(96,165,250,0.4)', color: '#fff', maxWidth: '520px' }}>
+        <DialogContent className="platform-dialog-content" style={{ maxWidth: '520px' }}>
           <DialogHeader>
             <DialogTitle style={{ color: '#fff' }}>Детали заказа {detailOrder?.id}</DialogTitle>
           </DialogHeader>
@@ -349,7 +350,8 @@ export default function Orders() {
                   onChange={e => setDeliveryText(e.target.value)}
                   placeholder="Введите товар для выдачи..."
                   rows={3}
-                  style={{ width: '100%', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(96,165,250,0.28)', borderRadius: '8px', padding: '10px 12px', color: '#fff', fontSize: '13px', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
+                  className="platform-textarea"
+                  style={{ width: '100%', boxSizing: 'border-box' }}
                 />
                 <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                   <button style={{ flex: 1, background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>

@@ -12,11 +12,11 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
     <div className="platform-scope platform-shell">
       <Sidebar />
 
-      {mobileSidebarOpen && <button className="platform-mobile-overlay lg:hidden" onClick={() => setMobileSidebarOpen(false)} aria-label="Закрыть меню" />}
+      {mobileSidebarOpen && <button className="platform-mobile-overlay md:hidden" onClick={() => setMobileSidebarOpen(false)} aria-label="Закрыть меню" />}
 
       <Sidebar mobile open={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
 
-      <div className="platform-main lg:ml-[252px]">
+      <div className="platform-main md:ml-[252px]">
         <PlatformTopBar onOpenMobileSidebar={() => setMobileSidebarOpen(true)} />
         <main className="platform-main-scroll">{children}</main>
       </div>

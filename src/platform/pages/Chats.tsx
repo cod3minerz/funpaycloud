@@ -56,9 +56,7 @@ const statusLabel: Record<string, string> = {
 };
 
 function accountGradient(accountId: string) {
-  return accountId === 'acc1'
-    ? 'linear-gradient(145deg, #9aacd8 0%, #5b8cff 70%)'
-    : 'linear-gradient(145deg, #8292b7 0%, #4a6fd8 70%)';
+  return accountId === 'acc1' ? '#1d4ed8' : '#2563eb';
 }
 
 function toFunPayUserLink(username: string) {
@@ -347,7 +345,7 @@ export default function Chats() {
                 }}
               >
                 <button
-                  className="platform-topbar-btn lg:hidden"
+                  className="platform-topbar-btn md:hidden"
                   onClick={() => {
                     setSelectedId(null);
                     setShowMobileInfo(false);
@@ -407,7 +405,7 @@ export default function Chats() {
                   </div>
                 </div>
 
-                <button className="platform-topbar-btn lg:hidden" onClick={() => setShowMobileInfo(v => !v)} aria-label="Инфо">
+                <button className="platform-topbar-btn md:hidden" onClick={() => setShowMobileInfo(v => !v)} aria-label="Инфо">
                   <Info size={15} />
                 </button>
               </header>
@@ -427,7 +425,7 @@ export default function Chats() {
                         maxWidth: '78%',
                         borderRadius: message.fromUser ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
                         background: message.fromUser
-                          ? 'linear-gradient(145deg, #5b8cff 0%, #4a6fd8 100%)'
+                          ? '#1d4ed8'
                           : 'rgba(22,27,36,0.92)',
                         border: message.fromUser
                           ? '1px solid rgba(177,198,255,0.4)'

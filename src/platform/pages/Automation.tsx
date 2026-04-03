@@ -251,7 +251,7 @@ export default function Automation() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent style={{ background: 'var(--pf-surface)', border: '1px solid rgba(96,165,250,0.4)', color: '#fff', maxWidth: '520px' }}>
+        <DialogContent className="platform-dialog-content" style={{ maxWidth: '520px' }}>
           <DialogHeader>
             <DialogTitle style={{ color: '#fff' }}>{editingId ? 'Редактировать правило' : 'Новое правило'}</DialogTitle>
           </DialogHeader>
@@ -268,9 +268,10 @@ export default function Automation() {
             <div>
               <label style={{ color: 'var(--pf-text-muted)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>Триггер</label>
               <select
+                className="platform-select"
                 value={form.trigger}
                 onChange={e => setForm(f => ({ ...f, trigger: e.target.value }))}
-                style={{ ...inputStyle, cursor: 'pointer' }}
+                style={{ ...inputStyle, cursor: 'pointer', paddingRight: '34px' }}
               >
                 {TRIGGERS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
@@ -287,9 +288,10 @@ export default function Automation() {
             <div>
               <label style={{ color: 'var(--pf-text-muted)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>Действие</label>
               <select
+                className="platform-select"
                 value={form.action}
                 onChange={e => setForm(f => ({ ...f, action: e.target.value }))}
-                style={{ ...inputStyle, cursor: 'pointer' }}
+                style={{ ...inputStyle, cursor: 'pointer', paddingRight: '34px' }}
               >
                 {ACTIONS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
               </select>

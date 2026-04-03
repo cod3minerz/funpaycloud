@@ -77,7 +77,7 @@ export default function Accounts() {
               aria-label="Поиск аккаунта"
             />
           </label>
-          <select className="platform-input" value={statusFilter} onChange={e => setStatusFilter(e.target.value as typeof statusFilter)}>
+          <select className="platform-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value as typeof statusFilter)}>
             <option value="all">Все статусы</option>
             <option value="online">Онлайн</option>
             <option value="offline">Оффлайн</option>

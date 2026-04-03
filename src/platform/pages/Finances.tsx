@@ -172,18 +172,20 @@ export default function Finances() {
           </div>
           {/* Account filter */}
           <select
+            className="platform-select"
             value={accountFilter}
             onChange={e => setAccountFilter(e.target.value)}
-            style={{ background: 'var(--pf-surface-2)', border: '1px solid rgba(96,165,250,0.32)', borderRadius: '8px', padding: '6px 12px', color: '#fff', fontSize: '13px', cursor: 'pointer', outline: 'none' }}
+            style={{ minWidth: 170, cursor: 'pointer' }}
           >
             <option value="all">Все аккаунты</option>
             {accounts.map(a => <option key={a.id} value={a.id}>{a.username}</option>)}
           </select>
           {/* Type filter */}
           <select
+            className="platform-select"
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value)}
-            style={{ background: 'var(--pf-surface-2)', border: '1px solid rgba(96,165,250,0.32)', borderRadius: '8px', padding: '6px 12px', color: '#fff', fontSize: '13px', cursor: 'pointer', outline: 'none' }}
+            style={{ minWidth: 170, cursor: 'pointer' }}
           >
             <option value="all">Все операции</option>
             <option value="sale">Продажи</option>

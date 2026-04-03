@@ -52,8 +52,8 @@ export default function Sidebar({ mobile = false, open = false, onClose }: Sideb
   const pathname = usePathname();
 
   const asideClass = mobile
-    ? `platform-sidebar platform-mobile-sidebar ${open ? 'open' : ''}`
-    : 'platform-sidebar fixed left-0 top-0 h-screen z-40 hidden lg:flex';
+    ? `platform-sidebar platform-mobile-sidebar md:hidden ${open ? 'open' : ''}`
+    : 'platform-sidebar fixed left-0 top-0 h-screen z-40 hidden md:flex';
 
   return (
     <aside className={asideClass} aria-label="Навигация платформы">
