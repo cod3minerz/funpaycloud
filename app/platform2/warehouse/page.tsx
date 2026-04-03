@@ -1,5 +1,2 @@
-import { redirect } from 'next/navigation';
-
-export default function Platform2WarehouseRedirect() {
-  redirect('/platform/warehouse');
-}
+'use client';
+export { default } from '@/platform2/pages/Warehouse2';

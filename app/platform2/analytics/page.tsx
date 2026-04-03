@@ -1,5 +1,2 @@
-import { redirect } from 'next/navigation';
-
-export default function Platform2AnalyticsRedirect() {
-  redirect('/platform/analytics');
-}
+'use client';
+export { default } from '@/platform2/pages/Analytics2';

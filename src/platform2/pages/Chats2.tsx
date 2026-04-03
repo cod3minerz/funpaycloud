@@ -1,143 +1,115 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ArrowTopRightOnSquareIcon,
-  Bars3BottomLeftIcon,
-  ChatBubbleLeftRightIcon,
   ChevronLeftIcon,
   ClockIcon,
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
-import { Badge } from '@/app/components/ui/badge';
-import { Button } from '@/app/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Input } from '@/app/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/app/components/ui/sheet';
 import { Textarea } from '@/app/components/ui/textarea';
 import { accounts, chats as initialChats, orders } from '@/platform/data/demoData';
+import { P2Card, P2PageHeader, P2PrimaryAction, P2SecondaryAction, P2Status, statusLabelByOrder, statusTypeByOrder } from '@/platform2/components/primitives';
 
-type FilterType = 'all' | 'unread' | 'orders' | 'requires';
-type MobileView = 'list' | 'thread';
+type FilterKey = 'all' | 'unread' | 'orders' | 'requires';
+
+type MobileStage = 'list' | 'thread';
 
 const cannedReplies = [
-  'Добрый день! Заказ уже в обработке, отправлю результат в течение минуты.',
-  'Спасибо за покупку. Если будут вопросы по товару, сразу помогу.',
-  'Проверяю ситуацию и вернусь с решением в течение 2-3 минут.',
+  'Добрый день! Заказ уже обрабатывается. Отправлю результат в течение минуты.',
+  'Спасибо за покупку. Если нужен доп. товар — подскажу лучший вариант.',
+  'Проверяю ситуацию и вернусь с решением через 2-3 минуты.',
 ];
-
-const statusLabel: Record<string, string> = {
-  paid: 'Оплачен',
-  completed: 'Выполнен',
-  refund: 'Возврат',
-  dispute: 'Спор',
-};
 
 type ChatView = {
   id: string;
+  accountName: string;
   buyer: string;
-  buyerAvatar: string;
-  accountId: string;
-  accountUsername: string;
-  unread: number;
-  lastMessage: string;
-  lastTime: string;
-  messagesCount: number;
-  requiresReply: boolean;
-  orderId?: string;
-  orderStatus?: string;
-  orderAmount?: number;
-  lotTitle?: string;
-  messages: typeof initialChats[number]['messages'];
+  order?: (typeof orders)[number];
 };
 
 export default function Chats2() {
-  const [chatState, setChatState] = useState(initialChats);
+  const [chatItems, setChatItems] = useState(initialChats);
   const [activeId, setActiveId] = useState(initialChats[0]?.id ?? '');
-  const [filter, setFilter] = useState<FilterType>('all');
   const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<FilterKey>('all');
   const [draft, setDraft] = useState('');
-  const [mobileView, setMobileView] = useState<MobileView>('list');
+  const [mobileStage, setMobileStage] = useState<MobileStage>('list');
 
-  const chatViews = useMemo<ChatView[]>(() => {
-    return chatState.map(chat => {
+  const chatViews = useMemo(() => {
+    return chatItems.map(chat => {
       const linkedOrder = chat.orderId ? orders.find(order => order.id === chat.orderId) : undefined;
       const account = accounts.find(item => item.id === chat.accountId);
-      const lastMsg = chat.messages[chat.messages.length - 1];
-      const requiresReply = chat.unread > 0 || (!!lastMsg && !lastMsg.fromUser);
+      const lastMessage = chat.messages[chat.messages.length - 1];
+      const requiresReply = chat.unread > 0 || (lastMessage && !lastMessage.fromUser);
 
       return {
-        id: chat.id,
-        buyer: chat.buyer,
-        buyerAvatar: chat.buyerAvatar,
-        accountId: chat.accountId,
-        accountUsername: account?.username ?? chat.accountId,
-        unread: chat.unread,
-        lastMessage: chat.lastMessage,
-        lastTime: chat.lastTime,
-        messagesCount: chat.messages.length,
+        ...chat,
+        accountName: account?.username ?? chat.accountId,
+        order: linkedOrder,
         requiresReply,
-        orderId: chat.orderId,
-        orderStatus: linkedOrder?.status,
-        orderAmount: linkedOrder?.amount,
-        lotTitle: linkedOrder?.lot,
-        messages: chat.messages,
       };
     });
-  }, [chatState]);
+  }, [chatItems]);
 
-  const filtered = useMemo(() => {
-    return chatViews
-      .filter(chat => {
+  const filteredChats = useMemo(
+    () =>
+      chatViews.filter(chat => {
         if (filter === 'unread' && chat.unread === 0) return false;
         if (filter === 'orders' && !chat.orderId) return false;
         if (filter === 'requires' && !chat.requiresReply) return false;
-        if (query && !`${chat.buyer} ${chat.lastMessage} ${chat.lotTitle ?? ''}`.toLowerCase().includes(query.toLowerCase())) return false;
+
+        if (query) {
+          const payload = `${chat.buyer} ${chat.lastMessage} ${chat.order?.lot ?? ''}`.toLowerCase();
+          if (!payload.includes(query.toLowerCase())) return false;
+        }
+
         return true;
-      })
-      .sort((a, b) => b.unread - a.unread);
-  }, [chatViews, filter, query]);
+      }),
+    [chatViews, filter, query],
+  );
 
-  const activeChat = useMemo(() => {
-    if (!filtered.length) return undefined;
-    return filtered.find(chat => chat.id === activeId) ?? filtered[0];
-  }, [filtered, activeId]);
+  const activeChat = filteredChats.find(chat => chat.id === activeId) ?? filteredChats[0];
 
-  useEffect(() => {
-    if (activeChat && activeId !== activeChat.id) {
-      setActiveId(activeChat.id);
-    }
-  }, [activeChat, activeId]);
+  function openChat(chatId: string) {
+    setActiveId(chatId);
+    setMobileStage('thread');
 
-  function selectChat(id: string) {
-    setActiveId(id);
-    setMobileView('thread');
-    setChatState(prev => prev.map(chat => (chat.id === id ? { ...chat, unread: 0, messages: chat.messages.map(message => ({ ...message, read: true })) } : chat)));
+    setChatItems(prev =>
+      prev.map(chat =>
+        chat.id === chatId
+          ? { ...chat, unread: 0, messages: chat.messages.map(message => ({ ...message, read: true })) }
+          : chat,
+      ),
+    );
   }
 
-  function sendMessage(text: string) {
-    const trimmed = text.trim();
-    if (!trimmed || !activeChat) return;
+  function sendMessage() {
+    if (!activeChat || !draft.trim()) return;
 
     const now = new Date();
     const time = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    const nextText = draft.trim();
 
-    setChatState(prev =>
+    setChatItems(prev =>
       prev.map(chat => {
         if (chat.id !== activeChat.id) return chat;
+
         return {
           ...chat,
-          lastMessage: trimmed,
+          lastMessage: nextText,
           lastTime: time,
           messages: [
             ...chat.messages,
             {
               id: `m-${Date.now()}`,
               fromUser: true,
-              text: trimmed,
+              text: nextText,
               time,
               read: true,
             },
@@ -150,252 +122,207 @@ export default function Chats2() {
   }
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold tracking-tight">Чаты</h1>
-        <p className="text-sm text-[var(--p2-text-muted)]">Messenger-flow для быстрых ответов, контроля SLA и контекста заказа.</p>
-      </div>
+    <div className="space-y-4 md:space-y-5">
+      <P2PageHeader title="Chats" description="Messenger-grade workspace for customer communication." />
 
-      <div className="grid gap-4 lg:grid-cols-[330px_minmax(0,1fr)_300px]">
-        <Card className={`p2-surface border-[var(--p2-border)] min-h-[680px] ${mobileView === 'thread' ? 'hidden lg:flex' : 'flex'} flex-col`}>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Диалоги</CardTitle>
-            <CardDescription className="text-[var(--p2-text-dim)]">{filtered.length} активных чатов</CardDescription>
-            <label className="mt-2 flex items-center gap-2 p2-surface-2 rounded-md px-3 h-10">
-              <MagnifyingGlassIcon className="size-4 text-[var(--p2-text-dim)]" />
-              <Input
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                placeholder="Поиск по диалогам"
-                className="p2-input border-0 shadow-none h-auto p-0 focus-visible:ring-0"
-              />
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { key: 'all', label: 'Все' },
-                { key: 'unread', label: 'Непрочитанные' },
-                { key: 'orders', label: 'С заказом' },
-                { key: 'requires', label: 'Требуют ответа' },
-              ].map(item => (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => setFilter(item.key as FilterType)}
-                  className={`h-8 rounded-md border text-xs font-semibold ${
-                    filter === item.key
-                      ? 'border-blue-500/60 bg-blue-500/10 text-blue-200'
-                      : 'border-[var(--p2-border)] bg-[var(--p2-surface-2)] text-[var(--p2-text-muted)] hover:text-white'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          </CardHeader>
+      <div className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)_300px]">
+        <P2Card
+          className={mobileStage === 'thread' ? 'hidden lg:block' : 'block'}
+          title="Dialogs"
+          subtitle={`${filteredChats.length} active conversations`}
+          bodyClassName="space-y-3"
+        >
+          <label className="p2-search max-w-none w-full">
+            <MagnifyingGlassIcon className="size-4 text-[var(--p2-text-dim)]" />
+            <Input
+              value={query}
+              onChange={event => setQuery(event.target.value)}
+              className="p2-input border-0 shadow-none h-auto p-0 focus-visible:ring-0"
+              placeholder="Search dialogs"
+            />
+          </label>
 
-          <CardContent className="flex-1 overflow-y-auto p2-scroll space-y-2">
-            {filtered.map(chat => {
-              const isActive = chat.id === activeChat?.id;
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { key: 'all', label: 'All' },
+              { key: 'unread', label: 'Unread' },
+              { key: 'orders', label: 'With order' },
+              { key: 'requires', label: 'Need reply' },
+            ].map(item => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setFilter(item.key as FilterKey)}
+                className={filter === item.key ? 'p2-primary-btn px-3' : 'p2-secondary-btn px-3'}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-2 max-h-[600px] overflow-y-auto p2-scroll">
+            {filteredChats.map(chat => {
+              const active = activeChat?.id === chat.id;
+
               return (
                 <button
-                  type="button"
                   key={chat.id}
-                  onClick={() => selectChat(chat.id)}
-                  className={`w-full text-left rounded-lg border p-3 transition ${
-                    isActive
-                      ? 'border-blue-500/45 bg-blue-500/10'
-                      : 'border-[var(--p2-border)] bg-[var(--p2-surface-2)] hover:border-[var(--p2-border-strong)]'
-                  }`}
+                  type="button"
+                  onClick={() => openChat(chat.id)}
+                  className={[
+                    'w-full text-left rounded-xl border p-3 transition',
+                    active
+                      ? 'border-blue-500/45 bg-blue-500/12'
+                      : 'border-[var(--p2-border-soft)] bg-[var(--p2-surface-2)] hover:border-[var(--p2-border)]',
+                  ].join(' ')}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-2 min-w-0">
-                      <span className="mt-0.5 size-8 shrink-0 rounded-full bg-[var(--p2-surface-3)] text-sm font-bold inline-flex items-center justify-center">
-                        {chat.buyerAvatar}
-                      </span>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <strong className="text-sm truncate">{chat.buyer}</strong>
-                          {chat.unread > 0 && <Badge className="h-5 rounded-full px-1.5 text-[10px] bg-blue-600 hover:bg-blue-600">{chat.unread}</Badge>}
-                        </div>
-                        <p className="text-xs text-[var(--p2-text-dim)] truncate mt-0.5">{chat.lastMessage}</p>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <strong className="text-sm text-white truncate">{chat.buyer}</strong>
+                        {chat.unread > 0 ? <span className="p2-chip">{chat.unread}</span> : null}
                       </div>
+                      <p className="mt-1 text-xs text-[var(--p2-text-muted)] truncate">{chat.lastMessage}</p>
                     </div>
                     <span className="text-[11px] text-[var(--p2-text-dim)] shrink-0">{chat.lastTime}</span>
                   </div>
 
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    <span className="p2-chip">{chat.accountUsername}</span>
-                    {chat.orderId && <span className="p2-chip">{chat.orderId}</span>}
-                    <span className="p2-chip">{chat.messagesCount} сообщ.</span>
+                  <div className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-[var(--p2-text-dim)]">
+                    <span className="p2-chip">{chat.accountName}</span>
+                    {chat.orderId ? <span className="p2-chip">{chat.orderId}</span> : null}
                   </div>
                 </button>
               );
             })}
-          </CardContent>
-        </Card>
+          </div>
+        </P2Card>
 
-        <Card className={`p2-surface border-[var(--p2-border)] min-h-[680px] ${mobileView === 'list' ? 'hidden lg:flex' : 'flex'} flex-col`}>
+        <P2Card className={mobileStage === 'list' ? 'hidden lg:block' : 'block'} bodyClassName="p-0">
           {activeChat ? (
-            <>
-              <CardHeader className="border-b border-[var(--p2-border)] pb-3">
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="icon" className="h-8 w-8 lg:hidden p2-surface-2" onClick={() => setMobileView('list')}>
-                    <ChevronLeftIcon className="size-4" />
-                  </Button>
+            <div className="flex h-[760px] flex-col">
+              <div className="border-b border-[var(--p2-border-soft)] px-4 py-3 flex items-center gap-2">
+                <button className="p2-icon-btn lg:hidden" onClick={() => setMobileStage('list')}>
+                  <ChevronLeftIcon className="size-4" />
+                </button>
 
-                  <span className="size-9 rounded-full bg-[var(--p2-surface-3)] text-sm font-bold inline-flex items-center justify-center">
-                    {activeChat.buyerAvatar}
-                  </span>
-
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <CardTitle className="text-base truncate">{activeChat.buyer}</CardTitle>
-                      {activeChat.requiresReply && <Badge variant="outline" className="border-orange-400/40 text-orange-300">Ждёт ответ</Badge>}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1.5 text-xs text-[var(--p2-text-dim)] mt-1">
-                      {activeChat.orderId && <span className="p2-chip">{activeChat.orderId}</span>}
-                      {activeChat.lotTitle && <span className="p2-chip">{activeChat.lotTitle}</span>}
-                    </div>
-                  </div>
-
-                  <div className="ml-auto flex items-center gap-2">
-                    <Sheet>
-                      <SheetTrigger asChild>
-                        <Button variant="outline" size="icon" className="h-9 w-9 lg:hidden p2-surface-2">
-                          <Bars3BottomLeftIcon className="size-4" />
-                        </Button>
-                      </SheetTrigger>
-                      <SheetContent side="right" className="w-[300px] p2-surface border-[var(--p2-border)]">
-                        <SheetHeader>
-                          <SheetTitle>Контекст</SheetTitle>
-                        </SheetHeader>
-                        <ChatContext activeChat={activeChat} />
-                      </SheetContent>
-                    </Sheet>
-
-                    <Button asChild variant="outline" className="h-9 p2-surface-2">
-                      <a href={`https://funpay.com/users/${encodeURIComponent(activeChat.buyer)}/`} target="_blank" rel="noreferrer">
-                        Профиль
-                        <ArrowTopRightOnSquareIcon className="size-4" />
-                      </a>
-                    </Button>
-                  </div>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold text-white truncate">{activeChat.buyer}</h3>
+                  <p className="text-xs text-[var(--p2-text-dim)] truncate">{activeChat.order?.lot ?? 'Dialog without linked order'}</p>
                 </div>
-              </CardHeader>
 
-              <CardContent className="flex-1 min-h-0 p-0">
-                <div className="h-full flex flex-col">
-                  <div className="flex-1 overflow-y-auto p2-scroll p-4 p2-thread-bg space-y-3">
-                    {activeChat.messages.map(message => (
-                      <div key={message.id} className={`flex ${message.fromUser ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 text-sm ${message.fromUser ? 'p2-message-out' : 'p2-message-in'}`}>
-                          <p className="leading-relaxed whitespace-pre-wrap">{message.text}</p>
-                          <div className="mt-1 text-[10px] text-[var(--p2-text-dim)] inline-flex items-center gap-1">
-                            <ClockIcon className="size-3" />
-                            {message.time}
-                          </div>
-                        </div>
+                <div className="ml-auto inline-flex items-center gap-2">
+                  <P2SecondaryAction asChild className="px-3">
+                    <a href={`https://funpay.com/users/${encodeURIComponent(activeChat.buyer)}/`} target="_blank" rel="noreferrer">
+                      Profile
+                      <ArrowTopRightOnSquareIcon className="size-4" />
+                    </a>
+                  </P2SecondaryAction>
+
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <button className="p2-icon-btn lg:hidden" aria-label="Open context">
+                        <SparklesIcon className="size-4" />
+                      </button>
+                    </SheetTrigger>
+                    <SheetContent side="right" className="w-[300px] p2-surface border-[var(--p2-border-soft)]">
+                      <SheetHeader>
+                        <SheetTitle>Context</SheetTitle>
+                      </SheetHeader>
+                      <ChatContext chat={activeChat} />
+                    </SheetContent>
+                  </Sheet>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p2-scroll p-4 space-y-3 p2-messenger-bg">
+                {activeChat.messages.map(message => (
+                  <div key={message.id} className={message.fromUser ? 'flex justify-end' : 'flex justify-start'}>
+                    <div className={message.fromUser ? 'p2-message-out' : 'p2-message-in'}>
+                      <p className="text-sm text-[var(--p2-text)] leading-relaxed whitespace-pre-wrap">{message.text}</p>
+                      <div className="mt-1 inline-flex items-center gap-1 text-[10px] text-[var(--p2-text-dim)]">
+                        <ClockIcon className="size-3" />
+                        {message.time}
                       </div>
-                    ))}
+                    </div>
                   </div>
+                ))}
+              </div>
 
-                  <div className="border-t border-[var(--p2-border)] p-3 space-y-2 bg-[var(--p2-surface)]">
-                    <div className="flex flex-wrap gap-2">
-                      {cannedReplies.map((text, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setDraft(text)}
-                          className="h-7 rounded-md border border-[var(--p2-border)] bg-[var(--p2-surface-2)] px-2.5 text-xs text-[var(--p2-text-muted)] hover:text-white"
-                        >
-                          <SparklesIcon className="size-3 inline mr-1" />
-                          Шаблон {idx + 1}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <Textarea
-                        value={draft}
-                        onChange={e => setDraft(e.target.value)}
-                        placeholder="Введите сообщение"
-                        className="p2-input min-h-12 max-h-32"
-                        onKeyDown={event => {
-                          if (event.key === 'Enter' && !event.shiftKey) {
-                            event.preventDefault();
-                            sendMessage(draft);
-                          }
-                        }}
-                      />
-                      <Button className="p2-primary-btn shrink-0 self-end" onClick={() => sendMessage(draft)}>
-                        <PaperAirplaneIcon className="size-4" />
-                        Отправить
-                      </Button>
-                    </div>
-                  </div>
+              <div className="border-t border-[var(--p2-border-soft)] p-3 space-y-2 bg-[var(--p2-surface)]">
+                <div className="flex flex-wrap gap-2">
+                  {cannedReplies.map((text, idx) => (
+                    <button key={idx} className="p2-secondary-btn px-3" onClick={() => setDraft(text)}>
+                      <SparklesIcon className="size-3" />
+                      Reply {idx + 1}
+                    </button>
+                  ))}
                 </div>
-              </CardContent>
-            </>
-          ) : (
-            <CardContent className="h-full flex items-center justify-center text-sm text-[var(--p2-text-dim)]">
-              Подходящих чатов не найдено.
-            </CardContent>
-          )}
-        </Card>
 
-        <Card className="hidden lg:flex flex-col p2-surface border-[var(--p2-border)] min-h-[680px]">
-          <CardHeader>
-            <CardTitle className="text-base">Контекст</CardTitle>
-            <CardDescription className="text-[var(--p2-text-dim)]">Заказ, SLA и быстрые действия</CardDescription>
-          </CardHeader>
-          <CardContent className="flex-1">
-            {activeChat ? <ChatContext activeChat={activeChat} /> : <p className="text-sm text-[var(--p2-text-dim)]">Выберите диалог.</p>}
-          </CardContent>
-        </Card>
+                <div className="flex gap-2">
+                  <Textarea
+                    value={draft}
+                    onChange={event => setDraft(event.target.value)}
+                    className="p2-input min-h-12 max-h-32"
+                    placeholder="Type your message"
+                    onKeyDown={event => {
+                      if (event.key === 'Enter' && !event.shiftKey) {
+                        event.preventDefault();
+                        sendMessage();
+                      }
+                    }}
+                  />
+                  <P2PrimaryAction className="self-end" onClick={sendMessage}>
+                    <PaperAirplaneIcon className="size-4" />
+                    Send
+                  </P2PrimaryAction>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-6 text-sm text-[var(--p2-text-dim)]">No dialogs matched current filters.</div>
+          )}
+        </P2Card>
+
+        <P2Card className="hidden lg:block" title="Context" subtitle="Order info and quick actions">
+          {activeChat ? <ChatContext chat={activeChat} /> : <p className="text-sm text-[var(--p2-text-dim)]">Select a dialog.</p>}
+        </P2Card>
       </div>
     </div>
   );
 }
 
-function ChatContext({ activeChat }: { activeChat: ChatView }) {
+function ChatContext({ chat }: { chat: ChatView }) {
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border border-[var(--p2-border)] bg-[var(--p2-surface-2)] p-3">
-        <p className="text-xs text-[var(--p2-text-dim)] mb-1">Покупатель</p>
-        <p className="font-semibold">{activeChat.buyer}</p>
-        <p className="text-xs text-[var(--p2-text-dim)] mt-1">Аккаунт: {activeChat.accountUsername}</p>
+      <div className="rounded-xl border border-[var(--p2-border-soft)] bg-[var(--p2-surface-2)] p-3">
+        <p className="text-[11px] text-[var(--p2-text-dim)]">Customer</p>
+        <p className="mt-1 font-semibold">{chat.buyer}</p>
+        <p className="text-xs text-[var(--p2-text-muted)] mt-1">Account: {chat.accountName}</p>
       </div>
 
-      <div className="rounded-lg border border-[var(--p2-border)] bg-[var(--p2-surface-2)] p-3">
-        <p className="text-xs text-[var(--p2-text-dim)] mb-2">Связанный заказ</p>
-        {activeChat.orderId ? (
+      <div className="rounded-xl border border-[var(--p2-border-soft)] bg-[var(--p2-surface-2)] p-3">
+        <p className="text-[11px] text-[var(--p2-text-dim)]">Linked order</p>
+        {chat.order ? (
           <>
-            <p className="font-semibold">{activeChat.orderId}</p>
-            <p className="text-sm mt-1 text-[var(--p2-text-muted)]">{activeChat.lotTitle}</p>
-            <div className="mt-2 flex items-center gap-2 text-xs text-[var(--p2-text-dim)]">
-              {activeChat.orderStatus && <span className="p2-chip">{statusLabel[activeChat.orderStatus]}</span>}
-              {typeof activeChat.orderAmount === 'number' && <span className="p2-chip">{activeChat.orderAmount} ₽</span>}
+            <p className="mt-1 font-semibold">{chat.order.id}</p>
+            <p className="text-xs text-[var(--p2-text-muted)] mt-1">{chat.order.lot}</p>
+            <div className="mt-2 flex items-center gap-2">
+              <P2Status type={statusTypeByOrder(chat.order.status)}>{statusLabelByOrder(chat.order.status)}</P2Status>
+              <span className="p2-chip">{chat.order.amount} ₽</span>
             </div>
-            <Button asChild variant="outline" className="w-full mt-3 p2-surface-2">
-              <Link href="/platform2/orders">Открыть в заказах</Link>
-            </Button>
+            <P2SecondaryAction asChild className="w-full mt-3">
+              <Link href="/platform2/orders">Open in orders</Link>
+            </P2SecondaryAction>
           </>
         ) : (
-          <p className="text-sm text-[var(--p2-text-muted)]">Диалог без привязки к заказу.</p>
+          <p className="text-sm text-[var(--p2-text-muted)] mt-1">No linked order for this conversation.</p>
         )}
       </div>
 
-      <div className="rounded-lg border border-[var(--p2-border)] bg-[var(--p2-surface-2)] p-3 space-y-2">
-        <p className="text-xs text-[var(--p2-text-dim)]">Быстрые действия</p>
-        <Button className="w-full p2-primary-btn justify-start">
-          <ChatBubbleLeftRightIcon className="size-4" />
-          Отправить инструкцию
-        </Button>
-        <Button variant="outline" className="w-full p2-surface-2 justify-start">
-          Открыть SLA карточку
-        </Button>
-        <Button variant="outline" className="w-full p2-surface-2 justify-start">
-          Эскалация в поддержку
-        </Button>
+      <div className="rounded-xl border border-[var(--p2-border-soft)] bg-[var(--p2-surface-2)] p-3 space-y-2">
+        <p className="text-[11px] text-[var(--p2-text-dim)]">Quick actions</p>
+        <P2PrimaryAction className="w-full justify-start">Send instruction</P2PrimaryAction>
+        <P2SecondaryAction className="w-full justify-start">Escalate to support</P2SecondaryAction>
       </div>
     </div>
   );

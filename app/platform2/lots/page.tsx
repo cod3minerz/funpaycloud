@@ -1,5 +1,2 @@
-import { redirect } from 'next/navigation';
-
-export default function Platform2LotsRedirect() {
-  redirect('/platform/lots');
-}
+'use client';
+export { default } from '@/platform2/pages/Lots2';

@@ -1,5 +1,2 @@
-import { redirect } from 'next/navigation';
-
-export default function Platform2FinancesRedirect() {
-  redirect('/platform/finances');
-}
+'use client';
+export { default } from '@/platform2/pages/Finances2';
