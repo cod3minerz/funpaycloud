@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { usePathname } from 'next/navigation';
-import { Bell, Menu, Search, Settings2 } from 'lucide-react';
+import { Bell, Cloud, Menu, Search } from 'lucide-react';
 import { accounts } from '@/platform/data/demoData';
 
 const PATH_LABELS: Record<string, string> = {
@@ -27,6 +27,15 @@ type PlatformTopBarProps = {
 export default function PlatformTopBar({ onOpenMobileSidebar }: PlatformTopBarProps) {
   const pathname = usePathname();
   const profile = accounts[0];
+  const initials = profile?.username?.slice(0, 1).toUpperCase() ?? 'U';
+
+  const avatarGradient = useMemo(() => {
+    const source = profile?.username ?? 'cloud-user';
+    let hash = 0;
+    for (let i = 0; i < source.length; i += 1) hash = (hash << 5) - hash + source.charCodeAt(i);
+    const hue = Math.abs(hash) % 360;
+    return `linear-gradient(135deg, hsl(${hue} 78% 44%), hsl(${(hue + 35) % 360} 78% 38%))`;
+  }, [profile?.username]);
 
   const breadcrumbs = useMemo(() => {
     return pathname
@@ -69,16 +78,11 @@ export default function PlatformTopBar({ onOpenMobileSidebar }: PlatformTopBarPr
           <Bell size={15} />
         </button>
 
-        <button type="button" className="platform-topbar-btn hidden lg:inline-flex" aria-label="Настройки вида">
-          <Settings2 size={15} />
-        </button>
-
         <div className="platform-profile" aria-label="Профиль пользователя">
-          <span className="platform-avatar">{profile?.avatar ?? 'U'}</span>
-          <span className="platform-profile-meta hidden sm:flex">
-            <strong>{profile?.username ?? 'user'}</strong>
-            <span>FunPay Cloud</span>
+          <span className="platform-avatar" style={{ background: avatarGradient }}>
+            {profile?.avatar && profile.avatar.length > 1 ? initials : <Cloud size={14} />}
           </span>
+          <strong className="hidden sm:block text-[12px] font-semibold">{profile?.username ?? 'user'}</strong>
         </div>
       </div>
     </header>

@@ -1,8 +1,12 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  ChevronLeft,
+  ChevronRight,
+  Crown,
   LayoutDashboard,
   MessageSquare,
   ShoppingCart,
@@ -17,11 +21,19 @@ import {
   X,
 } from 'lucide-react';
 import { BrandLogo } from '@/app/components/BrandLogo';
+import {
+  DEFAULT_PLAN_ID,
+  PLAN_EVENT_NAME,
+  readCurrentPlanId,
+  subscriptionPlans,
+} from '@/shared/subscriptions';
 
 type SidebarProps = {
   mobile?: boolean;
   open?: boolean;
   onClose?: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 };
 
 const navGroups = [
@@ -48,20 +60,57 @@ const navGroups = [
   },
 ];
 
-export default function Sidebar({ mobile = false, open = false, onClose }: SidebarProps) {
+export default function Sidebar({
+  mobile = false,
+  open = false,
+  onClose,
+  collapsed = false,
+  onToggleCollapse,
+}: SidebarProps) {
   const pathname = usePathname();
+  const [currentPlanId, setCurrentPlanId] = useState(DEFAULT_PLAN_ID);
+
+  useEffect(() => {
+    if (mobile) return;
+    setCurrentPlanId(readCurrentPlanId());
+
+    const onPlanChanged = (event: Event) => {
+      const detail = (event as CustomEvent<string>).detail;
+      setCurrentPlanId((detail as typeof DEFAULT_PLAN_ID) ?? readCurrentPlanId());
+    };
+
+    window.addEventListener(PLAN_EVENT_NAME, onPlanChanged as EventListener);
+    return () => window.removeEventListener(PLAN_EVENT_NAME, onPlanChanged as EventListener);
+  }, [mobile]);
+
+  const currentPlan = useMemo(
+    () => subscriptionPlans.find(plan => plan.id === currentPlanId) ?? subscriptionPlans[1],
+    [currentPlanId],
+  );
+  const proPlan = subscriptionPlans.find(plan => plan.id === 'pro') ?? subscriptionPlans[1];
+  const showUpsell = currentPlan.id !== 'pro';
 
   const asideClass = mobile
-    ? `platform-sidebar platform-mobile-sidebar md:hidden ${open ? 'open' : ''}`
-    : 'platform-sidebar fixed left-0 top-0 h-screen z-40 hidden md:flex';
+    ? `platform-sidebar platform-mobile-sidebar ${open ? 'open' : ''}`
+    : `platform-sidebar platform-desktop-sidebar${collapsed ? ' collapsed' : ''}`;
 
   return (
     <aside className={asideClass} aria-label="Навигация платформы">
       <div className="platform-sidebar-logo">
         <div className="flex items-center justify-between gap-2">
           <Link href="/" aria-label="FunPay Cloud" onClick={onClose}>
-            <BrandLogo compact />
+            {mobile ? <BrandLogo compact /> : <BrandLogo compact={collapsed} iconOnly={collapsed} />}
           </Link>
+          {!mobile && (
+            <button
+              type="button"
+              className="platform-topbar-btn platform-collapse-btn hidden md:inline-flex"
+              onClick={onToggleCollapse}
+              aria-label={collapsed ? 'Развернуть меню' : 'Свернуть меню'}
+            >
+              {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+            </button>
+          )}
           {mobile && (
             <button type="button" className="platform-topbar-btn" onClick={onClose} aria-label="Закрыть меню">
               <X size={15} />
@@ -73,7 +122,7 @@ export default function Sidebar({ mobile = false, open = false, onClose }: Sideb
       <nav className="platform-nav-wrap">
         {navGroups.map(group => (
           <div key={group.title}>
-            <div className="platform-nav-section">{group.title}</div>
+            {!collapsed && <div className="platform-nav-section">{group.title}</div>}
             {group.items.map(({ icon: Icon, label, path }) => {
               const isActive = pathname === path;
               return (
@@ -82,9 +131,10 @@ export default function Sidebar({ mobile = false, open = false, onClose }: Sideb
                   href={path}
                   className={`platform-nav-item${isActive ? ' active' : ''}`}
                   onClick={onClose}
+                  title={collapsed ? label : undefined}
                 >
                   <Icon size={16} />
-                  <span>{label}</span>
+                  {!collapsed && <span>{label}</span>}
                 </Link>
               );
             })}
@@ -93,7 +143,30 @@ export default function Sidebar({ mobile = false, open = false, onClose }: Sideb
       </nav>
 
       <div className="platform-sidebar-footer">
-        <div className="platform-footer-note">FunPay Cloud Platform · premium workspace</div>
+        {collapsed ? (
+          <Link
+            href="/platform/settings"
+            className="platform-nav-item"
+            title={showUpsell ? `Оформить ${proPlan.name}` : `Текущий план: ${currentPlan.name}`}
+          >
+            <Crown size={16} />
+          </Link>
+        ) : (
+          <div className="platform-subscription-card">
+            <div className="platform-subscription-head">
+              <Crown size={14} />
+              <span>{showUpsell ? 'Cloud Pro' : `Тариф: ${currentPlan.name}`}</span>
+            </div>
+            <p className="platform-footer-note">
+              {showUpsell
+                ? `Переход на ${proPlan.name} откроет AI-автоответчик, аналитику и приоритетные сценарии поддержки.`
+                : `Ваш тариф активен. Управляйте подпиской и доступными лимитами из настроек.`}
+            </p>
+            <Link href="/platform/settings" className={showUpsell ? 'platform-btn-primary' : 'platform-btn-secondary'}>
+              {showUpsell ? `Оформить ${proPlan.name}` : 'Управлять'}
+            </Link>
+          </div>
+        )}
       </div>
     </aside>
   );

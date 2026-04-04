@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Bell, Check, CreditCard, KeyRound, Shield, UserCircle2 } from 'lucide-react';
+import { readCurrentPlanId, subscriptionPlans, writeCurrentPlanId } from '@/shared/subscriptions';
 
 type SectionKey = 'profile' | 'notifications' | 'plan' | 'security';
 
@@ -9,27 +10,6 @@ const sections: Array<{ key: SectionKey; label: string; icon: React.ComponentTyp
   { key: 'notifications', label: 'Уведомления', icon: Bell },
   { key: 'plan', label: 'Подписка', icon: CreditCard },
   { key: 'security', label: 'Безопасность', icon: Shield },
-];
-
-const plans = [
-  {
-    name: 'Старт',
-    price: 299,
-    current: false,
-    features: ['1 аккаунт FunPay', 'Базовая автоматизация', 'Email поддержка'],
-  },
-  {
-    name: 'Про',
-    price: 699,
-    current: true,
-    features: ['3 аккаунта FunPay', 'Полная автоматизация', 'Telegram уведомления', 'Склад 10 000 товаров'],
-  },
-  {
-    name: 'Бизнес',
-    price: 1499,
-    current: false,
-    features: ['10 аккаунтов FunPay', 'API доступ', 'Расширенная аналитика', 'Персональный менеджер'],
-  },
 ];
 
 const sessions = [
@@ -72,6 +52,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (next: bool
 
 export default function Settings() {
   const [activeSection, setActiveSection] = useState<SectionKey>('profile');
+  const [currentPlanId, setCurrentPlanId] = useState<'start' | 'pro' | 'team'>('pro');
   const [saved, setSaved] = useState(false);
   const [profile, setProfile] = useState({
     displayName: 'Kirill',
@@ -89,6 +70,10 @@ export default function Settings() {
     botError: true,
     weeklyReport: false,
   });
+
+  useEffect(() => {
+    setCurrentPlanId(readCurrentPlanId());
+  }, []);
 
   function saveChanges() {
     setSaved(true);
@@ -194,26 +179,46 @@ export default function Settings() {
             <>
               <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Подписка</h2>
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" style={{ marginTop: 14 }}>
-                {plans.map(plan => (
-                  <article key={plan.name} className="platform-panel" style={{ padding: 14, borderColor: plan.current ? 'rgba(96,165,250,0.5)' : 'var(--pf-border)' }}>
+                {subscriptionPlans.map(plan => {
+                  const isCurrent = plan.id === currentPlanId;
+                  return (
+                    <article
+                      key={plan.id}
+                      className="platform-panel"
+                      style={{ padding: 14, borderColor: isCurrent ? 'rgba(96,165,250,0.5)' : 'var(--pf-border)' }}
+                    >
                     <div className="flex items-center justify-between">
                       <div style={{ fontWeight: 800, fontSize: 18 }}>{plan.name}</div>
-                      {plan.current && <span className="platform-chip">Текущий</span>}
+                      {isCurrent && <span className="platform-chip">Текущий</span>}
                     </div>
+                    <div style={{ marginTop: 4, color: 'var(--pf-text-muted)', fontSize: 13 }}>{plan.tagline}</div>
                     <div style={{ marginTop: 6, fontSize: 30, fontWeight: 900 }}>
-                      {plan.price}
+                      {plan.priceMonthly}
                       <span style={{ fontSize: 15, color: 'var(--pf-text-muted)' }}> ₽/мес</span>
                     </div>
-                    <ul style={{ marginTop: 12, paddingLeft: 18, color: 'var(--pf-text-muted)', fontSize: 13, lineHeight: 1.7 }}>
+                    <div style={{ color: 'var(--pf-text-dim)', fontSize: 12 }}>
+                      При оплате за год: {plan.priceYearly} ₽/мес
+                    </div>
+                    <ul style={{ marginTop: 12, paddingLeft: 18, fontSize: 13, lineHeight: 1.7 }}>
                       {plan.features.map(feature => (
-                        <li key={feature}>{feature}</li>
+                        <li key={feature.text} style={{ color: feature.available ? 'var(--pf-text-muted)' : 'var(--pf-text-dim)' }}>
+                          {feature.text}
+                        </li>
                       ))}
                     </ul>
-                    <button className={plan.current ? 'platform-btn-secondary' : 'platform-btn-primary'} style={{ width: '100%', marginTop: 10 }}>
-                      {plan.current ? 'Активен' : 'Переключить'}
+                    <button
+                      className={isCurrent ? 'platform-btn-secondary' : 'platform-btn-primary'}
+                      style={{ width: '100%', marginTop: 10 }}
+                      onClick={() => {
+                        setCurrentPlanId(plan.id);
+                        writeCurrentPlanId(plan.id);
+                      }}
+                    >
+                      {isCurrent ? 'Активен' : 'Переключить'}
                     </button>
                   </article>
-                ))}
+                  );
+                })}
               </div>
             </>
           )}
