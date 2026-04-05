@@ -41,6 +41,8 @@ const QUICK_REPLIES = [
   'Отправил инструкцию по заказу. Если что-то не так, напишите.',
 ];
 
+const THREAD_BATCH = 36;
+
 const statusLabel: Record<string, string> = {
   paid: 'Оплачен',
   completed: 'Выполнен',
@@ -114,6 +116,7 @@ function BuyerInfo({ chat }: { chat: ChatView }) {
 export default function Chats() {
   const [chats, setChats] = useState(initialChats);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const [search, setSearch] = useState('');
   const [readState, setReadState] = useState<ReadStateFilter>('all');
   const [accountScope, setAccountScope] = useState<string>('all');
@@ -123,7 +126,17 @@ export default function Chats() {
   const [showTemplates, setShowTemplates] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [mobileThreadOpen, setMobileThreadOpen] = useState(false);
+  const [visibleMessagesCount, setVisibleMessagesCount] = useState(THREAD_BATCH);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const threadScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)');
+    const sync = () => setIsMobile(media.matches);
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
 
   const accountMap = useMemo(() => new Map(accounts.map(acc => [acc.id, acc])), []);
   const orderMap = useMemo(() => new Map(orders.map(order => [order.id, order])), []);
@@ -182,21 +195,46 @@ export default function Chats() {
   }, [filteredRows, selectedId]);
 
   const selectedChat = rows.find(row => row.id === selectedId) ?? null;
+  const visibleMessages = useMemo(() => {
+    if (!selectedChat) return [];
+    if (selectedChat.messages.length <= visibleMessagesCount) return selectedChat.messages;
+    return selectedChat.messages.slice(-visibleMessagesCount);
+  }, [selectedChat, visibleMessagesCount]);
+  const hiddenMessagesCount = selectedChat ? Math.max(0, selectedChat.messages.length - visibleMessages.length) : 0;
+
+  useEffect(() => {
+    if (!isMobile) {
+      setMobileThreadOpen(false);
+      setShowInfoMobile(false);
+    }
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (isMobile && mobileThreadOpen && !selectedChat) {
+      setMobileThreadOpen(false);
+    }
+  }, [isMobile, mobileThreadOpen, selectedChat]);
 
   useEffect(() => {
     if (!selectedId) return;
+    if (isMobile && !mobileThreadOpen) return;
     setChats(prev => prev.map(chat => (chat.id === selectedId ? { ...chat, unread: 0 } : chat)));
-  }, [selectedId]);
+  }, [selectedId, isMobile, mobileThreadOpen]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [selectedId, selectedChat?.messages.length]);
+    if (!selectedChat) return;
+    setVisibleMessagesCount(THREAD_BATCH);
+  }, [selectedId, selectedChat?.id]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [selectedId, selectedChat?.messages.length, mobileThreadOpen]);
 
   function openChat(chatId: string) {
     setSelectedId(chatId);
     setShowInfoDesktop(false);
     setShowInfoMobile(false);
-    if (window.matchMedia('(max-width: 767px)').matches) {
+    if (isMobile) {
       setMobileThreadOpen(true);
     }
   }
@@ -235,6 +273,23 @@ export default function Chats() {
     setShowTemplates(false);
   }
 
+  function loadOlderMessages() {
+    const container = threadScrollRef.current;
+    if (!container) {
+      setVisibleMessagesCount(prev => prev + THREAD_BATCH);
+      return;
+    }
+
+    const previousHeight = container.scrollHeight;
+    const previousTop = container.scrollTop;
+    setVisibleMessagesCount(prev => prev + THREAD_BATCH);
+
+    requestAnimationFrame(() => {
+      const nextHeight = container.scrollHeight;
+      container.scrollTop = previousTop + (nextHeight - previousHeight);
+    });
+  }
+
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
       <PageShell>
@@ -250,14 +305,16 @@ export default function Chats() {
         </PageHeader>
 
         <section className="platform-chat-shell">
-          <aside className={`platform-chat-list ${mobileThreadOpen ? 'mobile-hidden' : ''}`}>
+          <aside className={`platform-chat-list ${isMobile && mobileThreadOpen ? 'mobile-hidden' : ''}`}>
             <div className="platform-chat-list-head">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-[15px] font-bold">Диалоги</div>
                 <button
+                  type="button"
                   className="platform-topbar-btn"
                   onClick={() => setShowFilters(prev => !prev)}
                   aria-label="Открыть фильтры"
+                  aria-expanded={showFilters}
                 >
                   <Filter size={14} />
                 </button>
@@ -317,8 +374,11 @@ export default function Chats() {
                 return (
                   <button
                     key={row.id}
+                    type="button"
                     className={`platform-chat-row${isActive ? ' active' : ''}${row.unread > 0 ? ' unread' : ''}`}
                     onClick={() => openChat(row.id)}
+                    aria-pressed={isActive}
+                    aria-label={`Открыть чат с ${row.buyer}`}
                   >
                     <div className="flex items-start gap-3">
                       <span
@@ -375,7 +435,7 @@ export default function Chats() {
             </div>
           </aside>
 
-          <section className={`platform-chat-thread ${!mobileThreadOpen && !selectedChat ? 'mobile-hidden' : ''}`}>
+          <section className={`platform-chat-thread ${isMobile && !mobileThreadOpen ? 'mobile-thread-collapsed' : ''}`}>
             {selectedChat ? (
               <>
                 <header className="platform-thread-head">
@@ -426,7 +486,7 @@ export default function Chats() {
                       type="button"
                       className="platform-topbar-btn"
                       onClick={() => {
-                        if (window.matchMedia('(max-width: 767px)').matches) {
+                        if (isMobile) {
                           setShowInfoMobile(true);
                         } else {
                           setShowInfoDesktop(prev => !prev);
@@ -440,7 +500,16 @@ export default function Chats() {
                 </header>
 
                 <div className="platform-thread-messages">
-                  {selectedChat.messages.map(message => (
+                  <div ref={threadScrollRef} className="platform-thread-messages-scroll">
+                    {hiddenMessagesCount > 0 && (
+                      <div className="mb-2 flex justify-center">
+                        <button type="button" className="platform-btn-secondary" onClick={loadOlderMessages}>
+                          Показать еще {Math.min(THREAD_BATCH, hiddenMessagesCount)} сообщений
+                        </button>
+                      </div>
+                    )}
+
+                    {visibleMessages.map(message => (
                     <div key={message.id} className={`platform-message-row ${message.fromUser ? 'outgoing' : 'incoming'}`}>
                       <article className="platform-message-bubble">
                         <p className="platform-message-text">{message.text}</p>
@@ -449,8 +518,9 @@ export default function Chats() {
                         </div>
                       </article>
                     </div>
-                  ))}
-                  <div ref={messagesEndRef} />
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </div>
                 </div>
 
                 <footer className="platform-thread-composer">
@@ -480,7 +550,12 @@ export default function Chats() {
                       placeholder="Введите сообщение..."
                       value={inputValue}
                       onChange={event => setInputValue(event.target.value)}
-                      onKeyDown={event => event.key === 'Enter' && sendMessage()}
+                      onKeyDown={event => {
+                        if (event.key === 'Enter' && !event.shiftKey) {
+                          event.preventDefault();
+                          sendMessage();
+                        }
+                      }}
                     />
 
                     <button
@@ -488,6 +563,7 @@ export default function Chats() {
                       className="platform-topbar-btn"
                       onClick={() => setShowTemplates(prev => !prev)}
                       title="Быстрые ответы"
+                      aria-expanded={showTemplates}
                     >
                       <Bot size={15} />
                     </button>
@@ -497,6 +573,7 @@ export default function Chats() {
                       className="platform-btn-primary"
                       onClick={sendMessage}
                       disabled={!inputValue.trim()}
+                      aria-label="Отправить сообщение"
                     >
                       <SendHorizontal size={15} />
                     </button>
@@ -534,15 +611,17 @@ export default function Chats() {
 
       {showInfoMobile && selectedChat && (
         <>
-          <button className="platform-mobile-overlay" onClick={() => setShowInfoMobile(false)} aria-label="Закрыть" />
+          <button type="button" className="platform-mobile-overlay" onClick={() => setShowInfoMobile(false)} aria-label="Закрыть" />
           <div className="mobile-sheet">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <strong className="text-[15px]">Информация по диалогу</strong>
-              <button className="platform-topbar-btn" onClick={() => setShowInfoMobile(false)} aria-label="Закрыть">
-                <X size={14} />
-              </button>
+            <div className="platform-mobile-sheet">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <strong className="text-[15px]">Информация по диалогу</strong>
+                <button className="platform-topbar-btn" onClick={() => setShowInfoMobile(false)} aria-label="Закрыть">
+                  <X size={14} />
+                </button>
+              </div>
+              <BuyerInfo chat={selectedChat} />
             </div>
-            <BuyerInfo chat={selectedChat} />
           </div>
         </>
       )}

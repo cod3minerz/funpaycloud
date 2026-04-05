@@ -4,8 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  ChevronLeft,
-  ChevronRight,
   Crown,
   LayoutDashboard,
   MessageSquare,
@@ -33,7 +31,6 @@ type SidebarProps = {
   open?: boolean;
   onClose?: () => void;
   collapsed?: boolean;
-  onToggleCollapse?: () => void;
 };
 
 const navGroups = [
@@ -65,7 +62,6 @@ export default function Sidebar({
   open = false,
   onClose,
   collapsed = false,
-  onToggleCollapse,
 }: SidebarProps) {
   const pathname = usePathname();
   const [currentPlanId, setCurrentPlanId] = useState(DEFAULT_PLAN_ID);
@@ -101,16 +97,6 @@ export default function Sidebar({
           <Link href="/" aria-label="FunPay Cloud" onClick={onClose}>
             {mobile ? <BrandLogo compact /> : <BrandLogo compact={collapsed} iconOnly={collapsed} />}
           </Link>
-          {!mobile && (
-            <button
-              type="button"
-              className="platform-topbar-btn platform-collapse-btn hidden md:inline-flex"
-              onClick={onToggleCollapse}
-              aria-label={collapsed ? 'Развернуть меню' : 'Свернуть меню'}
-            >
-              {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
-            </button>
-          )}
           {mobile && (
             <button type="button" className="platform-topbar-btn" onClick={onClose} aria-label="Закрыть меню">
               <X size={15} />
@@ -132,6 +118,7 @@ export default function Sidebar({
                   className={`platform-nav-item${isActive ? ' active' : ''}`}
                   onClick={onClose}
                   title={collapsed ? label : undefined}
+                  aria-current={isActive ? 'page' : undefined}
                 >
                   <Icon size={16} />
                   {!collapsed && <span>{label}</span>}

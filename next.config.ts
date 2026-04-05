@@ -2,9 +2,6 @@ import type { NextConfig } from 'next';
 import path from 'path';
 
 const config: NextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   async redirects() {
     return [
       {

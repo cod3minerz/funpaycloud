@@ -258,39 +258,65 @@ export default function Warehouse() {
                 <SectionCard className="p-0">
                   <Panel className="m-4 p-0">
                     <h3 className="m-0 px-4 pt-4 text-[15px] font-bold">Товары на складе</h3>
-                    <DataTableWrap>
-                      <table className="platform-table" style={{ minWidth: 720 }}>
-                        <thead>
-                          <tr>
-                            <th style={{ width: 54 }}>#</th>
-                            <th>Товар</th>
-                            <th>Статус</th>
-                            <th style={{ textAlign: 'right' }}>Дата выдачи</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {selectedLot.items.map((item, idx) => (
-                            <tr key={item.id}>
-                              <td>{idx + 1}</td>
-                              <td className="font-mono">{maskValue(item.value)}</td>
-                              <td>
-                                <span className={item.status === 'available' ? 'badge-active' : 'badge-inactive'}>
-                                  {item.status === 'available' ? 'Доступен' : 'Выдан'}
-                                </span>
-                              </td>
-                              <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>
-                                {item.deliveredAt
-                                  ? `${new Date(item.deliveredAt).toLocaleDateString('ru-RU')} ${new Date(item.deliveredAt).toLocaleTimeString('ru-RU', {
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                    })}`
-                                  : '—'}
-                              </td>
+                    <div className="platform-desktop-table">
+                      <DataTableWrap>
+                        <table className="platform-table" style={{ minWidth: 720 }}>
+                          <thead>
+                            <tr>
+                              <th style={{ width: 54 }}>#</th>
+                              <th>Товар</th>
+                              <th>Статус</th>
+                              <th style={{ textAlign: 'right' }}>Дата выдачи</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </DataTableWrap>
+                          </thead>
+                          <tbody>
+                            {selectedLot.items.map((item, idx) => (
+                              <tr key={item.id}>
+                                <td>{idx + 1}</td>
+                                <td className="font-mono">{maskValue(item.value)}</td>
+                                <td>
+                                  <span className={item.status === 'available' ? 'badge-active' : 'badge-inactive'}>
+                                    {item.status === 'available' ? 'Доступен' : 'Выдан'}
+                                  </span>
+                                </td>
+                                <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>
+                                  {item.deliveredAt
+                                    ? `${new Date(item.deliveredAt).toLocaleDateString('ru-RU')} ${new Date(item.deliveredAt).toLocaleTimeString('ru-RU', {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })}`
+                                    : '—'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </DataTableWrap>
+                    </div>
+
+                    <div className="platform-mobile-cards">
+                      {selectedLot.items.map((item, idx) => (
+                        <article key={item.id} className="platform-mobile-card">
+                          <div className="platform-mobile-card-head">
+                            <strong>#{idx + 1}</strong>
+                            <span className={item.status === 'available' ? 'badge-active' : 'badge-inactive'}>
+                              {item.status === 'available' ? 'Доступен' : 'Выдан'}
+                            </span>
+                          </div>
+                          <div className="text-[13px] font-mono">{maskValue(item.value)}</div>
+                          <div className="platform-mobile-meta">
+                            <span>
+                              {item.deliveredAt
+                                ? `Выдан: ${new Date(item.deliveredAt).toLocaleDateString('ru-RU')} ${new Date(item.deliveredAt).toLocaleTimeString('ru-RU', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}`
+                                : 'Дата выдачи: —'}
+                            </span>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
                   </Panel>
                 </SectionCard>
 

@@ -340,38 +340,59 @@ export default function Analytics() {
           <SectionCard className="p-0">
             <Panel className="m-4 p-0">
               <h2 className="m-0 px-4 pt-4 text-[15px] font-bold">Топ покупатели</h2>
-              <div className="platform-table-wrap">
-                <table className="platform-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Покупатель</th>
-                      <th style={{ textAlign: 'right' }}>Заказов</th>
-                      <th style={{ textAlign: 'right' }}>Сумма</th>
-                      <th style={{ textAlign: 'right' }}>Последний</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {topBuyers.map((buyer, idx) => (
-                      <tr key={buyer.username}>
-                        <td style={{ color: idx < 3 ? '#fbbf24' : 'var(--pf-text-muted)', fontWeight: 800 }}>{idx + 1}</td>
-                        <td>
-                          <div className="flex items-center gap-2">
-                            <span className="platform-avatar !h-7 !w-7 !text-[11px]">{buyer.avatar}</span>
-                            <span className="font-semibold">{buyer.username}</span>
-                          </div>
-                        </td>
-                        <td style={{ textAlign: 'right' }}>{buyer.orders}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#4ade80' }}>
-                          {buyer.total.toLocaleString('ru-RU')} ₽
-                        </td>
-                        <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>
-                          {new Date(buyer.lastOrder).toLocaleDateString('ru-RU')}
-                        </td>
+              <div className="platform-desktop-table">
+                <div className="platform-table-wrap">
+                  <table className="platform-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Покупатель</th>
+                        <th style={{ textAlign: 'right' }}>Заказов</th>
+                        <th style={{ textAlign: 'right' }}>Сумма</th>
+                        <th style={{ textAlign: 'right' }}>Последний</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {topBuyers.map((buyer, idx) => (
+                        <tr key={buyer.username}>
+                          <td style={{ color: idx < 3 ? '#fbbf24' : 'var(--pf-text-muted)', fontWeight: 800 }}>{idx + 1}</td>
+                          <td>
+                            <div className="flex items-center gap-2">
+                              <span className="platform-avatar !h-7 !w-7 !text-[11px]">{buyer.avatar}</span>
+                              <span className="font-semibold">{buyer.username}</span>
+                            </div>
+                          </td>
+                          <td style={{ textAlign: 'right' }}>{buyer.orders}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#4ade80' }}>
+                            {buyer.total.toLocaleString('ru-RU')} ₽
+                          </td>
+                          <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>
+                            {new Date(buyer.lastOrder).toLocaleDateString('ru-RU')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="platform-mobile-cards">
+                {topBuyers.map((buyer, idx) => (
+                  <article key={buyer.username} className="platform-mobile-card">
+                    <div className="platform-mobile-card-head">
+                      <div className="inline-flex items-center gap-2">
+                        <span className="platform-avatar !h-7 !w-7 !text-[11px]">{buyer.avatar}</span>
+                        <strong>{buyer.username}</strong>
+                      </div>
+                      <span className="platform-chip !min-h-[22px]">#{idx + 1}</span>
+                    </div>
+                    <div className="platform-mobile-meta">
+                      <span>Заказов: {buyer.orders}</span>
+                      <span className="font-semibold text-[#4ade80]">Сумма: {buyer.total.toLocaleString('ru-RU')} ₽</span>
+                      <span>Последний: {new Date(buyer.lastOrder).toLocaleDateString('ru-RU')}</span>
+                    </div>
+                  </article>
+                ))}
               </div>
             </Panel>
           </SectionCard>

@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Bell, Check, CreditCard, KeyRound, Shield, UserCircle2 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { readCurrentPlanId, subscriptionPlans, writeCurrentPlanId } from '@/shared/subscriptions';
 import { Panel, PageHeader, PageShell, PageTitle, SectionCard } from '@/platform/components/primitives';
 
 type SectionKey = 'profile' | 'notifications' | 'plan' | 'security';
 
-const sections: Array<{ key: SectionKey; label: string; icon: React.ComponentType<{ size?: number }> }> = [
+const sections: Array<{ key: SectionKey; label: string; icon: LucideIcon }> = [
   { key: 'profile', label: 'Профиль', icon: UserCircle2 },
   { key: 'notifications', label: 'Уведомления', icon: Bell },
   { key: 'plan', label: 'Подписка', icon: CreditCard },
@@ -269,28 +270,45 @@ export default function Settings() {
 
                   <Panel className="p-3">
                     <h3 className="m-0 text-[16px] font-bold">Сессии входа</h3>
-                    <div className="platform-table-wrap mt-3">
-                      <table className="platform-table" style={{ minWidth: 360 }}>
-                        <thead>
-                          <tr>
-                            <th>Дата</th>
-                            <th>IP</th>
-                            <th>Устройство</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {sessions.map(session => (
-                            <tr key={`${session.date}-${session.ip}`}>
-                              <td className="whitespace-nowrap">{session.date}</td>
-                              <td>{session.ip}</td>
-                              <td>
-                                {session.device}
-                                <div className="text-[12px] text-[var(--pf-text-dim)]">{session.location}</div>
-                              </td>
+                    <div className="platform-desktop-table mt-3">
+                      <div className="platform-table-wrap">
+                        <table className="platform-table" style={{ minWidth: 360 }}>
+                          <thead>
+                            <tr>
+                              <th>Дата</th>
+                              <th>IP</th>
+                              <th>Устройство</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {sessions.map(session => (
+                              <tr key={`${session.date}-${session.ip}`}>
+                                <td className="whitespace-nowrap">{session.date}</td>
+                                <td>{session.ip}</td>
+                                <td>
+                                  {session.device}
+                                  <div className="text-[12px] text-[var(--pf-text-dim)]">{session.location}</div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div className="platform-mobile-cards mt-3 !p-0">
+                      {sessions.map(session => (
+                        <article key={`${session.date}-${session.ip}`} className="platform-mobile-card">
+                          <div className="platform-mobile-card-head">
+                            <strong>{session.date}</strong>
+                            <span className="platform-chip !min-h-[22px]">{session.ip}</span>
+                          </div>
+                          <div className="platform-mobile-meta">
+                            <span>{session.device}</span>
+                            <span>{session.location}</span>
+                          </div>
+                        </article>
+                      ))}
                     </div>
                   </Panel>
                 </div>

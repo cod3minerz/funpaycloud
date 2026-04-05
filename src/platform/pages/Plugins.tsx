@@ -95,72 +95,117 @@ export default function Plugins() {
         </SectionCard>
 
         <SectionCard className="p-0">
-          <DataTableWrap>
-            <table className="platform-table" style={{ minWidth: 900 }}>
-              <thead>
-                <tr>
-                  <th style={{ width: 320 }}>Плагин</th>
-                  <th>Категория</th>
-                  <th>Рейтинг</th>
-                  <th>Цена</th>
-                  <th>Статус</th>
-                  <th style={{ textAlign: 'right' }}>Действия</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(plugin => (
-                  <tr key={plugin.id}>
-                    <td>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPlugin(plugin)}
-                        className="w-full bg-transparent p-0 text-left text-inherit"
-                        style={{ border: 0, cursor: 'pointer' }}
-                      >
-                        <div className="flex items-start gap-3">
-                          <span className="text-[22px] leading-none">{plugin.icon}</span>
-                          <div className="min-w-0">
-                            <div className="font-semibold">{plugin.name}</div>
-                            <div className="line-clamp-2 text-[12px] text-[var(--pf-text-muted)]">{plugin.description}</div>
-                          </div>
-                        </div>
-                      </button>
-                    </td>
-                    <td>
-                      <span className="platform-chip">{plugin.category}</span>
-                    </td>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <Stars rating={plugin.rating} />
-                        <span className="text-[12px] font-bold text-[#f59e0b]">{plugin.rating}</span>
-                        <span className="text-[12px] text-[var(--pf-text-dim)]">({plugin.reviews})</span>
-                      </div>
-                    </td>
-                    <td className="font-bold">{plugin.price === 'free' ? 'Бесплатно' : `${plugin.price} ₽/мес`}</td>
-                    <td>
-                      <span className={plugin.installed ? 'badge-active' : 'badge-inactive'}>
-                        {plugin.installed ? 'Установлен' : 'Не установлен'}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div className="inline-flex items-center gap-2">
-                        <button className="platform-topbar-btn" title="Настройки плагина" onClick={() => setSelectedPlugin(plugin)}>
-                          <Settings size={14} />
-                        </button>
-                        <button
-                          className={plugin.installed ? 'platform-topbar-btn' : 'platform-btn-primary'}
-                          style={plugin.installed ? { color: '#fb7185', borderColor: 'rgba(251,113,133,0.44)' } : { minHeight: 34 }}
-                          onClick={() => toggleInstall(plugin.id)}
-                        >
-                          {plugin.installed ? <Trash2 size={14} /> : <Download size={14} />}
-                        </button>
-                      </div>
-                    </td>
+          <div className="platform-desktop-table">
+            <DataTableWrap>
+              <table className="platform-table" style={{ minWidth: 900 }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: 320 }}>Плагин</th>
+                    <th>Категория</th>
+                    <th>Рейтинг</th>
+                    <th>Цена</th>
+                    <th>Статус</th>
+                    <th style={{ textAlign: 'right' }}>Действия</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </DataTableWrap>
+                </thead>
+                <tbody>
+                  {filtered.map(plugin => (
+                    <tr key={plugin.id}>
+                      <td>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPlugin(plugin)}
+                          className="w-full bg-transparent p-0 text-left text-inherit"
+                          style={{ border: 0, cursor: 'pointer' }}
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className="text-[22px] leading-none">{plugin.icon}</span>
+                            <div className="min-w-0">
+                              <div className="font-semibold">{plugin.name}</div>
+                              <div className="line-clamp-2 text-[12px] text-[var(--pf-text-muted)]">{plugin.description}</div>
+                            </div>
+                          </div>
+                        </button>
+                      </td>
+                      <td>
+                        <span className="platform-chip">{plugin.category}</span>
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <Stars rating={plugin.rating} />
+                          <span className="text-[12px] font-bold text-[#f59e0b]">{plugin.rating}</span>
+                          <span className="text-[12px] text-[var(--pf-text-dim)]">({plugin.reviews})</span>
+                        </div>
+                      </td>
+                      <td className="font-bold">{plugin.price === 'free' ? 'Бесплатно' : `${plugin.price} ₽/мес`}</td>
+                      <td>
+                        <span className={plugin.installed ? 'badge-active' : 'badge-inactive'}>
+                          {plugin.installed ? 'Установлен' : 'Не установлен'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div className="inline-flex items-center gap-2">
+                          <button className="platform-topbar-btn" title="Настройки плагина" onClick={() => setSelectedPlugin(plugin)}>
+                            <Settings size={14} />
+                          </button>
+                          <button
+                            className={plugin.installed ? 'platform-topbar-btn' : 'platform-btn-primary'}
+                            style={plugin.installed ? { color: '#fb7185', borderColor: 'rgba(251,113,133,0.44)' } : { minHeight: 34 }}
+                            onClick={() => toggleInstall(plugin.id)}
+                          >
+                            {plugin.installed ? <Trash2 size={14} /> : <Download size={14} />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </DataTableWrap>
+          </div>
+
+          <div className="platform-mobile-cards">
+            {filtered.map(plugin => (
+              <article key={plugin.id} className="platform-mobile-card">
+                <div className="platform-mobile-card-head">
+                  <div className="inline-flex min-w-0 items-center gap-2">
+                    <span className="text-[20px] leading-none">{plugin.icon}</span>
+                    <div className="min-w-0">
+                      <div className="truncate text-[13px] font-semibold">{plugin.name}</div>
+                      <div className="text-[12px] text-[var(--pf-text-muted)]">{plugin.category}</div>
+                    </div>
+                  </div>
+                  <span className={plugin.installed ? 'badge-active' : 'badge-inactive'}>
+                    {plugin.installed ? 'Установлен' : 'Не установлен'}
+                  </span>
+                </div>
+
+                <div className="text-[13px] text-[var(--pf-text-muted)]">{plugin.description}</div>
+
+                <div className="platform-mobile-meta">
+                  <span className="inline-flex items-center gap-2">
+                    <Stars rating={plugin.rating} />
+                    <span>{plugin.rating}</span>
+                    <span className="text-[var(--pf-text-dim)]">({plugin.reviews})</span>
+                  </span>
+                  <span className="font-semibold">{plugin.price === 'free' ? 'Бесплатно' : `${plugin.price} ₽/мес`}</span>
+                </div>
+
+                <div className="platform-mobile-actions">
+                  <button className="platform-btn-secondary" onClick={() => setSelectedPlugin(plugin)}>
+                    <Settings size={14} /> Подробнее
+                  </button>
+                  <button
+                    className={plugin.installed ? 'platform-topbar-btn' : 'platform-btn-primary'}
+                    style={plugin.installed ? { color: '#fb7185', borderColor: 'rgba(251,113,133,0.44)' } : undefined}
+                    onClick={() => toggleInstall(plugin.id)}
+                  >
+                    {plugin.installed ? <Trash2 size={14} /> : <Download size={14} />}
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
           {filtered.length === 0 && <EmptyState>По текущим фильтрам плагины не найдены.</EmptyState>}
         </SectionCard>
       </PageShell>

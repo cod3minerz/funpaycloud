@@ -196,88 +196,131 @@ export default function Orders() {
         </SectionCard>
 
         <SectionCard className="p-0">
-          <DataTableWrap>
-            <table className="platform-table" style={{ minWidth: 980 }}>
-              <thead>
-                <tr>
-                  <th style={{ width: 44 }}>
-                    <input
-                      type="checkbox"
-                      checked={paginated.length > 0 && paginated.every(order => selected.includes(order.id))}
-                      onChange={toggleAllVisible}
-                      style={{ accentColor: 'var(--pf-accent)' }}
-                    />
-                  </th>
-                  <th>Заказ</th>
-                  <th>Товар</th>
-                  <th>Покупатель</th>
-                  <th>Аккаунт</th>
-                  <th style={{ textAlign: 'right' }}>Сумма</th>
-                  <th>Статус</th>
-                  <th style={{ textAlign: 'right' }}>Дата</th>
-                  <th style={{ textAlign: 'right' }}>Действия</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginated.map(order => {
-                  const account = accounts.find(item => item.id === order.accountId);
-                  const isSelected = selected.includes(order.id);
-                  return (
-                    <tr key={order.id} style={isSelected ? { background: 'rgba(60,122,246,0.1)' } : undefined}>
-                      <td>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleSelect(order.id)}
-                          style={{ accentColor: 'var(--pf-accent)' }}
-                        />
-                      </td>
-                      <td>{order.id}</td>
-                      <td style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {order.lot}
-                      </td>
-                      <td>
-                        <div className="inline-flex items-center gap-2">
-                          <span className="platform-avatar" style={{ width: 24, height: 24, fontSize: 10 }}>
-                            {order.buyerAvatar}
+          <div className="platform-desktop-table">
+            <DataTableWrap>
+              <table className="platform-table" style={{ minWidth: 980 }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: 44 }}>
+                      <input
+                        type="checkbox"
+                        checked={paginated.length > 0 && paginated.every(order => selected.includes(order.id))}
+                        onChange={toggleAllVisible}
+                        style={{ accentColor: 'var(--pf-accent)' }}
+                      />
+                    </th>
+                    <th>Заказ</th>
+                    <th>Товар</th>
+                    <th>Покупатель</th>
+                    <th>Аккаунт</th>
+                    <th style={{ textAlign: 'right' }}>Сумма</th>
+                    <th>Статус</th>
+                    <th style={{ textAlign: 'right' }}>Дата</th>
+                    <th style={{ textAlign: 'right' }}>Действия</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated.map(order => {
+                    const account = accounts.find(item => item.id === order.accountId);
+                    const isSelected = selected.includes(order.id);
+                    return (
+                      <tr key={order.id} style={isSelected ? { background: 'rgba(60,122,246,0.1)' } : undefined}>
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelect(order.id)}
+                            style={{ accentColor: 'var(--pf-accent)' }}
+                          />
+                        </td>
+                        <td>{order.id}</td>
+                        <td style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {order.lot}
+                        </td>
+                        <td>
+                          <div className="inline-flex items-center gap-2">
+                            <span className="platform-avatar" style={{ width: 24, height: 24, fontSize: 10 }}>
+                              {order.buyerAvatar}
+                            </span>
+                            {order.buyer}
+                          </div>
+                        </td>
+                        <td style={{ color: 'var(--pf-text-muted)' }}>{account?.username ?? order.accountId}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700 }}>{order.amount} ₽</td>
+                        <td>
+                          <span
+                            className="platform-chip"
+                            style={{
+                              background: `${statusColor[order.status]}20`,
+                              color: statusColor[order.status],
+                              borderColor: 'transparent',
+                            }}
+                          >
+                            {statusLabel[order.status]}
                           </span>
-                          {order.buyer}
-                        </div>
-                      </td>
-                      <td style={{ color: 'var(--pf-text-muted)' }}>{account?.username ?? order.accountId}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 700 }}>{order.amount} ₽</td>
-                      <td>
-                        <span
-                          className="platform-chip"
-                          style={{
-                            background: `${statusColor[order.status]}20`,
-                            color: statusColor[order.status],
-                            borderColor: 'transparent',
-                          }}
-                        >
-                          {statusLabel[order.status]}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: 'right', color: 'var(--pf-text-dim)' }}>{formatDate(order.createdAt)}</td>
-                      <td>
-                        <div className="inline-flex w-full items-center justify-end gap-2">
-                          <button className="platform-topbar-btn" title="Выдать">
-                            <Package size={14} />
-                          </button>
-                          <button className="platform-topbar-btn" title="Написать">
-                            <MessageSquare size={14} />
-                          </button>
-                          <button className="platform-topbar-btn" title="Детали" onClick={() => setDetailOrder(order)}>
-                            <Info size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </DataTableWrap>
+                        </td>
+                        <td style={{ textAlign: 'right', color: 'var(--pf-text-dim)' }}>{formatDate(order.createdAt)}</td>
+                        <td>
+                          <div className="inline-flex w-full items-center justify-end gap-2">
+                            <button className="platform-topbar-btn" title="Выдать">
+                              <Package size={14} />
+                            </button>
+                            <button className="platform-topbar-btn" title="Написать">
+                              <MessageSquare size={14} />
+                            </button>
+                            <button className="platform-topbar-btn" title="Детали" onClick={() => setDetailOrder(order)}>
+                              <Info size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </DataTableWrap>
+          </div>
+
+          <div className="platform-mobile-cards">
+            {paginated.map(order => {
+              const account = accounts.find(item => item.id === order.accountId);
+              return (
+                <article key={order.id} className="platform-mobile-card">
+                  <div className="platform-mobile-card-head">
+                    <strong>{order.id}</strong>
+                    <span
+                      className="platform-chip !min-h-[22px]"
+                      style={{
+                        background: `${statusColor[order.status]}20`,
+                        color: statusColor[order.status],
+                        borderColor: 'transparent',
+                      }}
+                    >
+                      {statusLabel[order.status]}
+                    </span>
+                  </div>
+                  <div className="text-[13px] font-semibold">{order.lot}</div>
+                  <div className="platform-mobile-meta">
+                    <span>Покупатель: {order.buyer}</span>
+                    <span>Аккаунт: {account?.username ?? order.accountId}</span>
+                    <span>Сумма: {order.amount} ₽</span>
+                    <span>Дата: {formatDate(order.createdAt)}</span>
+                  </div>
+                  <div className="platform-mobile-actions">
+                    <button className="platform-topbar-btn" title="Выдать">
+                      <Package size={14} />
+                    </button>
+                    <button className="platform-topbar-btn" title="Написать">
+                      <MessageSquare size={14} />
+                    </button>
+                    <button className="platform-btn-secondary" onClick={() => setDetailOrder(order)}>
+                      <Info size={14} /> Детали
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
 
           {paginated.length === 0 && <EmptyState>Заказы по текущим фильтрам не найдены.</EmptyState>}
 

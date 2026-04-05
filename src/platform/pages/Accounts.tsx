@@ -142,57 +142,97 @@ export default function Accounts() {
         </SectionCard>
 
         <SectionCard className="p-0">
-          <DataTableWrap>
-            <table className="platform-table" style={{ minWidth: 840 }}>
-              <thead>
-                <tr>
-                  <th style={{ width: 270 }}>Аккаунт</th>
-                  <th>Статус</th>
-                  <th style={{ textAlign: 'right' }}>Баланс</th>
-                  <th style={{ textAlign: 'right' }}>Лоты</th>
-                  <th style={{ textAlign: 'right' }}>Продажи</th>
-                  <th style={{ textAlign: 'right' }}>Рейтинг</th>
-                  <th style={{ textAlign: 'right' }}>Действия</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(acc => (
-                  <tr key={acc.id}>
-                    <td>
-                      <div className="flex items-center gap-3">
-                        <span className="platform-avatar">{acc.avatar}</span>
-                        <div>
-                          <div className="font-semibold">{acc.username}</div>
-                          <div className="text-[12px] text-[var(--pf-text-muted)]">
-                            {acc.verified ? 'Верифицирован' : 'Требует верификации'}
+          <div className="platform-desktop-table">
+            <DataTableWrap>
+              <table className="platform-table" style={{ minWidth: 840 }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: 270 }}>Аккаунт</th>
+                    <th>Статус</th>
+                    <th style={{ textAlign: 'right' }}>Баланс</th>
+                    <th style={{ textAlign: 'right' }}>Лоты</th>
+                    <th style={{ textAlign: 'right' }}>Продажи</th>
+                    <th style={{ textAlign: 'right' }}>Рейтинг</th>
+                    <th style={{ textAlign: 'right' }}>Действия</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(acc => (
+                    <tr key={acc.id}>
+                      <td>
+                        <div className="flex items-center gap-3">
+                          <span className="platform-avatar">{acc.avatar}</span>
+                          <div>
+                            <div className="font-semibold">{acc.username}</div>
+                            <div className="text-[12px] text-[var(--pf-text-muted)]">
+                              {acc.verified ? 'Верифицирован' : 'Требует верификации'}
+                            </div>
                           </div>
                         </div>
+                      </td>
+                      <td>
+                        <span className={acc.online ? 'badge-active' : 'badge-inactive'}>
+                          {acc.online ? 'Онлайн' : 'Оффлайн'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 700 }}>{acc.balance.toLocaleString('ru-RU')} ₽</td>
+                      <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>{acc.lotsCount}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>{acc.sales}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>⭐ {acc.rating.toFixed(1)}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div className="inline-flex items-center gap-2">
+                          <button className="platform-topbar-btn" onClick={() => toggleStatus(acc.id)} aria-label="Переключить статус">
+                            {acc.online ? <CircleOff size={15} /> : <CircleCheck size={15} />}
+                          </button>
+                          <button className="platform-topbar-btn" onClick={() => removeAccount(acc.id)} aria-label="Удалить аккаунт">
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </DataTableWrap>
+          </div>
+
+          <div className="platform-mobile-cards">
+            {filtered.map(acc => (
+              <article key={acc.id} className="platform-mobile-card">
+                <div className="platform-mobile-card-head">
+                  <div className="inline-flex items-center gap-2">
+                    <span className="platform-avatar">{acc.avatar}</span>
+                    <div>
+                      <div className="text-[13px] font-semibold">{acc.username}</div>
+                      <div className="text-[12px] text-[var(--pf-text-muted)]">
+                        {acc.verified ? 'Верифицирован' : 'Требует верификации'}
                       </div>
-                    </td>
-                    <td>
-                      <span className={acc.online ? 'badge-active' : 'badge-inactive'}>
-                        {acc.online ? 'Онлайн' : 'Оффлайн'}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 700 }}>{acc.balance.toLocaleString('ru-RU')} ₽</td>
-                    <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>{acc.lotsCount}</td>
-                    <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>{acc.sales}</td>
-                    <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>⭐ {acc.rating.toFixed(1)}</td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div className="inline-flex items-center gap-2">
-                        <button className="platform-topbar-btn" onClick={() => toggleStatus(acc.id)} aria-label="Переключить статус">
-                          {acc.online ? <CircleOff size={15} /> : <CircleCheck size={15} />}
-                        </button>
-                        <button className="platform-topbar-btn" onClick={() => removeAccount(acc.id)} aria-label="Удалить аккаунт">
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </DataTableWrap>
+                    </div>
+                  </div>
+                  <span className={acc.online ? 'badge-active' : 'badge-inactive'}>
+                    {acc.online ? 'Онлайн' : 'Оффлайн'}
+                  </span>
+                </div>
+
+                <div className="platform-mobile-meta">
+                  <span>Баланс: {acc.balance.toLocaleString('ru-RU')} ₽</span>
+                  <span>Лоты: {acc.lotsCount}</span>
+                  <span>Продажи: {acc.sales}</span>
+                  <span>Рейтинг: {acc.rating.toFixed(1)}</span>
+                </div>
+
+                <div className="platform-mobile-actions">
+                  <button className="platform-btn-secondary" onClick={() => toggleStatus(acc.id)}>
+                    {acc.online ? <CircleOff size={14} /> : <CircleCheck size={14} />}
+                    {acc.online ? 'Оффлайн' : 'Онлайн'}
+                  </button>
+                  <button className="platform-topbar-btn" onClick={() => removeAccount(acc.id)} aria-label="Удалить аккаунт">
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
           {filtered.length === 0 && <EmptyState>По текущим фильтрам аккаунты не найдены.</EmptyState>}
         </SectionCard>
       </PageShell>

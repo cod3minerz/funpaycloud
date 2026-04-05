@@ -194,55 +194,91 @@ export default function Finances() {
         </SectionCard>
 
         <SectionCard className="p-0">
-          <DataTableWrap>
-            <table className="platform-table" style={{ minWidth: 880 }}>
-              <thead>
-                <tr>
-                  <th>Дата</th>
-                  <th>Тип</th>
-                  <th>Описание</th>
-                  <th>Аккаунт</th>
-                  <th style={{ textAlign: 'right' }}>Сумма</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTxs.map(tx => {
-                  const isPositive = tx.type === 'sale';
-                  const amountSign = tx.type === 'sale' ? '+' : '-';
-                  return (
-                    <tr key={tx.id}>
-                      <td className="whitespace-nowrap">
-                        {new Date(tx.date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                      </td>
-                      <td>
-                        <span
-                          className="platform-chip !min-h-[22px] !text-[11px]"
-                          style={{ color: typeColorMap[tx.type], borderColor: `${typeColorMap[tx.type]}66` }}
+          <div className="platform-desktop-table">
+            <DataTableWrap>
+              <table className="platform-table" style={{ minWidth: 880 }}>
+                <thead>
+                  <tr>
+                    <th>Дата</th>
+                    <th>Тип</th>
+                    <th>Описание</th>
+                    <th>Аккаунт</th>
+                    <th style={{ textAlign: 'right' }}>Сумма</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTxs.map(tx => {
+                    const isPositive = tx.type === 'sale';
+                    const amountSign = tx.type === 'sale' ? '+' : '-';
+                    return (
+                      <tr key={tx.id}>
+                        <td className="whitespace-nowrap">
+                          {new Date(tx.date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </td>
+                        <td>
+                          <span
+                            className="platform-chip !min-h-[22px] !text-[11px]"
+                            style={{ color: typeColorMap[tx.type], borderColor: `${typeColorMap[tx.type]}66` }}
+                          >
+                            {typeLabelMap[tx.type]}
+                          </span>
+                        </td>
+                        <td>{tx.description}</td>
+                        <td className="text-[var(--pf-text-muted)]">
+                          {accounts.find(account => account.id === tx.accountId)?.username ?? tx.accountId}
+                        </td>
+                        <td
+                          style={{
+                            textAlign: 'right',
+                            whiteSpace: 'nowrap',
+                            fontWeight: 700,
+                            color: isPositive ? '#4ade80' : '#fb7185',
+                          }}
                         >
-                          {typeLabelMap[tx.type]}
-                        </span>
-                      </td>
-                      <td>{tx.description}</td>
-                      <td className="text-[var(--pf-text-muted)]">
-                        {accounts.find(account => account.id === tx.accountId)?.username ?? tx.accountId}
-                      </td>
-                      <td
-                        style={{
-                          textAlign: 'right',
-                          whiteSpace: 'nowrap',
-                          fontWeight: 700,
-                          color: isPositive ? '#4ade80' : '#fb7185',
-                        }}
-                      >
-                        {amountSign}
-                        {Math.abs(tx.amount).toLocaleString('ru-RU')} ₽
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </DataTableWrap>
+                          {amountSign}
+                          {Math.abs(tx.amount).toLocaleString('ru-RU')} ₽
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </DataTableWrap>
+          </div>
+
+          <div className="platform-mobile-cards">
+            {filteredTxs.map(tx => {
+              const isPositive = tx.type === 'sale';
+              const amountSign = tx.type === 'sale' ? '+' : '-';
+              const accountName = accounts.find(account => account.id === tx.accountId)?.username ?? tx.accountId;
+              return (
+                <article key={tx.id} className="platform-mobile-card">
+                  <div className="platform-mobile-card-head">
+                    <strong>{new Date(tx.date).toLocaleDateString('ru-RU')}</strong>
+                    <span
+                      className="platform-chip !min-h-[22px] !text-[11px]"
+                      style={{ color: typeColorMap[tx.type], borderColor: `${typeColorMap[tx.type]}66` }}
+                    >
+                      {typeLabelMap[tx.type]}
+                    </span>
+                  </div>
+                  <div className="text-[13px] text-[var(--pf-text-muted)]">{tx.description}</div>
+                  <div className="platform-mobile-meta">
+                    <span>Аккаунт: {accountName}</span>
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        color: isPositive ? '#4ade80' : '#fb7185',
+                      }}
+                    >
+                      {amountSign}
+                      {Math.abs(tx.amount).toLocaleString('ru-RU')} ₽
+                    </span>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
           {filteredTxs.length === 0 && <EmptyState>Транзакции по текущим фильтрам не найдены.</EmptyState>}
         </SectionCard>
       </PageShell>

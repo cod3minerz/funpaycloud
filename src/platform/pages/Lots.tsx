@@ -134,61 +134,100 @@ export default function Lots() {
         </SectionCard>
 
         <SectionCard className="p-0">
-          <DataTableWrap>
-            <table className="platform-table" style={{ minWidth: 960 }}>
-              <thead>
-                <tr>
-                  <th style={{ width: 340 }}>Лот</th>
-                  <th>Категория</th>
-                  <th style={{ textAlign: 'right' }}>Цена</th>
-                  <th style={{ textAlign: 'right' }}>Продажи / мес</th>
-                  <th>Статус</th>
-                  <th style={{ textAlign: 'right' }}>Действия</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(lot => (
-                  <tr key={lot.id}>
-                    <td>
-                      <div className="flex items-start gap-3">
-                        <span style={{ fontSize: 20, lineHeight: 1 }}>{lot.categoryIcon}</span>
-                        <div>
-                          <div className="font-semibold">{lot.title}</div>
-                          <div className="text-[12px] text-[var(--pf-text-muted)]">{lot.description}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="platform-chip">{lot.category}</span>
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 700 }}>{lot.price} ₽</td>
-                    <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>{lot.salesMonth}</td>
-                    <td>
-                      <div className="inline-flex items-center gap-2">
-                        <Switch checked={lot.status === 'active'} onCheckedChange={() => toggleStatus(lot.id)} />
-                        <span className={lot.status === 'active' ? 'badge-active' : 'badge-inactive'}>
-                          {lot.status === 'active' ? 'Активен' : 'Неактивен'}
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="inline-flex w-full items-center justify-end gap-2">
-                        <button className="platform-topbar-btn" onClick={() => openEdit(lot)} title="Редактировать">
-                          <Edit2 size={14} />
-                        </button>
-                        <button className="platform-topbar-btn" title="Поднять">
-                          <ArrowUpCircle size={14} />
-                        </button>
-                        <button className="platform-topbar-btn" onClick={() => deleteLot(lot.id)} title="Удалить">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
+          <div className="platform-desktop-table">
+            <DataTableWrap>
+              <table className="platform-table" style={{ minWidth: 960 }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: 340 }}>Лот</th>
+                    <th>Категория</th>
+                    <th style={{ textAlign: 'right' }}>Цена</th>
+                    <th style={{ textAlign: 'right' }}>Продажи / мес</th>
+                    <th>Статус</th>
+                    <th style={{ textAlign: 'right' }}>Действия</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </DataTableWrap>
+                </thead>
+                <tbody>
+                  {filtered.map(lot => (
+                    <tr key={lot.id}>
+                      <td>
+                        <div className="flex items-start gap-3">
+                          <span style={{ fontSize: 20, lineHeight: 1 }}>{lot.categoryIcon}</span>
+                          <div>
+                            <div className="font-semibold">{lot.title}</div>
+                            <div className="text-[12px] text-[var(--pf-text-muted)]">{lot.description}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="platform-chip">{lot.category}</span>
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 700 }}>{lot.price} ₽</td>
+                      <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>{lot.salesMonth}</td>
+                      <td>
+                        <div className="inline-flex items-center gap-2">
+                          <Switch checked={lot.status === 'active'} onCheckedChange={() => toggleStatus(lot.id)} />
+                          <span className={lot.status === 'active' ? 'badge-active' : 'badge-inactive'}>
+                            {lot.status === 'active' ? 'Активен' : 'Неактивен'}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="inline-flex w-full items-center justify-end gap-2">
+                          <button className="platform-topbar-btn" onClick={() => openEdit(lot)} title="Редактировать">
+                            <Edit2 size={14} />
+                          </button>
+                          <button className="platform-topbar-btn" title="Поднять">
+                            <ArrowUpCircle size={14} />
+                          </button>
+                          <button className="platform-topbar-btn" onClick={() => deleteLot(lot.id)} title="Удалить">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </DataTableWrap>
+          </div>
+
+          <div className="platform-mobile-cards">
+            {filtered.map(lot => (
+              <article key={lot.id} className="platform-mobile-card">
+                <div className="platform-mobile-card-head">
+                  <div className="inline-flex min-w-0 items-start gap-2">
+                    <span style={{ fontSize: 20, lineHeight: 1 }}>{lot.categoryIcon}</span>
+                    <div className="min-w-0">
+                      <div className="truncate text-[13px] font-semibold">{lot.title}</div>
+                      <div className="text-[12px] text-[var(--pf-text-muted)]">{lot.category}</div>
+                    </div>
+                  </div>
+                  <span className={lot.status === 'active' ? 'badge-active' : 'badge-inactive'}>
+                    {lot.status === 'active' ? 'Активен' : 'Неактивен'}
+                  </span>
+                </div>
+
+                <div className="platform-mobile-meta">
+                  <span>Цена: {lot.price} ₽</span>
+                  <span>Продажи / мес: {lot.salesMonth}</span>
+                  <span>{lot.description}</span>
+                </div>
+
+                <div className="platform-mobile-actions">
+                  <button className="platform-btn-secondary" onClick={() => openEdit(lot)}>
+                    <Edit2 size={14} /> Редактировать
+                  </button>
+                  <button className="platform-btn-secondary" onClick={() => toggleStatus(lot.id)}>
+                    {lot.status === 'active' ? 'Отключить' : 'Включить'}
+                  </button>
+                  <button className="platform-topbar-btn" onClick={() => deleteLot(lot.id)} title="Удалить">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
           {filtered.length === 0 && <EmptyState>Лоты по текущим фильтрам не найдены.</EmptyState>}
         </SectionCard>
       </PageShell>
@@ -263,4 +302,3 @@ export default function Lots() {
     </motion.div>
   );
 }
-

@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { usePathname } from 'next/navigation';
-import { Bell, Cloud, Menu, Search } from 'lucide-react';
+import { Bell, ChevronLeft, ChevronRight, Cloud, Menu, Search } from 'lucide-react';
 import { accounts } from '@/platform/data/demoData';
 
 const PATH_LABELS: Record<string, string> = {
@@ -22,9 +22,15 @@ const PATH_LABELS: Record<string, string> = {
 
 type PlatformTopBarProps = {
   onOpenMobileSidebar: () => void;
+  sidebarCollapsed: boolean;
+  onToggleSidebarCollapse: () => void;
 };
 
-export default function PlatformTopBar({ onOpenMobileSidebar }: PlatformTopBarProps) {
+export default function PlatformTopBar({
+  onOpenMobileSidebar,
+  sidebarCollapsed,
+  onToggleSidebarCollapse,
+}: PlatformTopBarProps) {
   const pathname = usePathname();
   const profile = accounts[0];
   const initials = profile?.username?.slice(0, 1).toUpperCase() ?? 'U';
@@ -56,6 +62,16 @@ export default function PlatformTopBar({ onOpenMobileSidebar }: PlatformTopBarPr
           <Menu size={18} />
         </button>
 
+        <button
+          type="button"
+          className="platform-topbar-btn platform-sidebar-toggle"
+          onClick={onToggleSidebarCollapse}
+          aria-label={sidebarCollapsed ? 'Развернуть меню' : 'Свернуть меню'}
+          aria-pressed={sidebarCollapsed}
+        >
+          {sidebarCollapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+        </button>
+
         <div className="hidden md:flex items-center gap-2 min-w-0">
           {breadcrumbs.map((item, idx) => (
             <div key={`${item.raw}-${idx}`} className="flex items-center gap-2 min-w-0">
@@ -70,7 +86,12 @@ export default function PlatformTopBar({ onOpenMobileSidebar }: PlatformTopBarPr
 
       <label className="platform-search">
         <Search size={14} color="var(--pf-text-dim)" />
-        <input placeholder="Поиск по заказам, чатам, товарам..." aria-label="Глобальный поиск" />
+        <input
+          type="search"
+          autoComplete="off"
+          placeholder="Поиск по заказам, чатам, товарам..."
+          aria-label="Глобальный поиск"
+        />
       </label>
 
       <div className="platform-topbar-right">

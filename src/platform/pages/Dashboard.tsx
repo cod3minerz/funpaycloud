@@ -125,7 +125,7 @@ export default function Dashboard() {
           </KpiCard>
         </KpiGrid>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,2.15fr)_minmax(0,1fr)]">
           <div className="grid gap-4">
             <SectionCard>
               <ToolbarRow className="mb-3 justify-between">
@@ -177,100 +177,121 @@ export default function Dashboard() {
                 </button>
               </ToolbarRow>
 
-              <DataTableWrap>
-                <table className="platform-table" style={{ minWidth: 760 }}>
-                  <thead>
-                    <tr>
-                      <th>Заказ</th>
-                      <th>Товар</th>
-                      <th>Покупатель</th>
-                      <th style={{ textAlign: 'right' }}>Сумма</th>
-                      <th>Статус</th>
-                      <th style={{ textAlign: 'right' }}>Время</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentOrders.map(order => (
-                      <tr key={order.id}>
-                        <td>{order.id}</td>
-                        <td style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {order.lot}
-                        </td>
-                        <td>
-                          <div className="inline-flex items-center gap-2">
-                            <span className="platform-avatar" style={{ width: 24, height: 24, fontSize: 10 }}>
-                              {order.buyerAvatar}
-                            </span>
-                            {order.buyer}
-                          </div>
-                        </td>
-                        <td style={{ textAlign: 'right', fontWeight: 700 }}>{order.amount} ₽</td>
-                        <td>
-                          <span className={statusClass[order.status] ?? 'platform-chip'}>
-                            {statusLabel[order.status] ?? order.status}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: 'right', color: 'var(--pf-text-dim)' }}>{formatDate(order.createdAt)}</td>
+              <div className="platform-desktop-table">
+                <DataTableWrap>
+                  <table className="platform-table" style={{ minWidth: 760 }}>
+                    <thead>
+                      <tr>
+                        <th>Заказ</th>
+                        <th>Товар</th>
+                        <th>Покупатель</th>
+                        <th style={{ textAlign: 'right' }}>Сумма</th>
+                        <th>Статус</th>
+                        <th style={{ textAlign: 'right' }}>Время</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </DataTableWrap>
+                    </thead>
+                    <tbody>
+                      {recentOrders.map(order => (
+                        <tr key={order.id}>
+                          <td>{order.id}</td>
+                          <td style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {order.lot}
+                          </td>
+                          <td>
+                            <div className="inline-flex items-center gap-2">
+                              <span className="platform-avatar" style={{ width: 24, height: 24, fontSize: 10 }}>
+                                {order.buyerAvatar}
+                              </span>
+                              {order.buyer}
+                            </div>
+                          </td>
+                          <td style={{ textAlign: 'right', fontWeight: 700 }}>{order.amount} ₽</td>
+                          <td>
+                            <span className={statusClass[order.status] ?? 'platform-chip'}>
+                              {statusLabel[order.status] ?? order.status}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'right', color: 'var(--pf-text-dim)' }}>{formatDate(order.createdAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </DataTableWrap>
+              </div>
+
+              <div className="platform-mobile-cards">
+                {recentOrders.map(order => (
+                  <article key={order.id} className="platform-mobile-card">
+                    <div className="platform-mobile-card-head">
+                      <strong>{order.id}</strong>
+                      <span className={statusClass[order.status] ?? 'platform-chip'}>{statusLabel[order.status] ?? order.status}</span>
+                    </div>
+                    <div className="text-[13px] font-semibold">{order.lot}</div>
+                    <div className="platform-mobile-meta">
+                      <span>Покупатель: {order.buyer}</span>
+                      <span>Сумма: {order.amount} ₽</span>
+                      <span>Время: {formatDate(order.createdAt)}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
             </SectionCard>
           </div>
 
           <div className="grid gap-4">
-            <SectionCard>
-              <div className="mb-3 text-[15px] font-semibold">Аккаунты</div>
-              <div className="grid gap-2">
-                {accounts.map(account => (
-                  <Panel key={account.id} className="p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <div className="font-semibold">{account.username}</div>
-                        <div className="platform-kpi-meta">
-                          {account.balance.toLocaleString('ru-RU')} ₽ · {account.lotsCount} лотов
+            <SectionCard className="overflow-hidden p-0">
+              <div className="border-b border-[var(--pf-border)] p-4">
+                <div className="mb-3 text-[15px] font-semibold">Аккаунты</div>
+                <div className="grid gap-2">
+                  {accounts.map(account => (
+                    <Panel key={account.id} className="p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <div className="font-semibold">{account.username}</div>
+                          <div className="platform-kpi-meta">
+                            {account.balance.toLocaleString('ru-RU')} ₽ · {account.lotsCount} лотов
+                          </div>
                         </div>
+                        <span className={account.online ? 'badge-active' : 'badge-inactive'}>
+                          {account.online ? 'Онлайн' : 'Оффлайн'}
+                        </span>
                       </div>
-                      <span className={account.online ? 'badge-active' : 'badge-inactive'}>
-                        {account.online ? 'Онлайн' : 'Оффлайн'}
-                      </span>
-                    </div>
-                  </Panel>
-                ))}
+                    </Panel>
+                  ))}
+                </div>
               </div>
-            </SectionCard>
 
-            <SectionCard>
-              <ToolbarRow className="mb-3 justify-between">
-                <span className="text-[15px] font-semibold">Последние диалоги</span>
-                <button className="platform-btn-secondary" onClick={() => router.push('/platform/chats')}>
-                  Чаты
-                </button>
-              </ToolbarRow>
+              <div className="p-4">
+                <ToolbarRow className="mb-3 justify-between">
+                  <span className="text-[15px] font-semibold">Последние диалоги</span>
+                  <button className="platform-btn-secondary" onClick={() => router.push('/platform/chats')}>
+                    Чаты
+                  </button>
+                </ToolbarRow>
 
-              <div className="grid gap-2">
-                {recentChats.length === 0 && <EmptyState className="py-4">Диалоги пока отсутствуют</EmptyState>}
-                {recentChats.map(chat => (
-                  <Panel key={chat.id} className="p-3">
-                    <div className="flex items-start gap-3">
-                      <span className="platform-avatar">{chat.buyerAvatar}</span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <strong className="text-[13px]">{chat.buyer}</strong>
-                          <span className="platform-kpi-meta">{chat.lastTime}</span>
+                <div className="grid gap-2">
+                  {recentChats.length === 0 && <EmptyState className="py-4">Диалоги пока отсутствуют</EmptyState>}
+                  {recentChats.map(chat => (
+                    <Panel key={chat.id} className="p-3">
+                      <div className="flex items-start gap-3">
+                        <span className="platform-avatar">{chat.buyerAvatar}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <strong className="text-[13px]">{chat.buyer}</strong>
+                            <span className="platform-kpi-meta">{chat.lastTime}</span>
+                          </div>
+                          <p
+                            className="platform-kpi-meta"
+                            style={{ marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                          >
+                            {chat.lastMessage}
+                          </p>
                         </div>
-                        <p
-                          className="platform-kpi-meta"
-                          style={{ marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                        >
-                          {chat.lastMessage}
-                        </p>
+                        {chat.unread > 0 && <span className="badge-dispute">{chat.unread}</span>}
                       </div>
-                      {chat.unread > 0 && <span className="badge-dispute">{chat.unread}</span>}
-                    </div>
-                  </Panel>
-                ))}
+                    </Panel>
+                  ))}
+                </div>
               </div>
             </SectionCard>
           </div>
@@ -279,4 +300,3 @@ export default function Dashboard() {
     </motion.div>
   );
 }
-
