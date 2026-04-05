@@ -1,15 +1,18 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Package, MessageSquare, Info, X, Send } from 'lucide-react';
-import { orders, accounts, Order } from '@/platform/data/demoData';
+import { Info, MessageSquare, Package, Search, Send, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
-
-const CARD_STYLE: React.CSSProperties = {
-  background: 'var(--pf-surface)',
-  border: '1px solid var(--pf-border)',
-  borderRadius: '12px',
-  padding: '20px',
-};
+import { accounts, Order, orders } from '@/platform/data/demoData';
+import {
+  DataTableWrap,
+  EmptyState,
+  PageHeader,
+  PageShell,
+  PageTitle,
+  Panel,
+  SectionCard,
+  ToolbarRow,
+} from '@/platform/components/primitives';
 
 const statusLabel: Record<string, string> = {
   paid: 'Оплачен',
@@ -25,343 +28,346 @@ const statusColor: Record<string, string> = {
   dispute: '#f97316',
 };
 
-function formatDt(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-}
-
 const PAGE_SIZE = 10;
+
+function formatDate(iso: string) {
+  const d = new Date(iso);
+  return (
+    d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) +
+    ' ' +
+    d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+  );
+}
 
 export default function Orders() {
   const [accountFilter, setAccountFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
   const [search, setSearch] = useState('');
-  const [dateFilter, setDateFilter] = useState('all');
   const [selected, setSelected] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [detailOrder, setDetailOrder] = useState<Order | null>(null);
   const [deliveryText, setDeliveryText] = useState('');
 
   const now = new Date();
+
   const filtered = useMemo(() => {
-    return orders.filter(o => {
-      if (accountFilter !== 'all' && o.accountId !== accountFilter) return false;
-      if (statusFilter !== 'all' && o.status !== statusFilter) return false;
-      if (search && !o.id.toLowerCase().includes(search.toLowerCase()) && !o.buyer.toLowerCase().includes(search.toLowerCase())) return false;
+    return orders.filter(order => {
+      if (accountFilter !== 'all' && order.accountId !== accountFilter) return false;
+      if (statusFilter !== 'all' && order.status !== statusFilter) return false;
+      if (
+        search &&
+        !order.id.toLowerCase().includes(search.toLowerCase()) &&
+        !order.buyer.toLowerCase().includes(search.toLowerCase())
+      ) {
+        return false;
+      }
       if (dateFilter === 'today') {
-        const d = new Date(o.createdAt);
-        if (d.toDateString() !== now.toDateString()) return false;
+        if (new Date(order.createdAt).toDateString() !== now.toDateString()) return false;
       }
       if (dateFilter === 'week') {
-        const d = new Date(o.createdAt);
-        const diff = (now.getTime() - d.getTime()) / 86400000;
+        const diff = (now.getTime() - new Date(order.createdAt).getTime()) / 86400000;
         if (diff > 7) return false;
       }
       if (dateFilter === 'month') {
-        const d = new Date(o.createdAt);
+        const d = new Date(order.createdAt);
         if (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear()) return false;
       }
       return true;
     });
-  }, [accountFilter, statusFilter, search, dateFilter]);
+  }, [accountFilter, statusFilter, search, dateFilter, now]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   function toggleSelect(id: string) {
-    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    setSelected(prev => (prev.includes(id) ? prev.filter(value => value !== id) : [...prev, id]));
   }
 
-  function toggleAll() {
-    if (selected.length === paginated.length) {
-      setSelected([]);
-    } else {
-      setSelected(paginated.map(o => o.id));
+  function toggleAllVisible() {
+    if (paginated.length === 0) return;
+    const allSelected = paginated.every(order => selected.includes(order.id));
+    if (allSelected) {
+      setSelected(prev => prev.filter(id => !paginated.find(order => order.id === id)));
+      return;
     }
+    const next = new Set(selected);
+    paginated.forEach(order => next.add(order.id));
+    setSelected(Array.from(next));
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
-      style={{ padding: '24px', minHeight: '100vh', background: 'transparent', color: '#fff', fontFamily: 'var(--font-sans)' }}
-    >
-      <h1 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '20px' }}>Заказы</h1>
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }}>
+      <PageShell>
+        <PageHeader>
+          <PageTitle
+            title="Заказы"
+            subtitle="Операционный контроль заказов: фильтрация, массовые действия, детали и коммуникации."
+          />
+        </PageHeader>
 
-      {/* Bulk Action Bar */}
-      <AnimatePresence>
-        {selected.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            style={{ background: 'var(--pf-surface-2)', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '10px', padding: '12px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}
-          >
-            <span style={{ fontWeight: 600 }}>Выбрано {selected.length} заказов</span>
-            <button
-              style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '6px', padding: '6px 14px', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
+        <AnimatePresence>
+          {selected.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
             >
-              <Package size={14} /> Выдать товары
-            </button>
-            <button onClick={() => setSelected([])} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer' }}>
-              <X size={18} />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <SectionCard className="p-3">
+                <ToolbarRow className="justify-between">
+                  <span className="text-[13px] font-semibold">Выбрано: {selected.length}</span>
+                  <div className="inline-flex items-center gap-2">
+                    <button className="platform-btn-secondary">
+                      <Package size={14} /> Выдать товары
+                    </button>
+                    <button className="platform-topbar-btn" onClick={() => setSelected([])} aria-label="Снять выбор">
+                      <X size={14} />
+                    </button>
+                  </div>
+                </ToolbarRow>
+              </SectionCard>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {/* Filters */}
-      <div style={{ ...CARD_STYLE, marginBottom: '20px' }}>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <select
-            className="platform-select"
-            value={accountFilter}
-            onChange={e => { setAccountFilter(e.target.value); setPage(1); }}
-            style={{ width: 180, cursor: 'pointer' }}
-          >
-            <option value="all">Все аккаунты</option>
-            {accounts.map(a => <option key={a.id} value={a.id}>{a.username}</option>)}
-          </select>
+        <SectionCard>
+          <ToolbarRow>
+            <select
+              className="platform-select"
+              value={accountFilter}
+              onChange={event => {
+                setAccountFilter(event.target.value);
+                setPage(1);
+              }}
+              style={{ maxWidth: 200 }}
+            >
+              <option value="all">Все аккаунты</option>
+              {accounts.map(account => (
+                <option key={account.id} value={account.id}>
+                  {account.username}
+                </option>
+              ))}
+            </select>
 
-          <div style={{ display: 'flex', gap: '6px' }}>
-            {(['all', 'paid', 'completed', 'refund', 'dispute'] as const).map(s => (
-              <button
-                key={s}
-                onClick={() => { setStatusFilter(s); setPage(1); }}
-                style={{
-                  padding: '7px 12px',
-                  borderRadius: '7px',
-                  border: statusFilter === s ? '1px solid rgba(96,165,250,0.46)' : '1px solid rgba(96,165,250,0.28)',
-                  background: statusFilter === s ? 'rgba(59,130,246,0.2)' : 'transparent',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                  fontWeight: 600,
+            <div className="inline-flex flex-wrap items-center gap-2">
+              {(['all', 'paid', 'completed', 'refund', 'dispute'] as const).map(value => (
+                <button
+                  key={value}
+                  className={statusFilter === value ? 'platform-btn-primary' : 'platform-btn-secondary'}
+                  style={{ minHeight: 34 }}
+                  onClick={() => {
+                    setStatusFilter(value);
+                    setPage(1);
+                  }}
+                >
+                  {value === 'all' ? 'Все' : statusLabel[value]}
+                </button>
+              ))}
+            </div>
+
+            <label className="platform-search platform-toolbar-grow max-w-none">
+              <Search size={14} color="var(--pf-text-dim)" />
+              <input
+                value={search}
+                onChange={event => {
+                  setSearch(event.target.value);
+                  setPage(1);
                 }}
-              >
-                {s === 'all' ? 'Все' : statusLabel[s]}
-              </button>
-            ))}
-          </div>
+                placeholder="Поиск по ID или покупателю"
+              />
+            </label>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '180px' }}>
-            <Search size={16} color="var(--pf-text-muted)" />
-            <input
-              value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Поиск по ID или покупателю..."
-              style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: '13px' }}
-            />
-          </div>
+            <div className="inline-flex flex-wrap items-center gap-2">
+              {(['all', 'today', 'week', 'month'] as const).map(value => (
+                <button
+                  key={value}
+                  className={dateFilter === value ? 'platform-btn-primary' : 'platform-btn-secondary'}
+                  style={{ minHeight: 34 }}
+                  onClick={() => {
+                    setDateFilter(value);
+                    setPage(1);
+                  }}
+                >
+                  {value === 'all' ? 'Все даты' : value === 'today' ? 'Сегодня' : value === 'week' ? 'Неделя' : 'Месяц'}
+                </button>
+              ))}
+            </div>
+          </ToolbarRow>
+        </SectionCard>
 
-          <div style={{ display: 'flex', gap: '6px' }}>
-            {(['all', 'today', 'week', 'month'] as const).map(d => (
-              <button
-                key={d}
-                onClick={() => { setDateFilter(d); setPage(1); }}
-                style={{
-                  padding: '7px 10px',
-                  borderRadius: '7px',
-                  border: dateFilter === d ? '1px solid rgba(96,165,250,0.46)' : '1px solid rgba(96,165,250,0.28)',
-                  background: dateFilter === d ? 'rgba(59,130,246,0.2)' : 'transparent',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                }}
-              >
-                {d === 'all' ? 'Все' : d === 'today' ? 'Сегодня' : d === 'week' ? 'Неделя' : 'Месяц'}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div style={CARD_STYLE}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-            <thead>
-              <tr style={{ color: 'var(--pf-text-muted)', borderBottom: '1px solid rgba(59,130,246,0.18)' }}>
-                <th style={{ padding: '10px 8px', textAlign: 'left', width: '36px' }}>
-                  <input
-                    type="checkbox"
-                    checked={selected.length === paginated.length && paginated.length > 0}
-                    onChange={toggleAll}
-                    style={{ cursor: 'pointer', accentColor: 'var(--pf-accent)' }}
-                  />
-                </th>
-                <th style={{ padding: '10px 8px', textAlign: 'left', fontWeight: 500 }}>#</th>
-                <th style={{ padding: '10px 8px', textAlign: 'left', fontWeight: 500 }}>Товар</th>
-                <th style={{ padding: '10px 8px', textAlign: 'left', fontWeight: 500 }}>Покупатель</th>
-                <th style={{ padding: '10px 8px', textAlign: 'left', fontWeight: 500 }}>Аккаунт</th>
-                <th style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 500 }}>Сумма</th>
-                <th style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 500 }}>Статус</th>
-                <th style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 500 }}>Дата</th>
-                <th style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 500 }}>Действия</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginated.map(o => {
-                const acc = accounts.find(a => a.id === o.accountId);
-                return (
-                  <tr
-                    key={o.id}
-                    style={{ borderBottom: '1px solid rgba(59,130,246,0.1)', background: selected.includes(o.id) ? 'rgba(59,130,246,0.1)' : 'transparent' }}
-                  >
-                    <td style={{ padding: '10px 8px' }}>
-                      <input
-                        type="checkbox"
-                        checked={selected.includes(o.id)}
-                        onChange={() => toggleSelect(o.id)}
-                        style={{ cursor: 'pointer', accentColor: 'var(--pf-accent)' }}
-                      />
-                    </td>
-                    <td style={{ padding: '10px 8px', color: 'var(--pf-text-muted)', fontFamily: 'monospace' }}>{o.id}</td>
-                    <td style={{ padding: '10px 8px', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.lot}</td>
-                    <td style={{ padding: '10px 8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, flexShrink: 0 }}>
-                          {o.buyerAvatar}
-                        </div>
-                        {o.buyer}
-                      </div>
-                    </td>
-                    <td style={{ padding: '10px 8px', color: 'var(--pf-text-muted)' }}>{acc?.username}</td>
-                    <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 600 }}>{o.amount}₽</td>
-                    <td style={{ padding: '10px 8px', textAlign: 'center' }}>
-                      <span style={{ background: `${statusColor[o.status]}20`, color: statusColor[o.status], borderRadius: '6px', padding: '3px 8px', fontSize: '12px', fontWeight: 600 }}>
-                        {statusLabel[o.status]}
-                      </span>
-                    </td>
-                    <td style={{ padding: '10px 8px', textAlign: 'right', color: 'var(--pf-text-muted)', whiteSpace: 'nowrap' }}>{formatDt(o.createdAt)}</td>
-                    <td style={{ padding: '10px 8px' }}>
-                      <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                        <button
-                          title="Выдать"
-                          style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '6px', padding: '5px 7px', color: '#22c55e', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                        >
-                          <Package size={13} />
-                        </button>
-                        <button
-                          title="Написать"
-                          style={{ background: 'rgba(59,130,246,0.18)', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '6px', padding: '5px 7px', color: 'var(--pf-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                        >
-                          <MessageSquare size={13} />
-                        </button>
-                        <button
-                          title="Детали"
-                          onClick={() => setDetailOrder(o)}
-                          style={{ background: 'rgba(59,130,246,0.18)', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '6px', padding: '5px 7px', color: 'var(--pf-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                        >
-                          <Info size={13} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {paginated.length === 0 && (
+        <SectionCard className="p-0">
+          <DataTableWrap>
+            <table className="platform-table" style={{ minWidth: 980 }}>
+              <thead>
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: 'var(--pf-text-muted)' }}>
-                    Заказы не найдены
-                  </td>
+                  <th style={{ width: 44 }}>
+                    <input
+                      type="checkbox"
+                      checked={paginated.length > 0 && paginated.every(order => selected.includes(order.id))}
+                      onChange={toggleAllVisible}
+                      style={{ accentColor: 'var(--pf-accent)' }}
+                    />
+                  </th>
+                  <th>Заказ</th>
+                  <th>Товар</th>
+                  <th>Покупатель</th>
+                  <th>Аккаунт</th>
+                  <th style={{ textAlign: 'right' }}>Сумма</th>
+                  <th>Статус</th>
+                  <th style={{ textAlign: 'right' }}>Дата</th>
+                  <th style={{ textAlign: 'right' }}>Действия</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {paginated.map(order => {
+                  const account = accounts.find(item => item.id === order.accountId);
+                  const isSelected = selected.includes(order.id);
+                  return (
+                    <tr key={order.id} style={isSelected ? { background: 'rgba(60,122,246,0.1)' } : undefined}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(order.id)}
+                          style={{ accentColor: 'var(--pf-accent)' }}
+                        />
+                      </td>
+                      <td>{order.id}</td>
+                      <td style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {order.lot}
+                      </td>
+                      <td>
+                        <div className="inline-flex items-center gap-2">
+                          <span className="platform-avatar" style={{ width: 24, height: 24, fontSize: 10 }}>
+                            {order.buyerAvatar}
+                          </span>
+                          {order.buyer}
+                        </div>
+                      </td>
+                      <td style={{ color: 'var(--pf-text-muted)' }}>{account?.username ?? order.accountId}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 700 }}>{order.amount} ₽</td>
+                      <td>
+                        <span
+                          className="platform-chip"
+                          style={{
+                            background: `${statusColor[order.status]}20`,
+                            color: statusColor[order.status],
+                            borderColor: 'transparent',
+                          }}
+                        >
+                          {statusLabel[order.status]}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right', color: 'var(--pf-text-dim)' }}>{formatDate(order.createdAt)}</td>
+                      <td>
+                        <div className="inline-flex w-full items-center justify-end gap-2">
+                          <button className="platform-topbar-btn" title="Выдать">
+                            <Package size={14} />
+                          </button>
+                          <button className="platform-topbar-btn" title="Написать">
+                            <MessageSquare size={14} />
+                          </button>
+                          <button className="platform-topbar-btn" title="Детали" onClick={() => setDetailOrder(order)}>
+                            <Info size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </DataTableWrap>
 
-        {/* Pagination */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid rgba(59,130,246,0.12)' }}>
-          <span style={{ color: 'var(--pf-text-muted)', fontSize: '13px' }}>
-            Показано {Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)}–{Math.min(page * PAGE_SIZE, filtered.length)} из {filtered.length}
-          </span>
-          <div style={{ display: 'flex', gap: '6px' }}>
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(96,165,250,0.28)', borderRadius: '6px', padding: '6px 14px', color: page === 1 ? '#4b5563' : '#fff', cursor: page === 1 ? 'not-allowed' : 'pointer', fontSize: '13px' }}
-            >
-              ← Назад
-            </button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => i + 1).map(p => (
+          {paginated.length === 0 && <EmptyState>Заказы по текущим фильтрам не найдены.</EmptyState>}
+
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--pf-border)] px-4 py-3">
+            <span className="platform-kpi-meta">
+              Показано {Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)}–
+              {Math.min(page * PAGE_SIZE, filtered.length)} из {filtered.length}
+            </span>
+            <div className="inline-flex items-center gap-2">
               <button
-                key={p}
-                onClick={() => setPage(p)}
-                style={{ background: page === p ? 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))' : 'rgba(59,130,246,0.12)', border: '1px solid rgba(96,165,250,0.28)', borderRadius: '6px', padding: '6px 12px', color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: page === p ? 700 : 400 }}
+                className="platform-btn-secondary"
+                onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                disabled={page === 1}
               >
-                {p}
+                Назад
               </button>
-            ))}
-            <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(96,165,250,0.28)', borderRadius: '6px', padding: '6px 14px', color: page === totalPages ? '#4b5563' : '#fff', cursor: page === totalPages ? 'not-allowed' : 'pointer', fontSize: '13px' }}
-            >
-              Вперёд →
-            </button>
+              <span className="platform-chip">
+                {page} / {totalPages}
+              </span>
+              <button
+                className="platform-btn-secondary"
+                onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={page === totalPages}
+              >
+                Вперёд
+              </button>
+            </div>
           </div>
-        </div>
-      </div>
+        </SectionCard>
+      </PageShell>
 
-      {/* Order Detail Dialog */}
       <Dialog open={!!detailOrder} onOpenChange={() => setDetailOrder(null)}>
-        <DialogContent className="platform-dialog-content" style={{ maxWidth: '520px' }}>
+        <DialogContent className="platform-dialog-content" style={{ maxWidth: 560 }}>
           <DialogHeader>
-            <DialogTitle style={{ color: '#fff' }}>Детали заказа {detailOrder?.id}</DialogTitle>
+            <DialogTitle>Детали заказа {detailOrder?.id}</DialogTitle>
           </DialogHeader>
           {detailOrder && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px', marginBottom: '4px' }}>Покупатель</div>
-                  <div style={{ fontWeight: 600 }}>{detailOrder.buyer}</div>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px', marginBottom: '4px' }}>Сумма</div>
-                  <div style={{ fontWeight: 700, fontSize: '18px', color: '#22c55e' }}>{detailOrder.amount}₽</div>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px', marginBottom: '4px' }}>Статус</div>
-                  <span style={{ background: `${statusColor[detailOrder.status]}20`, color: statusColor[detailOrder.status], borderRadius: '6px', padding: '3px 10px', fontSize: '13px', fontWeight: 600 }}>
+            <div className="grid gap-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Panel className="p-3">
+                  <div className="platform-kpi-meta">Покупатель</div>
+                  <div className="mt-1 font-semibold">{detailOrder.buyer}</div>
+                </Panel>
+                <Panel className="p-3">
+                  <div className="platform-kpi-meta">Сумма</div>
+                  <div className="mt-1 text-lg font-extrabold">{detailOrder.amount} ₽</div>
+                </Panel>
+                <Panel className="p-3">
+                  <div className="platform-kpi-meta">Статус</div>
+                  <span
+                    className="platform-chip mt-1"
+                    style={{
+                      background: `${statusColor[detailOrder.status]}20`,
+                      color: statusColor[detailOrder.status],
+                      borderColor: 'transparent',
+                    }}
+                  >
                     {statusLabel[detailOrder.status]}
                   </span>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px', marginBottom: '4px' }}>Дата</div>
-                  <div>{formatDt(detailOrder.createdAt)}</div>
-                </div>
-                <div style={{ gridColumn: '1/-1' }}>
-                  <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px', marginBottom: '4px' }}>Товар</div>
-                  <div style={{ fontWeight: 600 }}>{detailOrder.lot}</div>
-                </div>
-                <div style={{ gridColumn: '1/-1' }}>
-                  <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px', marginBottom: '4px' }}>Описание</div>
-                  <div style={{ color: '#ccc' }}>{detailOrder.description}</div>
-                </div>
+                </Panel>
+                <Panel className="p-3">
+                  <div className="platform-kpi-meta">Создан</div>
+                  <div className="mt-1 font-semibold">{formatDate(detailOrder.createdAt)}</div>
+                </Panel>
               </div>
 
-              <div style={{ borderTop: '1px solid rgba(59,130,246,0.18)', paddingTop: '16px' }}>
-                <div style={{ color: 'var(--pf-text-muted)', fontSize: '13px', marginBottom: '8px', fontWeight: 600 }}>Выдать товар</div>
+              <Panel className="p-3">
+                <div className="platform-kpi-meta">Товар</div>
+                <div className="mt-1 font-semibold">{detailOrder.lot}</div>
+                <div className="mt-1 text-[13px] text-[var(--pf-text-muted)]">{detailOrder.description}</div>
+              </Panel>
+
+              <Panel className="p-3">
+                <div className="platform-kpi-meta mb-2">Ручная выдача / сообщение</div>
                 <textarea
-                  value={deliveryText}
-                  onChange={e => setDeliveryText(e.target.value)}
-                  placeholder="Введите товар для выдачи..."
-                  rows={3}
                   className="platform-textarea"
-                  style={{ width: '100%', boxSizing: 'border-box' }}
+                  value={deliveryText}
+                  onChange={event => setDeliveryText(event.target.value)}
+                  placeholder="Введите данные для выдачи или текст для отправки покупателю..."
+                  rows={4}
                 />
-                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                  <button style={{ flex: 1, background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
-                    <Send size={14} /> Выдать товар
+                <div className="mt-2 flex gap-2">
+                  <button className="platform-btn-secondary" style={{ flex: 1 }} onClick={() => setDetailOrder(null)}>
+                    Отмена
                   </button>
-                  <button style={{ flex: 1, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', color: '#ef4444' }}>
-                    Возврат
+                  <button className="platform-btn-primary" style={{ flex: 1 }}>
+                    <Send size={14} /> Отправить
                   </button>
                 </div>
-              </div>
+              </Panel>
             </div>
           )}
         </DialogContent>

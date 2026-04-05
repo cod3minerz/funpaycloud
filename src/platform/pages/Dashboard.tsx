@@ -1,33 +1,36 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 import {
-  Wallet, ShoppingCart, Package, MessageSquare, Bot, TrendingUp,
-  ArrowUpRight, Zap, MessageCircle, Gift,
+  BarChart2,
+  MessageSquare,
+  Package,
+  ShoppingCart,
+  TrendingUp,
+  Wallet,
 } from 'lucide-react';
-import { accounts, orders, lots, chats, salesData } from '@/platform/data/demoData';
-
-const CARD_STYLE: React.CSSProperties = {
-  background: 'var(--pf-surface)',
-  border: '1px solid var(--pf-border)',
-  borderRadius: '12px',
-  padding: '20px',
-};
-
-const BTN_PRIMARY: React.CSSProperties = {
-  background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))',
-  color: '#fff',
-  border: 'none',
-  borderRadius: '8px',
-  padding: '8px 16px',
-  cursor: 'pointer',
-  fontFamily: 'var(--font-sans)',
-  fontWeight: 600,
-  fontSize: '14px',
-};
+import { accounts, chats, lots, orders, salesData } from '@/platform/data/demoData';
+import {
+  DataTableWrap,
+  EmptyState,
+  KpiCard,
+  KpiGrid,
+  PageHeader,
+  PageShell,
+  PageTitle,
+  Panel,
+  SectionCard,
+  ToolbarRow,
+} from '@/platform/components/primitives';
 
 const statusLabel: Record<string, string> = {
   paid: 'Оплачен',
@@ -36,11 +39,11 @@ const statusLabel: Record<string, string> = {
   dispute: 'Спор',
 };
 
-const statusColor: Record<string, string> = {
-  paid: '#eab308',
-  completed: '#22c55e',
-  refund: '#ef4444',
-  dispute: '#f97316',
+const statusClass: Record<string, string> = {
+  paid: 'badge-paid',
+  completed: 'badge-completed',
+  refund: 'badge-refund',
+  dispute: 'badge-dispute',
 };
 
 function formatDate(iso: string) {
@@ -52,323 +55,228 @@ export default function Dashboard() {
   const router = useRouter();
   const [period, setPeriod] = useState<7 | 30 | 90>(30);
 
-  const totalBalance = accounts.reduce((sum, a) => sum + a.balance, 0);
+  const totalBalance = useMemo(() => accounts.reduce((sum, account) => sum + account.balance, 0), []);
   const today = new Date().toISOString().slice(0, 10);
-  const todayOrders = orders.filter(o => o.createdAt.startsWith(today));
-  const activeLots = lots.filter(l => l.status === 'active').length;
-  const unreadChats = chats.filter(c => c.unread > 0).length;
-
-  const chartData = salesData.slice(salesData.length - period);
-
-  const recentOrders = [...orders].slice(0, 10);
-
-  const recentChats = chats.slice(0, 5);
+  const todayOrders = useMemo(() => orders.filter(order => order.createdAt.startsWith(today)), [today]);
+  const activeLots = useMemo(() => lots.filter(lot => lot.status === 'active').length, []);
+  const unreadChats = useMemo(() => chats.filter(chat => chat.unread > 0).length, []);
+  const recentOrders = useMemo(() => [...orders].slice(0, 8), []);
+  const recentChats = useMemo(() => chats.slice(0, 6), []);
+  const chartData = useMemo(() => salesData.slice(salesData.length - period), [period]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
-      style={{ padding: '24px', minHeight: '100vh', background: 'transparent', color: '#fff', fontFamily: 'var(--font-sans)' }}
-    >
-      <h1 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '24px', color: '#fff' }}>Дашборд</h1>
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }}>
+      <PageShell>
+        <PageHeader>
+          <PageTitle
+            title="Дашборд"
+            subtitle="Оперативная сводка по выручке, заказам, лотам и коммуникациям по всем аккаунтам."
+          />
+          <ToolbarRow>
+            {([7, 30, 90] as const).map(value => (
+              <button
+                key={value}
+                className={period === value ? 'platform-btn-primary' : 'platform-btn-secondary'}
+                onClick={() => setPeriod(value)}
+              >
+                {value} дней
+              </button>
+            ))}
+          </ToolbarRow>
+        </PageHeader>
 
-      {/* Metrics Row */}
-      <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', marginBottom: '24px', paddingBottom: '4px' }}>
-        {/* Общий баланс */}
-        <div style={{ ...CARD_STYLE, minWidth: '200px', flex: '1' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-            <div style={{ background: 'rgba(34,197,94,0.15)', borderRadius: '8px', padding: '8px' }}>
-              <Wallet size={20} color="#22c55e" />
+        <KpiGrid>
+          <KpiCard>
+            <div className="flex items-center justify-between gap-2">
+              <span className="platform-kpi-meta">Общий баланс</span>
+              <Wallet size={16} color="var(--pf-accent)" />
             </div>
-            <span style={{ color: 'var(--pf-text-muted)', fontSize: '13px' }}>Общий баланс</span>
-          </div>
-          <div style={{ fontSize: '26px', fontWeight: 700 }}>{totalBalance.toLocaleString('ru-RU')}₽</div>
-          <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px', marginTop: '4px' }}>2 аккаунта</div>
-        </div>
+            <div className="text-[26px] font-extrabold tracking-tight">{totalBalance.toLocaleString('ru-RU')} ₽</div>
+            <div className="platform-kpi-meta">{accounts.length} аккаунта в управлении</div>
+          </KpiCard>
 
-        {/* Заказов сегодня */}
-        <div style={{ ...CARD_STYLE, minWidth: '200px', flex: '1' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-            <div style={{ background: 'rgba(59,130,246,0.18)', borderRadius: '8px', padding: '8px' }}>
-              <ShoppingCart size={20} color="var(--pf-accent)" />
+          <KpiCard>
+            <div className="flex items-center justify-between gap-2">
+              <span className="platform-kpi-meta">Заказов сегодня</span>
+              <ShoppingCart size={16} color="var(--pf-accent)" />
             </div>
-            <span style={{ color: 'var(--pf-text-muted)', fontSize: '13px' }}>Заказов сегодня</span>
-          </div>
-          <div style={{ fontSize: '26px', fontWeight: 700 }}>{todayOrders.length}</div>
-          <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px', marginTop: '4px' }}>
-            {todayOrders.reduce((s, o) => s + o.amount, 0).toLocaleString('ru-RU')}₽
-          </div>
-        </div>
-
-        {/* Активных лотов */}
-        <div style={{ ...CARD_STYLE, minWidth: '200px', flex: '1' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-            <div style={{ background: 'rgba(59,130,246,0.18)', borderRadius: '8px', padding: '8px' }}>
-              <Package size={20} color="var(--pf-accent)" />
+            <div className="text-[26px] font-extrabold tracking-tight">{todayOrders.length}</div>
+            <div className="platform-kpi-meta">
+              {todayOrders.reduce((sum, order) => sum + order.amount, 0).toLocaleString('ru-RU')} ₽ за день
             </div>
-            <span style={{ color: 'var(--pf-text-muted)', fontSize: '13px' }}>Активных лотов</span>
-          </div>
-          <div style={{ fontSize: '26px', fontWeight: 700 }}>{activeLots}</div>
-          <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px', marginTop: '4px' }}>из {lots.length} лотов</div>
-        </div>
+          </KpiCard>
 
-        {/* Сообщений без ответа */}
-        <div style={{ ...CARD_STYLE, minWidth: '200px', flex: '1' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-            <div style={{ background: unreadChats > 0 ? 'rgba(239,68,68,0.15)' : 'rgba(59,130,246,0.18)', borderRadius: '8px', padding: '8px' }}>
-              <MessageSquare size={20} color={unreadChats > 0 ? '#ef4444' : 'var(--pf-accent)'} />
+          <KpiCard>
+            <div className="flex items-center justify-between gap-2">
+              <span className="platform-kpi-meta">Активные лоты</span>
+              <Package size={16} color="var(--pf-accent)" />
             </div>
-            <span style={{ color: 'var(--pf-text-muted)', fontSize: '13px' }}>Без ответа</span>
-            {unreadChats > 0 && (
-              <span style={{ background: '#ef4444', color: '#fff', borderRadius: '12px', padding: '2px 8px', fontSize: '11px', fontWeight: 700, marginLeft: 'auto' }}>
-                {unreadChats}
-              </span>
-            )}
-          </div>
-          <div style={{ fontSize: '26px', fontWeight: 700 }}>{unreadChats}</div>
-          <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px', marginTop: '4px' }}>чатов ждут ответа</div>
-        </div>
+            <div className="text-[26px] font-extrabold tracking-tight">{activeLots}</div>
+            <div className="platform-kpi-meta">из {lots.length} опубликованных</div>
+          </KpiCard>
 
-        {/* Статус бота */}
-        <div style={{ ...CARD_STYLE, minWidth: '200px', flex: '1' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-            <div style={{ background: 'rgba(34,197,94,0.15)', borderRadius: '8px', padding: '8px' }}>
-              <Bot size={20} color="#22c55e" />
+          <KpiCard>
+            <div className="flex items-center justify-between gap-2">
+              <span className="platform-kpi-meta">Чаты без ответа</span>
+              <MessageSquare size={16} color={unreadChats > 0 ? 'var(--pf-danger)' : 'var(--pf-accent)'} />
             </div>
-            <span style={{ color: 'var(--pf-text-muted)', fontSize: '13px' }}>Статус бота</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '22px', fontWeight: 700 }}>
-            <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#22c55e', display: 'inline-block', boxShadow: '0 0 8px #22c55e' }} />
-            Работает
-          </div>
-          <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px', marginTop: '4px' }}>uptime 99.9%</div>
-        </div>
-      </div>
+            <div className="text-[26px] font-extrabold tracking-tight">{unreadChats}</div>
+            <div className="platform-kpi-meta">{unreadChats > 0 ? 'Нужна реакция команды' : 'Все диалоги обработаны'}</div>
+          </KpiCard>
+        </KpiGrid>
 
-      {/* Main Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '20px' }}>
-        {/* LEFT */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Sales Chart */}
-          <div style={CARD_STYLE}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <TrendingUp size={18} color="var(--pf-accent)" />
-                <span style={{ fontWeight: 600, fontSize: '16px' }}>График продаж</span>
-              </div>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                {([7, 30, 90] as const).map(p => (
-                  <button
-                    key={p}
-                    onClick={() => setPeriod(p)}
-                    style={{
-                      padding: '5px 12px',
-                      borderRadius: '6px',
-                      border: period === p ? 'none' : '1px solid rgba(96,165,250,0.4)',
-                      background: period === p ? 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))' : 'transparent',
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <div className="grid gap-4">
+            <SectionCard>
+              <ToolbarRow className="mb-3 justify-between">
+                <span className="inline-flex items-center gap-2 text-[15px] font-semibold">
+                  <TrendingUp size={16} color="var(--pf-accent)" />
+                  Динамика выручки
+                </span>
+                <span className="platform-kpi-meta">Период: {period} дней</span>
+              </ToolbarRow>
+
+              <ResponsiveContainer width="100%" height={260}>
+                <AreaChart data={chartData} margin={{ top: 5, right: 6, left: -6, bottom: 2 }}>
+                  <defs>
+                    <linearGradient id="pfRevenueGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="rgba(94,147,255,0.5)" />
+                      <stop offset="100%" stopColor="rgba(94,147,255,0.04)" />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.14)" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fill: 'var(--pf-text-dim)', fontSize: 11 }}
+                    tickFormatter={value => value.slice(5)}
+                    interval={Math.floor(chartData.length / 6)}
+                  />
+                  <YAxis tick={{ fill: 'var(--pf-text-dim)', fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{
+                      background: 'var(--pf-surface)',
+                      border: '1px solid var(--pf-border-strong)',
+                      borderRadius: 10,
                       color: '#fff',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: 600,
                     }}
-                  >
-                    {p} дней
-                  </button>
+                    formatter={(value: number) => [`${value.toLocaleString('ru-RU')} ₽`, 'Выручка']}
+                  />
+                  <Area type="monotone" dataKey="revenue" stroke="var(--pf-accent)" strokeWidth={2} fill="url(#pfRevenueGradient)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </SectionCard>
+
+            <SectionCard>
+              <ToolbarRow className="mb-3 justify-between">
+                <span className="inline-flex items-center gap-2 text-[15px] font-semibold">
+                  <BarChart2 size={16} color="var(--pf-accent)" />
+                  Последние заказы
+                </span>
+                <button className="platform-btn-secondary" onClick={() => router.push('/platform/orders')}>
+                  Открыть заказы
+                </button>
+              </ToolbarRow>
+
+              <DataTableWrap>
+                <table className="platform-table" style={{ minWidth: 760 }}>
+                  <thead>
+                    <tr>
+                      <th>Заказ</th>
+                      <th>Товар</th>
+                      <th>Покупатель</th>
+                      <th style={{ textAlign: 'right' }}>Сумма</th>
+                      <th>Статус</th>
+                      <th style={{ textAlign: 'right' }}>Время</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentOrders.map(order => (
+                      <tr key={order.id}>
+                        <td>{order.id}</td>
+                        <td style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {order.lot}
+                        </td>
+                        <td>
+                          <div className="inline-flex items-center gap-2">
+                            <span className="platform-avatar" style={{ width: 24, height: 24, fontSize: 10 }}>
+                              {order.buyerAvatar}
+                            </span>
+                            {order.buyer}
+                          </div>
+                        </td>
+                        <td style={{ textAlign: 'right', fontWeight: 700 }}>{order.amount} ₽</td>
+                        <td>
+                          <span className={statusClass[order.status] ?? 'platform-chip'}>
+                            {statusLabel[order.status] ?? order.status}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'right', color: 'var(--pf-text-dim)' }}>{formatDate(order.createdAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </DataTableWrap>
+            </SectionCard>
+          </div>
+
+          <div className="grid gap-4">
+            <SectionCard>
+              <div className="mb-3 text-[15px] font-semibold">Аккаунты</div>
+              <div className="grid gap-2">
+                {accounts.map(account => (
+                  <Panel key={account.id} className="p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <div className="font-semibold">{account.username}</div>
+                        <div className="platform-kpi-meta">
+                          {account.balance.toLocaleString('ru-RU')} ₽ · {account.lotsCount} лотов
+                        </div>
+                      </div>
+                      <span className={account.online ? 'badge-active' : 'badge-inactive'}>
+                        {account.online ? 'Онлайн' : 'Оффлайн'}
+                      </span>
+                    </div>
+                  </Panel>
                 ))}
               </div>
-            </div>
-            <ResponsiveContainer width="100%" height={250}>
-              <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-                <defs>
-                  <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="rgba(96,165,250,0.44)" />
-                    <stop offset="100%" stopColor="rgba(96,165,250,0)" />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(59,130,246,0.12)" />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fill: 'var(--pf-text-muted)', fontSize: 11 }}
-                  tickFormatter={v => v.slice(5)}
-                  interval={Math.floor(chartData.length / 6)}
-                />
-                <YAxis tick={{ fill: 'var(--pf-text-muted)', fontSize: 11 }} />
-                <Tooltip
-                  contentStyle={{ background: 'var(--pf-surface)', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '8px', color: '#fff' }}
-                  formatter={(v: number) => [`${v.toLocaleString('ru-RU')}₽`, 'Выручка']}
-                />
-                <Area type="monotone" dataKey="revenue" stroke="var(--pf-accent)" fill="url(#salesGradient)" strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+            </SectionCard>
 
-          {/* Recent Orders */}
-          <div style={CARD_STYLE}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-              <ShoppingCart size={18} color="var(--pf-accent)" />
-              <span style={{ fontWeight: 600, fontSize: '16px' }}>Последние заказы</span>
-            </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                <thead>
-                  <tr style={{ color: 'var(--pf-text-muted)', borderBottom: '1px solid rgba(59,130,246,0.18)' }}>
-                    <th style={{ textAlign: 'left', padding: '8px 6px', fontWeight: 500 }}>Заказ</th>
-                    <th style={{ textAlign: 'left', padding: '8px 6px', fontWeight: 500 }}>Товар</th>
-                    <th style={{ textAlign: 'left', padding: '8px 6px', fontWeight: 500 }}>Покупатель</th>
-                    <th style={{ textAlign: 'right', padding: '8px 6px', fontWeight: 500 }}>Сумма</th>
-                    <th style={{ textAlign: 'center', padding: '8px 6px', fontWeight: 500 }}>Статус</th>
-                    <th style={{ textAlign: 'right', padding: '8px 6px', fontWeight: 500 }}>Время</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentOrders.map(o => (
-                    <tr key={o.id} style={{ borderBottom: '1px solid rgba(59,130,246,0.1)' }}>
-                      <td style={{ padding: '10px 6px', color: 'var(--pf-text-muted)' }}>{o.id}</td>
-                      <td style={{ padding: '10px 6px', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.lot}</td>
-                      <td style={{ padding: '10px 6px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700 }}>
-                            {o.buyerAvatar}
-                          </div>
-                          {o.buyer}
+            <SectionCard>
+              <ToolbarRow className="mb-3 justify-between">
+                <span className="text-[15px] font-semibold">Последние диалоги</span>
+                <button className="platform-btn-secondary" onClick={() => router.push('/platform/chats')}>
+                  Чаты
+                </button>
+              </ToolbarRow>
+
+              <div className="grid gap-2">
+                {recentChats.length === 0 && <EmptyState className="py-4">Диалоги пока отсутствуют</EmptyState>}
+                {recentChats.map(chat => (
+                  <Panel key={chat.id} className="p-3">
+                    <div className="flex items-start gap-3">
+                      <span className="platform-avatar">{chat.buyerAvatar}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <strong className="text-[13px]">{chat.buyer}</strong>
+                          <span className="platform-kpi-meta">{chat.lastTime}</span>
                         </div>
-                      </td>
-                      <td style={{ padding: '10px 6px', textAlign: 'right', fontWeight: 600 }}>{o.amount}₽</td>
-                      <td style={{ padding: '10px 6px', textAlign: 'center' }}>
-                        <span style={{
-                          background: `${statusColor[o.status]}20`,
-                          color: statusColor[o.status],
-                          borderRadius: '6px',
-                          padding: '3px 8px',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                        }}>
-                          {statusLabel[o.status]}
-                        </span>
-                      </td>
-                      <td style={{ padding: '10px 6px', textAlign: 'right', color: 'var(--pf-text-muted)' }}>{formatDate(o.createdAt)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        <p
+                          className="platform-kpi-meta"
+                          style={{ marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        >
+                          {chat.lastMessage}
+                        </p>
+                      </div>
+                      {chat.unread > 0 && <span className="badge-dispute">{chat.unread}</span>}
+                    </div>
+                  </Panel>
+                ))}
+              </div>
+            </SectionCard>
           </div>
         </div>
-
-        {/* RIGHT */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Accounts */}
-          <div style={CARD_STYLE}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-              <ArrowUpRight size={18} color="var(--pf-accent)" />
-              <span style={{ fontWeight: 600, fontSize: '16px' }}>Аккаунты FunPay</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {accounts.map(acc => (
-                <div key={acc.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(59,130,246,0.08)', borderRadius: '10px', border: '1px solid rgba(59,130,246,0.14)' }}>
-                  <div style={{ position: 'relative' }}>
-                    <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 700 }}>
-                      {acc.avatar}
-                    </div>
-                    <span style={{ position: 'absolute', bottom: '0', right: '0', width: '12px', height: '12px', borderRadius: '50%', background: acc.online ? '#22c55e' : '#6b7280', border: '2px solid var(--pf-surface)' }} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: '14px' }}>{acc.username}</div>
-                    <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px' }}>{acc.lotsCount} лотов • ⭐ {acc.rating}</div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontWeight: 700, color: '#22c55e' }}>{acc.balance.toLocaleString('ru-RU')}₽</div>
-                    <div style={{ color: 'var(--pf-text-muted)', fontSize: '11px' }}>{acc.sales} продаж</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Recent Chats */}
-          <div style={CARD_STYLE}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-              <MessageCircle size={18} color="var(--pf-accent)" />
-              <span style={{ fontWeight: 600, fontSize: '16px' }}>Новые сообщения</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
-              {recentChats.map(chat => (
-                <div key={chat.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', cursor: 'pointer' }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: chat.accountId === 'acc1' ? 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))' : 'linear-gradient(135deg, #7c3aed, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, flexShrink: 0 }}>
-                    {chat.buyerAvatar}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontWeight: 600, fontSize: '13px' }}>{chat.buyer}</span>
-                      <span style={{ color: 'var(--pf-text-muted)', fontSize: '11px' }}>{chat.lastTime}</span>
-                    </div>
-                    <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{chat.lastMessage}</div>
-                  </div>
-                  {chat.unread > 0 && (
-                    <span style={{ background: '#ef4444', color: '#fff', borderRadius: '12px', padding: '2px 7px', fontSize: '11px', fontWeight: 700, flexShrink: 0 }}>
-                      {chat.unread}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-            <button onClick={() => router.push('/platform/chats')} style={{ ...BTN_PRIMARY, width: '100%' }}>
-              Перейти в чаты
-            </button>
-          </div>
-
-          {/* Quick Actions */}
-          <div style={CARD_STYLE}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-              <Zap size={18} color="var(--pf-accent)" />
-              <span style={{ fontWeight: 600, fontSize: '16px' }}>Быстрые действия</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <button style={{ ...BTN_PRIMARY, display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', padding: '10px 16px' }}>
-                <ArrowUpRight size={16} />
-                Поднять все лоты
-              </button>
-              <button style={{
-                background: 'transparent',
-                color: 'var(--pf-text-muted)',
-                border: '1px solid rgba(96,165,250,0.4)',
-                borderRadius: '8px',
-                padding: '10px 16px',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-sans)',
-                fontWeight: 600,
-                fontSize: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                justifyContent: 'center',
-              }}>
-                <MessageSquare size={16} />
-                Включить автоответы
-              </button>
-              <button style={{
-                background: 'transparent',
-                color: 'var(--pf-text-muted)',
-                border: '1px solid rgba(96,165,250,0.4)',
-                borderRadius: '8px',
-                padding: '10px 16px',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-sans)',
-                fontWeight: 600,
-                fontSize: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                justifyContent: 'center',
-              }}>
-                <Gift size={16} />
-                Выдать товары
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      </PageShell>
     </motion.div>
   );
 }
+

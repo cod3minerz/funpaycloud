@@ -49,7 +49,7 @@ export default function PlatformTopBar({ onOpenMobileSidebar }: PlatformTopBarPr
       <div className="platform-breadcrumbs min-w-0">
         <button
           type="button"
-          className="platform-topbar-btn md:hidden"
+          className="platform-topbar-btn platform-mobile-only"
           onClick={onOpenMobileSidebar}
           aria-label="Открыть меню"
         >

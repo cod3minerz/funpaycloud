@@ -37,7 +37,13 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
     >
       <Sidebar collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(prev => !prev)} />
 
-      {mobileSidebarOpen && <button className="platform-mobile-overlay md:hidden" onClick={() => setMobileSidebarOpen(false)} aria-label="Закрыть меню" />}
+      {mobileSidebarOpen && (
+        <button
+          className="platform-mobile-overlay platform-mobile-only"
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-label="Закрыть меню"
+        />
+      )}
 
       <Sidebar mobile open={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
 
@@ -46,7 +52,7 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
         <main className="platform-main-scroll">{children}</main>
       </div>
 
-      <div className="md:hidden">
+      <div className="platform-mobile-only">
         <MobileBottomBar />
       </div>
     </div>

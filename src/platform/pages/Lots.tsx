@@ -3,12 +3,22 @@ import { motion } from 'motion/react';
 import { ArrowUpCircle, Clock, Edit2, Search, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { Switch } from '@/app/components/ui/switch';
-import { lots as initialLots, Lot } from '@/platform/data/demoData';
+import { Lot, lots as initialLots } from '@/platform/data/demoData';
+import {
+  DataTableWrap,
+  EmptyState,
+  PageHeader,
+  PageShell,
+  PageTitle,
+  Panel,
+  SectionCard,
+  ToolbarRow,
+} from '@/platform/components/primitives';
 
-function formatTime(secs: number) {
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const s = secs % 60;
+function formatTime(seconds: number) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
@@ -25,9 +35,9 @@ export default function Lots() {
   useEffect(() => {
     if (!autoRaise) return;
     const timer = setInterval(() => {
-      setCountdown(current => {
-        if (current <= 0) return interval * 3600;
-        return current - 1;
+      setCountdown(prev => {
+        if (prev <= 0) return interval * 3600;
+        return prev - 1;
       });
     }, 1000);
     return () => clearInterval(timer);
@@ -42,7 +52,9 @@ export default function Lots() {
   }, [lots, search, statusFilter]);
 
   function toggleStatus(id: string) {
-    setLots(prev => prev.map(lot => (lot.id === id ? { ...lot, status: lot.status === 'active' ? 'inactive' : 'active' } : lot)));
+    setLots(prev =>
+      prev.map(lot => (lot.id === id ? { ...lot, status: lot.status === 'active' ? 'inactive' : 'active' } : lot)),
+    );
   }
 
   function openEdit(lot: Lot) {
@@ -61,199 +73,188 @@ export default function Lots() {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
-      style={{ padding: '24px', minHeight: '100vh', background: 'transparent', color: '#fff', fontFamily: 'var(--font-sans)' }}
-    >
-      <section className="platform-card" style={{ marginBottom: 16 }}>
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <h1 className="platform-page-title">Лоты</h1>
-            <p className="platform-page-subtitle">Управление прайсом, статусами и автоподнятием в единой панели.</p>
-          </div>
-
-          <div className="platform-panel" style={{ padding: 12, minWidth: 340 }}>
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }}>
+      <PageShell>
+        <PageHeader>
+          <PageTitle
+            title="Лоты"
+            subtitle="Управление ассортиментом, ценой, статусами и автоподнятием в единой операционной панели."
+          />
+          <Panel className="w-full max-w-[360px] p-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="inline-flex items-center gap-2">
+              <div className="inline-flex items-center gap-2 text-[13px] font-semibold">
                 <ArrowUpCircle size={15} color="var(--pf-text-muted)" />
-                <span style={{ fontWeight: 700, fontSize: 13 }}>Автоподнятие</span>
+                Автоподнятие
               </div>
               <Switch checked={autoRaise} onCheckedChange={setAutoRaise} />
             </div>
-
-            <div className="flex items-center gap-3" style={{ marginTop: 10 }}>
-              <span style={{ color: 'var(--pf-text-muted)', fontSize: 12 }}>Интервал</span>
+            <div className="mt-2 flex items-center gap-3">
+              <span className="platform-kpi-meta">Интервал</span>
               <input
                 type="range"
                 min={1}
                 max={24}
                 value={interval}
-                onChange={e => {
-                  const next = Number(e.target.value);
+                onChange={event => {
+                  const next = Number(event.target.value);
                   setIntervalHours(next);
                   setCountdown(next * 3600);
                 }}
                 style={{ width: 130, accentColor: 'var(--pf-accent)' }}
               />
-              <span style={{ fontSize: 12, fontWeight: 700 }}>{interval}ч</span>
+              <span className="text-[12px] font-semibold">{interval}ч</span>
             </div>
-
-            <div className="flex items-center gap-2" style={{ marginTop: 8, color: 'var(--pf-text-muted)', fontSize: 12 }}>
-              <Clock size={13} />
-              <span>{autoRaise ? `Следующее поднятие через ${formatTime(countdown)}` : 'Автоподнятие выключено'}</span>
+            <div className="mt-2 inline-flex items-center gap-2 text-[12px] text-[var(--pf-text-muted)]">
+              <Clock size={12} />
+              {autoRaise ? `Следующее поднятие через ${formatTime(countdown)}` : 'Автоподнятие выключено'}
             </div>
-          </div>
-        </div>
-      </section>
+          </Panel>
+        </PageHeader>
 
-      <section className="platform-card" style={{ marginBottom: 16 }}>
-        <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
-          <label className="platform-search max-w-none" style={{ minHeight: 40 }}>
-            <Search size={15} color="var(--pf-text-dim)" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по лотам" aria-label="Поиск лота" />
-          </label>
+        <SectionCard>
+          <ToolbarRow>
+            <label className="platform-search platform-toolbar-grow max-w-none">
+              <Search size={14} color="var(--pf-text-dim)" />
+              <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Поиск по лотам" />
+            </label>
 
-          <select className="platform-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value as typeof statusFilter)} style={{ minWidth: 180 }}>
-            <option value="all">Все статусы</option>
-            <option value="active">Активные</option>
-            <option value="inactive">Неактивные</option>
-          </select>
+            <select
+              className="platform-select"
+              value={statusFilter}
+              onChange={event => setStatusFilter(event.target.value as typeof statusFilter)}
+              style={{ maxWidth: 200 }}
+            >
+              <option value="all">Все статусы</option>
+              <option value="active">Активные</option>
+              <option value="inactive">Неактивные</option>
+            </select>
 
-          <button className="platform-btn-secondary">Найдено: {filtered.length}</button>
-        </div>
-      </section>
+            <span className="platform-chip">Найдено: {filtered.length}</span>
+          </ToolbarRow>
+        </SectionCard>
 
-      <section className="platform-card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table className="platform-table" style={{ minWidth: 900 }}>
-            <thead>
-              <tr>
-                <th style={{ width: 340 }}>Лот</th>
-                <th>Категория</th>
-                <th style={{ textAlign: 'right' }}>Цена</th>
-                <th style={{ textAlign: 'right' }}>Продажи / мес</th>
-                <th>Статус</th>
-                <th style={{ textAlign: 'right' }}>Действия</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(lot => (
-                <tr key={lot.id}>
-                  <td>
-                    <div className="flex items-start gap-3">
-                      <span style={{ fontSize: 22, lineHeight: 1 }}>{lot.categoryIcon}</span>
-                      <div>
-                        <div style={{ fontWeight: 700 }}>{lot.title}</div>
-                        <div style={{ color: 'var(--pf-text-muted)', fontSize: 12 }}>{lot.description}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td><span className="platform-chip">{lot.category}</span></td>
-                  <td style={{ textAlign: 'right', fontWeight: 700 }}>{lot.price} ₽</td>
-                  <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>{lot.salesMonth}</td>
-                  <td>
-                    <div className="inline-flex items-center gap-2">
-                      <Switch checked={lot.status === 'active'} onCheckedChange={() => toggleStatus(lot.id)} />
-                      <span className={lot.status === 'active' ? 'badge-active' : 'badge-inactive'}>
-                        {lot.status === 'active' ? 'Активен' : 'Неактивен'}
-                      </span>
-                    </div>
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <div className="inline-flex items-center gap-2">
-                      <button className="platform-topbar-btn" title="Редактировать" onClick={() => openEdit(lot)}>
-                        <Edit2 size={14} />
-                      </button>
-                      <button className="platform-topbar-btn" title="Поднять" style={{ color: '#60a5fa', borderColor: 'rgba(96,165,250,0.4)' }}>
-                        <ArrowUpCircle size={14} />
-                      </button>
-                      <button className="platform-topbar-btn" title="Удалить" style={{ color: '#fb7185', borderColor: 'rgba(251,113,133,0.35)' }} onClick={() => deleteLot(lot.id)}>
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-
-              {filtered.length === 0 && (
+        <SectionCard className="p-0">
+          <DataTableWrap>
+            <table className="platform-table" style={{ minWidth: 960 }}>
+              <thead>
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '34px 12px', color: 'var(--pf-text-muted)' }}>
-                    По текущим фильтрам лоты не найдены.
-                  </td>
+                  <th style={{ width: 340 }}>Лот</th>
+                  <th>Категория</th>
+                  <th style={{ textAlign: 'right' }}>Цена</th>
+                  <th style={{ textAlign: 'right' }}>Продажи / мес</th>
+                  <th>Статус</th>
+                  <th style={{ textAlign: 'right' }}>Действия</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+              </thead>
+              <tbody>
+                {filtered.map(lot => (
+                  <tr key={lot.id}>
+                    <td>
+                      <div className="flex items-start gap-3">
+                        <span style={{ fontSize: 20, lineHeight: 1 }}>{lot.categoryIcon}</span>
+                        <div>
+                          <div className="font-semibold">{lot.title}</div>
+                          <div className="text-[12px] text-[var(--pf-text-muted)]">{lot.description}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="platform-chip">{lot.category}</span>
+                    </td>
+                    <td style={{ textAlign: 'right', fontWeight: 700 }}>{lot.price} ₽</td>
+                    <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>{lot.salesMonth}</td>
+                    <td>
+                      <div className="inline-flex items-center gap-2">
+                        <Switch checked={lot.status === 'active'} onCheckedChange={() => toggleStatus(lot.id)} />
+                        <span className={lot.status === 'active' ? 'badge-active' : 'badge-inactive'}>
+                          {lot.status === 'active' ? 'Активен' : 'Неактивен'}
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="inline-flex w-full items-center justify-end gap-2">
+                        <button className="platform-topbar-btn" onClick={() => openEdit(lot)} title="Редактировать">
+                          <Edit2 size={14} />
+                        </button>
+                        <button className="platform-topbar-btn" title="Поднять">
+                          <ArrowUpCircle size={14} />
+                        </button>
+                        <button className="platform-topbar-btn" onClick={() => deleteLot(lot.id)} title="Удалить">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </DataTableWrap>
+          {filtered.length === 0 && <EmptyState>Лоты по текущим фильтрам не найдены.</EmptyState>}
+        </SectionCard>
+      </PageShell>
 
       <Dialog open={!!editLot} onOpenChange={() => setEditLot(null)}>
-        <DialogContent className="platform-dialog-content" style={{ maxWidth: '560px' }}>
+        <DialogContent className="platform-dialog-content" style={{ maxWidth: 560 }}>
           <DialogHeader>
-            <DialogTitle style={{ color: '#fff' }}>Редактировать лот</DialogTitle>
+            <DialogTitle>Редактировать лот</DialogTitle>
           </DialogHeader>
-
           {editLot && (
             <div className="grid gap-3">
               <div>
-                <label style={{ color: 'var(--pf-text-muted)', fontSize: 13, display: 'block', marginBottom: 6 }}>Название</label>
+                <label className="mb-1 block text-[13px] text-[var(--pf-text-muted)]">Название</label>
                 <input
                   className="platform-input"
                   value={editForm.title ?? ''}
-                  onChange={e => setEditForm(form => ({ ...form, title: e.target.value }))}
+                  onChange={event => setEditForm(prev => ({ ...prev, title: event.target.value }))}
                 />
               </div>
-
               <div>
-                <label style={{ color: 'var(--pf-text-muted)', fontSize: 13, display: 'block', marginBottom: 6 }}>Описание</label>
+                <label className="mb-1 block text-[13px] text-[var(--pf-text-muted)]">Описание</label>
                 <textarea
                   className="platform-textarea"
                   value={editForm.description ?? ''}
-                  onChange={e => setEditForm(form => ({ ...form, description: e.target.value }))}
+                  onChange={event => setEditForm(prev => ({ ...prev, description: event.target.value }))}
                   rows={3}
                 />
               </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <label style={{ color: 'var(--pf-text-muted)', fontSize: 13, display: 'block', marginBottom: 6 }}>Цена (₽)</label>
+                  <label className="mb-1 block text-[13px] text-[var(--pf-text-muted)]">Цена</label>
                   <input
                     className="platform-input"
                     type="number"
                     value={editForm.price ?? ''}
-                    onChange={e => setEditForm(form => ({ ...form, price: Number(e.target.value) }))}
+                    onChange={event => setEditForm(prev => ({ ...prev, price: Number(event.target.value) }))}
                   />
                 </div>
-
                 <div>
-                  <label style={{ color: 'var(--pf-text-muted)', fontSize: 13, display: 'block', marginBottom: 6 }}>Статус</label>
+                  <label className="mb-1 block text-[13px] text-[var(--pf-text-muted)]">Статус</label>
                   <select
                     className="platform-select"
                     value={editForm.status ?? 'inactive'}
-                    onChange={e => setEditForm(form => ({ ...form, status: e.target.value as Lot['status'] }))}
+                    onChange={event => setEditForm(prev => ({ ...prev, status: event.target.value as Lot['status'] }))}
                   >
                     <option value="active">Активен</option>
                     <option value="inactive">Неактивен</option>
                   </select>
                 </div>
               </div>
-
               <div>
-                <label style={{ color: 'var(--pf-text-muted)', fontSize: 13, display: 'block', marginBottom: 6 }}>Автовыдача (шаблон)</label>
+                <label className="mb-1 block text-[13px] text-[var(--pf-text-muted)]">Автовыдача</label>
                 <textarea
                   className="platform-textarea"
                   value={editForm.autoDelivery ?? ''}
-                  onChange={e => setEditForm(form => ({ ...form, autoDelivery: e.target.value }))}
-                  placeholder="Ключ активации или шаблон"
+                  onChange={event => setEditForm(prev => ({ ...prev, autoDelivery: event.target.value }))}
                   rows={2}
                 />
               </div>
-
-              <div className="flex gap-2" style={{ marginTop: 4 }}>
-                <button className="platform-btn-secondary" style={{ flex: 1 }} onClick={() => setEditLot(null)}>Отмена</button>
-                <button className="platform-btn-primary" style={{ flex: 1 }} onClick={saveEdit}>Сохранить</button>
+              <div className="mt-1 flex gap-2">
+                <button className="platform-btn-secondary" style={{ flex: 1 }} onClick={() => setEditLot(null)}>
+                  Отмена
+                </button>
+                <button className="platform-btn-primary" style={{ flex: 1 }} onClick={saveEdit}>
+                  Сохранить
+                </button>
               </div>
             </div>
           )}
@@ -262,3 +263,4 @@ export default function Lots() {
     </motion.div>
   );
 }
+

@@ -1,57 +1,70 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { Plus, Download, AlertTriangle, XCircle, Upload } from 'lucide-react';
-import { warehouseLots as initialWL, WarehouseLot, WarehouseItem } from '@/platform/data/demoData';
+import { AlertTriangle, Download, Plus, Upload, XCircle } from 'lucide-react';
 import { Switch } from '@/app/components/ui/switch';
+import { WarehouseItem, WarehouseLot, warehouseLots as initialWarehouseLots } from '@/platform/data/demoData';
+import {
+  DataTableWrap,
+  EmptyState,
+  KpiCard,
+  KpiGrid,
+  PageHeader,
+  PageShell,
+  PageTitle,
+  Panel,
+  SectionCard,
+  ToolbarRow,
+} from '@/platform/components/primitives';
 
-const CARD_STYLE: React.CSSProperties = {
-  background: 'var(--pf-surface)',
-  border: '1px solid var(--pf-border)',
-  borderRadius: '12px',
-  padding: '20px',
-};
-
-function maskValue(v: string) {
-  if (v.length <= 4) return v + '***';
-  return v.slice(0, 4) + '***';
+function maskValue(value: string) {
+  if (value.length <= 4) return `${value}***`;
+  return `${value.slice(0, 4)}***`;
 }
 
 export default function Warehouse() {
-  const [lots, setLots] = useState<WarehouseLot[]>(initialWL);
-  const [selectedLotId, setSelectedLotId] = useState<string | null>(initialWL[0]?.lotId ?? null);
+  const [lots, setLots] = useState<WarehouseLot[]>(initialWarehouseLots);
+  const [selectedLotId, setSelectedLotId] = useState<string | null>(initialWarehouseLots[0]?.lotId ?? null);
   const [addTab, setAddTab] = useState<'single' | 'list' | 'file'>('single');
   const [singleInput, setSingleInput] = useState('');
   const [listInput, setListInput] = useState('');
   const [dragOver, setDragOver] = useState(false);
 
-  const selectedLot = lots.find(l => l.lotId === selectedLotId) ?? null;
-
-  const available = selectedLot ? selectedLot.items.filter(i => i.status === 'available').length : 0;
-  const delivered = selectedLot ? selectedLot.items.filter(i => i.status === 'delivered').length : 0;
+  const selectedLot = useMemo(() => lots.find(lot => lot.lotId === selectedLotId) ?? null, [lots, selectedLotId]);
+  const available = selectedLot ? selectedLot.items.filter(item => item.status === 'available').length : 0;
+  const delivered = selectedLot ? selectedLot.items.filter(item => item.status === 'delivered').length : 0;
 
   function addSingle() {
     if (!singleInput.trim() || !selectedLotId) return;
     const item: WarehouseItem = { id: `wi-${Date.now()}`, value: singleInput.trim(), status: 'available' };
-    setLots(prev => prev.map(l => l.lotId === selectedLotId ? { ...l, items: [...l.items, item] } : l));
+    setLots(prev => prev.map(lot => (lot.lotId === selectedLotId ? { ...lot, items: [...lot.items, item] } : lot)));
     setSingleInput('');
   }
 
   function addList() {
     if (!listInput.trim() || !selectedLotId) return;
-    const lines = listInput.split('\n').map(s => s.trim()).filter(Boolean);
-    const items: WarehouseItem[] = lines.map((v, i) => ({ id: `wi-${Date.now()}-${i}`, value: v, status: 'available' }));
-    setLots(prev => prev.map(l => l.lotId === selectedLotId ? { ...l, items: [...l.items, ...items] } : l));
+    const lines = listInput
+      .split('\n')
+      .map(row => row.trim())
+      .filter(Boolean);
+    const items: WarehouseItem[] = lines.map((value, idx) => ({
+      id: `wi-${Date.now()}-${idx}`,
+      value,
+      status: 'available',
+    }));
+    setLots(prev => prev.map(lot => (lot.lotId === selectedLotId ? { ...lot, items: [...lot.items, ...items] } : lot)));
     setListInput('');
   }
 
-  function updateTemplate(val: string) {
+  function updateTemplate(nextTemplate: string) {
     if (!selectedLotId) return;
-    setLots(prev => prev.map(l => l.lotId === selectedLotId ? { ...l, messageTemplate: val } : l));
+    setLots(prev => prev.map(lot => (lot.lotId === selectedLotId ? { ...lot, messageTemplate: nextTemplate } : lot)));
   }
 
-  function toggleAutoDelivery(val: boolean) {
+  function toggleAutoDelivery(nextValue: boolean) {
     if (!selectedLotId) return;
-    setLots(prev => prev.map(l => l.lotId === selectedLotId ? { ...l, autoDeliveryEnabled: val } : l));
+    setLots(prev =>
+      prev.map(lot => (lot.lotId === selectedLotId ? { ...lot, autoDeliveryEnabled: nextValue } : lot)),
+    );
   }
 
   function livePreview(template: string) {
@@ -61,247 +74,261 @@ export default function Warehouse() {
       .replace('{номер_заказа}', 'ORD-1001');
   }
 
-  function availableBadgeColor(count: number) {
-    if (count === 0) return '#ef4444';
-    if (count < 10) return '#eab308';
-    return '#22c55e';
-  }
-
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
-      style={{ display: 'flex', minHeight: '100vh', background: 'transparent', color: '#fff', fontFamily: 'var(--font-sans)' }}
-    >
-      {/* Left panel */}
-      <div style={{ width: '260px', minWidth: '260px', borderRight: '1px solid var(--pf-border)', background: 'var(--pf-surface)', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '20px 16px', borderBottom: '1px solid rgba(59,130,246,0.14)' }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#fff' }}>Склад товаров</h2>
-          <div style={{ color: 'var(--pf-text-muted)', fontSize: '12px', marginTop: '4px' }}>{lots.length} лотов со складом</div>
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          {lots.map(lot => {
-            const avail = lot.items.filter(i => i.status === 'available').length;
-            return (
-              <div
-                key={lot.lotId}
-                onClick={() => setSelectedLotId(lot.lotId)}
-                style={{
-                  padding: '14px 16px',
-                  cursor: 'pointer',
-                  borderBottom: '1px solid rgba(59,130,246,0.08)',
-                  background: selectedLotId === lot.lotId ? 'rgba(59,130,246,0.14)' : 'transparent',
-                  borderLeft: `3px solid ${selectedLotId === lot.lotId ? 'var(--pf-accent)' : 'transparent'}`,
-                  transition: 'background 0.15s',
-                }}
-              >
-                <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '6px', lineHeight: 1.3 }}>{lot.lotTitle}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ background: `${availableBadgeColor(avail)}20`, color: availableBadgeColor(avail), borderRadius: '12px', padding: '2px 8px', fontSize: '11px', fontWeight: 700 }}>
-                    {avail} доступно
-                  </span>
-                  {lot.autoDeliveryEnabled && (
-                    <span style={{ background: 'rgba(59,130,246,0.18)', color: 'var(--pf-text-muted)', borderRadius: '12px', padding: '2px 6px', fontSize: '10px', fontWeight: 600 }}>
-                      авто
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+    <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
+      <PageShell>
+        <PageHeader>
+          <PageTitle
+            title="Склад"
+            subtitle="Управление остатками и авто-выдачей в единой структуре: лоты, пополнение и шаблоны сообщений."
+          />
+          <span className="platform-chip">Лотов на складе: {lots.length}</span>
+        </PageHeader>
 
-      {/* Right panel */}
-      <div style={{ flex: 1, padding: '24px', overflowY: 'auto', minWidth: 0 }}>
-        {!selectedLot ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '400px', color: 'var(--pf-text-muted)' }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📦</div>
-            <div style={{ fontSize: '16px', fontWeight: 600, color: '#fff' }}>Выберите лот</div>
-          </div>
-        ) : (
-          <>
-            {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-              <div>
-                <h1 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '4px' }}>{selectedLot.lotTitle}</h1>
-                <div style={{ color: 'var(--pf-text-muted)', fontSize: '13px' }}>
-                  Доступно: <span style={{ color: '#22c55e', fontWeight: 700 }}>{available}</span> / Выдано: <span style={{ color: 'var(--pf-text-muted)', fontWeight: 700 }}>{delivered}</span>
-                </div>
-              </div>
-              <button
-                style={{ background: 'rgba(59,130,246,0.14)', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '8px', padding: '8px 14px', color: 'var(--pf-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600 }}
-              >
-                <Download size={14} /> Скачать выданные
-              </button>
-            </div>
-
-            {/* Alerts */}
-            {available === 0 && (
-              <div style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <XCircle size={18} color="#ef4444" />
-                <span style={{ color: '#ef4444', fontWeight: 600 }}>Товары закончились! Добавьте новые товары на склад.</span>
-              </div>
-            )}
-            {available > 0 && available < 10 && (
-              <div style={{ background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.3)', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <AlertTriangle size={18} color="#eab308" />
-                <span style={{ color: '#eab308', fontWeight: 600 }}>Осталось мало товаров! Пополните склад.</span>
-              </div>
-            )}
-
-            {/* Add items section */}
-            <div style={{ ...CARD_STYLE, marginBottom: '20px' }}>
-              <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Plus size={16} color="var(--pf-accent)" /> Добавить товары
-              </div>
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-                {(['single', 'list', 'file'] as const).map(tab => (
-                  <button
-                    key={tab}
-                    onClick={() => setAddTab(tab)}
-                    style={{
-                      padding: '7px 14px',
-                      borderRadius: '7px',
-                      border: addTab === tab ? 'none' : '1px solid rgba(96,165,250,0.28)',
-                      background: addTab === tab ? 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))' : 'transparent',
-                      color: '#fff',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {tab === 'single' ? 'По одному' : tab === 'list' ? 'Списком' : 'Файл'}
-                  </button>
-                ))}
-              </div>
-
-              {addTab === 'single' && (
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <input
-                    value={singleInput}
-                    onChange={e => setSingleInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && addSingle()}
-                    placeholder="Введите товар (ключ, аккаунт, etc.)..."
-                    style={{ flex: 1, background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(96,165,250,0.28)', borderRadius: '8px', padding: '10px 12px', color: '#fff', fontSize: '13px', outline: 'none' }}
-                  />
-                  <button onClick={addSingle} style={{ background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))', border: 'none', borderRadius: '8px', padding: '10px 18px', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}>
-                    Добавить
-                  </button>
-                </div>
-              )}
-
-              {addTab === 'list' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <textarea
-                    value={listInput}
-                    onChange={e => setListInput(e.target.value)}
-                    placeholder="Введите по одному товару на строку..."
-                    rows={5}
-                    style={{ width: '100%', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(96,165,250,0.28)', borderRadius: '8px', padding: '10px 12px', color: '#fff', fontSize: '13px', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
-                  />
-                  <button onClick={addList} style={{ alignSelf: 'flex-start', background: 'linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2))', border: 'none', borderRadius: '8px', padding: '10px 18px', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}>
-                    Добавить список
-                  </button>
-                </div>
-              )}
-
-              {addTab === 'file' && (
-                <div
-                  onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-                  onDragLeave={() => setDragOver(false)}
-                  onDrop={e => { e.preventDefault(); setDragOver(false); }}
-                  style={{
-                    border: `2px dashed ${dragOver ? 'var(--pf-accent)' : 'rgba(96,165,250,0.4)'}`,
-                    borderRadius: '10px',
-                    padding: '40px',
-                    textAlign: 'center',
-                    background: dragOver ? 'rgba(59,130,246,0.12)' : 'transparent',
-                    transition: 'all 0.2s',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <Upload size={32} color="var(--pf-text-muted)" style={{ margin: '0 auto 12px' }} />
-                  <div style={{ fontWeight: 600, marginBottom: '6px' }}>Перетащите файл сюда</div>
-                  <div style={{ color: 'var(--pf-text-muted)', fontSize: '13px' }}>Поддерживаются .txt и .csv файлы (каждый товар на новой строке)</div>
-                </div>
-              )}
-            </div>
-
-            {/* Items Table */}
-            <div style={{ ...CARD_STYLE, marginBottom: '20px' }}>
-              <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '14px' }}>Товары на складе</div>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                  <thead>
-                    <tr style={{ color: 'var(--pf-text-muted)', borderBottom: '1px solid rgba(59,130,246,0.18)' }}>
-                      <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 500, width: '48px' }}>#</th>
-                      <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 500 }}>Товар</th>
-                      <th style={{ textAlign: 'center', padding: '8px 10px', fontWeight: 500 }}>Статус</th>
-                      <th style={{ textAlign: 'right', padding: '8px 10px', fontWeight: 500 }}>Дата выдачи</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedLot.items.map((item, idx) => (
-                      <tr key={item.id} style={{ borderBottom: '1px solid rgba(59,130,246,0.1)' }}>
-                        <td style={{ padding: '10px 10px', color: 'var(--pf-text-muted)' }}>{idx + 1}</td>
-                        <td style={{ padding: '10px 10px', fontFamily: 'monospace', fontSize: '13px' }}>{maskValue(item.value)}</td>
-                        <td style={{ padding: '10px 10px', textAlign: 'center' }}>
-                          <span style={{
-                            background: item.status === 'available' ? 'rgba(34,197,94,0.15)' : 'rgba(59,130,246,0.18)',
-                            color: item.status === 'available' ? '#22c55e' : 'var(--pf-text-muted)',
-                            borderRadius: '6px',
-                            padding: '3px 8px',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                          }}>
-                            {item.status === 'available' ? 'Доступен' : 'Выдан'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '10px 10px', textAlign: 'right', color: 'var(--pf-text-muted)' }}>
-                          {item.deliveredAt ? new Date(item.deliveredAt).toLocaleDateString('ru-RU') + ' ' + new Date(item.deliveredAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Auto-delivery settings */}
-            <div style={CARD_STYLE}>
-              <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '16px' }}>Настройки авто-выдачи</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                <Switch checked={selectedLot.autoDeliveryEnabled} onCheckedChange={toggleAutoDelivery} />
-                <span style={{ color: selectedLot.autoDeliveryEnabled ? '#22c55e' : 'var(--pf-text-muted)', fontWeight: 600 }}>
-                  Авто-выдача {selectedLot.autoDeliveryEnabled ? 'включена' : 'выключена'}
-                </span>
-              </div>
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ color: 'var(--pf-text-muted)', fontSize: '13px', display: 'block', marginBottom: '6px' }}>
-                  Шаблон сообщения
-                  <span style={{ marginLeft: '8px', fontSize: '11px', background: 'rgba(59,130,246,0.18)', borderRadius: '4px', padding: '2px 6px' }}>
-                    {'{'+'товар'+'}'} {'{'+'имя_покупателя'+'}'} {'{'+'номер_заказа'+'}'}
-                  </span>
-                </label>
-                <textarea
-                  value={selectedLot.messageTemplate}
-                  onChange={e => updateTemplate(e.target.value)}
-                  rows={4}
-                  style={{ width: '100%', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(96,165,250,0.28)', borderRadius: '8px', padding: '10px 12px', color: '#fff', fontSize: '13px', outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'monospace' }}
-                />
-              </div>
-              <div>
-                <div style={{ color: 'var(--pf-text-muted)', fontSize: '13px', marginBottom: '8px', fontWeight: 600 }}>Предпросмотр:</div>
-                <div style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.18)', borderRadius: '8px', padding: '12px', fontSize: '13px', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
-                  {livePreview(selectedLot.messageTemplate)}
-                </div>
-              </div>
-            </div>
-          </>
+        {selectedLot && (
+          <KpiGrid>
+            <KpiCard>
+              <div className="text-[13px] font-semibold">Доступно</div>
+              <strong className="text-[26px] text-[#4ade80]">{available}</strong>
+              <span className="platform-kpi-meta">Товаров готово к выдаче</span>
+            </KpiCard>
+            <KpiCard>
+              <div className="text-[13px] font-semibold">Выдано</div>
+              <strong className="text-[26px]">{delivered}</strong>
+              <span className="platform-kpi-meta">Успешно доставлено</span>
+            </KpiCard>
+            <KpiCard>
+              <div className="text-[13px] font-semibold">Авто-выдача</div>
+              <strong className="text-[22px]">{selectedLot.autoDeliveryEnabled ? 'Включена' : 'Выключена'}</strong>
+              <span className="platform-kpi-meta">Текущий режим</span>
+            </KpiCard>
+            <KpiCard>
+              <div className="text-[13px] font-semibold">Записей</div>
+              <strong className="text-[26px]">{selectedLot.items.length}</strong>
+              <span className="platform-kpi-meta">Всего в выбранном лоте</span>
+            </KpiCard>
+          </KpiGrid>
         )}
-      </div>
+
+        <div className="platform-split-grid">
+          <SectionCard className="p-0">
+            <div className="border-b border-[var(--pf-border)] px-4 py-3">
+              <h2 className="m-0 text-[15px] font-bold">Лоты склада</h2>
+              <div className="mt-1 text-[12px] text-[var(--pf-text-muted)]">Выберите лот для управления остатками</div>
+            </div>
+            <div className="grid max-h-[640px] overflow-y-auto">
+              {lots.map(lot => {
+                const lotAvailable = lot.items.filter(item => item.status === 'available').length;
+                const isActive = selectedLotId === lot.lotId;
+                return (
+                  <button
+                    key={lot.lotId}
+                    className="border-b border-[rgba(148,163,184,0.12)] px-4 py-3 text-left"
+                    style={{
+                      background: isActive ? 'rgba(91,140,255,0.16)' : 'transparent',
+                      borderLeft: isActive ? '3px solid #5b8cff' : '3px solid transparent',
+                    }}
+                    onClick={() => setSelectedLotId(lot.lotId)}
+                  >
+                    <div className="text-[13px] font-semibold">{lot.lotTitle}</div>
+                    <div className="mt-1 inline-flex items-center gap-2">
+                      <span
+                        className="platform-chip !min-h-[20px] !text-[10px]"
+                        style={{ color: lotAvailable < 1 ? '#fb7185' : lotAvailable < 10 ? '#fbbf24' : '#4ade80' }}
+                      >
+                        {lotAvailable} доступно
+                      </span>
+                      {lot.autoDeliveryEnabled && <span className="platform-chip !min-h-[20px] !text-[10px]">авто</span>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </SectionCard>
+
+          <div className="platform-stack">
+            {!selectedLot ? (
+              <SectionCard>
+                <EmptyState>Выберите лот, чтобы открыть управление складом.</EmptyState>
+              </SectionCard>
+            ) : (
+              <>
+                <SectionCard>
+                  <ToolbarRow className="justify-between">
+                    <div>
+                      <h2 className="m-0 text-[18px] font-extrabold">{selectedLot.lotTitle}</h2>
+                      <div className="mt-1 text-[13px] text-[var(--pf-text-muted)]">
+                        Доступно: <strong className="text-[#4ade80]">{available}</strong> · Выдано:{' '}
+                        <strong>{delivered}</strong>
+                      </div>
+                    </div>
+                    <button className="platform-btn-secondary">
+                      <Download size={14} /> Скачать выданные
+                    </button>
+                  </ToolbarRow>
+                </SectionCard>
+
+                {available === 0 && (
+                  <SectionCard className="border-[rgba(251,113,133,0.4)] bg-[rgba(251,113,133,0.08)]">
+                    <div className="inline-flex items-center gap-2 text-[13px] font-semibold text-[#fb7185]">
+                      <XCircle size={15} /> Товары закончились. Пополните склад, чтобы не терять заказы.
+                    </div>
+                  </SectionCard>
+                )}
+
+                {available > 0 && available < 10 && (
+                  <SectionCard className="border-[rgba(251,191,36,0.36)] bg-[rgba(251,191,36,0.08)]">
+                    <div className="inline-flex items-center gap-2 text-[13px] font-semibold text-[#fbbf24]">
+                      <AlertTriangle size={15} /> Осталось мало товаров. Рекомендуется пополнение.
+                    </div>
+                  </SectionCard>
+                )}
+
+                <SectionCard>
+                  <h3 className="m-0 text-[15px] font-bold">Добавить товары</h3>
+                  <ToolbarRow className="mt-3">
+                    {(['single', 'list', 'file'] as const).map(tab => (
+                      <button
+                        key={tab}
+                        className={addTab === tab ? 'platform-btn-primary' : 'platform-btn-secondary'}
+                        style={{ minHeight: 34 }}
+                        onClick={() => setAddTab(tab)}
+                      >
+                        {tab === 'single' ? 'По одному' : tab === 'list' ? 'Списком' : 'Файл'}
+                      </button>
+                    ))}
+                  </ToolbarRow>
+
+                  {addTab === 'single' && (
+                    <div className="mt-3 flex gap-2">
+                      <input
+                        className="platform-input"
+                        value={singleInput}
+                        onChange={event => setSingleInput(event.target.value)}
+                        onKeyDown={event => event.key === 'Enter' && addSingle()}
+                        placeholder="Введите товар (ключ, аккаунт и т.д.)"
+                      />
+                      <button className="platform-btn-primary" onClick={addSingle}>
+                        <Plus size={14} /> Добавить
+                      </button>
+                    </div>
+                  )}
+
+                  {addTab === 'list' && (
+                    <div className="mt-3 grid gap-2">
+                      <textarea
+                        className="platform-textarea"
+                        rows={5}
+                        value={listInput}
+                        onChange={event => setListInput(event.target.value)}
+                        placeholder="Введите по одному товару на строку"
+                      />
+                      <button className="platform-btn-primary w-fit" onClick={addList}>
+                        Добавить список
+                      </button>
+                    </div>
+                  )}
+
+                  {addTab === 'file' && (
+                    <div
+                      className="mt-3 rounded-[12px] border-2 border-dashed p-8 text-center"
+                      style={{
+                        borderColor: dragOver ? '#5b8cff' : 'rgba(96,165,250,0.44)',
+                        background: dragOver ? 'rgba(91,140,255,0.12)' : 'transparent',
+                      }}
+                      onDragOver={event => {
+                        event.preventDefault();
+                        setDragOver(true);
+                      }}
+                      onDragLeave={() => setDragOver(false)}
+                      onDrop={event => {
+                        event.preventDefault();
+                        setDragOver(false);
+                      }}
+                    >
+                      <Upload size={30} className="mx-auto mb-3 text-[var(--pf-text-muted)]" />
+                      <div className="font-semibold">Перетащите файл сюда</div>
+                      <div className="mt-1 text-[13px] text-[var(--pf-text-muted)]">
+                        Поддерживаются `.txt` и `.csv` (каждая строка = один товар)
+                      </div>
+                    </div>
+                  )}
+                </SectionCard>
+
+                <SectionCard className="p-0">
+                  <Panel className="m-4 p-0">
+                    <h3 className="m-0 px-4 pt-4 text-[15px] font-bold">Товары на складе</h3>
+                    <DataTableWrap>
+                      <table className="platform-table" style={{ minWidth: 720 }}>
+                        <thead>
+                          <tr>
+                            <th style={{ width: 54 }}>#</th>
+                            <th>Товар</th>
+                            <th>Статус</th>
+                            <th style={{ textAlign: 'right' }}>Дата выдачи</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedLot.items.map((item, idx) => (
+                            <tr key={item.id}>
+                              <td>{idx + 1}</td>
+                              <td className="font-mono">{maskValue(item.value)}</td>
+                              <td>
+                                <span className={item.status === 'available' ? 'badge-active' : 'badge-inactive'}>
+                                  {item.status === 'available' ? 'Доступен' : 'Выдан'}
+                                </span>
+                              </td>
+                              <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>
+                                {item.deliveredAt
+                                  ? `${new Date(item.deliveredAt).toLocaleDateString('ru-RU')} ${new Date(item.deliveredAt).toLocaleTimeString('ru-RU', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })}`
+                                  : '—'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </DataTableWrap>
+                  </Panel>
+                </SectionCard>
+
+                <SectionCard>
+                  <ToolbarRow className="justify-between">
+                    <h3 className="m-0 text-[15px] font-bold">Авто-выдача</h3>
+                    <div className="inline-flex items-center gap-2">
+                      <Switch checked={selectedLot.autoDeliveryEnabled} onCheckedChange={toggleAutoDelivery} />
+                      <span className="text-[13px] font-semibold text-[var(--pf-text-muted)]">
+                        {selectedLot.autoDeliveryEnabled ? 'Включена' : 'Выключена'}
+                      </span>
+                    </div>
+                  </ToolbarRow>
+
+                  <div className="mt-3">
+                    <label className="mb-1 block text-[13px] text-[var(--pf-text-muted)]">
+                      Шаблон сообщения ({'{товар}'} {'{имя_покупателя}'} {'{номер_заказа}'})
+                    </label>
+                    <textarea
+                      className="platform-textarea"
+                      rows={4}
+                      value={selectedLot.messageTemplate}
+                      onChange={event => updateTemplate(event.target.value)}
+                    />
+                  </div>
+
+                  <div className="mt-3">
+                    <div className="mb-1 text-[13px] text-[var(--pf-text-muted)]">Предпросмотр</div>
+                    <Panel className="whitespace-pre-wrap p-3 font-mono text-[13px] text-[var(--pf-text-muted)]">
+                      {livePreview(selectedLot.messageTemplate)}
+                    </Panel>
+                  </div>
+                </SectionCard>
+              </>
+            )}
+          </div>
+        </div>
+      </PageShell>
     </motion.div>
   );
 }
