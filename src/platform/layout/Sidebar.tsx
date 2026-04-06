@@ -6,11 +6,14 @@ import { usePathname } from 'next/navigation';
 import {
   Crown,
   LayoutDashboard,
+  LifeBuoy,
   MessageSquare,
   ShoppingCart,
   Tag,
   Package,
   BarChart2,
+  Radio,
+  Send,
   Zap,
   Puzzle,
   Wallet,
@@ -56,6 +59,12 @@ const navGroups = [
     ],
   },
 ];
+
+const mobileTopLinks = [
+  { label: 'Наш Телеграм', href: '#', icon: Send },
+  { label: 'Наш канал', href: '#', icon: Radio },
+  { label: 'Поддержка', href: '#', icon: LifeBuoy },
+] as const;
 
 export default function Sidebar({
   mobile = false,
@@ -135,6 +144,21 @@ export default function Sidebar({
             })}
           </div>
         ))}
+
+        {mobile && (
+          <div className="platform-mobile-links">
+            <div className="platform-nav-section">Контакты</div>
+            {mobileTopLinks.map(item => {
+              const Icon = item.icon;
+              return (
+                <a key={item.label} href={item.href} className="platform-nav-item" onClick={onClose}>
+                  <Icon size={16} />
+                  <span>{item.label}</span>
+                </a>
+              );
+            })}
+          </div>
+        )}
       </nav>
 
       <div className="platform-sidebar-footer">

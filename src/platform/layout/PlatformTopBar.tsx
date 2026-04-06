@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { usePathname } from 'next/navigation';
-import { Bell, ChevronLeft, ChevronRight, Menu, Search } from 'lucide-react';
+import { Bell, ChevronLeft, ChevronRight, LifeBuoy, Menu, Radio, Send } from 'lucide-react';
 import { accounts } from '@/platform/data/demoData';
 
 const PATH_LABELS: Record<string, string> = {
@@ -42,6 +42,12 @@ export default function PlatformTopBar({
       .map(part => ({ raw: part, label: PATH_LABELS[part] ?? part }));
   }, [pathname]);
 
+  const topLinks = [
+    { label: 'Наш Телеграм', href: '#', icon: Send },
+    { label: 'Наш канал', href: '#', icon: Radio },
+    { label: 'Поддержка', href: '#', icon: LifeBuoy },
+  ] as const;
+
   return (
     <header className="platform-topbar">
       <div className="platform-breadcrumbs min-w-0">
@@ -64,7 +70,7 @@ export default function PlatformTopBar({
           {sidebarCollapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
         </button>
 
-        <div className="hidden md:flex items-center gap-2 min-w-0">
+        <div className="platform-breadcrumbs-list hidden md:flex items-center gap-2 min-w-0">
           {breadcrumbs.map((item, idx) => (
             <div key={`${item.raw}-${idx}`} className="flex items-center gap-2 min-w-0">
               {idx > 0 && <span className="platform-breadcrumb-item">/</span>}
@@ -76,22 +82,24 @@ export default function PlatformTopBar({
         </div>
       </div>
 
-      <label className="platform-search">
-        <Search size={14} color="var(--pf-text-dim)" />
-        <input
-          type="search"
-          autoComplete="off"
-          placeholder="Глобальный поиск: заказы, чаты, лоты..."
-          aria-label="Глобальный поиск"
-        />
-      </label>
+      <nav className="platform-topbar-links" aria-label="Быстрые ссылки">
+        {topLinks.map(item => {
+          const Icon = item.icon;
+          return (
+            <a key={item.label} href={item.href} className="platform-topbar-link">
+              <Icon size={14} />
+              <span>{item.label}</span>
+            </a>
+          );
+        })}
+      </nav>
 
       <div className="platform-topbar-right">
-        <button type="button" className="platform-topbar-btn hidden sm:inline-flex" aria-label="Уведомления">
+        <button type="button" className="platform-topbar-plain-btn hidden sm:inline-flex" aria-label="Уведомления">
           <Bell size={15} />
         </button>
 
-        <button type="button" className="platform-profile" aria-label="Профиль пользователя">
+        <button type="button" className="platform-profile-plain" aria-label="Профиль пользователя">
           <span className="platform-avatar">{initials}</span>
           <strong className="hidden sm:block text-[12px] font-semibold">{profile?.username ?? 'user'}</strong>
         </button>
