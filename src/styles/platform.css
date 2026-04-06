@@ -281,6 +281,7 @@
   flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-gutter: stable both-edges;
 }
 
 .platform-desktop-sidebar {
@@ -377,6 +378,16 @@
 
 .platform-desktop-sidebar.collapsed .platform-sidebar-logo {
   padding: 14px 10px;
+}
+
+.platform-desktop-sidebar.collapsed .platform-sidebar-brand {
+  justify-content: center;
+  padding: 0;
+}
+
+.platform-desktop-sidebar.collapsed .platform-sidebar-brand > a {
+  width: 100%;
+  justify-content: center;
 }
 
 .platform-desktop-sidebar.collapsed .platform-nav-wrap {
