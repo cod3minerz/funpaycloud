@@ -123,18 +123,16 @@ export function Hero() {
         </div>
 
         <div className="w-full max-w-[1120px]" style={{ perspective: "1600px" }}>
-          <motion.div
-            className="relative"
-            initial={{ opacity: 0, y: 20, rotateX: isMobile ? 10 : 18, rotateZ: isMobile ? -3.8 : -6 }}
-            animate={{
-              opacity: 1,
-              y: [0, isMobile ? -4 : -7, 0],
-              rotateX: isMobile ? [10, 9.2, 10] : [18, 16.5, 18],
-              rotateZ: isMobile ? [-3.8, -3.2, -3.8] : [-6, -5.4, -6],
-            }}
-            transition={{ duration: 8.5, repeat: Infinity, ease: "easeInOut" }}
-            style={{ transformStyle: "preserve-3d", transformOrigin: "center top" }}
-          >
+          <motion.div className="relative" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: "easeOut" }}>
+            <motion.div
+              className="relative"
+              animate={{
+                y: [0, isMobile ? -3 : -5, 0],
+                rotateX: isMobile ? [9, 8.3, 9] : [12, 11.2, 12],
+              }}
+              transition={{ duration: 8.5, repeat: Infinity, ease: "easeInOut" }}
+              style={{ transformStyle: "preserve-3d", transformOrigin: "center top" }}
+            >
             <div
               className="absolute left-1/2 top-[86%] -translate-x-1/2 w-[86%] h-14 rounded-full blur-3xl"
               style={{ background: "rgba(37,99,235,0.22)" }}
@@ -291,6 +289,7 @@ export function Hero() {
                 </div>
               </div>
             </div>
+            </motion.div>
           </motion.div>
         </div>
       </div>
