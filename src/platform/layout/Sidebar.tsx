@@ -12,8 +12,6 @@ import {
   Tag,
   Package,
   BarChart2,
-  Radio,
-  Send,
   Zap,
   Puzzle,
   Wallet,
@@ -22,6 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import { BrandLogo } from '@/app/components/BrandLogo';
+import { TelegramMark, VkMark } from '@/platform/components/SocialMarks';
 import {
   DEFAULT_PLAN_ID,
   PLAN_EVENT_NAME,
@@ -61,9 +60,9 @@ const navGroups = [
 ];
 
 const mobileTopLinks = [
-  { label: 'Наш Телеграм', href: '#', icon: Send },
-  { label: 'Наш канал', href: '#', icon: Radio },
-  { label: 'Поддержка', href: '#', icon: LifeBuoy },
+  { label: 'Телеграм канал', href: '#', icon: <TelegramMark size={16} /> },
+  { label: 'Группа ВКонтакте', href: '#', icon: <VkMark size={16} /> },
+  { label: 'Поддержка', href: '#', icon: <LifeBuoy size={16} /> },
 ] as const;
 
 export default function Sidebar({
@@ -149,10 +148,9 @@ export default function Sidebar({
           <div className="platform-mobile-links">
             <div className="platform-nav-section">Контакты</div>
             {mobileTopLinks.map(item => {
-              const Icon = item.icon;
               return (
                 <a key={item.label} href={item.href} className="platform-nav-item" onClick={onClose}>
-                  <Icon size={16} />
+                  <span className="platform-nav-inline-icon">{item.icon}</span>
                   <span>{item.label}</span>
                 </a>
               );

@@ -122,7 +122,7 @@
   position: sticky;
   top: 0;
   z-index: var(--pf-z-topbar);
-  min-height: 68px;
+  min-height: 72px;
   padding: 12px;
   border-bottom: 1px solid var(--pf-border);
   backdrop-filter: blur(8px);
@@ -154,11 +154,11 @@
 }
 
 .platform-breadcrumbs-list {
-  margin-left: 8px;
+  margin-left: 14px;
 }
 
 .platform-breadcrumb-item {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--pf-text-soft);
   font-weight: 600;
   white-space: nowrap;
@@ -167,7 +167,7 @@
 .platform-breadcrumb-item.active {
   color: var(--pf-text-muted);
   font-weight: 700;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .platform-search {
@@ -201,7 +201,7 @@
   justify-self: end;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 
 .platform-topbar-links {
@@ -213,22 +213,30 @@
     display: inline-flex;
     align-items: center;
     justify-self: center;
-    gap: 8px;
+    gap: 10px;
   }
 }
 
 .platform-topbar-link {
-  min-height: 32px;
-  border-radius: 8px;
+  min-height: 36px;
+  border-radius: 10px;
   color: var(--pf-text-muted);
   text-decoration: none;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 8px;
-  font-size: 12px;
-  font-weight: 600;
+  gap: 8px;
+  padding: 0 11px;
+  font-size: 13px;
+  font-weight: 650;
   white-space: nowrap;
+}
+
+.platform-topbar-link-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .platform-topbar-link:hover {
@@ -265,8 +273,8 @@
 }
 
 .platform-topbar-plain-btn {
-  min-height: var(--pf-control-h);
-  min-width: var(--pf-control-h);
+  min-height: 40px;
+  min-width: 40px;
   border: 0;
   background: transparent;
   color: var(--pf-text-muted);
@@ -304,6 +312,10 @@
 
 .platform-sidebar-toggle {
   display: none;
+}
+
+.platform-sidebar-toggle-btn {
+  margin-right: 2px;
 }
 
 @media (min-width: 768px) {
@@ -418,6 +430,14 @@
   margin-top: 8px;
   padding-top: 4px;
   border-top: 1px solid var(--pf-border);
+}
+
+.platform-nav-inline-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .platform-nav-section {
@@ -1571,14 +1591,20 @@
   }
 
   .platform-breadcrumb-item {
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .platform-topbar-links {
-    gap: 4px;
+    gap: 6px;
   }
 
   .platform-topbar-link span {
     display: none;
+  }
+
+  .platform-topbar-link {
+    min-width: 36px;
+    justify-content: center;
+    padding: 0 9px;
   }
 }

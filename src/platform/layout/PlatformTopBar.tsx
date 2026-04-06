@@ -2,8 +2,9 @@
 
 import { useMemo } from 'react';
 import { usePathname } from 'next/navigation';
-import { Bell, ChevronLeft, ChevronRight, LifeBuoy, Menu, Radio, Send } from 'lucide-react';
+import { Bell, ChevronLeft, ChevronRight, LifeBuoy, Menu } from 'lucide-react';
 import { accounts } from '@/platform/data/demoData';
+import { TelegramMark, VkMark } from '@/platform/components/SocialMarks';
 
 const PATH_LABELS: Record<string, string> = {
   platform: 'Платформа',
@@ -43,9 +44,9 @@ export default function PlatformTopBar({
   }, [pathname]);
 
   const topLinks = [
-    { label: 'Наш Телеграм', href: '#', icon: Send },
-    { label: 'Наш канал', href: '#', icon: Radio },
-    { label: 'Поддержка', href: '#', icon: LifeBuoy },
+    { label: 'Телеграм канал', href: '#', icon: <TelegramMark size={15} /> },
+    { label: 'Группа ВКонтакте', href: '#', icon: <VkMark size={15} /> },
+    { label: 'Поддержка', href: '#', icon: <LifeBuoy size={15} /> },
   ] as const;
 
   return (
@@ -62,7 +63,7 @@ export default function PlatformTopBar({
 
         <button
           type="button"
-          className="platform-topbar-btn platform-sidebar-toggle"
+          className="platform-topbar-btn platform-sidebar-toggle platform-sidebar-toggle-btn"
           onClick={onToggleSidebarCollapse}
           aria-label={sidebarCollapsed ? 'Развернуть меню' : 'Свернуть меню'}
           aria-pressed={sidebarCollapsed}
@@ -84,10 +85,9 @@ export default function PlatformTopBar({
 
       <nav className="platform-topbar-links" aria-label="Быстрые ссылки">
         {topLinks.map(item => {
-          const Icon = item.icon;
           return (
             <a key={item.label} href={item.href} className="platform-topbar-link">
-              <Icon size={14} />
+              <span className="platform-topbar-link-icon">{item.icon}</span>
               <span>{item.label}</span>
             </a>
           );
@@ -101,7 +101,7 @@ export default function PlatformTopBar({
 
         <button type="button" className="platform-profile-plain" aria-label="Профиль пользователя">
           <span className="platform-avatar">{initials}</span>
-          <strong className="hidden sm:block text-[12px] font-semibold">{profile?.username ?? 'user'}</strong>
+          <strong className="hidden sm:block text-[13px] font-semibold">{profile?.username ?? 'user'}</strong>
         </button>
       </div>
     </header>
