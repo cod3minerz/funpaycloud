@@ -93,7 +93,7 @@ export default function Sidebar({
   return (
     <aside className={asideClass} aria-label="Навигация платформы">
       <div className="platform-sidebar-logo">
-        <div className="flex items-center justify-between gap-2">
+        <div className="platform-sidebar-brand">
           <Link href="/" aria-label="FunPay Cloud" onClick={onClose}>
             {mobile ? <BrandLogo compact /> : <BrandLogo compact={collapsed} iconOnly={collapsed} />}
           </Link>

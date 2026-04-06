@@ -11,6 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 import {
+  ArrowRight,
   BarChart2,
   MessageSquare,
   Package,
@@ -24,12 +25,9 @@ import {
   EmptyState,
   KpiCard,
   KpiGrid,
-  PageHeader,
   PageShell,
-  PageTitle,
   Panel,
   SectionCard,
-  ToolbarRow,
 } from '@/platform/components/primitives';
 
 const statusLabel: Record<string, string> = {
@@ -46,7 +44,13 @@ const statusClass: Record<string, string> = {
   dispute: 'badge-dispute',
 };
 
-function formatDate(iso: string) {
+const PERIOD_OPTIONS = [
+  { key: 7, label: '7 дней' },
+  { key: 30, label: '30 дней' },
+  { key: 90, label: '90 дней' },
+] as const;
+
+function formatTime(iso: string) {
   const d = new Date(iso);
   return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 }
@@ -55,35 +59,39 @@ export default function Dashboard() {
   const router = useRouter();
   const [period, setPeriod] = useState<7 | 30 | 90>(30);
 
-  const totalBalance = useMemo(() => accounts.reduce((sum, account) => sum + account.balance, 0), []);
+  const chartData = useMemo(() => salesData.slice(salesData.length - period), [period]);
   const today = new Date().toISOString().slice(0, 10);
   const todayOrders = useMemo(() => orders.filter(order => order.createdAt.startsWith(today)), [today]);
+  const totalBalance = useMemo(() => accounts.reduce((sum, account) => sum + account.balance, 0), []);
   const activeLots = useMemo(() => lots.filter(lot => lot.status === 'active').length, []);
   const unreadChats = useMemo(() => chats.filter(chat => chat.unread > 0).length, []);
-  const recentOrders = useMemo(() => [...orders].slice(0, 8), []);
-  const recentChats = useMemo(() => chats.slice(0, 6), []);
-  const chartData = useMemo(() => salesData.slice(salesData.length - period), [period]);
+  const recentOrders = useMemo(() => orders.slice(0, 5), []);
+  const recentChats = useMemo(() => chats.slice(0, 4), []);
 
   return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }}>
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }}>
       <PageShell>
-        <PageHeader>
-          <PageTitle
-            title="Дашборд"
-            subtitle="Оперативная сводка по выручке, заказам, лотам и коммуникациям по всем аккаунтам."
-          />
-          <ToolbarRow>
-            {([7, 30, 90] as const).map(value => (
+        <SectionCard className="platform-dashboard-head">
+          <div className="min-w-0">
+            <h1 className="platform-page-title platform-dashboard-title">Дашборд</h1>
+            <p className="platform-page-subtitle platform-dashboard-subtitle">
+              Операционная сводка по выручке, заказам, лотам и коммуникациям.
+            </p>
+          </div>
+          <div className="platform-period-group" role="tablist" aria-label="Период аналитики">
+            {PERIOD_OPTIONS.map(option => (
               <button
-                key={value}
-                className={period === value ? 'platform-btn-primary' : 'platform-btn-secondary'}
-                onClick={() => setPeriod(value)}
+                key={option.key}
+                type="button"
+                className={`platform-period-btn${period === option.key ? ' active' : ''}`}
+                onClick={() => setPeriod(option.key)}
+                aria-pressed={period === option.key}
               >
-                {value} дней
+                {option.label}
               </button>
             ))}
-          </ToolbarRow>
-        </PageHeader>
+          </div>
+        </SectionCard>
 
         <KpiGrid>
           <KpiCard>
@@ -125,26 +133,26 @@ export default function Dashboard() {
           </KpiCard>
         </KpiGrid>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,2.15fr)_minmax(0,1fr)]">
-          <div className="grid gap-4">
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          <div className="space-y-4">
             <SectionCard>
-              <ToolbarRow className="mb-3 justify-between">
-                <span className="inline-flex items-center gap-2 text-[15px] font-semibold">
+              <div className="platform-section-head">
+                <div className="inline-flex items-center gap-2 text-[15px] font-semibold">
                   <TrendingUp size={16} color="var(--pf-accent)" />
                   Динамика выручки
-                </span>
-                <span className="platform-kpi-meta">Период: {period} дней</span>
-              </ToolbarRow>
+                </div>
+                <span className="platform-kpi-meta">Период: {PERIOD_OPTIONS.find(option => option.key === period)?.label}</span>
+              </div>
 
               <ResponsiveContainer width="100%" height={260}>
-                <AreaChart data={chartData} margin={{ top: 5, right: 6, left: -6, bottom: 2 }}>
+                <AreaChart data={chartData} margin={{ top: 6, right: 8, left: -6, bottom: 2 }}>
                   <defs>
-                    <linearGradient id="pfRevenueGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="rgba(94,147,255,0.5)" />
-                      <stop offset="100%" stopColor="rgba(94,147,255,0.04)" />
+                    <linearGradient id="pfDashboardRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="rgba(110,139,255,0.45)" />
+                      <stop offset="100%" stopColor="rgba(110,139,255,0.02)" />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.14)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.09)" />
                   <XAxis
                     dataKey="date"
                     tick={{ fill: 'var(--pf-text-dim)', fontSize: 11 }}
@@ -154,35 +162,35 @@ export default function Dashboard() {
                   <YAxis tick={{ fill: 'var(--pf-text-dim)', fontSize: 11 }} />
                   <Tooltip
                     contentStyle={{
-                      background: 'var(--pf-surface)',
+                      background: 'var(--pf-surface-2)',
                       border: '1px solid var(--pf-border-strong)',
                       borderRadius: 10,
                       color: '#fff',
                     }}
                     formatter={(value: number) => [`${value.toLocaleString('ru-RU')} ₽`, 'Выручка']}
                   />
-                  <Area type="monotone" dataKey="revenue" stroke="var(--pf-accent)" strokeWidth={2} fill="url(#pfRevenueGradient)" />
+                  <Area type="monotone" dataKey="revenue" stroke="var(--pf-accent)" strokeWidth={2} fill="url(#pfDashboardRevenue)" />
                 </AreaChart>
               </ResponsiveContainer>
             </SectionCard>
 
             <SectionCard>
-              <ToolbarRow className="mb-3 justify-between">
-                <span className="inline-flex items-center gap-2 text-[15px] font-semibold">
+              <div className="platform-section-head">
+                <div className="inline-flex items-center gap-2 text-[15px] font-semibold">
                   <BarChart2 size={16} color="var(--pf-accent)" />
                   Последние заказы
-                </span>
-                <button className="platform-btn-secondary" onClick={() => router.push('/platform/orders')}>
-                  Открыть заказы
+                </div>
+                <button type="button" className="platform-link-inline" onClick={() => router.push('/platform/orders')}>
+                  Все заказы <ArrowRight size={14} />
                 </button>
-              </ToolbarRow>
+              </div>
 
               <div className="platform-desktop-table">
                 <DataTableWrap>
                   <table className="platform-table" style={{ minWidth: 760 }}>
                     <thead>
                       <tr>
-                        <th>Заказ</th>
+                        <th>ID</th>
                         <th>Товар</th>
                         <th>Покупатель</th>
                         <th style={{ textAlign: 'right' }}>Сумма</th>
@@ -194,24 +202,17 @@ export default function Dashboard() {
                       {recentOrders.map(order => (
                         <tr key={order.id}>
                           <td>{order.id}</td>
-                          <td style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <td style={{ maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {order.lot}
                           </td>
-                          <td>
-                            <div className="inline-flex items-center gap-2">
-                              <span className="platform-avatar" style={{ width: 24, height: 24, fontSize: 10 }}>
-                                {order.buyerAvatar}
-                              </span>
-                              {order.buyer}
-                            </div>
-                          </td>
+                          <td>{order.buyer}</td>
                           <td style={{ textAlign: 'right', fontWeight: 700 }}>{order.amount} ₽</td>
                           <td>
                             <span className={statusClass[order.status] ?? 'platform-chip'}>
                               {statusLabel[order.status] ?? order.status}
                             </span>
                           </td>
-                          <td style={{ textAlign: 'right', color: 'var(--pf-text-dim)' }}>{formatDate(order.createdAt)}</td>
+                          <td style={{ textAlign: 'right', color: 'var(--pf-text-dim)' }}>{formatTime(order.createdAt)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -230,7 +231,7 @@ export default function Dashboard() {
                     <div className="platform-mobile-meta">
                       <span>Покупатель: {order.buyer}</span>
                       <span>Сумма: {order.amount} ₽</span>
-                      <span>Время: {formatDate(order.createdAt)}</span>
+                      <span>Время: {formatTime(order.createdAt)}</span>
                     </div>
                   </article>
                 ))}
@@ -238,64 +239,70 @@ export default function Dashboard() {
             </SectionCard>
           </div>
 
-          <div className="grid gap-4">
-            <SectionCard className="overflow-hidden p-0">
-              <div className="border-b border-[var(--pf-border)] p-4">
-                <div className="mb-3 text-[15px] font-semibold">Аккаунты</div>
-                <div className="grid gap-2">
-                  {accounts.map(account => (
-                    <Panel key={account.id} className="p-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <div>
-                          <div className="font-semibold">{account.username}</div>
-                          <div className="platform-kpi-meta">
-                            {account.balance.toLocaleString('ru-RU')} ₽ · {account.lotsCount} лотов
-                          </div>
-                        </div>
-                        <span className={account.online ? 'badge-active' : 'badge-inactive'}>
-                          {account.online ? 'Онлайн' : 'Оффлайн'}
-                        </span>
-                      </div>
-                    </Panel>
-                  ))}
-                </div>
+          <div className="space-y-4">
+            <SectionCard>
+              <div className="platform-section-head">
+                <span className="text-[15px] font-semibold">Аккаунты</span>
+                <button type="button" className="platform-link-inline" onClick={() => router.push('/platform/accounts')}>
+                  К разделу <ArrowRight size={14} />
+                </button>
               </div>
 
-              <div className="p-4">
-                <ToolbarRow className="mb-3 justify-between">
-                  <span className="text-[15px] font-semibold">Последние диалоги</span>
-                  <button className="platform-btn-secondary" onClick={() => router.push('/platform/chats')}>
-                    Чаты
-                  </button>
-                </ToolbarRow>
+              <div className="grid gap-2">
+                {accounts.slice(0, 4).map(account => (
+                  <Panel key={account.id} className="p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="truncate text-[13px] font-semibold">{account.username}</p>
+                      <span className={account.online ? 'badge-active' : 'badge-inactive'}>
+                        {account.online ? 'online' : 'offline'}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[12px] text-[var(--pf-text-dim)]">
+                      Баланс: {account.balance.toLocaleString('ru-RU')} ₽ · Лотов: {account.lotsCount}
+                    </p>
+                  </Panel>
+                ))}
+              </div>
+            </SectionCard>
 
-                <div className="grid gap-2">
-                  {recentChats.length === 0 && <EmptyState className="py-4">Диалоги пока отсутствуют</EmptyState>}
-                  {recentChats.map(chat => (
-                    <Panel key={chat.id} className="p-3">
-                      <div className="flex items-start gap-3">
-                        <span className="platform-avatar">{chat.buyerAvatar}</span>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <strong className="text-[13px]">{chat.buyer}</strong>
-                            <span className="platform-kpi-meta">{chat.lastTime}</span>
-                          </div>
-                          <p
-                            className="platform-kpi-meta"
-                            style={{ marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                          >
-                            {chat.lastMessage}
-                          </p>
+            <SectionCard>
+              <div className="platform-section-head">
+                <span className="text-[15px] font-semibold">Последние диалоги</span>
+                <button type="button" className="platform-link-inline" onClick={() => router.push('/platform/chats')}>
+                  Открыть чаты <ArrowRight size={14} />
+                </button>
+              </div>
+
+              <div className="grid gap-2">
+                {recentChats.length === 0 && <EmptyState className="py-4">Диалоги пока отсутствуют</EmptyState>}
+                {recentChats.map(chat => (
+                  <Panel key={chat.id} className="p-3">
+                    <div className="flex items-start gap-3">
+                      <span className="platform-avatar">{chat.buyerAvatar}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <strong className="truncate text-[13px]">{chat.buyer}</strong>
+                          <span className="text-[11px] text-[var(--pf-text-dim)]">{chat.lastTime}</span>
                         </div>
-                        {chat.unread > 0 && <span className="badge-dispute">{chat.unread}</span>}
+                        <p className="mt-1 truncate text-[12px] text-[var(--pf-text-dim)]">{chat.lastMessage}</p>
                       </div>
-                    </Panel>
-                  ))}
-                </div>
+                    </div>
+                    {chat.unread > 0 && <span className="badge-dispute mt-2 inline-flex">{chat.unread} непрочит.</span>}
+                  </Panel>
+                ))}
               </div>
             </SectionCard>
           </div>
-        </div>
+        </section>
+
+        <SectionCard className="platform-dashboard-summary">
+          <p className="text-[13px] text-[var(--pf-text-dim)]">
+            Стартовая зона контроля: ключевые сигналы, очереди действий и коммуникации.
+          </p>
+          <button type="button" className="platform-btn-secondary" onClick={() => router.push('/platform/analytics')}>
+            Открыть глубокую аналитику
+          </button>
+        </SectionCard>
       </PageShell>
     </motion.div>
   );

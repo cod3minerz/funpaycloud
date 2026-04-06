@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { usePathname } from 'next/navigation';
-import { Bell, ChevronLeft, ChevronRight, Cloud, Menu, Search } from 'lucide-react';
+import { Bell, ChevronLeft, ChevronRight, Menu, Search } from 'lucide-react';
 import { accounts } from '@/platform/data/demoData';
 
 const PATH_LABELS: Record<string, string> = {
@@ -33,15 +33,7 @@ export default function PlatformTopBar({
 }: PlatformTopBarProps) {
   const pathname = usePathname();
   const profile = accounts[0];
-  const initials = profile?.username?.slice(0, 1).toUpperCase() ?? 'U';
-
-  const avatarGradient = useMemo(() => {
-    const source = profile?.username ?? 'cloud-user';
-    let hash = 0;
-    for (let i = 0; i < source.length; i += 1) hash = (hash << 5) - hash + source.charCodeAt(i);
-    const hue = Math.abs(hash) % 360;
-    return `linear-gradient(135deg, hsl(${hue} 78% 44%), hsl(${(hue + 35) % 360} 78% 38%))`;
-  }, [profile?.username]);
+  const initials = profile?.username?.slice(0, 2).toUpperCase() ?? 'FC';
 
   const breadcrumbs = useMemo(() => {
     return pathname
@@ -89,7 +81,7 @@ export default function PlatformTopBar({
         <input
           type="search"
           autoComplete="off"
-          placeholder="Поиск по заказам, чатам, товарам..."
+          placeholder="Глобальный поиск: заказы, чаты, лоты..."
           aria-label="Глобальный поиск"
         />
       </label>
@@ -99,12 +91,10 @@ export default function PlatformTopBar({
           <Bell size={15} />
         </button>
 
-        <div className="platform-profile" aria-label="Профиль пользователя">
-          <span className="platform-avatar" style={{ background: avatarGradient }}>
-            {profile?.avatar && profile.avatar.length > 1 ? initials : <Cloud size={14} />}
-          </span>
+        <button type="button" className="platform-profile" aria-label="Профиль пользователя">
+          <span className="platform-avatar">{initials}</span>
           <strong className="hidden sm:block text-[12px] font-semibold">{profile?.username ?? 'user'}</strong>
-        </div>
+        </button>
       </div>
     </header>
   );
