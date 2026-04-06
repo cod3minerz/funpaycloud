@@ -95,7 +95,15 @@ export default function Sidebar({
       <div className="platform-sidebar-logo">
         <div className="platform-sidebar-brand">
           <Link href="/" aria-label="FunPay Cloud" onClick={onClose}>
-            {mobile ? <BrandLogo compact /> : <BrandLogo compact={collapsed} iconOnly={collapsed} />}
+            {mobile ? (
+              <BrandLogo compact className="h-[27px] max-w-[166px]" />
+            ) : (
+              <BrandLogo
+                compact={collapsed}
+                iconOnly={collapsed}
+                className={collapsed ? 'h-5 max-w-[30px]' : 'h-[27px] max-w-[168px]'}
+              />
+            )}
           </Link>
           {mobile && (
             <button type="button" className="platform-topbar-btn" onClick={onClose} aria-label="Закрыть меню">

@@ -9,7 +9,7 @@ type BrandLogoProps = {
 };
 
 export function BrandLogo({ className = "", compact = false, iconOnly = false }: BrandLogoProps) {
-  const sizeClass = compact ? "h-7 md:h-8 max-w-[190px]" : "h-9 md:h-10 max-w-[230px]";
+  const sizeClass = compact ? "h-[27px] max-w-[172px]" : "h-[30px] max-w-[190px]";
 
   if (iconOnly) {
     return (
@@ -18,7 +18,7 @@ export function BrandLogo({ className = "", compact = false, iconOnly = false }:
         alt="FunPay Cloud"
         width={logoSmall.width}
         height={logoSmall.height}
-        className={`h-8 w-auto object-contain ${className}`.trim()}
+        className={`h-[22px] max-w-[32px] w-auto object-contain ${className}`.trim()}
         priority
       />
     );

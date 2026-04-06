@@ -313,10 +313,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  border: 1px solid var(--pf-border);
-  border-radius: 10px;
-  background: var(--pf-surface-2);
-  padding: 8px;
+  min-height: 40px;
+  padding: 0 2px;
+}
+
+.platform-sidebar-brand > a {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
 }
 
 .platform-nav-wrap {
