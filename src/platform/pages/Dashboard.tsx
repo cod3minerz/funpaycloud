@@ -77,6 +77,10 @@ export default function Dashboard() {
             <p className="platform-page-subtitle platform-dashboard-subtitle">
               Операционная сводка по выручке, заказам, лотам и коммуникациям.
             </p>
+            <div className="platform-system-status mt-3">
+              <span className="platform-system-status-dot" aria-hidden="true" />
+              <span>Статус системы: в норме</span>
+            </div>
           </div>
           <div className="platform-period-group" role="tablist" aria-label="Период аналитики">
             {PERIOD_OPTIONS.map(option => (

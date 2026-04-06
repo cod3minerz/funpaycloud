@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Check, ChevronRight, Edit2, Plus, Trash2, Zap } from 'lucide-react';
+import { Check, ChevronRight, Edit2, Handshake, MessageSquare, Plus, TriangleAlert, Trash2, User, Zap } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { Switch } from '@/app/components/ui/switch';
 import { automationRules as initialRules, AutomationRule } from '@/platform/data/demoData';
@@ -9,7 +9,7 @@ import { PageHeader, PageShell, PageTitle, Panel, SectionCard } from '@/platform
 const PRESETS = [
   {
     name: 'Приветствие новому покупателю',
-    icon: '👋',
+    icon: User,
     trigger: 'new_message_first',
     triggerLabel: 'Покупатель написал впервые',
     action: 'send_message',
@@ -18,7 +18,7 @@ const PRESETS = [
   },
   {
     name: 'Уведомление об окончании товаров',
-    icon: '⚠️',
+    icon: TriangleAlert,
     trigger: 'low_stock',
     triggerLabel: 'Остаток товара < 5',
     action: 'notify_telegram',
@@ -27,7 +27,7 @@ const PRESETS = [
   },
   {
     name: 'Автоответ на запрос цены',
-    icon: '💬',
+    icon: MessageSquare,
     trigger: 'new_message',
     triggerLabel: 'Новое сообщение',
     action: 'send_message',
@@ -36,7 +36,7 @@ const PRESETS = [
   },
   {
     name: 'Благодарность после заказа',
-    icon: '🙏',
+    icon: Handshake,
     trigger: 'order_completed',
     triggerLabel: 'Заказ выполнен',
     action: 'send_message',
@@ -175,6 +175,7 @@ export default function Automation() {
           <div className="grid gap-3 md:grid-cols-2">
             {PRESETS.map(preset => {
               const added = rules.some(rule => rule.name === preset.name);
+              const Icon = preset.icon;
               return (
                 <button
                   key={preset.name}
@@ -182,7 +183,9 @@ export default function Automation() {
                   onClick={() => !added && addPreset(preset)}
                   style={{ opacity: added ? 0.7 : 1, cursor: added ? 'default' : 'pointer' }}
                 >
-                  <span className="text-[24px]">{preset.icon}</span>
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-[var(--pf-border)] bg-[var(--pf-surface-2)] text-[var(--pf-text-muted)]">
+                    <Icon size={17} />
+                  </span>
                   <span className="flex-1">
                     <span className="block text-[13px] font-bold">{preset.name}</span>
                     <span className="text-[11px] text-[var(--pf-text-dim)]">

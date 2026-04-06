@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowUpCircle, Clock, Edit2, Search, Trash2 } from 'lucide-react';
+import { ArrowUpCircle, Bot, Box, Clapperboard, Clock, Edit2, Gamepad2, Megaphone, Music2, Search, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { Switch } from '@/app/components/ui/switch';
 import { Lot, lots as initialLots } from '@/platform/data/demoData';
@@ -20,6 +20,27 @@ function formatTime(seconds: number) {
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function LotIcon({ category }: { category: string }) {
+  const Icon =
+    category === 'Игры'
+      ? Gamepad2
+      : category === 'SMM'
+        ? Megaphone
+        : category === 'Музыка'
+          ? Music2
+          : category === 'Стриминг'
+            ? Clapperboard
+            : category === 'AI'
+              ? Bot
+              : Box;
+
+  return (
+    <span className="platform-lot-glyph" aria-hidden="true">
+      <Icon size={16} />
+    </span>
+  );
 }
 
 export default function Lots() {
@@ -152,7 +173,7 @@ export default function Lots() {
                     <tr key={lot.id}>
                       <td>
                         <div className="flex items-start gap-3">
-                          <span style={{ fontSize: 20, lineHeight: 1 }}>{lot.categoryIcon}</span>
+                          <LotIcon category={lot.category} />
                           <div>
                             <div className="font-semibold">{lot.title}</div>
                             <div className="text-[12px] text-[var(--pf-text-muted)]">{lot.description}</div>
@@ -197,7 +218,7 @@ export default function Lots() {
               <article key={lot.id} className="platform-mobile-card">
                 <div className="platform-mobile-card-head">
                   <div className="inline-flex min-w-0 items-start gap-2">
-                    <span style={{ fontSize: 20, lineHeight: 1 }}>{lot.categoryIcon}</span>
+                    <LotIcon category={lot.category} />
                     <div className="min-w-0">
                       <div className="truncate text-[13px] font-semibold">{lot.title}</div>
                       <div className="text-[12px] text-[var(--pf-text-muted)]">{lot.category}</div>

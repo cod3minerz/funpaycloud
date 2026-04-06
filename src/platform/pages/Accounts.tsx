@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { CircleCheck, CircleOff, Plus, Search, ShieldCheck, Trash2 } from 'lucide-react';
+import { CircleCheck, CircleOff, Plus, Search, ShieldCheck, Star, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { Account, accounts as initialAccounts } from '@/platform/data/demoData';
 import {
@@ -178,7 +178,12 @@ export default function Accounts() {
                       <td style={{ textAlign: 'right', fontWeight: 700 }}>{acc.balance.toLocaleString('ru-RU')} ₽</td>
                       <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>{acc.lotsCount}</td>
                       <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>{acc.sales}</td>
-                      <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>⭐ {acc.rating.toFixed(1)}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>
+                        <span className="inline-flex items-center gap-1">
+                          <Star size={12} color="#f5b94c" />
+                          {acc.rating.toFixed(1)}
+                        </span>
+                      </td>
                       <td style={{ textAlign: 'right' }}>
                         <div className="inline-flex items-center gap-2">
                           <button className="platform-topbar-btn" onClick={() => toggleStatus(acc.id)} aria-label="Переключить статус">
