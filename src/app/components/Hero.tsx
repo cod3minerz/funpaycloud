@@ -1,12 +1,30 @@
 "use client";
+
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 
-const sidebarItems = ["Дашборд", "Заказы", "Чаты", "Лоты", "Аналитика"];
+const sidebarItems = ["Дашборд", "Заказы", "Чаты", "Лоты", "Склад", "Аналитика", "Автоматизация"];
+const metricCards = [
+  { label: "Оборот за 24ч", value: "128 540 ₽", delta: "+18.4%" },
+  { label: "Новые заказы", value: "94", delta: "+12" },
+  { label: "Активные чаты", value: "31", delta: "7 ждут ответ" },
+  { label: "Аптайм сервиса", value: "99.98%", delta: "Стабильно" },
+];
 const tableRows = [
   { id: "ORD-2048", buyer: "tonminerz", sum: "3 280 ₽", status: "Оплачен" },
   { id: "ORD-2047", buyer: "shop_pro", sum: "1 990 ₽", status: "В работе" },
   { id: "ORD-2046", buyer: "seller_hub", sum: "850 ₽", status: "Выдан" },
+  { id: "ORD-2045", buyer: "nova_store", sum: "4 700 ₽", status: "Новый" },
+];
+const dialogRows = [
+  { name: "dropx_hub", message: "Нужна повторная выдача", time: "2м", unread: true },
+  { name: "pro_seller", message: "Оплата прошла, проверишь?", time: "8м", unread: true },
+  { name: "black_cat", message: "Спасибо, всё получил", time: "21м", unread: false },
+];
+const activityRows = [
+  { label: "Автовыдача", value: "37 заказов", state: "ok" },
+  { label: "Поднятие лотов", value: "16 запусков", state: "ok" },
+  { label: "Проблемные заказы", value: "2 требуют внимания", state: "warn" },
 ];
 
 export function Hero() {
@@ -122,173 +140,319 @@ export function Hero() {
           </a>
         </div>
 
-        <div className="w-full max-w-[1120px]" style={{ perspective: "1600px" }}>
-          <motion.div className="relative" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: "easeOut" }}>
+        <div className="w-full max-w-[1280px] px-1 sm:px-2 lg:px-0" style={{ perspective: "2200px" }}>
+          <motion.div
+            className="relative"
+            initial={{ opacity: 0, y: 36 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, ease: "easeOut" }}
+          >
             <motion.div
               className="relative"
               animate={{
-                y: [0, isMobile ? -3 : -5, 0],
-                rotateX: isMobile ? [9, 8.3, 9] : [12, 11.2, 12],
+                y: [0, isMobile ? -7 : -12, 0],
+                rotateX: isMobile ? [10, 8.9, 10] : [15.5, 13.3, 15.5],
+                rotateY: isMobile ? [-1, -0.5, -1] : [-2.4, -1.5, -2.4],
+                boxShadow: [
+                  "0 34px 84px rgba(2, 8, 23, 0.52)",
+                  "0 52px 112px rgba(2, 8, 23, 0.68)",
+                  "0 34px 84px rgba(2, 8, 23, 0.52)",
+                ],
               }}
-              transition={{ duration: 8.5, repeat: Infinity, ease: "easeInOut" }}
+              transition={{ duration: 7.2, repeat: Infinity, ease: "easeInOut" }}
               style={{ transformStyle: "preserve-3d", transformOrigin: "center top" }}
             >
-            <div
-              className="absolute left-1/2 top-[86%] -translate-x-1/2 w-[86%] h-14 rounded-full blur-3xl"
-              style={{ background: "rgba(37,99,235,0.22)" }}
-              aria-hidden="true"
-            />
+              <motion.div
+                className="absolute left-1/2 top-[86%] -translate-x-1/2 w-[88%] h-20 rounded-full blur-3xl"
+                animate={{ opacity: [0.35, 0.55, 0.35], scaleX: [0.95, 1.02, 0.95] }}
+                transition={{ duration: 7.2, repeat: Infinity, ease: "easeInOut" }}
+                style={{ background: "rgba(37,99,235,0.3)" }}
+                aria-hidden="true"
+              />
 
-            <div
-              className="relative rounded-[24px] overflow-hidden"
-              style={{
-                background: "linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(10,17,30,0.98) 100%)",
-                border: "1px solid rgba(148,163,184,0.24)",
-                boxShadow: "0 22px 70px rgba(2, 8, 23, 0.55)",
-              }}
-            >
               <div
-                className="h-[52px] flex items-center justify-between px-4 sm:px-5"
+                className="relative rounded-[28px] overflow-hidden"
                 style={{
-                  borderBottom: "1px solid rgba(148,163,184,0.2)",
-                  background: "rgba(15,23,42,0.78)",
+                  background: "linear-gradient(180deg, rgba(10,15,28,0.98) 0%, rgba(6,10,20,0.98) 100%)",
+                  border: "1px solid rgba(148,163,184,0.28)",
                 }}
               >
-                <div className="inline-flex items-center gap-2.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-white/40" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-white/30" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-white/20" />
-                  <span
-                    className="ml-1 text-[11px] sm:text-xs text-slate-300"
-                    style={{ fontFamily: "Manrope, sans-serif", fontWeight: 700 }}
-                  >
-                    FunPay Cloud Dashboard
-                  </span>
-                </div>
-                <div className="inline-flex items-center gap-2 sm:gap-3">
-                  <span className="h-7 sm:h-8 w-24 sm:w-36 rounded-lg border border-white/10 bg-white/[0.03]" />
-                  <span className="h-7 sm:h-8 w-7 sm:w-8 rounded-full bg-blue-400/25 border border-blue-200/25" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-[74px_minmax(0,1fr)] sm:grid-cols-[190px_minmax(0,1fr)] min-h-[300px] sm:min-h-[380px]">
-                <aside
-                  className="p-3 sm:p-4"
+                <div
+                  className="h-[56px] sm:h-[60px] flex items-center justify-between px-4 sm:px-6"
                   style={{
-                    borderRight: "1px solid rgba(148,163,184,0.18)",
-                    background: "rgba(7,13,24,0.55)",
+                    borderBottom: "1px solid rgba(148,163,184,0.2)",
+                    background: "rgba(11,17,31,0.88)",
                   }}
                 >
-                  <div className="space-y-2 sm:space-y-2.5">
-                    {sidebarItems.map((item, idx) => (
-                      <div
-                        key={item}
-                        className="h-8 sm:h-9 rounded-xl"
-                        style={{
-                          background: idx === 0 ? "rgba(96,165,250,0.2)" : "rgba(148,163,184,0.08)",
-                          border: idx === 0 ? "1px solid rgba(96,165,250,0.35)" : "1px solid transparent",
-                        }}
-                      >
-                        <div className="h-full px-2 sm:px-3 flex items-center gap-2 sm:gap-3">
-                          <span className="h-3.5 w-3.5 rounded bg-white/45 shrink-0" />
-                          <span
-                            className="hidden sm:block text-xs text-slate-300"
-                            style={{ fontFamily: "Manrope, sans-serif", fontWeight: 600 }}
-                          >
-                            {item}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="inline-flex items-center gap-2.5">
+                    <span className="h-2.5 w-2.5 rounded-full bg-white/40" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-white/30" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-white/20" />
+                    <span
+                      className="ml-1 text-[11px] sm:text-xs text-slate-300"
+                      style={{ fontFamily: "Manrope, sans-serif", fontWeight: 700 }}
+                    >
+                      FunPay Cloud · Platform Dashboard
+                    </span>
                   </div>
-                </aside>
-
-                <div className="p-3 sm:p-5 lg:p-6 grid gap-3 sm:gap-4 bg-[rgba(2,10,20,0.45)]">
-                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                    {["Выручка", "Активные", "Ожидают"].map((label, idx) => (
-                      <div
-                        key={label}
-                        className="rounded-xl sm:rounded-2xl p-2.5 sm:p-3"
-                        style={{
-                          background: "rgba(15,23,42,0.7)",
-                          border: "1px solid rgba(148,163,184,0.2)",
-                        }}
-                      >
-                        <div
-                          className="text-[10px] sm:text-xs text-slate-400"
-                          style={{ fontFamily: "Manrope, sans-serif", fontWeight: 600 }}
-                        >
-                          {label}
-                        </div>
-                        <div
-                          className="mt-1 text-white text-sm sm:text-base"
-                          style={{ fontFamily: "Manrope, sans-serif", fontWeight: 800 }}
-                        >
-                          {idx === 0 ? "128 540 ₽" : idx === 1 ? "19" : "6"}
-                        </div>
-                      </div>
-                    ))}
+                  <div className="inline-flex items-center gap-2 sm:gap-3">
+                    <span className="h-8 sm:h-9 w-20 sm:w-36 rounded-lg border border-white/10 bg-white/[0.03]" />
+                    <span className="h-8 sm:h-9 w-8 sm:w-9 rounded-full bg-blue-400/25 border border-blue-200/25" />
                   </div>
+                </div>
 
-                  <div
-                    className="rounded-xl sm:rounded-2xl p-3 sm:p-4"
+                <div className="grid grid-cols-[80px_minmax(0,1fr)] sm:grid-cols-[214px_minmax(0,1fr)] min-h-[360px] sm:min-h-[520px]">
+                  <aside
+                    className="p-3 sm:p-4 lg:p-5"
                     style={{
-                      background: "rgba(15,23,42,0.66)",
-                      border: "1px solid rgba(148,163,184,0.2)",
+                      borderRight: "1px solid rgba(148,163,184,0.2)",
+                      background: "rgba(7,12,24,0.82)",
                     }}
                   >
-                    <div className="h-24 sm:h-28 flex items-end gap-2 sm:gap-3">
-                      {[28, 44, 38, 63, 51, 72, 58].map((h, i) => (
-                        <span
-                          key={i}
-                          className="flex-1 rounded-t-lg"
+                    <div className="mb-4 hidden sm:flex items-center gap-2">
+                      <span className="h-8 w-8 rounded-xl bg-blue-500/25 border border-blue-300/30" />
+                      <span className="text-sm text-slate-200 font-semibold" style={{ fontFamily: "Manrope, sans-serif" }}>
+                        Операционный центр
+                      </span>
+                    </div>
+                    <div className="space-y-2 sm:space-y-2.5">
+                      {sidebarItems.map((item, idx) => (
+                        <div
+                          key={item}
+                          className="h-9 sm:h-10 rounded-xl"
                           style={{
-                            height: `${h}%`,
-                            background:
-                              i === 6
-                                ? "linear-gradient(180deg, rgba(96,165,250,0.95), rgba(37,99,235,0.72))"
-                                : "rgba(148,163,184,0.35)",
+                            background: idx === 0 ? "rgba(59,130,246,0.22)" : "rgba(148,163,184,0.06)",
+                            border: idx === 0 ? "1px solid rgba(96,165,250,0.4)" : "1px solid transparent",
                           }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div
-                    className="rounded-xl sm:rounded-2xl overflow-hidden"
-                    style={{ border: "1px solid rgba(148,163,184,0.2)", background: "rgba(15,23,42,0.64)" }}
-                  >
-                    <div className="grid grid-cols-4 px-3 sm:px-4 h-9 items-center text-[10px] sm:text-xs text-slate-400 border-b border-white/10">
-                      <span>ID</span>
-                      <span>Покупатель</span>
-                      <span className="text-right">Сумма</span>
-                      <span className="text-right">Статус</span>
-                    </div>
-                    <div className="divide-y divide-white/10">
-                      {tableRows.map((row) => (
-                        <div key={row.id} className="grid grid-cols-4 px-3 sm:px-4 h-10 sm:h-11 items-center text-[11px] sm:text-xs">
-                          <span className="text-slate-300 truncate">{row.id}</span>
-                          <span className="text-slate-300 truncate">{row.buyer}</span>
-                          <span className="text-right text-slate-200 font-semibold">{row.sum}</span>
-                          <span className="text-right">
+                        >
+                          <div className="h-full px-2 sm:px-3.5 flex items-center gap-2.5 sm:gap-3">
+                            <span className="h-3.5 w-3.5 rounded bg-white/45 shrink-0" />
                             <span
-                              className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px]"
-                              style={{
-                                background: "rgba(96,165,250,0.15)",
-                                border: "1px solid rgba(96,165,250,0.28)",
-                                color: "#BFDBFE",
-                              }}
+                              className="hidden sm:block text-xs text-slate-300 truncate"
+                              style={{ fontFamily: "Manrope, sans-serif", fontWeight: 600 }}
                             >
-                              {row.status}
+                              {item}
                             </span>
-                          </span>
+                          </div>
                         </div>
                       ))}
+                    </div>
+                    <div className="hidden sm:block mt-6 p-3 rounded-xl border border-blue-200/20 bg-blue-500/10">
+                      <div className="text-[11px] text-blue-200 font-semibold" style={{ fontFamily: "Manrope, sans-serif" }}>
+                        Статус системы
+                      </div>
+                      <div className="mt-1 text-xs text-slate-300">Все сервисы работают стабильно</div>
+                    </div>
+                  </aside>
+
+                  <div className="p-3 sm:p-5 lg:p-6 flex flex-col gap-3 sm:gap-4 lg:gap-5 bg-[rgba(2,9,18,0.76)]">
+                    <div
+                      className="rounded-2xl p-3 sm:p-4 flex items-center justify-between"
+                      style={{ border: "1px solid rgba(148,163,184,0.18)", background: "rgba(15,23,42,0.58)" }}
+                    >
+                      <div>
+                        <div className="text-[11px] sm:text-xs text-slate-400">Operational overview</div>
+                        <div className="text-sm sm:text-base text-slate-100 font-semibold">
+                          Контроль заказов, чатов и лотов в одном экране
+                        </div>
+                      </div>
+                      <div className="hidden sm:flex items-center gap-2">
+                        <span className="h-7 px-3 rounded-lg border border-white/10 bg-white/[0.03] text-xs text-slate-300 inline-flex items-center">
+                          Сегодня
+                        </span>
+                        <span className="h-7 px-3 rounded-lg border border-blue-300/30 bg-blue-500/20 text-xs text-blue-200 inline-flex items-center">
+                          Live
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-3">
+                      {metricCards.map((card) => (
+                        <div
+                          key={card.label}
+                          className="rounded-xl sm:rounded-2xl p-3 sm:p-4"
+                          style={{
+                            background: "rgba(15,23,42,0.7)",
+                            border: "1px solid rgba(148,163,184,0.2)",
+                          }}
+                        >
+                          <div
+                            className="text-[10px] sm:text-xs text-slate-400"
+                            style={{ fontFamily: "Manrope, sans-serif", fontWeight: 600 }}
+                          >
+                            {card.label}
+                          </div>
+                          <div
+                            className="mt-1.5 text-white text-sm sm:text-base lg:text-lg"
+                            style={{ fontFamily: "Manrope, sans-serif", fontWeight: 800 }}
+                          >
+                            {card.value}
+                          </div>
+                          <div className="mt-1 text-[10px] sm:text-xs text-blue-200">{card.delta}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="grid lg:grid-cols-[minmax(0,1fr)_280px] gap-3 sm:gap-4">
+                      <div className="space-y-3 sm:space-y-4">
+                        <div
+                          className="rounded-2xl p-3 sm:p-4"
+                          style={{ border: "1px solid rgba(148,163,184,0.2)", background: "rgba(15,23,42,0.68)" }}
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-xs sm:text-sm text-slate-200 font-semibold">Выручка и выдача за 7 дней</span>
+                            <span className="text-[10px] sm:text-xs text-slate-400">обновлено 2 мин назад</span>
+                          </div>
+                          <div
+                            className="h-36 sm:h-40 rounded-xl border border-white/10 p-2 sm:p-3"
+                            style={{
+                              background:
+                                "linear-gradient(180deg, rgba(10,15,28,0.9), rgba(8,13,24,0.78))",
+                            }}
+                          >
+                            <svg viewBox="0 0 620 220" className="w-full h-full">
+                              <defs>
+                                <linearGradient id="lineA" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor="#60A5FA" stopOpacity="0.95" />
+                                  <stop offset="100%" stopColor="#2563EB" stopOpacity="0.35" />
+                                </linearGradient>
+                                <linearGradient id="lineB" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor="#93C5FD" stopOpacity="0.8" />
+                                  <stop offset="100%" stopColor="#1D4ED8" stopOpacity="0.24" />
+                                </linearGradient>
+                              </defs>
+                              <polyline
+                                fill="none"
+                                stroke="url(#lineA)"
+                                strokeWidth="6"
+                                strokeLinejoin="round"
+                                strokeLinecap="round"
+                                points="20,170 105,150 190,156 275,108 360,118 445,86 530,98 600,68"
+                              />
+                              <polyline
+                                fill="none"
+                                stroke="url(#lineB)"
+                                strokeWidth="5"
+                                strokeLinejoin="round"
+                                strokeLinecap="round"
+                                points="20,184 105,166 190,146 275,152 360,130 445,138 530,120 600,104"
+                              />
+                            </svg>
+                          </div>
+                        </div>
+
+                        <div className="grid md:grid-cols-[minmax(0,1fr)_260px] gap-3 sm:gap-4">
+                          <div
+                            className="rounded-2xl overflow-hidden"
+                            style={{ border: "1px solid rgba(148,163,184,0.2)", background: "rgba(15,23,42,0.64)" }}
+                          >
+                            <div className="grid grid-cols-4 px-3 sm:px-4 h-10 items-center text-[10px] sm:text-xs text-slate-400 border-b border-white/10">
+                              <span>Заказ</span>
+                              <span>Покупатель</span>
+                              <span className="text-right">Сумма</span>
+                              <span className="text-right">Статус</span>
+                            </div>
+                            <div className="divide-y divide-white/10">
+                              {tableRows.map((row) => (
+                                <div
+                                  key={row.id}
+                                  className="grid grid-cols-4 px-3 sm:px-4 h-11 sm:h-12 items-center text-[11px] sm:text-xs"
+                                >
+                                  <span className="text-slate-300 truncate">{row.id}</span>
+                                  <span className="text-slate-300 truncate">{row.buyer}</span>
+                                  <span className="text-right text-slate-100 font-semibold">{row.sum}</span>
+                                  <span className="text-right">
+                                    <span
+                                      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px]"
+                                      style={{
+                                        background:
+                                          row.status === "Новый"
+                                            ? "rgba(251,191,36,0.14)"
+                                            : "rgba(96,165,250,0.15)",
+                                        border:
+                                          row.status === "Новый"
+                                            ? "1px solid rgba(251,191,36,0.32)"
+                                            : "1px solid rgba(96,165,250,0.28)",
+                                        color: row.status === "Новый" ? "#FDE68A" : "#BFDBFE",
+                                      }}
+                                    >
+                                      {row.status}
+                                    </span>
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div
+                            className="rounded-2xl p-3 sm:p-4"
+                            style={{ border: "1px solid rgba(148,163,184,0.2)", background: "rgba(15,23,42,0.66)" }}
+                          >
+                            <div className="text-xs sm:text-sm text-slate-200 font-semibold">Недавние диалоги</div>
+                            <div className="mt-3 space-y-2.5">
+                              {dialogRows.map((row) => (
+                                <div key={row.name} className="rounded-xl border border-white/10 bg-white/[0.02] p-2.5">
+                                  <div className="flex items-center justify-between text-[11px]">
+                                    <span className="text-slate-100 font-semibold">{row.name}</span>
+                                    <span className="text-slate-500">{row.time}</span>
+                                  </div>
+                                  <div className="mt-1 text-[11px] text-slate-400 truncate">{row.message}</div>
+                                  {row.unread ? <div className="mt-1 text-[10px] text-blue-200">Требует ответа</div> : null}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 sm:space-y-4">
+                        <div
+                          className="rounded-2xl p-3 sm:p-4"
+                          style={{ border: "1px solid rgba(148,163,184,0.2)", background: "rgba(15,23,42,0.66)" }}
+                        >
+                          <div className="flex items-center gap-2 text-xs text-slate-300">
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                            Статус системы: в норме
+                          </div>
+                          <div className="mt-2 text-[11px] text-slate-400">
+                            API, очередь выдачи и модуль автоответов работают стабильно
+                          </div>
+                        </div>
+
+                        <div
+                          className="rounded-2xl p-3 sm:p-4"
+                          style={{ border: "1px solid rgba(148,163,184,0.2)", background: "rgba(15,23,42,0.66)" }}
+                        >
+                          <div className="text-xs sm:text-sm text-slate-200 font-semibold">Операционный блок</div>
+                          <div className="mt-3 space-y-2.5">
+                            {activityRows.map((row) => (
+                              <div key={row.label} className="flex items-center justify-between text-[11px]">
+                                <span className="text-slate-300">{row.label}</span>
+                                <span className={row.state === "warn" ? "text-amber-200" : "text-blue-200"}>{row.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div
+                          className="rounded-2xl p-3 sm:p-4"
+                          style={{ border: "1px solid rgba(148,163,184,0.2)", background: "rgba(15,23,42,0.66)" }}
+                        >
+                          <div className="text-xs sm:text-sm text-slate-200 font-semibold">Быстрые действия</div>
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            <span className="h-9 rounded-lg border border-blue-300/25 bg-blue-500/14 text-[11px] text-blue-100 inline-flex items-center justify-center">
+                              Поднять лоты
+                            </span>
+                            <span className="h-9 rounded-lg border border-white/10 bg-white/[0.02] text-[11px] text-slate-300 inline-flex items-center justify-center">
+                              Проверить чаты
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
             </motion.div>
           </motion.div>
         </div>
