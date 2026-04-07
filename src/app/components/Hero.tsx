@@ -2,8 +2,17 @@
 
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
+import { BarChart3, Bot, Boxes, LayoutDashboard, MessageSquare, ShoppingCart, Tag } from "lucide-react";
 
-const sidebarItems = ["Дашборд", "Заказы", "Чаты", "Лоты", "Склад", "Аналитика", "Автоматизация"];
+const sidebarItems = [
+  { label: "Дашборд", icon: LayoutDashboard },
+  { label: "Заказы", icon: ShoppingCart },
+  { label: "Чаты", icon: MessageSquare },
+  { label: "Лоты", icon: Tag },
+  { label: "Склад", icon: Boxes },
+  { label: "Аналитика", icon: BarChart3 },
+  { label: "Автоматизация", icon: Bot },
+];
 const metricCards = [
   { label: "Оборот за 24ч", value: "128 540 ₽", delta: "+18.4%" },
   { label: "Новые заказы", value: "94", delta: "+12" },
@@ -219,7 +228,7 @@ export function Hero() {
                     <div className="space-y-2 sm:space-y-2.5">
                       {sidebarItems.map((item, idx) => (
                         <div
-                          key={item}
+                          key={item.label}
                           className="h-9 sm:h-10 rounded-xl"
                           style={{
                             background: idx === 0 ? "rgba(59,130,246,0.22)" : "rgba(148,163,184,0.06)",
@@ -227,12 +236,17 @@ export function Hero() {
                           }}
                         >
                           <div className="h-full px-2 sm:px-3.5 flex items-center gap-2.5 sm:gap-3">
-                            <span className="h-3.5 w-3.5 rounded bg-white/45 shrink-0" />
+                            <item.icon
+                              size={14}
+                              strokeWidth={2.2}
+                              className={`shrink-0 ${idx === 0 ? "text-blue-100" : "text-slate-300/90"}`}
+                              aria-hidden="true"
+                            />
                             <span
                               className="hidden sm:block text-xs text-slate-300 truncate"
                               style={{ fontFamily: "Manrope, sans-serif", fontWeight: 600 }}
                             >
-                              {item}
+                              {item.label}
                             </span>
                           </div>
                         </div>
