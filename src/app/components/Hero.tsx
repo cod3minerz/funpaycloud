@@ -148,7 +148,7 @@ export function Hero() {
             transition={{ duration: 0.9, ease: "easeOut" }}
           >
             <motion.div
-              className="relative"
+              className="relative mx-auto w-[clamp(17.8rem,92vw,22rem)] sm:w-[min(100%,52rem)] lg:w-full"
               animate={{
                 y: [0, isMobile ? -6 : -10, 0],
                 scale: isMobile ? [0.985, 1, 0.985] : [0.958, 0.973, 0.958],
@@ -172,7 +172,7 @@ export function Hero() {
               />
 
               <div
-                className="relative rounded-[28px] overflow-hidden"
+                className="relative rounded-[28px] overflow-hidden aspect-[11/13] sm:aspect-[16/12] lg:aspect-[16/10]"
                 style={{
                   background: "linear-gradient(180deg, rgba(10,15,28,0.98) 0%, rgba(6,10,20,0.98) 100%)",
                   border: "1px solid rgba(148,163,184,0.28)",
@@ -202,7 +202,7 @@ export function Hero() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-[72px_minmax(0,1fr)] sm:grid-cols-[214px_minmax(0,1fr)] min-h-[334px] sm:min-h-[520px]">
+                <div className="grid grid-cols-[72px_minmax(0,1fr)] sm:grid-cols-[214px_minmax(0,1fr)] h-[calc(100%-56px)] sm:h-[calc(100%-60px)]">
                   <aside
                     className="p-3 sm:p-4 lg:p-5"
                     style={{
@@ -246,7 +246,7 @@ export function Hero() {
                     </div>
                   </aside>
 
-                  <div className="p-3 sm:p-5 lg:p-6 flex flex-col gap-3 sm:gap-4 lg:gap-5 bg-[rgba(2,9,18,0.76)]">
+                  <div className="p-3 sm:p-5 lg:p-6 flex flex-col gap-3 sm:gap-4 lg:gap-5 bg-[rgba(2,9,18,0.76)] overflow-hidden">
                     <div
                       className="rounded-2xl p-3 sm:p-4 flex items-center justify-between"
                       style={{ border: "1px solid rgba(148,163,184,0.18)", background: "rgba(15,23,42,0.58)" }}
@@ -294,7 +294,33 @@ export function Hero() {
                       ))}
                     </div>
 
-                    <div className="grid lg:grid-cols-[minmax(0,1fr)_280px] gap-3 sm:gap-4">
+                    <div className="sm:hidden grid grid-cols-2 gap-2.5">
+                      <div
+                        className="col-span-2 rounded-xl p-2.5"
+                        style={{ border: "1px solid rgba(148,163,184,0.2)", background: "rgba(15,23,42,0.68)" }}
+                      >
+                        <div className="text-[10px] text-slate-300 mb-1.5">Выручка и выдача</div>
+                        <div className="h-20 rounded-lg border border-white/10 bg-[linear-gradient(180deg,rgba(10,15,28,0.9),rgba(8,13,24,0.78))]" />
+                      </div>
+                      <div
+                        className="rounded-xl p-2.5"
+                        style={{ border: "1px solid rgba(148,163,184,0.2)", background: "rgba(15,23,42,0.66)" }}
+                      >
+                        <div className="text-[10px] text-slate-300">Заказы</div>
+                        <div className="mt-1 text-xs text-blue-100 font-semibold">94 активных</div>
+                        <div className="text-[10px] text-slate-400 mt-1">6 требуют внимания</div>
+                      </div>
+                      <div
+                        className="rounded-xl p-2.5"
+                        style={{ border: "1px solid rgba(148,163,184,0.2)", background: "rgba(15,23,42,0.66)" }}
+                      >
+                        <div className="text-[10px] text-slate-300">Чаты</div>
+                        <div className="mt-1 text-xs text-blue-100 font-semibold">31 открыто</div>
+                        <div className="text-[10px] text-slate-400 mt-1">7 ждут ответа</div>
+                      </div>
+                    </div>
+
+                    <div className="hidden sm:grid lg:grid-cols-[minmax(0,1fr)_280px] gap-3 sm:gap-4">
                       <div className="space-y-3 sm:space-y-4">
                         <div
                           className="rounded-2xl p-3 sm:p-4"
