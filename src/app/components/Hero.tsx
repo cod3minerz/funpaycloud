@@ -140,7 +140,7 @@ export function Hero() {
           </a>
         </div>
 
-        <div className="w-full max-w-[1280px] px-1 sm:px-2 lg:px-0" style={{ perspective: "2200px" }}>
+        <div className="w-full max-w-[1180px] px-1 sm:px-3 lg:px-0" style={{ perspective: "1380px" }}>
           <motion.div
             className="relative"
             initial={{ opacity: 0, y: 36 }}
@@ -150,23 +150,24 @@ export function Hero() {
             <motion.div
               className="relative"
               animate={{
-                y: [0, isMobile ? -7 : -12, 0],
-                rotateX: isMobile ? [10, 8.9, 10] : [15.5, 13.3, 15.5],
-                rotateY: isMobile ? [-1, -0.5, -1] : [-2.4, -1.5, -2.4],
+                y: [0, isMobile ? -6 : -10, 0],
+                scale: isMobile ? [0.985, 1, 0.985] : [0.958, 0.973, 0.958],
+                rotateX: isMobile ? [13.2, 11.8, 13.2] : [22.8, 20.2, 22.8],
+                rotateY: isMobile ? [-1.3, -0.7, -1.3] : [-2.2, -1.4, -2.2],
                 boxShadow: [
-                  "0 34px 84px rgba(2, 8, 23, 0.52)",
-                  "0 52px 112px rgba(2, 8, 23, 0.68)",
-                  "0 34px 84px rgba(2, 8, 23, 0.52)",
+                  "0 34px 84px rgba(2, 8, 23, 0.58)",
+                  "0 62px 128px rgba(2, 8, 23, 0.76)",
+                  "0 34px 84px rgba(2, 8, 23, 0.58)",
                 ],
               }}
-              transition={{ duration: 7.2, repeat: Infinity, ease: "easeInOut" }}
+              transition={{ duration: 6.4, repeat: Infinity, ease: "easeInOut" }}
               style={{ transformStyle: "preserve-3d", transformOrigin: "center top" }}
             >
               <motion.div
                 className="absolute left-1/2 top-[86%] -translate-x-1/2 w-[88%] h-20 rounded-full blur-3xl"
-                animate={{ opacity: [0.35, 0.55, 0.35], scaleX: [0.95, 1.02, 0.95] }}
-                transition={{ duration: 7.2, repeat: Infinity, ease: "easeInOut" }}
-                style={{ background: "rgba(37,99,235,0.3)" }}
+                animate={{ opacity: [0.32, 0.58, 0.32], scaleX: [0.93, 1.06, 0.93], y: [0, 3, 0] }}
+                transition={{ duration: 6.4, repeat: Infinity, ease: "easeInOut" }}
+                style={{ background: "rgba(37,99,235,0.33)" }}
                 aria-hidden="true"
               />
 
@@ -201,7 +202,7 @@ export function Hero() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-[80px_minmax(0,1fr)] sm:grid-cols-[214px_minmax(0,1fr)] min-h-[360px] sm:min-h-[520px]">
+                <div className="grid grid-cols-[72px_minmax(0,1fr)] sm:grid-cols-[214px_minmax(0,1fr)] min-h-[334px] sm:min-h-[520px]">
                   <aside
                     className="p-3 sm:p-4 lg:p-5"
                     style={{
