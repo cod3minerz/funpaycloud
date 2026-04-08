@@ -208,6 +208,150 @@
   gap: 12px;
 }
 
+.platform-notify-trigger {
+  position: relative;
+}
+
+.platform-notify-badge {
+  position: absolute;
+  top: 4px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(110, 139, 255, 0.45);
+  background: rgba(110, 139, 255, 0.24);
+  color: #dbe8ff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+.platform-topbar-dropdown {
+  border: 1px solid var(--pf-overlay-border) !important;
+  border-radius: 12px !important;
+  background: var(--pf-surface-overlay) !important;
+  color: var(--pf-text) !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03), 0 18px 38px rgba(2, 5, 10, 0.42) !important;
+  backdrop-filter: blur(10px);
+}
+
+.platform-topbar-dropdown-head {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--pf-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.platform-topbar-dropdown-head strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.platform-topbar-dropdown-head span {
+  color: var(--pf-text-dim);
+  font-size: 11px;
+}
+
+.platform-topbar-dropdown-scroll {
+  max-height: min(52vh, 360px);
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.platform-notify-item {
+  border-radius: 10px;
+  border: 1px solid transparent;
+  padding: 9px;
+  display: grid;
+  gap: 4px;
+}
+
+.platform-notify-item.unread {
+  background: rgba(110, 139, 255, 0.1);
+  border-color: rgba(110, 139, 255, 0.22);
+}
+
+.platform-notify-item + .platform-notify-item {
+  margin-top: 4px;
+}
+
+.platform-notify-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.platform-notify-item-head strong {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.platform-notify-item-head span {
+  color: var(--pf-text-dim);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.platform-notify-item p {
+  margin: 0;
+  color: var(--pf-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.platform-account-dropdown-head {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px !important;
+}
+
+.platform-account-name {
+  color: var(--pf-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.platform-account-meta {
+  color: var(--pf-text-dim);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.platform-account-dropdown-sep {
+  background: var(--pf-border) !important;
+}
+
+.platform-account-dropdown-item {
+  border-radius: 8px !important;
+  color: var(--pf-text-muted) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  min-height: 34px !important;
+  cursor: pointer !important;
+}
+
+.platform-account-dropdown-item[data-highlighted] {
+  background: var(--pf-surface-2) !important;
+  color: var(--pf-text) !important;
+}
+
+.platform-account-dropdown-item.danger {
+  color: #f4a9b3 !important;
+}
+
+.platform-account-dropdown-item.danger[data-highlighted] {
+  background: rgba(240, 106, 126, 0.15) !important;
+  color: #ffc7cf !important;
+}
+
 .platform-topbar-links {
   display: none;
 }
@@ -1099,6 +1243,52 @@
   padding: 12px;
 }
 
+.platform-country-flag {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(255, 255, 255, 0.04);
+  flex-shrink: 0;
+}
+
+.platform-ip-mask {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  letter-spacing: 0.03em;
+  filter: blur(0.42px);
+  user-select: none;
+  pointer-events: none;
+}
+
+.platform-proxy-list-table td {
+  white-space: nowrap;
+}
+
+.platform-proxy-list-geo {
+  display: grid;
+  gap: 4px;
+}
+
+.platform-proxy-list-mobile {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.platform-proxy-list-mobile-row {
+  border: 1px solid var(--pf-border);
+  border-radius: 12px;
+  background: var(--pf-surface-2);
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+
 .platform-plugin-glyph,
 .platform-lot-glyph {
   width: 34px;
@@ -1167,6 +1357,10 @@
   }
 
   .platform-mobile-cards {
+    display: none;
+  }
+
+  .platform-proxy-list-mobile {
     display: none;
   }
 }
@@ -1650,6 +1844,10 @@
 }
 
 @media (max-width: 767px) {
+  .platform-topbar-dropdown {
+    width: min(92vw, 320px) !important;
+  }
+
   .platform-main-scroll {
     padding: 0 10px max(14px, env(safe-area-inset-bottom));
   }

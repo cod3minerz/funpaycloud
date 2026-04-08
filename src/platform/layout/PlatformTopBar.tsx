@@ -1,10 +1,19 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { usePathname } from 'next/navigation';
-import { Bell, ChevronLeft, ChevronRight, LifeBuoy, Menu } from 'lucide-react';
+import { Bell, ChevronLeft, ChevronRight, LifeBuoy, LogOut, Menu, Settings, Wallet } from 'lucide-react';
 import { accounts } from '@/platform/data/demoData';
 import { TelegramMark, VkMark } from '@/platform/components/SocialMarks';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/app/components/ui/dropdown-menu';
 
 const PATH_LABELS: Record<string, string> = {
   platform: 'Платформа',
@@ -34,9 +43,11 @@ export default function PlatformTopBar({
   sidebarCollapsed,
   onToggleSidebarCollapse,
 }: PlatformTopBarProps) {
+  const router = useRouter();
   const pathname = usePathname();
   const profile = accounts[0];
   const initials = profile?.username?.slice(0, 2).toUpperCase() ?? 'FC';
+  const balance = profile?.balance ?? 0;
 
   const breadcrumbs = useMemo(() => {
     return pathname
@@ -44,6 +55,16 @@ export default function PlatformTopBar({
       .filter(Boolean)
       .map(part => ({ raw: part, label: PATH_LABELS[part] ?? part }));
   }, [pathname]);
+
+  const notifications = useMemo(
+    () => [
+      { id: 'nf-1', title: 'Новый заказ', text: 'Поступил заказ ORD-1012 на 390 ₽', time: '2 мин назад', unread: true },
+      { id: 'nf-2', title: 'Реферальное начисление', text: 'Начислено 897 ₽ по RF-3888', time: '11 мин назад', unread: true },
+      { id: 'nf-3', title: 'Системное', text: 'Плановое обновление модулей завершено', time: 'Сегодня, 10:20', unread: false },
+    ],
+    [],
+  );
+  const unreadCount = notifications.filter(item => item.unread).length;
 
   const topLinks = [
     { label: 'Телеграм канал', href: '#', icon: <TelegramMark size={15} /> },
@@ -97,14 +118,60 @@ export default function PlatformTopBar({
       </nav>
 
       <div className="platform-topbar-right">
-        <button type="button" className="platform-topbar-plain-btn hidden sm:inline-flex" aria-label="Уведомления">
-          <Bell size={15} />
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" className="platform-topbar-plain-btn platform-notify-trigger" aria-label="Уведомления">
+              <Bell size={15} />
+              {unreadCount > 0 && <span className="platform-notify-badge">{Math.min(unreadCount, 9)}</span>}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" sideOffset={10} className="platform-topbar-dropdown w-[320px] p-0">
+            <div className="platform-topbar-dropdown-head">
+              <strong>Уведомления</strong>
+              <span>{unreadCount > 0 ? `${unreadCount} новых` : 'Все прочитаны'}</span>
+            </div>
+            <div className="platform-topbar-dropdown-scroll">
+              {notifications.map(item => (
+                <div key={item.id} className={`platform-notify-item${item.unread ? ' unread' : ''}`}>
+                  <div className="platform-notify-item-head">
+                    <strong>{item.title}</strong>
+                    <span>{item.time}</span>
+                  </div>
+                  <p>{item.text}</p>
+                </div>
+              ))}
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-        <button type="button" className="platform-profile-plain" aria-label="Профиль пользователя">
-          <span className="platform-avatar">{initials}</span>
-          <strong className="hidden sm:block text-[13px] font-semibold">{profile?.username ?? 'user'}</strong>
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" className="platform-profile-plain" aria-label="Профиль пользователя">
+              <span className="platform-avatar">{initials}</span>
+              <strong className="hidden sm:block text-[13px] font-semibold">{profile?.username ?? 'user'}</strong>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" sideOffset={10} className="platform-topbar-dropdown w-[246px]">
+            <DropdownMenuLabel className="platform-account-dropdown-head">
+              <span className="platform-account-name">{profile?.username ?? 'user'}</span>
+              <span className="platform-account-meta">Баланс: {balance.toLocaleString('ru-RU')} ₽</span>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator className="platform-account-dropdown-sep" />
+            <DropdownMenuItem className="platform-account-dropdown-item" onSelect={() => router.push('/platform/finances')}>
+              <Wallet size={14} />
+              Баланс и выплаты
+            </DropdownMenuItem>
+            <DropdownMenuItem className="platform-account-dropdown-item" onSelect={() => router.push('/platform/settings')}>
+              <Settings size={14} />
+              Настройки профиля
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="platform-account-dropdown-sep" />
+            <DropdownMenuItem className="platform-account-dropdown-item danger" onSelect={() => router.push('/')}>
+              <LogOut size={14} />
+              Выйти
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
