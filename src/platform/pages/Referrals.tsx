@@ -181,8 +181,8 @@ export default function Referrals() {
         </PageHeader>
 
         <SectionCard className="platform-referral-hero p-0 overflow-hidden">
-          <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(340px,1fr)] lg:p-5">
-            <div className="grid gap-4">
+          <div className="platform-referral-hero-grid grid gap-4 p-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(340px,1fr)] lg:p-5">
+            <div className="platform-referral-hero-main grid gap-4">
               <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[rgba(110,139,255,0.35)] bg-[var(--pf-accent-soft)] px-3 py-1 text-[11px] font-semibold text-[var(--pf-text-muted)]">
                 <CircleDollarSign size={13} />
                 До 30% вознаграждения • без потолка по заработку
@@ -221,6 +221,7 @@ export default function Referrals() {
               <Panel className="platform-referral-influencer p-3 sm:p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="grid gap-1">
+                    <span className="platform-referral-influencer-badge">Creator / Media Program</span>
                     <div className="inline-flex items-center gap-2 text-[15px] font-bold">
                       <Youtube size={16} />
                       Для блогеров и владельцев аудитории
@@ -232,14 +233,14 @@ export default function Referrals() {
                   </div>
                 </div>
                 <div className="mt-3">
-                  <Link href="/platform/chats" className="platform-btn-secondary">
+                  <Link href="/platform/chats" className="platform-btn-primary">
                     <LifeBuoy size={14} /> Обсудить сотрудничество
                   </Link>
                 </div>
               </Panel>
             </div>
 
-            <Panel className="grid gap-4 p-4 lg:p-5">
+            <Panel className="platform-referral-status-card grid gap-4 p-4 lg:p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="m-0 text-[11px] uppercase tracking-[0.08em] text-[var(--pf-text-soft)]">Текущий статус</p>
@@ -250,6 +251,11 @@ export default function Referrals() {
                 <span className="platform-chip">
                   <Users size={13} /> {currentReferrals} рефералов
                 </span>
+              </div>
+
+              <div className="rounded-[10px] border border-[rgba(110,139,255,0.28)] bg-[rgba(110,139,255,0.12)] px-3 py-2 text-[12px] text-[var(--pf-text-muted)]">
+                Переход в <strong className="text-[var(--pf-text)]">Partner</strong> открывает ежемесячные выплаты и более
+                высокий доход с подписок.
               </div>
 
               <div>
