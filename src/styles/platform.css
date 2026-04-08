@@ -797,10 +797,10 @@
 .platform-referral-influencer {
   border-color: rgba(226, 74, 93, 0.33);
   background:
-    radial-gradient(130% 180% at 0% 100%, rgba(195, 42, 66, 0.22), transparent 58%),
-    radial-gradient(120% 170% at 100% 0%, rgba(154, 34, 58, 0.14), transparent 62%),
+    radial-gradient(130% 180% at 0% 100%, rgba(195, 42, 66, 0.28), transparent 58%),
+    radial-gradient(120% 170% at 100% 0%, rgba(154, 34, 58, 0.2), transparent 62%),
     var(--pf-surface-2);
-  box-shadow: inset 0 1px 0 rgba(255, 180, 193, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 180, 193, 0.12), 0 14px 28px rgba(88, 14, 28, 0.22);
 }
 
 .platform-referral-influencer-badge {
@@ -814,6 +814,60 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.platform-referral-actions {
+  display: grid;
+  gap: 8px;
+}
+
+@media (min-width: 640px) {
+  .platform-referral-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.platform-youtube-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.platform-youtube-mark {
+  width: 26px;
+  height: 18px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #ff3e3e, #e61f37);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(242, 45, 63, 0.35);
+}
+
+.platform-youtube-mark-play {
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 7px solid #fff;
+  margin-left: 1px;
+}
+
+.platform-youtube-wordmark {
+  color: #ffe7ea;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.platform-referral-influencer-btn {
+  border-color: rgba(253, 175, 186, 0.42);
+  background: linear-gradient(135deg, #ff4a59, #d62845);
+}
+
+.platform-referral-influencer-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
 }
 
 .platform-panel {

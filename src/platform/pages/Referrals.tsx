@@ -15,7 +15,6 @@ import {
   TrendingUp,
   Users,
   Wallet,
-  Youtube,
 } from 'lucide-react';
 import {
   DataTableWrap,
@@ -205,16 +204,13 @@ export default function Referrals() {
                 <div className="mt-2 rounded-[10px] border border-[var(--pf-border)] bg-[var(--pf-surface-2)] px-3 py-2 text-[13px] font-semibold">
                   <span className="block truncate">{REF_LINK}</span>
                 </div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
-                  <button className="platform-btn-primary sm:w-full" onClick={handleCopyLink}>
+                <div className="platform-referral-actions mt-3">
+                  <button className="platform-btn-primary w-full" onClick={handleCopyLink}>
                     <Copy size={14} /> {copied === 'link' ? 'Ссылка скопирована' : 'Скопировать ссылку'}
                   </button>
-                  <button className="platform-btn-secondary" onClick={handleShare}>
+                  <button className="platform-btn-secondary w-full" onClick={handleShare}>
                     <Share2 size={14} /> {shareState === 'done' ? 'Готово' : 'Поделиться'}
                   </button>
-                  <span className="platform-chip justify-center sm:justify-start">
-                    <BadgePercent size={13} /> Промокод: {REF_CODE}
-                  </span>
                 </div>
               </Panel>
 
@@ -222,18 +218,24 @@ export default function Referrals() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="grid gap-1">
                     <span className="platform-referral-influencer-badge">Creator / Media Program</span>
-                    <div className="inline-flex items-center gap-2 text-[15px] font-bold">
-                      <Youtube size={16} />
-                      Для блогеров и владельцев аудитории
+                    <div className="platform-youtube-lockup">
+                      <span className="platform-youtube-mark" aria-hidden="true">
+                        <span className="platform-youtube-mark-play" />
+                      </span>
+                      <span className="platform-youtube-wordmark">YouTube</span>
                     </div>
                     <p className="m-0 text-[13px] leading-6 text-[var(--pf-text-muted)]">
-                      Если у вас канал или активное сообщество, подключим персональные условия и промокод для вашей
-                      аудитории.
+                      Если у вас канал или активное сообщество, подключим персональные условия, отдельный промокод для
+                      аудитории и расширенные выплаты.
                     </p>
                   </div>
                 </div>
+                <div className="mt-2 inline-flex items-center gap-2 text-[12px] text-[#ffd7dd]">
+                  <BadgePercent size={13} />
+                  Индивидуальный creator-промокод под вашу аудиторию
+                </div>
                 <div className="mt-3">
-                  <Link href="/platform/chats" className="platform-btn-primary">
+                  <Link href="/platform/chats" className="platform-btn-primary platform-referral-influencer-btn">
                     <LifeBuoy size={14} /> Обсудить сотрудничество
                   </Link>
                 </div>
