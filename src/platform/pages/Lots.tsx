@@ -156,14 +156,16 @@ export default function Lots() {
 
         <SectionCard className="p-0">
           <div className="platform-desktop-table">
-            <DataTableWrap>
-              <table className="platform-table" style={{ minWidth: 960 }}>
+            <DataTableWrap className="tablet-dense-scroll">
+              <table className="platform-table" style={{ minWidth: 840 }}>
                 <thead>
                   <tr>
                     <th style={{ width: 340 }}>Лот</th>
-                    <th>Категория</th>
+                    <th className="platform-col-tablet-hide">Категория</th>
                     <th style={{ textAlign: 'right' }}>Цена</th>
-                    <th style={{ textAlign: 'right' }}>Продажи / мес</th>
+                    <th className="platform-col-tablet-hide" style={{ textAlign: 'right' }}>
+                      Продажи / мес
+                    </th>
                     <th>Статус</th>
                     <th style={{ textAlign: 'right' }}>Действия</th>
                   </tr>
@@ -180,11 +182,13 @@ export default function Lots() {
                           </div>
                         </div>
                       </td>
-                      <td>
+                      <td className="platform-col-tablet-hide">
                         <span className="platform-chip">{lot.category}</span>
                       </td>
                       <td style={{ textAlign: 'right', fontWeight: 700 }}>{lot.price} ₽</td>
-                      <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>{lot.salesMonth}</td>
+                      <td className="platform-col-tablet-hide" style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>
+                        {lot.salesMonth}
+                      </td>
                       <td>
                         <div className="inline-flex items-center gap-2">
                           <Switch checked={lot.status === 'active'} onCheckedChange={() => toggleStatus(lot.id)} />
@@ -235,7 +239,7 @@ export default function Lots() {
                   <span>{lot.description}</span>
                 </div>
 
-                <div className="platform-mobile-actions">
+                <div className="platform-mobile-actions platform-mobile-action-grid">
                   <button className="platform-btn-secondary" onClick={() => openEdit(lot)}>
                     <Edit2 size={14} /> Редактировать
                   </button>

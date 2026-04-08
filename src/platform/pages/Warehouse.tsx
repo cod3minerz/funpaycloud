@@ -186,7 +186,7 @@ export default function Warehouse() {
 
                 <SectionCard>
                   <h3 className="m-0 text-[15px] font-bold">Добавить товары</h3>
-                  <ToolbarRow className="mt-3">
+                  <ToolbarRow className="mt-3 platform-toolbar-scroll">
                     {(['single', 'list', 'file'] as const).map(tab => (
                       <button
                         key={tab}
@@ -200,7 +200,7 @@ export default function Warehouse() {
                   </ToolbarRow>
 
                   {addTab === 'single' && (
-                    <div className="mt-3 flex gap-2">
+                    <div className="mt-3 grid gap-2 sm:flex">
                       <input
                         className="platform-input"
                         value={singleInput}
@@ -259,14 +259,16 @@ export default function Warehouse() {
                   <Panel className="m-4 p-0">
                     <h3 className="m-0 px-4 pt-4 text-[15px] font-bold">Товары на складе</h3>
                     <div className="platform-desktop-table">
-                      <DataTableWrap>
+                      <DataTableWrap className="tablet-dense-scroll">
                         <table className="platform-table" style={{ minWidth: 720 }}>
                           <thead>
                             <tr>
                               <th style={{ width: 54 }}>#</th>
                               <th>Товар</th>
                               <th>Статус</th>
-                              <th style={{ textAlign: 'right' }}>Дата выдачи</th>
+                              <th className="platform-col-tablet-hide" style={{ textAlign: 'right' }}>
+                                Дата выдачи
+                              </th>
                             </tr>
                           </thead>
                           <tbody>
@@ -279,7 +281,7 @@ export default function Warehouse() {
                                     {item.status === 'available' ? 'Доступен' : 'Выдан'}
                                   </span>
                                 </td>
-                                <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>
+                                <td className="platform-col-tablet-hide" style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>
                                   {item.deliveredAt
                                     ? `${new Date(item.deliveredAt).toLocaleDateString('ru-RU')} ${new Date(item.deliveredAt).toLocaleTimeString('ru-RU', {
                                         hour: '2-digit',

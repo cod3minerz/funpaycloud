@@ -50,10 +50,19 @@ const statusLabel: Record<string, string> = {
   dispute: 'Спор',
 };
 
+const CHAT_AVATAR_PALETTE = [
+  ['#2a3344', '#1d2432'],
+  ['#243349', '#1b2738'],
+  ['#2b3a52', '#202a3a'],
+  ['#2b3548', '#1f2837'],
+  ['#28364c', '#1d2738'],
+  ['#2b3442', '#212834'],
+] as const;
+
 function accountGradient(seed: string) {
   const value = seed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const hue = value % 360;
-  return `linear-gradient(135deg, hsl(${hue} 74% 43%), hsl(${(hue + 32) % 360} 74% 36%))`;
+  const [from, to] = CHAT_AVATAR_PALETTE[value % CHAT_AVATAR_PALETTE.length];
+  return `linear-gradient(135deg, ${from}, ${to})`;
 }
 
 function toFunPayUserLink(username: string) {
@@ -387,10 +396,11 @@ export default function Chats() {
                           height: 38,
                           borderRadius: 999,
                           background: accountGradient(row.accountId),
+                          border: '1px solid rgba(148,163,184,0.22)',
                           display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: '#fff',
+                          color: '#dbe8ff',
                           fontWeight: 800,
                           flexShrink: 0,
                         }}
@@ -455,6 +465,8 @@ export default function Chats() {
                         width: 36,
                         height: 36,
                         background: accountGradient(selectedChat.accountId),
+                        border: '1px solid rgba(148,163,184,0.22)',
+                        color: '#dbe8ff',
                         fontSize: 12,
                       }}
                     >

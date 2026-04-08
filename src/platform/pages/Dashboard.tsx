@@ -190,7 +190,7 @@ export default function Dashboard() {
               </div>
 
               <div className="platform-desktop-table">
-                <DataTableWrap>
+                <DataTableWrap className="tablet-dense-scroll">
                   <table className="platform-table" style={{ minWidth: 760 }}>
                     <thead>
                       <tr>
@@ -199,7 +199,9 @@ export default function Dashboard() {
                         <th>Покупатель</th>
                         <th style={{ textAlign: 'right' }}>Сумма</th>
                         <th>Статус</th>
-                        <th style={{ textAlign: 'right' }}>Время</th>
+                        <th className="platform-col-tablet-hide" style={{ textAlign: 'right' }}>
+                          Время
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -216,7 +218,9 @@ export default function Dashboard() {
                               {statusLabel[order.status] ?? order.status}
                             </span>
                           </td>
-                          <td style={{ textAlign: 'right', color: 'var(--pf-text-dim)' }}>{formatTime(order.createdAt)}</td>
+                          <td className="platform-col-tablet-hide" style={{ textAlign: 'right', color: 'var(--pf-text-dim)' }}>
+                            {formatTime(order.createdAt)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

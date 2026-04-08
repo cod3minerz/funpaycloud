@@ -26,6 +26,10 @@
   --pf-control-h: 38px;
   --pf-shadow-soft: 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 20px rgba(3, 6, 12, 0.18);
   --pf-shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 24px rgba(2, 5, 10, 0.24);
+  --pf-overlay-bg: rgba(2, 6, 12, 0.7);
+  --pf-overlay-blur: 6px;
+  --pf-overlay-border: rgba(148, 163, 184, 0.24);
+  --pf-surface-overlay: rgba(12, 16, 24, 0.96);
   --pf-sidebar-width: 252px;
   --pf-z-overlay: 60;
   --pf-z-mobile-nav: 70;
@@ -125,8 +129,8 @@
   min-height: 72px;
   padding: 12px;
   border-bottom: 1px solid var(--pf-border);
-  backdrop-filter: blur(8px);
-  background: rgba(10, 12, 16, 0.95);
+  backdrop-filter: blur(10px);
+  background: rgba(10, 12, 16, 0.92);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -364,10 +368,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--pf-accent);
+  color: #dbe8ff;
   font-size: 11px;
   font-weight: 800;
-  background: var(--pf-accent-soft);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: linear-gradient(135deg, rgba(38, 51, 72, 0.9), rgba(24, 34, 50, 0.9));
 }
 
 .platform-sidebar {
@@ -711,12 +716,14 @@
   border-radius: var(--pf-radius-md);
   box-shadow: var(--pf-shadow-soft);
   padding: 16px;
+  min-width: 0;
 }
 
 .platform-panel {
   background: var(--pf-surface-2);
   border: 1px solid var(--pf-border);
   border-radius: var(--pf-radius-md);
+  min-width: 0;
 }
 
 .platform-section-stack {
@@ -956,7 +963,10 @@
 }
 
 .platform-table-wrap {
-  overflow: auto;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
   min-width: 0;
 }
 
@@ -1087,8 +1097,8 @@
   position: fixed;
   inset: 0;
   z-index: var(--pf-z-overlay);
-  background: rgba(2, 8, 23, 0.72);
-  backdrop-filter: blur(2px);
+  background: var(--pf-overlay-bg);
+  backdrop-filter: blur(var(--pf-overlay-blur));
 }
 
 .platform-mobile-sidebar {
@@ -1117,9 +1127,10 @@
   position: fixed;
   inset: auto 0 0;
   z-index: var(--pf-z-mobile-nav);
-  border-top: 1px solid var(--pf-border);
+  border-top: 1px solid var(--pf-overlay-border);
   border-radius: 16px 16px 0 0;
-  background: var(--pf-surface);
+  background: var(--pf-surface-overlay);
+  backdrop-filter: blur(10px);
   padding: 14px 14px calc(16px + env(safe-area-inset-bottom));
 }
 
@@ -1152,8 +1163,8 @@
 }
 
 .platform-dialog-content {
-  background: #0b162b !important;
-  border: 1px solid rgba(148, 163, 184, 0.34) !important;
+  background: var(--pf-surface-overlay) !important;
+  border: 1px solid var(--pf-overlay-border) !important;
   color: var(--pf-text) !important;
   opacity: 1 !important;
   box-shadow: var(--pf-shadow-card) !important;
@@ -1231,8 +1242,8 @@
 }
 
 .platform-dialog-standard {
-  background: #0b1527 !important;
-  border: 1px solid rgba(148, 163, 184, 0.32) !important;
+  background: var(--pf-surface-overlay) !important;
+  border: 1px solid var(--pf-overlay-border) !important;
   color: var(--pf-text) !important;
   box-shadow: var(--pf-shadow-card) !important;
 }
@@ -1364,9 +1375,7 @@
   display: flex;
   position: relative;
   isolation: isolate;
-  background:
-    radial-gradient(circle at 20% -10%, rgba(110, 139, 255, 0.08), transparent 46%),
-    linear-gradient(180deg, rgba(14, 18, 25, 0.95), rgba(11, 15, 22, 0.98));
+  background: linear-gradient(180deg, rgba(13, 17, 24, 0.96), rgba(10, 14, 20, 0.99));
 }
 
 .platform-thread-messages::before {
@@ -1375,8 +1384,8 @@
   inset: 0;
   pointer-events: none;
   background-image:
-    radial-gradient(circle, rgba(199, 206, 216, 0.05) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(10, 12, 16, 0.12), rgba(10, 12, 16, 0.38));
+    radial-gradient(circle, rgba(199, 206, 216, 0.04) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(9, 12, 18, 0.16), rgba(9, 12, 18, 0.34));
   background-size: 24px 24px, 100% 100%;
   background-position: 0 0, 0 0;
 }
@@ -1463,8 +1472,8 @@
   bottom: 0;
   width: min(360px, 100%);
   border-left: 1px solid var(--pf-border);
-  background: rgba(8, 16, 30, 0.98);
-  backdrop-filter: blur(8px);
+  background: var(--pf-surface-overlay);
+  backdrop-filter: blur(10px);
   padding: 14px;
   overflow-y: auto;
   z-index: 8;
@@ -1503,6 +1512,7 @@
   }
 
   .platform-toolbar {
+    align-items: stretch;
     gap: 8px;
   }
 
@@ -1511,15 +1521,40 @@
   }
 
   .platform-toolbar .platform-select,
-  .platform-toolbar .platform-search,
-  .platform-toolbar .platform-btn-secondary,
-  .platform-toolbar .platform-btn-primary {
+  .platform-toolbar .platform-search {
     width: 100%;
+  }
+
+  .platform-toolbar .platform-btn-secondary,
+  .platform-toolbar .platform-btn-primary,
+  .platform-toolbar .platform-topbar-btn {
+    width: auto;
   }
 
   .platform-toolbar .platform-chip {
     width: fit-content;
     max-width: 100%;
+  }
+
+  .platform-toolbar-scroll {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+  }
+
+  .platform-toolbar-scroll > * {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .platform-mobile-action-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
 
   .platform-period-group {
@@ -1606,5 +1641,39 @@
     min-width: 36px;
     justify-content: center;
     padding: 0 9px;
+  }
+}
+
+.platform-scope [data-slot='dialog-overlay'] {
+  background: var(--pf-overlay-bg) !important;
+  backdrop-filter: blur(var(--pf-overlay-blur));
+}
+
+.platform-scope [data-slot='sheet-overlay'],
+.platform-scope [data-slot='drawer-overlay'],
+.platform-scope [data-slot='alert-dialog-overlay'] {
+  background: var(--pf-overlay-bg) !important;
+  backdrop-filter: blur(var(--pf-overlay-blur));
+}
+
+.platform-scope [data-slot='sheet-content'],
+.platform-scope [data-slot='drawer-content'],
+.platform-scope [data-slot='alert-dialog-content'] {
+  background: var(--pf-surface-overlay) !important;
+  border-color: var(--pf-overlay-border) !important;
+  color: var(--pf-text) !important;
+}
+
+.platform-table-wrap.tablet-dense-scroll {
+  overflow-x: auto;
+}
+
+@media (min-width: 768px) and (max-width: 1180px) {
+  .platform-col-tablet-hide {
+    display: none;
+  }
+
+  .platform-table-wrap.tablet-dense-scroll table {
+    min-width: 700px !important;
   }
 }

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { ArrowDownCircle, Download, Filter, TrendingUp, Wallet } from 'lucide-react';
@@ -51,8 +51,10 @@ function getMonthlyData(txs: Transaction[]) {
 }
 
 export default function Finances() {
+  const [isMobile, setIsMobile] = useState(false);
   const [accountFilter, setAccountFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [showFilters, setShowFilters] = useState(false);
   const [showExportAlert, setShowExportAlert] = useState(false);
 
   const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
@@ -70,6 +72,17 @@ export default function Finances() {
   }, [accountFilter, typeFilter]);
 
   const monthlyData = useMemo(() => getMonthlyData(transactions), []);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)');
+    const sync = () => {
+      setIsMobile(media.matches);
+      if (!media.matches) setShowFilters(false);
+    };
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
 
   function handleExport() {
     setShowExportAlert(true);
@@ -160,49 +173,91 @@ export default function Finances() {
               Фильтры
             </div>
 
-            <select
-              className="platform-select"
-              value={accountFilter}
-              onChange={event => setAccountFilter(event.target.value)}
-              style={{ maxWidth: 220 }}
-            >
-              <option value="all">Все аккаунты</option>
-              {accounts.map(account => (
-                <option key={account.id} value={account.id}>
-                  {account.username}
-                </option>
-              ))}
-            </select>
+            {isMobile ? (
+              <button
+                className={showFilters ? 'platform-btn-primary' : 'platform-btn-secondary'}
+                onClick={() => setShowFilters(prev => !prev)}
+              >
+                {showFilters ? 'Скрыть' : 'Показать'}
+              </button>
+            ) : (
+              <>
+                <select
+                  className="platform-select"
+                  value={accountFilter}
+                  onChange={event => setAccountFilter(event.target.value)}
+                  style={{ maxWidth: 220 }}
+                >
+                  <option value="all">Все аккаунты</option>
+                  {accounts.map(account => (
+                    <option key={account.id} value={account.id}>
+                      {account.username}
+                    </option>
+                  ))}
+                </select>
 
-            <select
-              className="platform-select"
-              value={typeFilter}
-              onChange={event => setTypeFilter(event.target.value)}
-              style={{ maxWidth: 220 }}
-            >
-              <option value="all">Все операции</option>
-              <option value="sale">Продажи</option>
-              <option value="withdrawal">Выводы</option>
-              <option value="refund">Возвраты</option>
-              <option value="fee">Комиссии</option>
-            </select>
+                <select
+                  className="platform-select"
+                  value={typeFilter}
+                  onChange={event => setTypeFilter(event.target.value)}
+                  style={{ maxWidth: 220 }}
+                >
+                  <option value="all">Все операции</option>
+                  <option value="sale">Продажи</option>
+                  <option value="withdrawal">Выводы</option>
+                  <option value="refund">Возвраты</option>
+                  <option value="fee">Комиссии</option>
+                </select>
+              </>
+            )}
 
             <button className="platform-btn-secondary" onClick={handleExport}>
               <Download size={14} /> Экспорт CSV
             </button>
           </ToolbarRow>
+
+          {isMobile && showFilters && (
+            <ToolbarRow className="mt-2">
+              <select
+                className="platform-select"
+                value={accountFilter}
+                onChange={event => setAccountFilter(event.target.value)}
+                style={{ maxWidth: 220 }}
+              >
+                <option value="all">Все аккаунты</option>
+                {accounts.map(account => (
+                  <option key={account.id} value={account.id}>
+                    {account.username}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                className="platform-select"
+                value={typeFilter}
+                onChange={event => setTypeFilter(event.target.value)}
+                style={{ maxWidth: 220 }}
+              >
+                <option value="all">Все операции</option>
+                <option value="sale">Продажи</option>
+                <option value="withdrawal">Выводы</option>
+                <option value="refund">Возвраты</option>
+                <option value="fee">Комиссии</option>
+              </select>
+            </ToolbarRow>
+          )}
         </SectionCard>
 
         <SectionCard className="p-0">
           <div className="platform-desktop-table">
-            <DataTableWrap>
-              <table className="platform-table" style={{ minWidth: 880 }}>
+            <DataTableWrap className="tablet-dense-scroll">
+              <table className="platform-table" style={{ minWidth: 760 }}>
                 <thead>
                   <tr>
                     <th>Дата</th>
                     <th>Тип</th>
                     <th>Описание</th>
-                    <th>Аккаунт</th>
+                    <th className="platform-col-tablet-hide">Аккаунт</th>
                     <th style={{ textAlign: 'right' }}>Сумма</th>
                   </tr>
                 </thead>
@@ -224,7 +279,7 @@ export default function Finances() {
                           </span>
                         </td>
                         <td>{tx.description}</td>
-                        <td className="text-[var(--pf-text-muted)]">
+                        <td className="platform-col-tablet-hide text-[var(--pf-text-muted)]">
                           {accounts.find(account => account.id === tx.accountId)?.username ?? tx.accountId}
                         </td>
                         <td

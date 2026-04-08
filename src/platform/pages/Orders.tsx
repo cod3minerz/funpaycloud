@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Info, MessageSquare, Package, Search, Send, X } from 'lucide-react';
+import { Filter, Info, MessageSquare, Package, Search, Send, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { accounts, Order, orders } from '@/platform/data/demoData';
 import {
@@ -40,14 +40,27 @@ function formatDate(iso: string) {
 }
 
 export default function Orders() {
+  const [isMobile, setIsMobile] = useState(false);
   const [accountFilter, setAccountFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
+  const [showFilters, setShowFilters] = useState(false);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [detailOrder, setDetailOrder] = useState<Order | null>(null);
   const [deliveryText, setDeliveryText] = useState('');
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)');
+    const sync = () => {
+      setIsMobile(media.matches);
+      if (!media.matches) setShowFilters(false);
+    };
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
 
   const now = new Date();
 
@@ -116,7 +129,7 @@ export default function Orders() {
               <SectionCard className="p-3">
                 <ToolbarRow className="justify-between">
                   <span className="text-[13px] font-semibold">Выбрано: {selected.length}</span>
-                  <div className="inline-flex items-center gap-2">
+                  <div className={isMobile ? 'platform-mobile-action-grid' : 'inline-flex items-center gap-2'}>
                     <button className="platform-btn-secondary">
                       <Package size={14} /> Выдать товары
                     </button>
@@ -132,6 +145,42 @@ export default function Orders() {
 
         <SectionCard>
           <ToolbarRow>
+            <label className="platform-search platform-toolbar-grow max-w-none">
+              <Search size={14} color="var(--pf-text-dim)" />
+              <input
+                value={search}
+                onChange={event => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
+                placeholder="Поиск по ID или покупателю"
+              />
+            </label>
+
+            {isMobile && (
+              <div className="inline-flex items-center gap-2">
+                <button
+                  className={showFilters ? 'platform-btn-primary' : 'platform-btn-secondary'}
+                  onClick={() => setShowFilters(prev => !prev)}
+                >
+                  <Filter size={14} /> Фильтры
+                </button>
+                <button
+                  className="platform-btn-secondary"
+                  onClick={() => {
+                    setAccountFilter('all');
+                    setStatusFilter('all');
+                    setDateFilter('all');
+                  }}
+                >
+                  Сброс
+                </button>
+              </div>
+            )}
+          </ToolbarRow>
+
+          {(!isMobile || showFilters) && (
+            <ToolbarRow className="mt-2">
             <select
               className="platform-select"
               value={accountFilter}
@@ -149,7 +198,7 @@ export default function Orders() {
               ))}
             </select>
 
-            <div className="inline-flex flex-wrap items-center gap-2">
+              <div className={`inline-flex flex-wrap items-center gap-2${isMobile ? ' platform-toolbar-scroll' : ''}`}>
               {(['all', 'paid', 'completed', 'refund', 'dispute'] as const).map(value => (
                 <button
                   key={value}
@@ -164,20 +213,8 @@ export default function Orders() {
                 </button>
               ))}
             </div>
-
-            <label className="platform-search platform-toolbar-grow max-w-none">
-              <Search size={14} color="var(--pf-text-dim)" />
-              <input
-                value={search}
-                onChange={event => {
-                  setSearch(event.target.value);
-                  setPage(1);
-                }}
-                placeholder="Поиск по ID или покупателю"
-              />
-            </label>
-
-            <div className="inline-flex flex-wrap items-center gap-2">
+ 
+              <div className={`inline-flex flex-wrap items-center gap-2${isMobile ? ' platform-toolbar-scroll' : ''}`}>
               {(['all', 'today', 'week', 'month'] as const).map(value => (
                 <button
                   key={value}
@@ -192,13 +229,14 @@ export default function Orders() {
                 </button>
               ))}
             </div>
-          </ToolbarRow>
+            </ToolbarRow>
+          )}
         </SectionCard>
 
         <SectionCard className="p-0">
           <div className="platform-desktop-table">
-            <DataTableWrap>
-              <table className="platform-table" style={{ minWidth: 980 }}>
+            <DataTableWrap className="tablet-dense-scroll">
+              <table className="platform-table" style={{ minWidth: 860 }}>
                 <thead>
                   <tr>
                     <th style={{ width: 44 }}>
@@ -212,10 +250,10 @@ export default function Orders() {
                     <th>Заказ</th>
                     <th>Товар</th>
                     <th>Покупатель</th>
-                    <th>Аккаунт</th>
+                    <th className="platform-col-tablet-hide">Аккаунт</th>
                     <th style={{ textAlign: 'right' }}>Сумма</th>
                     <th>Статус</th>
-                    <th style={{ textAlign: 'right' }}>Дата</th>
+                    <th className="platform-col-tablet-hide" style={{ textAlign: 'right' }}>Дата</th>
                     <th style={{ textAlign: 'right' }}>Действия</th>
                   </tr>
                 </thead>
@@ -245,7 +283,9 @@ export default function Orders() {
                             {order.buyer}
                           </div>
                         </td>
-                        <td style={{ color: 'var(--pf-text-muted)' }}>{account?.username ?? order.accountId}</td>
+                        <td className="platform-col-tablet-hide" style={{ color: 'var(--pf-text-muted)' }}>
+                          {account?.username ?? order.accountId}
+                        </td>
                         <td style={{ textAlign: 'right', fontWeight: 700 }}>{order.amount} ₽</td>
                         <td>
                           <span
@@ -259,7 +299,9 @@ export default function Orders() {
                             {statusLabel[order.status]}
                           </span>
                         </td>
-                        <td style={{ textAlign: 'right', color: 'var(--pf-text-dim)' }}>{formatDate(order.createdAt)}</td>
+                        <td className="platform-col-tablet-hide" style={{ textAlign: 'right', color: 'var(--pf-text-dim)' }}>
+                          {formatDate(order.createdAt)}
+                        </td>
                         <td>
                           <div className="inline-flex w-full items-center justify-end gap-2">
                             <button className="platform-topbar-btn" title="Выдать">
@@ -306,7 +348,7 @@ export default function Orders() {
                     <span>Сумма: {order.amount} ₽</span>
                     <span>Дата: {formatDate(order.createdAt)}</span>
                   </div>
-                  <div className="platform-mobile-actions">
+                  <div className="platform-mobile-actions platform-mobile-action-grid">
                     <button className="platform-topbar-btn" title="Выдать">
                       <Package size={14} />
                     </button>
