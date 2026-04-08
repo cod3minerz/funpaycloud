@@ -20,6 +20,7 @@ const PATH_LABELS: Record<string, string> = {
   settings: 'Настройки',
   accounts: 'Аккаунты',
   'proxy-market': 'Прокси-маркет',
+  referrals: 'Реферальная система',
 };
 
 type PlatformTopBarProps = {

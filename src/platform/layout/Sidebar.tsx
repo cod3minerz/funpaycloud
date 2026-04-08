@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  BadgePercent,
   Crown,
   LayoutDashboard,
   LifeBuoy,
@@ -55,6 +56,7 @@ const navGroups = [
       { icon: Zap, label: 'Автоматизация', path: '/platform/automation' },
       { icon: Puzzle, label: 'Плагины', path: '/platform/plugins' },
       { icon: Wallet, label: 'Финансы', path: '/platform/finances' },
+      { icon: BadgePercent, label: 'Реферальная система', path: '/platform/referrals' },
       { icon: Settings, label: 'Настройки', path: '/platform/settings' },
     ],
   },
