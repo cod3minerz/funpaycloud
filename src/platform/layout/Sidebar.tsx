@@ -17,6 +17,7 @@ import {
   Wallet,
   Settings,
   Users,
+  Server,
   X,
 } from 'lucide-react';
 import { BrandLogo } from '@/app/components/BrandLogo';
@@ -56,6 +57,10 @@ const navGroups = [
       { icon: Wallet, label: 'Финансы', path: '/platform/finances' },
       { icon: Settings, label: 'Настройки', path: '/platform/settings' },
     ],
+  },
+  {
+    title: 'Маркет',
+    items: [{ icon: Server, label: 'Прокси в аренду', path: '/platform/proxy-market' }],
   },
 ];
 

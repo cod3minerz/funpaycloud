@@ -19,6 +19,7 @@ const PATH_LABELS: Record<string, string> = {
   finances: 'Финансы',
   settings: 'Настройки',
   accounts: 'Аккаунты',
+  'proxy-market': 'Прокси-маркет',
 };
 
 type PlatformTopBarProps = {
