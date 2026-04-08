@@ -489,6 +489,25 @@
   box-shadow: none;
 }
 
+.platform-nav-item-referrals svg {
+  color: #d8b66a;
+}
+
+.platform-nav-item-referrals:hover svg,
+.platform-nav-item-referrals.active svg {
+  color: #ecd7a5;
+}
+
+.platform-referrals-nav-label {
+  color: #e6ca8a;
+  background: linear-gradient(120deg, #e8d7a8, #c8a45a, #f1deb3);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 200% 100%;
+  animation: pfGoldShift 7.8s linear infinite;
+}
+
 .platform-nav-item.active::before {
   content: none;
 }
@@ -710,6 +729,15 @@
   }
 }
 
+@keyframes pfGoldShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
 .platform-card {
   background: var(--pf-surface);
   border: 1px solid var(--pf-border);
@@ -717,6 +745,24 @@
   box-shadow: var(--pf-shadow-soft);
   padding: 16px;
   min-width: 0;
+}
+
+.platform-referral-hero {
+  position: relative;
+  border-color: rgba(129, 154, 255, 0.24);
+  background:
+    radial-gradient(70% 120% at 0% 0%, rgba(110, 139, 255, 0.14), transparent 60%),
+    radial-gradient(80% 120% at 100% 0%, rgba(77, 102, 189, 0.08), transparent 62%),
+    var(--pf-surface);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03), 0 20px 40px rgba(2, 5, 10, 0.32);
+}
+
+.platform-referral-influencer {
+  border-color: rgba(226, 74, 93, 0.33);
+  background:
+    radial-gradient(130% 180% at 0% 100%, rgba(195, 42, 66, 0.22), transparent 58%),
+    radial-gradient(120% 170% at 100% 0%, rgba(154, 34, 58, 0.14), transparent 62%),
+    var(--pf-surface-2);
 }
 
 .platform-panel {

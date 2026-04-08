@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  BadgePercent,
+  CircleDollarSign,
   Crown,
   LayoutDashboard,
   LifeBuoy,
@@ -56,7 +56,7 @@ const navGroups = [
       { icon: Zap, label: 'Автоматизация', path: '/platform/automation' },
       { icon: Puzzle, label: 'Плагины', path: '/platform/plugins' },
       { icon: Wallet, label: 'Финансы', path: '/platform/finances' },
-      { icon: BadgePercent, label: 'Реферальная система', path: '/platform/referrals' },
+      { icon: CircleDollarSign, label: 'Реферальная система', path: '/platform/referrals' },
       { icon: Settings, label: 'Настройки', path: '/platform/settings' },
     ],
   },
@@ -134,17 +134,20 @@ export default function Sidebar({
             {!collapsed && <div className="platform-nav-section">{group.title}</div>}
             {group.items.map(({ icon: Icon, label, path }) => {
               const isActive = pathname === path;
+              const isReferral = path === '/platform/referrals';
               return (
                 <Link
                   key={path}
                   href={path}
-                  className={`platform-nav-item${isActive ? ' active' : ''}`}
+                  className={`platform-nav-item${isActive ? ' active' : ''}${isReferral ? ' platform-nav-item-referrals' : ''}`}
                   onClick={onClose}
                   title={collapsed ? label : undefined}
                   aria-current={isActive ? 'page' : undefined}
                 >
                   <Icon size={16} />
-                  {!collapsed && <span>{label}</span>}
+                  {!collapsed && (
+                    <span className={isReferral ? 'platform-referrals-nav-label' : undefined}>{label}</span>
+                  )}
                 </Link>
               );
             })}
