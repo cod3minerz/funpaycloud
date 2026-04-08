@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   ArrowUpDown,
@@ -114,22 +114,17 @@ function buildProxyPool(count: number) {
 
 const PROXY_POOL = buildProxyPool(180);
 
-function countryFlag(country: string) {
-  const code = COUNTRY_CODE[country] ?? 'UN';
-  const points = code
-    .toUpperCase()
-    .split('')
-    .map(char => 127397 + char.charCodeAt(0));
-  return String.fromCodePoint(...points);
-}
-
-function maskIp(ip: string) {
-  const parts = ip.split('.');
-  if (parts.length !== 4) return '***.***.***.***';
-  return `${parts[0]}.***.***.${parts[3]}`;
+function CountryFlag({ country }: { country: string }) {
+  const code = (COUNTRY_CODE[country] ?? 'US').toLowerCase();
+  return (
+    <span className="platform-country-flag" aria-label={country}>
+      <img src={`https://flagcdn.com/${code}.svg`} alt="" loading="lazy" decoding="async" />
+    </span>
+  );
 }
 
 export default function ProxyMarket() {
+  const [isMobile, setIsMobile] = useState(false);
   const [offers, setOffers] = useState<ProxyOffer[]>(PROXY_POOL);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | ProxyType>('all');
@@ -142,6 +137,17 @@ export default function ProxyMarket() {
   const [checkoutOffer, setCheckoutOffer] = useState<ProxyOffer | null>(null);
   const [checkoutMode, setCheckoutMode] = useState<'auto' | 'manual'>('manual');
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)');
+    const sync = () => {
+      setIsMobile(media.matches);
+      if (media.matches) setViewMode('grid');
+    };
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
 
   const countries = useMemo(() => {
     return Array.from(new Set(offers.map(item => item.country))).sort((a, b) => a.localeCompare(b, 'ru'));
@@ -173,7 +179,7 @@ export default function ProxyMarket() {
     });
   }, [offers, search, typeFilter, statusFilter, countryFilter, sortBy]);
 
-  const pageSize = viewMode === 'grid' ? 24 : 18;
+  const pageSize = viewMode === 'grid' ? (isMobile ? 10 : 24) : isMobile ? 12 : 18;
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
 
@@ -276,7 +282,7 @@ export default function ProxyMarket() {
                 className={`platform-view-switch-btn ${viewMode === 'grid' ? 'active' : ''}`}
                 onClick={() => setViewMode('grid')}
               >
-                <LayoutGrid size={14} /> Сетка
+                <LayoutGrid size={14} /> {isMobile ? 'Карточки' : 'Сетка'}
               </button>
               <button
                 className={`platform-view-switch-btn ${viewMode === 'list' ? 'active' : ''}`}
@@ -361,59 +367,153 @@ export default function ProxyMarket() {
 
         <SectionCard className="p-0 overflow-hidden">
           {viewMode === 'grid' ? (
-            <div className="platform-plugin-grid">
-              {visible.map(offer => {
-                const isAvailable = offer.status === 'available';
-                return (
-                  <article key={offer.id} className="platform-plugin-card">
-                    <div className="flex items-center justify-between gap-2">
-                      <strong className="text-[13px]">{offer.id}</strong>
-                      <span
-                        className="platform-chip !min-h-[22px] !text-[11px]"
-                        style={{
-                          color: isAvailable ? '#86efac' : '#fda4af',
-                          borderColor: isAvailable ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)',
-                          background: isAvailable ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.1)',
-                        }}
-                      >
-                        {STATUS_LABEL[offer.status]}
-                      </span>
-                    </div>
-
-                    <div className="grid gap-1.5 text-[12px] text-[var(--pf-text-muted)]">
-                      <div className="inline-flex items-center gap-2 text-[13px] text-[var(--pf-text)]">
-                        <Server size={14} />
-                        <span className="platform-ip-mask" aria-label="IP скрыт до аренды">
-                          {maskIp(offer.ip)}
+            isMobile ? (
+              <div className="platform-mobile-cards">
+                {visible.map(offer => {
+                  const isAvailable = offer.status === 'available';
+                  return (
+                    <article key={offer.id} className="platform-mobile-card">
+                      <div className="platform-mobile-card-head">
+                        <strong>{offer.id}</strong>
+                        <span
+                          className="platform-chip !min-h-[22px] !text-[11px]"
+                          style={{
+                            color: isAvailable ? '#86efac' : '#fda4af',
+                            borderColor: isAvailable ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)',
+                            background: isAvailable ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.1)',
+                          }}
+                        >
+                          {STATUS_LABEL[offer.status]}
                         </span>
                       </div>
-                      <div className="inline-flex items-center gap-2">
-                        <Globe2 size={13} />
-                        <span className="platform-country-flag" aria-hidden="true">
-                          {countryFlag(offer.country)}
+                      <div className="platform-mobile-meta">
+                        <span className="inline-flex items-center gap-2">
+                          <Server size={13} />
+                          <span className="platform-ip-concealed">{offer.ip}</span>
                         </span>
-                        {offer.country}, {offer.city}
+                        <span className="inline-flex items-center gap-2">
+                          <CountryFlag country={offer.country} />
+                          {offer.country}, {offer.city}
+                        </span>
+                        <span>
+                          {TYPE_LABEL[offer.type]} · {offer.protocol}
+                        </span>
+                        <span>Задержка: ~{offer.speedMs} ms · Цена: {offer.priceMonth} ₽ / месяц</span>
                       </div>
-                      <div>Тип: {TYPE_LABEL[offer.type]} · {offer.protocol}</div>
-                      <div>Задержка: ~{offer.speedMs} ms</div>
-                    </div>
+                      <div className="platform-mobile-actions">
+                        <button
+                          className={isAvailable ? 'platform-btn-primary w-full' : 'platform-btn-secondary w-full'}
+                          onClick={() => openManualCheckout(offer)}
+                          disabled={!isAvailable}
+                        >
+                          {isAvailable ? 'Арендовать' : 'Недоступен'}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="platform-plugin-grid">
+                {visible.map(offer => {
+                  const isAvailable = offer.status === 'available';
+                  return (
+                    <article key={offer.id} className="platform-plugin-card">
+                      <div className="flex items-center justify-between gap-2">
+                        <strong className="text-[13px]">{offer.id}</strong>
+                        <span
+                          className="platform-chip !min-h-[22px] !text-[11px]"
+                          style={{
+                            color: isAvailable ? '#86efac' : '#fda4af',
+                            borderColor: isAvailable ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)',
+                            background: isAvailable ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.1)',
+                          }}
+                        >
+                          {STATUS_LABEL[offer.status]}
+                        </span>
+                      </div>
 
-                    <div className="mt-1 flex items-center justify-between gap-2">
-                      <strong className="text-[14px]">99 ₽ / месяц</strong>
-                      <button
-                        className={isAvailable ? 'platform-btn-primary' : 'platform-btn-secondary'}
-                        onClick={() => openManualCheckout(offer)}
-                        disabled={!isAvailable}
-                      >
-                        {isAvailable ? 'Арендовать' : 'Недоступен'}
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
+                      <div className="grid gap-1.5 text-[12px] text-[var(--pf-text-muted)]">
+                        <div className="inline-flex items-center gap-2 text-[13px] text-[var(--pf-text)]">
+                          <Server size={14} />
+                          <span className="platform-ip-concealed" aria-label="IP скрыт до аренды">
+                            {offer.ip}
+                          </span>
+                        </div>
+                        <div className="inline-flex items-center gap-2">
+                          <Globe2 size={13} />
+                          <CountryFlag country={offer.country} />
+                          {offer.country}, {offer.city}
+                        </div>
+                        <div>
+                          Тип: {TYPE_LABEL[offer.type]} · {offer.protocol}
+                        </div>
+                        <div>Задержка: ~{offer.speedMs} ms</div>
+                      </div>
+
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        <strong className="text-[14px]">99 ₽ / месяц</strong>
+                        <button
+                          className={isAvailable ? 'platform-btn-primary' : 'platform-btn-secondary'}
+                          onClick={() => openManualCheckout(offer)}
+                          disabled={!isAvailable}
+                        >
+                          {isAvailable ? 'Арендовать' : 'Недоступен'}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )
           ) : (
-            <>
+            isMobile ? (
+              <div className="platform-proxy-list-mobile">
+                {visible.map(offer => {
+                  const isAvailable = offer.status === 'available';
+                  return (
+                    <article key={offer.id} className="platform-proxy-list-mobile-row">
+                      <div className="platform-mobile-card-head">
+                        <strong>{offer.id}</strong>
+                        <span
+                          className="platform-chip !min-h-[22px] !text-[11px]"
+                          style={{
+                            color: isAvailable ? '#86efac' : '#fda4af',
+                            borderColor: isAvailable ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)',
+                            background: isAvailable ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.1)',
+                          }}
+                        >
+                          {STATUS_LABEL[offer.status]}
+                        </span>
+                      </div>
+                      <div className="platform-mobile-meta">
+                        <span className="inline-flex items-center gap-2">
+                          <Server size={13} />
+                          <span className="platform-ip-concealed">{offer.ip}</span>
+                        </span>
+                        <span className="inline-flex items-center gap-2">
+                          <CountryFlag country={offer.country} />
+                          {offer.country}, {offer.city}
+                        </span>
+                        <span>
+                          {TYPE_LABEL[offer.type]} · {offer.protocol} · ~{offer.speedMs} ms
+                        </span>
+                        <span>Цена: {offer.priceMonth} ₽ / месяц</span>
+                      </div>
+                      <div className="platform-mobile-actions">
+                        <button
+                          className={isAvailable ? 'platform-btn-primary w-full' : 'platform-btn-secondary w-full'}
+                          onClick={() => openManualCheckout(offer)}
+                          disabled={!isAvailable}
+                        >
+                          {isAvailable ? 'Арендовать' : 'Недоступен'}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
               <div className="platform-desktop-table">
                 <DataTableWrap className="tablet-dense-scroll">
                   <table className="platform-table platform-proxy-list-table" style={{ minWidth: 900 }}>
@@ -439,11 +539,9 @@ export default function ProxyMarket() {
                             </td>
                             <td>
                               <div className="platform-proxy-list-geo">
-                                <span className="platform-ip-mask">{maskIp(offer.ip)}</span>
+                                <span className="platform-ip-concealed">{offer.ip}</span>
                                 <span className="platform-kpi-meta inline-flex items-center gap-2">
-                                  <span className="platform-country-flag" aria-hidden="true">
-                                    {countryFlag(offer.country)}
-                                  </span>
+                                  <CountryFlag country={offer.country} />
                                   {offer.country}, {offer.city}
                                 </span>
                               </div>
@@ -480,55 +578,7 @@ export default function ProxyMarket() {
                   </table>
                 </DataTableWrap>
               </div>
-
-              <div className="platform-proxy-list-mobile">
-                {visible.map(offer => {
-                  const isAvailable = offer.status === 'available';
-                  return (
-                    <article key={offer.id} className="platform-proxy-list-mobile-row">
-                      <div className="platform-mobile-card-head">
-                        <strong>{offer.id}</strong>
-                        <span
-                          className="platform-chip !min-h-[22px] !text-[11px]"
-                          style={{
-                            color: isAvailable ? '#86efac' : '#fda4af',
-                            borderColor: isAvailable ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)',
-                            background: isAvailable ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.1)',
-                          }}
-                        >
-                          {STATUS_LABEL[offer.status]}
-                        </span>
-                      </div>
-                      <div className="platform-mobile-meta">
-                        <span className="inline-flex items-center gap-2">
-                          <Server size={13} />
-                          <span className="platform-ip-mask">{maskIp(offer.ip)}</span>
-                        </span>
-                        <span className="inline-flex items-center gap-2">
-                          <span className="platform-country-flag" aria-hidden="true">
-                            {countryFlag(offer.country)}
-                          </span>
-                          {offer.country}, {offer.city}
-                        </span>
-                        <span>
-                          {TYPE_LABEL[offer.type]} · {offer.protocol} · ~{offer.speedMs} ms
-                        </span>
-                        <span>Цена: {offer.priceMonth} ₽ / месяц</span>
-                      </div>
-                      <div className="platform-mobile-actions">
-                        <button
-                          className={isAvailable ? 'platform-btn-primary w-full' : 'platform-btn-secondary w-full'}
-                          onClick={() => openManualCheckout(offer)}
-                          disabled={!isAvailable}
-                        >
-                          {isAvailable ? 'Арендовать' : 'Недоступен'}
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            </>
+            )
           )}
 
           {visible.length === 0 && <EmptyState>По выбранным фильтрам прокси не найдены.</EmptyState>}
@@ -577,14 +627,12 @@ export default function ProxyMarket() {
                   </div>
                   <div className="inline-flex items-center justify-between gap-2">
                     <span className="text-[var(--pf-text-muted)]">IP</span>
-                    <strong className="platform-ip-mask">{maskIp(checkoutOffer.ip)}</strong>
+                    <strong className="platform-ip-concealed">{checkoutOffer.ip}</strong>
                   </div>
                   <div className="inline-flex items-center justify-between gap-2">
                     <span className="text-[var(--pf-text-muted)]">Гео</span>
                     <strong className="inline-flex items-center gap-2">
-                      <span className="platform-country-flag" aria-hidden="true">
-                        {countryFlag(checkoutOffer.country)}
-                      </span>
+                      <CountryFlag country={checkoutOffer.country} />
                       {checkoutOffer.country}, {checkoutOffer.city}
                     </strong>
                   </div>

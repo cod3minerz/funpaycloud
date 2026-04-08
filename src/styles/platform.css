@@ -433,6 +433,14 @@
   justify-content: center;
 }
 
+.platform-topbar-plain-btn:focus {
+  outline: none;
+}
+
+.platform-topbar-plain-btn:focus:not(:focus-visible) {
+  box-shadow: none !important;
+}
+
 .platform-topbar-plain-btn:hover {
   color: var(--pf-text);
 }
@@ -493,6 +501,14 @@
   margin-left: auto;
   color: var(--pf-text-muted);
   cursor: pointer;
+}
+
+.platform-profile-plain:focus {
+  outline: none;
+}
+
+.platform-profile-plain:focus:not(:focus-visible) {
+  box-shadow: none !important;
 }
 
 .platform-profile-plain:hover {
@@ -764,6 +780,7 @@
   font-weight: 800;
   line-height: 1.12;
   letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
 .platform-page-subtitle {
@@ -772,6 +789,7 @@
   font-size: 14px;
   line-height: 1.6;
   max-width: 760px;
+  text-wrap: pretty;
 }
 
 .platform-page-actions {
@@ -1247,22 +1265,29 @@
   width: 18px;
   height: 18px;
   border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  line-height: 1;
+  display: inline-block;
   border: 1px solid rgba(148, 163, 184, 0.3);
   background: rgba(255, 255, 255, 0.04);
   flex-shrink: 0;
+  overflow: hidden;
+  vertical-align: middle;
 }
 
-.platform-ip-mask {
+.platform-country-flag img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.platform-ip-concealed {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   letter-spacing: 0.03em;
-  filter: blur(0.42px);
+  filter: blur(2.8px);
+  opacity: 0.84;
   user-select: none;
   pointer-events: none;
+  white-space: nowrap;
 }
 
 .platform-proxy-list-table td {
@@ -1349,6 +1374,61 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.platform-mobile-card-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.platform-mobile-subactions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.platform-btn-danger-subtle {
+  min-height: var(--pf-control-h);
+  border-radius: 10px;
+  border: 1px solid rgba(240, 106, 126, 0.32);
+  background: rgba(240, 106, 126, 0.08);
+  color: #f7b7c1;
+  cursor: pointer;
+  padding: 0 13px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.platform-btn-danger-subtle:hover {
+  background: rgba(240, 106, 126, 0.13);
+  border-color: rgba(240, 106, 126, 0.44);
+}
+
+.platform-lots-raise-panel {
+  max-width: 460px;
+}
+
+.platform-lots-raise-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.platform-lots-raise-controls {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.platform-lots-raise-range {
+  width: 100%;
+  min-width: 120px;
 }
 
 @media (min-width: 768px) {
@@ -1904,6 +1984,14 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
+  }
+
+  .platform-lots-raise-panel {
+    max-width: none;
+  }
+
+  .platform-lots-raise-controls {
+    grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
   .platform-period-group {

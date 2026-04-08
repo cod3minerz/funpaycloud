@@ -3,9 +3,9 @@
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePathname } from 'next/navigation';
-import { Bell, ChevronLeft, ChevronRight, LifeBuoy, LogOut, Menu, Settings, Wallet } from 'lucide-react';
+import { Bell, ChevronLeft, ChevronRight, LogOut, Menu, Settings, Wallet } from 'lucide-react';
 import { accounts } from '@/platform/data/demoData';
-import { TelegramMark, VkMark } from '@/platform/components/SocialMarks';
+import { SupportTeamMark, TelegramMark, VkMark } from '@/platform/components/SocialMarks';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,7 +69,7 @@ export default function PlatformTopBar({
   const topLinks = [
     { label: 'Телеграм канал', href: '#', icon: <TelegramMark size={15} /> },
     { label: 'Группа ВКонтакте', href: '#', icon: <VkMark size={15} /> },
-    { label: 'Поддержка', href: '#', icon: <LifeBuoy size={15} /> },
+    { label: 'Поддержка', href: '#', icon: <SupportTeamMark size={15} /> },
   ] as const;
 
   return (
@@ -125,7 +125,12 @@ export default function PlatformTopBar({
               {unreadCount > 0 && <span className="platform-notify-badge">{Math.min(unreadCount, 9)}</span>}
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" sideOffset={10} className="platform-topbar-dropdown w-[320px] p-0">
+          <DropdownMenuContent
+            align="end"
+            sideOffset={10}
+            className="platform-topbar-dropdown w-[320px] p-0"
+            onCloseAutoFocus={event => event.preventDefault()}
+          >
             <div className="platform-topbar-dropdown-head">
               <strong>Уведомления</strong>
               <span>{unreadCount > 0 ? `${unreadCount} новых` : 'Все прочитаны'}</span>
@@ -151,7 +156,12 @@ export default function PlatformTopBar({
               <strong className="hidden sm:block text-[13px] font-semibold">{profile?.username ?? 'user'}</strong>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" sideOffset={10} className="platform-topbar-dropdown w-[246px]">
+          <DropdownMenuContent
+            align="end"
+            sideOffset={10}
+            className="platform-topbar-dropdown w-[246px]"
+            onCloseAutoFocus={event => event.preventDefault()}
+          >
             <DropdownMenuLabel className="platform-account-dropdown-head">
               <span className="platform-account-name">{profile?.username ?? 'user'}</span>
               <span className="platform-account-meta">Баланс: {balance.toLocaleString('ru-RU')} ₽</span>

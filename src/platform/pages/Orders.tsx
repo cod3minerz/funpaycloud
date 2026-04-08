@@ -348,16 +348,18 @@ export default function Orders() {
                     <span>Сумма: {order.amount} ₽</span>
                     <span>Дата: {formatDate(order.createdAt)}</span>
                   </div>
-                  <div className="platform-mobile-actions platform-mobile-action-grid">
-                    <button className="platform-topbar-btn" title="Выдать">
-                      <Package size={14} />
+                  <div className="platform-mobile-card-actions">
+                    <button className="platform-btn-primary w-full" onClick={() => setDetailOrder(order)}>
+                      <Info size={14} /> Детали заказа
                     </button>
-                    <button className="platform-topbar-btn" title="Написать">
-                      <MessageSquare size={14} />
-                    </button>
-                    <button className="platform-btn-secondary" onClick={() => setDetailOrder(order)}>
-                      <Info size={14} /> Детали
-                    </button>
+                    <div className="platform-mobile-subactions">
+                      <button className="platform-btn-secondary">
+                        <Package size={14} /> Выдать
+                      </button>
+                      <button className="platform-btn-secondary">
+                        <MessageSquare size={14} /> Чат
+                      </button>
+                    </div>
                   </div>
                 </article>
               );

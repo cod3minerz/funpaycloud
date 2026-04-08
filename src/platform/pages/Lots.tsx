@@ -101,15 +101,15 @@ export default function Lots() {
             title="Лоты"
             subtitle="Управление ассортиментом, ценой, статусами и автоподнятием в единой операционной панели."
           />
-          <Panel className="w-full max-w-[360px] p-3">
-            <div className="flex items-center justify-between gap-2">
+          <Panel className="platform-lots-raise-panel w-full p-3">
+            <div className="platform-lots-raise-head">
               <div className="inline-flex items-center gap-2 text-[13px] font-semibold">
                 <ArrowUpCircle size={15} color="var(--pf-text-muted)" />
                 Автоподнятие
               </div>
               <Switch checked={autoRaise} onCheckedChange={setAutoRaise} />
             </div>
-            <div className="mt-2 flex items-center gap-3">
+            <div className="platform-lots-raise-controls mt-2">
               <span className="platform-kpi-meta">Интервал</span>
               <input
                 type="range"
@@ -121,7 +121,8 @@ export default function Lots() {
                   setIntervalHours(next);
                   setCountdown(next * 3600);
                 }}
-                style={{ width: 130, accentColor: 'var(--pf-accent)' }}
+                className="platform-lots-raise-range"
+                style={{ accentColor: 'var(--pf-accent)' }}
               />
               <span className="text-[12px] font-semibold">{interval}ч</span>
             </div>
@@ -239,15 +240,20 @@ export default function Lots() {
                   <span>{lot.description}</span>
                 </div>
 
-                <div className="platform-mobile-actions platform-mobile-action-grid">
-                  <button className="platform-btn-secondary" onClick={() => openEdit(lot)}>
+                <div className="platform-mobile-card-actions">
+                  <button className="platform-btn-primary w-full" onClick={() => openEdit(lot)}>
                     <Edit2 size={14} /> Редактировать
                   </button>
-                  <button className="platform-btn-secondary" onClick={() => toggleStatus(lot.id)}>
-                    {lot.status === 'active' ? 'Отключить' : 'Включить'}
-                  </button>
-                  <button className="platform-topbar-btn" onClick={() => deleteLot(lot.id)} title="Удалить">
-                    <Trash2 size={14} />
+                  <div className="platform-mobile-subactions">
+                    <button className="platform-btn-secondary">
+                      <ArrowUpCircle size={14} /> Поднять
+                    </button>
+                    <button className="platform-btn-secondary" onClick={() => toggleStatus(lot.id)}>
+                      {lot.status === 'active' ? 'Отключить' : 'Включить'}
+                    </button>
+                  </div>
+                  <button className="platform-btn-danger-subtle w-full" onClick={() => deleteLot(lot.id)}>
+                    <Trash2 size={14} /> Удалить лот
                   </button>
                 </div>
               </article>

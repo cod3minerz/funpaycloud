@@ -36,3 +36,19 @@ export function VkMark({ size = 14, className }: MarkProps) {
     </svg>
   );
 }
+
+export function SupportTeamMark({ size = 14, className }: MarkProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill="currentColor"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M12 2c-2.97 0-5.376 2.406-5.376 5.375v1.188h-.438A2.187 2.187 0 0 0 4 10.75v4.5a2.187 2.187 0 0 0 2.188 2.188h1.75c.483 0 .875-.392.875-.875v-9.188C8.813 5.373 10.436 3.75 12 3.75s3.188 1.623 3.188 3.625v9.188c0 .483.392.875.875.875h.437a2.187 2.187 0 0 0 2.188-2.188v-4.5a2.187 2.187 0 0 0-2.188-2.187h-.437V7.375C16.063 4.406 14.656 2 12 2Z" />
+      <path d="M9.25 19.188a.875.875 0 0 0 0 1.75h5.5a.875.875 0 0 0 0-1.75h-5.5Z" />
+    </svg>
+  );
+}
