@@ -3,11 +3,11 @@
 import { FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, AtSign, KeyRound, Ticket, UserRound } from "lucide-react";
+import { ArrowRight, Ticket } from "lucide-react";
 import { AuthShell } from "@/auth/components/AuthShell";
 
 const fieldClass =
-  "h-12 w-full rounded-xl border border-slate-200/12 bg-[rgba(15,23,42,0.76)] px-4 text-[14px] text-white placeholder:text-slate-500 outline-none transition focus:border-blue-300/45 focus:ring-2 focus:ring-blue-400/25";
+  "h-12 w-full rounded-xl border border-slate-200/12 bg-[rgba(15,23,42,0.72)] px-4 text-[14px] text-white placeholder:text-slate-500 outline-none transition focus:border-blue-300/45 focus:ring-2 focus:ring-blue-400/25";
 
 function strengthScore(password: string) {
   let score = 0;
@@ -15,6 +15,29 @@ function strengthScore(password: string) {
   if (/[a-zA-Z]/.test(password) && /\d/.test(password)) score += 1;
   if (/[^a-zA-Z\d]/.test(password)) score += 1;
   return score;
+}
+
+function GoogleMark() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="#EA4335"
+        d="M12 10.2v3.9h5.5c-.24 1.25-.95 2.31-2.02 3.02l3.27 2.53c1.9-1.75 3-4.32 3-7.36 0-.7-.06-1.37-.17-2.02H12z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 22c2.7 0 4.97-.9 6.63-2.44l-3.27-2.53c-.9.61-2.05.97-3.36.97-2.58 0-4.76-1.74-5.54-4.08H3.1v2.57A10 10 0 0 0 12 22z"
+      />
+      <path
+        fill="#4A90E2"
+        d="M6.46 13.92A6 6 0 0 1 6.13 12c0-.67.12-1.31.33-1.92V7.51H3.1A10 10 0 0 0 2 12c0 1.62.39 3.16 1.1 4.49l3.36-2.57z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M12 6c1.47 0 2.79.5 3.83 1.49l2.87-2.87C16.96 2.98 14.7 2 12 2a10 10 0 0 0-8.9 5.51l3.36 2.57C7.24 7.74 9.42 6 12 6z"
+      />
+    </svg>
+  );
 }
 
 export default function RegisterPage() {
@@ -28,90 +51,60 @@ export default function RegisterPage() {
 
   const score = useMemo(() => strengthScore(password), [password]);
 
-  function handleRegister(event: FormEvent) {
-    event.preventDefault();
+  function goVerify() {
     const nextEmail = email.trim() || "user@funpay.cloud";
     router.push(`/auth/verify?mode=register&email=${encodeURIComponent(nextEmail)}`);
   }
 
+  function handleRegister(event: FormEvent) {
+    event.preventDefault();
+    goVerify();
+  }
+
   return (
     <AuthShell
-      title="Создать аккаунт"
-      subtitle="Запустите личное рабочее пространство FunPay Cloud и начните автоматизацию продаж."
-      sideLabel="Auth / Register"
-      sideTitle="Быстрый старт без сложного онбординга"
-      sideText="Регистрация занимает пару минут: создайте аккаунт, подтвердите email-код и переходите к платформе."
+      title="Регистрация"
+      subtitle="Создайте аккаунт и запустите рабочее пространство FunPay Cloud."
     >
       <form onSubmit={handleRegister} className="space-y-4">
         <div className="space-y-1.5">
           <label className="text-[13px] font-semibold text-slate-300">Никнейм</label>
-          <div className="relative">
-            <UserRound
-              size={14}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-            />
-            <input
-              className={`${fieldClass} pl-9`}
-              placeholder="Например, seller_cloud"
-              value={nickname}
-              onChange={(event) => setNickname(event.target.value)}
-            />
-          </div>
+          <input
+            className={fieldClass}
+            placeholder="Например, seller_cloud"
+            value={nickname}
+            onChange={(event) => setNickname(event.target.value)}
+          />
         </div>
 
         <div className="space-y-1.5">
           <label className="text-[13px] font-semibold text-slate-300">Email</label>
-          <div className="relative">
-            <AtSign
-              size={14}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-            />
-            <input
-              type="email"
-              className={`${fieldClass} pl-9`}
-              placeholder="you@company.com"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </div>
+          <input
+            type="email"
+            className={fieldClass}
+            placeholder="you@company.com"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+          />
         </div>
 
         <div className="space-y-1.5">
           <label className="text-[13px] font-semibold text-slate-300">Пароль</label>
-          <div className="relative">
-            <KeyRound
-              size={14}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-            />
-            <input
-              type="password"
-              className={`${fieldClass} pl-9`}
-              placeholder="Минимум 8 символов"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </div>
-          <div className="grid gap-1 text-[12px] text-slate-400">
-            <div className="inline-flex items-center gap-2">
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${password.length >= 8 ? "bg-emerald-400" : "bg-slate-500"}`}
-              />
-              Минимум 8 символов
-            </div>
-            <div className="inline-flex items-center gap-2">
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  /[a-zA-Z]/.test(password) && /\d/.test(password) ? "bg-emerald-400" : "bg-slate-500"
-                }`}
-              />
-              Желательно сочетать буквы и цифры
-            </div>
-            <div className="inline-flex items-center gap-2">
-              <span className="text-slate-500">Сила пароля:</span>
-              <span className="font-semibold text-slate-300">
-                {score === 0 ? "Слабый" : score === 1 ? "Базовый" : score === 2 ? "Хороший" : "Надежный"}
-              </span>
-            </div>
+          <input
+            type="password"
+            className={fieldClass}
+            placeholder="Минимум 8 символов"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+          <div className="flex flex-wrap items-center gap-2 text-[12px] text-slate-400">
+            <span>Минимум 8 символов</span>
+            <span className="text-slate-600">•</span>
+            <span>Буквы и цифры</span>
+            <span className="text-slate-600">•</span>
+            <span className="text-slate-300">
+              {score === 0 ? "Слабый" : score === 1 ? "Базовый" : score === 2 ? "Хороший" : "Надежный"}
+            </span>
           </div>
         </div>
 
@@ -126,14 +119,14 @@ export default function RegisterPage() {
           />
         </div>
 
-        <div className="rounded-xl border border-slate-200/12 bg-[rgba(15,23,42,0.62)] p-3">
+        <div className="rounded-xl border border-slate-200/12 bg-[rgba(15,23,42,0.58)] p-3">
           <button
             type="button"
             className="inline-flex items-center gap-2 text-[13px] font-semibold text-slate-200 hover:text-white"
             onClick={() => setHasPromo((prev) => !prev)}
           >
             <Ticket size={14} />
-            {hasPromo ? "Скрыть промокод" : "У меня есть промокод"}
+            {hasPromo ? "Скрыть промокод" : "Есть промокод"}
           </button>
           {hasPromo && (
             <input
@@ -147,6 +140,15 @@ export default function RegisterPage() {
 
         <button type="submit" className="platform-btn-primary h-12 w-full rounded-xl text-[14px] font-bold">
           Создать аккаунт <ArrowRight size={15} />
+        </button>
+
+        <button
+          type="button"
+          onClick={goVerify}
+          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200/16 bg-[rgba(15,23,42,0.72)] text-[14px] font-semibold text-slate-200 transition hover:bg-slate-700/30"
+        >
+          <GoogleMark />
+          Зарегистрироваться с Google
         </button>
 
         <p className="pt-1 text-center text-[13px] text-slate-400">
