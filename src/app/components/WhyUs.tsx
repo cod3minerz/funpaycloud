@@ -193,7 +193,7 @@ export function WhyUs() {
 
         {/* Bottom CTA */}
         <div className="text-center mt-10">
-          <a href="#pricing" className="relative inline-block group">
+          <a href="/auth/register" className="relative inline-block group">
             <div className="absolute inset-0 bg-gradient-to-r from-blue-400/40 to-blue-500/40 rounded-xl blur-[2px] group-hover:blur-[3px] transition-all" />
             <span
               className="relative inline-block bg-gradient-to-r from-blue-400 to-blue-500 text-[#050608] font-bold px-8 py-3.5 rounded-xl text-sm"

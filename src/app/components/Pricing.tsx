@@ -162,7 +162,7 @@ export function Pricing() {
 
               {/* CTA */}
               <a
-                href="#"
+                href="/auth/register"
                 className={`w-full py-3.5 rounded-xl font-bold text-sm text-center mb-7 block transition-all duration-200 ${
                   plan.ctaStyle === "gradient"
                     ? "text-[#050608] hover:opacity-90"

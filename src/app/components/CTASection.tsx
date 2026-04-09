@@ -83,7 +83,7 @@ export function CTASection() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a href="#pricing" className="relative group">
+              <a href="/auth/register" className="relative group">
                 <span
                   className="relative bg-gradient-to-r from-blue-500 to-blue-700 text-white font-bold px-8 py-4 rounded-2xl block text-base hover:opacity-95 transition-opacity border border-blue-200/20"
                   style={{ fontFamily: "Manrope, sans-serif" }}

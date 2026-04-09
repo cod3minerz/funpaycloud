@@ -208,7 +208,7 @@ export function PainPoints() {
             Перейдите от ручного режима к системе за 10 минут
           </p>
           <a
-            href="#pricing"
+            href="/auth/register"
             className="inline-flex items-center justify-center bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold text-sm px-7 py-3 rounded-xl border border-blue-200/20 hover:opacity-95 transition-opacity"
             style={{ fontFamily: "Manrope, sans-serif" }}
           >
