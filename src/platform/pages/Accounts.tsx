@@ -74,11 +74,11 @@ export default function Accounts() {
 
     setCreating(true);
     try {
-      const newAcc = await accountsApi.add(key);
-      setList(prev => [newAcc, ...prev]);
+      await accountsApi.add(key);
       setGoldenKey('');
       setShowCreate(false);
       toast.success('Аккаунт успешно добавлен');
+      await loadAccounts();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Ошибка добавления аккаунта');
     } finally {

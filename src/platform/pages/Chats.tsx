@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   ArrowLeft,
+  BadgeCheck,
   Bot,
   ExternalLink,
   Filter,
@@ -307,6 +308,39 @@ export default function Chats() {
               </div>
 
               <div className="platform-chat-scroll">
+                {/* Support chat — always first, static */}
+                <a
+                  href="https://t.me/funpaycloud_support"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="platform-chat-row"
+                  style={{ textDecoration: 'none' }}
+                >
+                  <div className="flex items-start gap-3">
+                    <span style={{
+                      width: 38, height: 38, borderRadius: 999, flexShrink: 0,
+                      background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                      border: '1px solid rgba(96,165,250,0.45)',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#fff', fontWeight: 900, fontSize: 13,
+                    }}>FC</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="platform-chat-name">FunPay Cloud</span>
+                        <BadgeCheck size={13} color="#60a5fa" />
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, lineHeight: 1,
+                          padding: '2px 5px', borderRadius: 4,
+                          background: 'rgba(96,165,250,0.15)',
+                          border: '1px solid rgba(96,165,250,0.35)',
+                          color: '#93c5fd',
+                        }}>Поддержка</span>
+                      </div>
+                      <p className="platform-chat-preview">Добро пожаловать! Чем можем помочь?</p>
+                    </div>
+                  </div>
+                </a>
+
                 {filteredRows.map(row => {
                   const isActive = row.id === selectedId;
                   return (
