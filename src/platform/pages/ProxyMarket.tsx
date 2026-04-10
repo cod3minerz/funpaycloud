@@ -6,13 +6,16 @@ import {
   Globe2,
   LayoutGrid,
   List,
+  Loader2,
   Search,
   Server,
   Shuffle,
   SlidersHorizontal,
   Sparkles,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
+import { proxiesApi } from '@/lib/api';
 import {
   DataTableWrap,
   EmptyState,
@@ -40,19 +43,6 @@ type ProxyOffer = {
   priceMonth: number;
 };
 
-const GEO_POOL = [
-  { country: 'Россия', city: 'Москва' },
-  { country: 'Россия', city: 'Санкт-Петербург' },
-  { country: 'Германия', city: 'Франкфурт' },
-  { country: 'Франция', city: 'Париж' },
-  { country: 'Нидерланды', city: 'Амстердам' },
-  { country: 'Финляндия', city: 'Хельсинки' },
-  { country: 'Польша', city: 'Варшава' },
-  { country: 'Турция', city: 'Стамбул' },
-  { country: 'Казахстан', city: 'Алматы' },
-  { country: 'США', city: 'Нью-Йорк' },
-] as const;
-
 const TYPE_LABEL: Record<ProxyType, string> = {
   residential: 'Резидентский',
   mobile: 'Мобильный',
@@ -76,44 +66,6 @@ const COUNTRY_CODE: Record<string, string> = {
   США: 'US',
 };
 
-function seeded(seed: number) {
-  const value = Math.sin(seed * 934.231 + 17.91) * 10000;
-  return value - Math.floor(value);
-}
-
-function buildProxyPool(count: number) {
-  const items: ProxyOffer[] = [];
-  for (let i = 1; i <= count; i += 1) {
-    const seed = i * 31;
-    const geo = GEO_POOL[Math.floor(seeded(seed) * GEO_POOL.length) % GEO_POOL.length];
-    const typeValue = seeded(seed + 2);
-    const type: ProxyType = typeValue > 0.66 ? 'residential' : typeValue > 0.33 ? 'mobile' : 'datacenter';
-    const protocol = seeded(seed + 3) > 0.56 ? 'SOCKS5' : 'HTTP';
-    const status: ProxyStatus = seeded(seed + 4) > 0.23 ? 'available' : 'leased';
-    const ip = [
-      11 + Math.floor(seeded(seed + 5) * 210),
-      1 + Math.floor(seeded(seed + 6) * 254),
-      1 + Math.floor(seeded(seed + 7) * 254),
-      1 + Math.floor(seeded(seed + 8) * 254),
-    ].join('.');
-
-    items.push({
-      id: `PX-${String(i).padStart(4, '0')}`,
-      ip,
-      country: geo.country,
-      city: geo.city,
-      type,
-      protocol,
-      status,
-      speedMs: 70 + Math.floor(seeded(seed + 9) * 140),
-      priceMonth: 99,
-    });
-  }
-  return items;
-}
-
-const PROXY_POOL = buildProxyPool(180);
-
 function CountryFlag({ country }: { country: string }) {
   const code = (COUNTRY_CODE[country] ?? 'US').toLowerCase();
   return (
@@ -125,7 +77,9 @@ function CountryFlag({ country }: { country: string }) {
 
 export default function ProxyMarket() {
   const [isMobile, setIsMobile] = useState(false);
-  const [offers, setOffers] = useState<ProxyOffer[]>(PROXY_POOL);
+  const [loading, setLoading] = useState(true);
+  const [renting, setRenting] = useState(false);
+  const [offers, setOffers] = useState<ProxyOffer[]>([]);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | ProxyType>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | ProxyStatus>('available');
@@ -147,6 +101,27 @@ export default function ProxyMarket() {
     sync();
     media.addEventListener('change', sync);
     return () => media.removeEventListener('change', sync);
+  }, []);
+
+  useEffect(() => {
+    proxiesApi
+      .market({ page: 1, limit: 200 })
+      .then(res => {
+        const mapped: ProxyOffer[] = res.data.map(p => ({
+          id: String(p.id),
+          ip: p.ip,
+          country: p.country,
+          city: p.city,
+          type: (p.type as ProxyType) || 'datacenter',
+          protocol: (p.protocol as 'SOCKS5' | 'HTTP') || 'HTTP',
+          status: (p.status as ProxyStatus) || 'available',
+          speedMs: p.speed_ms ?? 0,
+          priceMonth: p.price_month ?? 99,
+        }));
+        setOffers(mapped);
+      })
+      .catch(err => toast.error(err instanceof Error ? err.message : 'Ошибка загрузки прокси-маркета'))
+      .finally(() => setLoading(false));
   }, []);
 
   const countries = useMemo(() => {
@@ -209,19 +184,33 @@ export default function ProxyMarket() {
     setCheckoutOffer(offer);
   }
 
-  function completePurchase() {
+  async function completePurchase() {
     if (!checkoutOffer) return;
 
-    setOffers(prev => prev.map(item => (item.id === checkoutOffer.id ? { ...item, status: 'leased' } : item)));
+    setRenting(true);
+    try {
+      await proxiesApi.rent(checkoutOffer.id);
+      setOffers(prev => prev.map(item => (item.id === checkoutOffer.id ? { ...item, status: 'leased' } : item)));
+      setSuccessBanner(
+        checkoutMode === 'auto'
+          ? `Прокси ${checkoutOffer.id} арендован автоматически.`
+          : `Прокси ${checkoutOffer.id} успешно арендован.`,
+      );
+      setCheckoutOffer(null);
+      window.setTimeout(() => setSuccessBanner(null), 2600);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка аренды прокси');
+    } finally {
+      setRenting(false);
+    }
+  }
 
-    setSuccessBanner(
-      checkoutMode === 'auto'
-        ? `Прокси ${checkoutOffer.id} арендован автоматически.`
-        : `Прокси ${checkoutOffer.id} успешно арендован.`,
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 size={28} className="animate-spin text-[var(--pf-accent)]" />
+      </div>
     );
-    setCheckoutOffer(null);
-
-    window.setTimeout(() => setSuccessBanner(null), 2600);
   }
 
   return (
@@ -659,11 +648,11 @@ export default function ProxyMarket() {
               </div>
 
               <div className="mt-1 grid grid-cols-2 gap-2">
-                <button className="platform-btn-secondary" onClick={() => setCheckoutOffer(null)}>
+                <button className="platform-btn-secondary" onClick={() => setCheckoutOffer(null)} disabled={renting}>
                   Отмена
                 </button>
-                <button className="platform-btn-primary" onClick={completePurchase}>
-                  <Shuffle size={14} /> Арендовать за 99 ₽
+                <button className="platform-btn-primary" onClick={completePurchase} disabled={renting}>
+                  {renting ? <Loader2 size={14} className="animate-spin" /> : <><Shuffle size={14} /> Арендовать за 99 ₽</>}
                 </button>
               </div>
             </div>

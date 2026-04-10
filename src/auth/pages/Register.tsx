@@ -3,8 +3,11 @@
 import { FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Ticket } from "lucide-react";
+import { ArrowRight, Loader2, Ticket } from "lucide-react";
+import { toast } from "sonner";
 import { AuthShell } from "@/auth/components/AuthShell";
+import { authApi } from "@/lib/api";
+import { sanitizeInput, validateEmail, validatePassword } from "@/lib/sanitize";
 
 const fieldClass =
   "h-12 w-full rounded-xl border border-slate-200/12 bg-[rgba(15,23,42,0.72)] px-4 text-[14px] text-white placeholder:text-slate-500 outline-none transition focus:border-blue-300/45 focus:ring-2 focus:ring-blue-400/25";
@@ -42,23 +45,47 @@ function GoogleMark() {
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [hasPromo, setHasPromo] = useState(false);
   const [promoCode, setPromoCode] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{
+    email?: string;
+    password?: string;
+    confirm?: string;
+  }>({});
 
   const score = useMemo(() => strengthScore(password), [password]);
 
-  function goVerify() {
-    const nextEmail = email.trim() || "user@funpay.cloud";
-    router.push(`/auth/verify?mode=register&email=${encodeURIComponent(nextEmail)}`);
+  function validate(): boolean {
+    const errors: { email?: string; password?: string; confirm?: string } = {};
+    if (!validateEmail(email)) errors.email = "Введите корректный email";
+    const pwdCheck = validatePassword(password);
+    if (!pwdCheck.valid) errors.password = pwdCheck.error;
+    if (password !== confirmPassword) errors.confirm = "Пароли не совпадают";
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   }
 
-  function handleRegister(event: FormEvent) {
+  async function handleRegister(event: FormEvent) {
     event.preventDefault();
-    goVerify();
+    if (!validate()) return;
+
+    setLoading(true);
+    try {
+      await authApi.register(
+        sanitizeInput(email),
+        sanitizeInput(password),
+        promoCode ? sanitizeInput(promoCode) : undefined,
+      );
+      router.push(`/auth/verify?mode=register&email=${encodeURIComponent(email.trim())}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Ошибка регистрации");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -68,16 +95,6 @@ export default function RegisterPage() {
     >
       <form onSubmit={handleRegister} className="space-y-4">
         <div className="space-y-1.5">
-          <label className="text-[13px] font-semibold text-slate-300">Никнейм</label>
-          <input
-            className={fieldClass}
-            placeholder="Например, seller_cloud"
-            value={nickname}
-            onChange={(event) => setNickname(event.target.value)}
-          />
-        </div>
-
-        <div className="space-y-1.5">
           <label className="text-[13px] font-semibold text-slate-300">Email</label>
           <input
             type="email"
@@ -86,6 +103,9 @@ export default function RegisterPage() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
+          {fieldErrors.email && (
+            <p className="text-[12px] text-red-400">{fieldErrors.email}</p>
+          )}
         </div>
 
         <div className="space-y-1.5">
@@ -97,15 +117,19 @@ export default function RegisterPage() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
-          <div className="flex flex-wrap items-center gap-2 text-[12px] text-slate-400">
-            <span>Минимум 8 символов</span>
-            <span className="text-slate-600">•</span>
-            <span>Буквы и цифры</span>
-            <span className="text-slate-600">•</span>
-            <span className="text-slate-300">
-              {score === 0 ? "Слабый" : score === 1 ? "Базовый" : score === 2 ? "Хороший" : "Надежный"}
-            </span>
-          </div>
+          {fieldErrors.password ? (
+            <p className="text-[12px] text-red-400">{fieldErrors.password}</p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2 text-[12px] text-slate-400">
+              <span>Минимум 8 символов</span>
+              <span className="text-slate-600">•</span>
+              <span>Буквы и цифры</span>
+              <span className="text-slate-600">•</span>
+              <span className="text-slate-300">
+                {score === 0 ? "Слабый" : score === 1 ? "Базовый" : score === 2 ? "Хороший" : "Надежный"}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="space-y-1.5">
@@ -117,6 +141,9 @@ export default function RegisterPage() {
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
           />
+          {fieldErrors.confirm && (
+            <p className="text-[12px] text-red-400">{fieldErrors.confirm}</p>
+          )}
         </div>
 
         <div className="rounded-xl border border-slate-200/12 bg-[rgba(15,23,42,0.58)] p-3">
@@ -138,13 +165,20 @@ export default function RegisterPage() {
           )}
         </div>
 
-        <button type="submit" className="platform-btn-primary h-12 w-full rounded-xl text-[14px] font-bold">
-          Создать аккаунт <ArrowRight size={15} />
+        <button
+          type="submit"
+          disabled={loading}
+          className="platform-btn-primary h-12 w-full rounded-xl text-[14px] font-bold disabled:opacity-60"
+        >
+          {loading ? (
+            <Loader2 size={15} className="animate-spin" />
+          ) : (
+            <>Создать аккаунт <ArrowRight size={15} /></>
+          )}
         </button>
 
         <button
           type="button"
-          onClick={goVerify}
           className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200/16 bg-[rgba(15,23,42,0.72)] text-[14px] font-semibold text-slate-200 transition hover:bg-slate-700/30"
         >
           <GoogleMark />

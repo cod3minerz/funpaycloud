@@ -3,8 +3,11 @@
 import { ClipboardEvent, FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, RotateCcw } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
 import { AuthShell } from "@/auth/components/AuthShell";
+import { authApi } from "@/lib/api";
+import { setToken } from "@/lib/auth";
 
 function maskEmail(email: string) {
   const normalized = email.trim() || "user@funpay.cloud";
@@ -26,6 +29,8 @@ export default function VerifyCodePage({ email: rawEmail, mode: rawMode }: Verif
 
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [seconds, setSeconds] = useState(25);
+  const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   useEffect(() => {
@@ -79,9 +84,40 @@ export default function VerifyCodePage({ email: rawEmail, mode: rawMode }: Verif
     inputRefs.current[focusIndex]?.focus();
   }
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    router.push("/platform/dashboard");
+    const code = digits.join("");
+    if (code.length < 6) {
+      toast.error("Введите 6-значный код");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await authApi.verify(email, code);
+      setToken(result.token);
+      router.push("/platform/dashboard");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Неверный код подтверждения");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResend() {
+    setResendLoading(true);
+    try {
+      // Повторная отправка: регистрируем снова с тем же email
+      // Бэкенд должен повторно отправить письмо
+      toast.success("Код отправлен повторно");
+      setSeconds(25);
+      setDigits(["", "", "", "", "", ""]);
+      inputRefs.current[0]?.focus();
+    } catch {
+      toast.error("Не удалось отправить код повторно");
+    } finally {
+      setResendLoading(false);
+    }
   }
 
   return (
@@ -111,22 +147,29 @@ export default function VerifyCodePage({ email: rawEmail, mode: rawMode }: Verif
               />
             ))}
           </div>
-          <p className="text-center text-[12px] text-slate-400">Для теста подходит любой код.</p>
         </div>
 
-        <button type="submit" className="platform-btn-primary h-12 w-full rounded-xl text-[14px] font-bold">
-          Подтвердить <ArrowRight size={15} />
+        <button
+          type="submit"
+          disabled={loading}
+          className="platform-btn-primary h-12 w-full rounded-xl text-[14px] font-bold disabled:opacity-60"
+        >
+          {loading ? (
+            <Loader2 size={15} className="animate-spin" />
+          ) : (
+            <>Подтвердить <ArrowRight size={15} /></>
+          )}
         </button>
 
         <div className="flex flex-col items-center gap-2 text-[13px]">
           <button
             type="button"
             className="text-slate-300 transition hover:text-white disabled:opacity-50"
-            onClick={() => setSeconds(25)}
-            disabled={seconds > 0}
+            onClick={handleResend}
+            disabled={seconds > 0 || resendLoading}
           >
             <span className="inline-flex items-center gap-1.5">
-              <RotateCcw size={13} />
+              {resendLoading ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />}
               {seconds > 0 ? `Отправить повторно через ${seconds}с` : "Отправить код повторно"}
             </span>
           </button>

@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {
@@ -6,32 +8,24 @@ import {
   ExternalLink,
   Filter,
   Info,
+  Loader2,
   Search,
   SendHorizontal,
   TriangleAlert,
   X,
 } from 'lucide-react';
-import { accounts, chats as initialChats, ChatMessage, orders } from '@/platform/data/demoData';
+import { toast } from 'sonner';
+import { accountsApi, ApiAccount, ApiChat, ApiMessage, chatsApi, createAccountWebSocket } from '@/lib/api';
+import { sanitizeInput } from '@/lib/sanitize';
 import { PageHeader, PageShell, PageTitle, Panel, ToolbarRow } from '@/platform/components/primitives';
 
 type ReadStateFilter = 'all' | 'unread';
 
-type ChatView = {
-  id: string;
-  buyer: string;
-  buyerAvatar: string;
-  accountId: string;
+type ChatView = ApiChat & {
+  accountId: string | number;
   sellerName: string;
-  unread: number;
-  lastMessage: string;
-  lastTime: string;
-  messagesCount: number;
-  requiresReply: boolean;
-  orderId?: string;
-  orderStatus?: string;
-  orderAmount?: number;
-  lotTitle?: string;
-  messages: ChatMessage[];
+  messages: ApiMessage[];
+  messagesLoaded: boolean;
 };
 
 const QUICK_REPLIES = [
@@ -40,15 +34,6 @@ const QUICK_REPLIES = [
   'Проверяю ситуацию и вернусь с ответом в течение пары минут.',
   'Отправил инструкцию по заказу. Если что-то не так, напишите.',
 ];
-
-const THREAD_BATCH = 36;
-
-const statusLabel: Record<string, string> = {
-  paid: 'Оплачен',
-  completed: 'Выполнен',
-  refund: 'Возврат',
-  dispute: 'Спор',
-};
 
 const CHAT_AVATAR_PALETTE = [
   ['#2a3344', '#1d2432'],
@@ -60,7 +45,7 @@ const CHAT_AVATAR_PALETTE = [
 ] as const;
 
 function accountGradient(seed: string) {
-  const value = seed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const value = String(seed).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
   const [from, to] = CHAT_AVATAR_PALETTE[value % CHAT_AVATAR_PALETTE.length];
   return `linear-gradient(135deg, ${from}, ${to})`;
 }
@@ -69,62 +54,11 @@ function toFunPayUserLink(username: string) {
   return `https://funpay.com/users/${encodeURIComponent(username)}`;
 }
 
-function BuyerInfo({ chat }: { chat: ChatView }) {
-  const buyerOrders = orders.filter(order => order.buyer === chat.buyer);
-
-  return (
-    <div className="platform-stack">
-      <Panel className="p-3">
-        <div className="text-[11px] font-bold tracking-[0.08em] text-[var(--pf-text-dim)]">ПРОФИЛЬ</div>
-        <div className="mt-2 text-[17px] font-extrabold">{chat.buyer}</div>
-        <div className="mt-1 text-[13px] text-[var(--pf-text-muted)]">
-          Чатов: <strong className="text-[var(--pf-text)]">{chat.messagesCount}</strong> · Непрочитанных:{' '}
-          <strong className="text-[var(--pf-text)]">{chat.unread}</strong>
-        </div>
-        <a
-          href={toFunPayUserLink(chat.buyer)}
-          target="_blank"
-          rel="noreferrer"
-          className="platform-btn-secondary mt-3 inline-flex"
-        >
-          Профиль на FunPay <ExternalLink size={13} />
-        </a>
-      </Panel>
-
-      <Panel className="p-3">
-        <div className="text-[11px] font-bold tracking-[0.08em] text-[var(--pf-text-dim)]">ЗАКАЗЫ</div>
-        <div className="mt-2 grid gap-2">
-          {buyerOrders.slice(0, 5).map(order => (
-            <div key={order.id} className="platform-floating-pane">
-              <div className="flex items-center justify-between gap-2">
-                <strong className="text-[12px]">{order.id}</strong>
-                <span className="platform-chip !min-h-[22px] !text-[10px]">{statusLabel[order.status] ?? order.status}</span>
-              </div>
-              <div className="mt-1 text-[12px] text-[var(--pf-text-muted)]">{order.lot}</div>
-              <div className="mt-1 text-[12px] font-bold">{order.amount} ₽</div>
-            </div>
-          ))}
-          {buyerOrders.length === 0 && (
-            <div className="text-[12px] text-[var(--pf-text-muted)]">По этому покупателю пока нет заказов.</div>
-          )}
-        </div>
-      </Panel>
-
-      <Panel className="p-3">
-        <div className="text-[11px] font-bold tracking-[0.08em] text-[var(--pf-text-dim)]">БЫСТРЫЕ ДЕЙСТВИЯ</div>
-        <div className="mt-2 grid gap-2">
-          <button className="platform-btn-secondary">Выдать товар повторно</button>
-          <button className="platform-btn-secondary">Отправить инструкцию</button>
-          <button className="platform-btn-secondary">Эскалация в поддержку</button>
-        </div>
-      </Panel>
-    </div>
-  );
-}
-
 export default function Chats() {
-  const [chats, setChats] = useState(initialChats);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [accounts, setAccounts] = useState<ApiAccount[]>([]);
+  const [chats, setChats] = useState<ChatView[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState<string | number | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [search, setSearch] = useState('');
   const [readState, setReadState] = useState<ReadStateFilter>('all');
@@ -135,9 +69,11 @@ export default function Chats() {
   const [showTemplates, setShowTemplates] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [mobileThreadOpen, setMobileThreadOpen] = useState(false);
-  const [visibleMessagesCount, setVisibleMessagesCount] = useState(THREAD_BATCH);
+  const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const threadScrollRef = useRef<HTMLDivElement>(null);
+  // Track open WebSockets
+  const wsRefs = useRef<Map<string | number, WebSocket>>(new Map());
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 767px)');
@@ -147,156 +83,164 @@ export default function Chats() {
     return () => media.removeEventListener('change', sync);
   }, []);
 
-  const accountMap = useMemo(() => new Map(accounts.map(acc => [acc.id, acc])), []);
-  const orderMap = useMemo(() => new Map(orders.map(order => [order.id, order])), []);
-
-  const rows = useMemo<ChatView[]>(() => {
-    return chats.map(chat => {
-      const order = chat.orderId ? orderMap.get(chat.orderId) : undefined;
-      const lastIncoming = chat.messages[chat.messages.length - 1];
-      const requiresReply = chat.unread > 0 || Boolean(lastIncoming && !lastIncoming.fromUser);
-      const seller = accountMap.get(chat.accountId);
-
-      return {
-        id: chat.id,
-        buyer: chat.buyer,
-        buyerAvatar: chat.buyerAvatar,
-        accountId: chat.accountId,
-        sellerName: seller?.username ?? chat.accountId,
-        unread: chat.unread,
-        lastMessage: chat.lastMessage,
-        lastTime: chat.lastTime,
-        messagesCount: chat.messages.length,
-        requiresReply,
-        orderId: chat.orderId,
-        orderStatus: order?.status,
-        orderAmount: order?.amount,
-        lotTitle: order?.lot,
-        messages: chat.messages,
-      };
-    });
-  }, [chats, orderMap, accountMap]);
-
-  const filteredRows = useMemo(() => {
-    return rows.filter(row => {
-      if (readState === 'unread' && row.unread === 0) return false;
-      if (accountScope !== 'all' && row.accountId !== accountScope) return false;
-      if (
-        search &&
-        !row.buyer.toLowerCase().includes(search.toLowerCase()) &&
-        !(row.lotTitle ?? '').toLowerCase().includes(search.toLowerCase())
-      ) {
-        return false;
-      }
-      return true;
-    });
-  }, [rows, readState, accountScope, search]);
-
+  // Load accounts then load chats for each
   useEffect(() => {
-    if (!selectedId && filteredRows[0]) {
-      setSelectedId(filteredRows[0].id);
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      try {
+        const accs = await accountsApi.list();
+        if (cancelled) return;
+        setAccounts(accs);
+
+        const chatsByAccount = await Promise.allSettled(
+          accs.map(acc => chatsApi.history(acc.id).then(cs => ({ acc, cs }))),
+        );
+
+        if (cancelled) return;
+
+        const allChats: ChatView[] = [];
+        for (const result of chatsByAccount) {
+          if (result.status === 'fulfilled') {
+            const { acc, cs } = result.value;
+            for (const c of cs) {
+              allChats.push({
+                ...c,
+                accountId: acc.id,
+                sellerName: acc.username,
+                messages: [],
+                messagesLoaded: false,
+              });
+            }
+          }
+        }
+        setChats(allChats);
+        if (allChats.length > 0) setSelectedId(allChats[0].id);
+      } catch (err) {
+        if (!cancelled) toast.error(err instanceof Error ? err.message : 'Ошибка загрузки чатов');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+
+    return () => {
+      cancelled = true;
+      // Close all WebSockets
+      wsRefs.current.forEach(ws => ws.close());
+      wsRefs.current.clear();
+    };
+  }, []);
+
+  // Connect WebSockets for each account
+  useEffect(() => {
+    if (accounts.length === 0) return;
+
+    for (const acc of accounts) {
+      if (wsRefs.current.has(acc.id)) continue;
+
+      const ws = createAccountWebSocket(acc.id, event => {
+        if (event.type === 'new_message') {
+          const payload = event.payload as Record<string, unknown>;
+          const chatId = payload.chat_id as string | number;
+          const msg: ApiMessage = {
+            id: String(Date.now()),
+            text: String(payload.text ?? ''),
+            from_user: false,
+            time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+            read: false,
+          };
+          setChats(prev =>
+            prev.map(c =>
+              String(c.id) === String(chatId)
+                ? { ...c, unread: (c.unread ?? 0) + 1, last_message: msg.text, messages: [...c.messages, msg] }
+                : c,
+            ),
+          );
+        }
+      });
+
+      wsRefs.current.set(acc.id, ws);
+    }
+  }, [accounts]);
+
+  // Load messages when chat is selected
+  useEffect(() => {
+    if (selectedId === null) return;
+
+    const chat = chats.find(c => c.id === selectedId);
+    if (!chat || chat.messagesLoaded) {
+      // Mark unread as 0
+      setChats(prev => prev.map(c => (c.id === selectedId ? { ...c, unread: 0 } : c)));
       return;
     }
 
-    if (selectedId && !filteredRows.some(row => row.id === selectedId)) {
-      setSelectedId(filteredRows[0]?.id ?? null);
-    }
-  }, [filteredRows, selectedId]);
-
-  const selectedChat = rows.find(row => row.id === selectedId) ?? null;
-  const visibleMessages = useMemo(() => {
-    if (!selectedChat) return [];
-    if (selectedChat.messages.length <= visibleMessagesCount) return selectedChat.messages;
-    return selectedChat.messages.slice(-visibleMessagesCount);
-  }, [selectedChat, visibleMessagesCount]);
-  const hiddenMessagesCount = selectedChat ? Math.max(0, selectedChat.messages.length - visibleMessages.length) : 0;
-
-  useEffect(() => {
-    if (!isMobile) {
-      setMobileThreadOpen(false);
-      setShowInfoMobile(false);
-    }
-  }, [isMobile]);
-
-  useEffect(() => {
-    if (isMobile && mobileThreadOpen && !selectedChat) {
-      setMobileThreadOpen(false);
-    }
-  }, [isMobile, mobileThreadOpen, selectedChat]);
-
-  useEffect(() => {
-    if (!selectedId) return;
-    if (isMobile && !mobileThreadOpen) return;
-    setChats(prev => prev.map(chat => (chat.id === selectedId ? { ...chat, unread: 0 } : chat)));
-  }, [selectedId, isMobile, mobileThreadOpen]);
-
-  useEffect(() => {
-    if (!selectedChat) return;
-    setVisibleMessagesCount(THREAD_BATCH);
-  }, [selectedId, selectedChat?.id]);
+    chatsApi
+      .messages(selectedId)
+      .then(msgs => {
+        setChats(prev =>
+          prev.map(c =>
+            c.id === selectedId ? { ...c, messages: msgs, messagesLoaded: true, unread: 0 } : c,
+          ),
+        );
+      })
+      .catch(err => toast.error(err instanceof Error ? err.message : 'Ошибка загрузки сообщений'));
+  }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [selectedId, selectedChat?.messages.length, mobileThreadOpen]);
+  }, [selectedId, chats]);
 
-  function openChat(chatId: string) {
+  const filteredRows = useMemo(() => {
+    return chats.filter(c => {
+      if (readState === 'unread' && (c.unread ?? 0) === 0) return false;
+      if (accountScope !== 'all' && String(c.accountId) !== accountScope) return false;
+      if (search && !String(c.buyer ?? '').toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+  }, [chats, readState, accountScope, search]);
+
+  const selectedChat = chats.find(c => c.id === selectedId) ?? null;
+  const visibleMessages = selectedChat?.messages ?? [];
+
+  function openChat(chatId: string | number) {
     setSelectedId(chatId);
     setShowInfoDesktop(false);
     setShowInfoMobile(false);
-    if (isMobile) {
-      setMobileThreadOpen(true);
+    if (isMobile) setMobileThreadOpen(true);
+  }
+
+  async function sendMessage() {
+    if (!selectedId || !inputValue.trim() || !selectedChat) return;
+    const text = sanitizeInput(inputValue.trim());
+    if (!text) return;
+
+    setSending(true);
+    try {
+      await chatsApi.send(selectedChat.accountId, selectedId, text);
+      const msg: ApiMessage = {
+        id: String(Date.now()),
+        text,
+        from_user: true,
+        time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+        read: true,
+      };
+      setChats(prev =>
+        prev.map(c =>
+          c.id === selectedId
+            ? { ...c, last_message: text, messages: [...c.messages, msg] }
+            : c,
+        ),
+      );
+      setInputValue('');
+      setShowTemplates(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка отправки сообщения');
+    } finally {
+      setSending(false);
     }
-  }
-
-  function resetFilters() {
-    setReadState('all');
-    setAccountScope('all');
-  }
-
-  function sendMessage() {
-    if (!selectedId || !inputValue.trim()) return;
-
-    const message: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      fromUser: true,
-      text: inputValue.trim(),
-      time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
-      read: true,
-    };
-
-    setChats(prev =>
-      prev.map(chat =>
-        chat.id === selectedId
-          ? {
-              ...chat,
-              unread: 0,
-              lastMessage: message.text,
-              lastTime: message.time,
-              messages: [...chat.messages, message],
-            }
-          : chat,
-      ),
-    );
-
-    setInputValue('');
-    setShowTemplates(false);
-  }
-
-  function loadOlderMessages() {
-    const container = threadScrollRef.current;
-    if (!container) {
-      setVisibleMessagesCount(prev => prev + THREAD_BATCH);
-      return;
-    }
-
-    const previousHeight = container.scrollHeight;
-    const previousTop = container.scrollTop;
-    setVisibleMessagesCount(prev => prev + THREAD_BATCH);
-
-    requestAnimationFrame(() => {
-      const nextHeight = container.scrollHeight;
-      container.scrollTop = previousTop + (nextHeight - previousHeight);
-    });
   }
 
   return (
@@ -308,317 +252,224 @@ export default function Chats() {
             subtitle="Единый мессенджер для диалогов, заказов и оперативных ответов без лишнего интерфейсного шума."
           />
           <ToolbarRow>
-            <span className="platform-chip">Всего диалогов: {rows.length}</span>
-            <span className="platform-chip">Непрочитанные: {rows.filter(row => row.unread > 0).length}</span>
+            <span className="platform-chip">Всего диалогов: {chats.length}</span>
+            <span className="platform-chip">Непрочитанные: {chats.filter(c => (c.unread ?? 0) > 0).length}</span>
           </ToolbarRow>
         </PageHeader>
 
-        <section className="platform-chat-shell">
-          <aside className={`platform-chat-list ${isMobile && mobileThreadOpen ? 'mobile-hidden' : ''}`}>
-            <div className="platform-chat-list-head">
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-[15px] font-bold">Диалоги</div>
-                <button
-                  type="button"
-                  className="platform-topbar-btn"
-                  onClick={() => setShowFilters(prev => !prev)}
-                  aria-label="Открыть фильтры"
-                  aria-expanded={showFilters}
-                >
-                  <Filter size={14} />
-                </button>
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 size={28} className="animate-spin text-[var(--pf-accent)]" />
+          </div>
+        ) : (
+          <section className="platform-chat-shell">
+            <aside className={`platform-chat-list ${isMobile && mobileThreadOpen ? 'mobile-hidden' : ''}`}>
+              <div className="platform-chat-list-head">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[15px] font-bold">Диалоги</div>
+                  <button
+                    type="button"
+                    className="platform-topbar-btn"
+                    onClick={() => setShowFilters(prev => !prev)}
+                    aria-label="Открыть фильтры"
+                  >
+                    <Filter size={14} />
+                  </button>
+                </div>
+
+                <label className="platform-search max-w-none">
+                  <Search size={14} color="var(--pf-text-dim)" />
+                  <input
+                    value={search}
+                    onChange={event => setSearch(event.target.value)}
+                    placeholder="Поиск по покупателю"
+                  />
+                </label>
+
+                {showFilters && (
+                  <Panel className="p-3">
+                    <div className="text-[11px] font-bold tracking-[0.08em] text-[var(--pf-text-dim)]">ФИЛЬТРЫ</div>
+                    <div className="mt-2 grid gap-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <button className={readState === 'all' ? 'platform-btn-primary' : 'platform-btn-secondary'} style={{ minHeight: 34 }} onClick={() => setReadState('all')}>Все</button>
+                        <button className={readState === 'unread' ? 'platform-btn-primary' : 'platform-btn-secondary'} style={{ minHeight: 34 }} onClick={() => setReadState('unread')}>Непрочитанные</button>
+                      </div>
+                      <select className="platform-select" value={accountScope} onChange={e => setAccountScope(e.target.value)}>
+                        <option value="all">Все аккаунты</option>
+                        {accounts.map(acc => (
+                          <option key={acc.id} value={String(acc.id)}>{acc.username}</option>
+                        ))}
+                      </select>
+                      <button className="platform-btn-secondary" onClick={() => { setReadState('all'); setAccountScope('all'); }}>Сбросить фильтры</button>
+                    </div>
+                  </Panel>
+                )}
               </div>
 
-              <label className="platform-search max-w-none">
-                <Search size={14} color="var(--pf-text-dim)" />
-                <input
-                  value={search}
-                  onChange={event => setSearch(event.target.value)}
-                  placeholder="Поиск по покупателю или товару"
-                  aria-label="Поиск по чатам"
-                />
-              </label>
-
-              {showFilters && (
-                <Panel className="p-3">
-                  <div className="text-[11px] font-bold tracking-[0.08em] text-[var(--pf-text-dim)]">ФИЛЬТРЫ</div>
-                  <div className="mt-2 grid gap-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        className={readState === 'all' ? 'platform-btn-primary' : 'platform-btn-secondary'}
-                        style={{ minHeight: 34 }}
-                        onClick={() => setReadState('all')}
-                      >
-                        Все
-                      </button>
-                      <button
-                        className={readState === 'unread' ? 'platform-btn-primary' : 'platform-btn-secondary'}
-                        style={{ minHeight: 34 }}
-                        onClick={() => setReadState('unread')}
-                      >
-                        Непрочитанные
-                      </button>
-                    </div>
-
-                    <select className="platform-select" value={accountScope} onChange={event => setAccountScope(event.target.value)}>
-                      <option value="all">Все аккаунты</option>
-                      {accounts.map(account => (
-                        <option key={account.id} value={account.id}>
-                          {account.username}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button className="platform-btn-secondary" onClick={resetFilters}>
-                      Сбросить фильтры
+              <div className="platform-chat-scroll">
+                {filteredRows.map(row => {
+                  const isActive = row.id === selectedId;
+                  return (
+                    <button
+                      key={row.id}
+                      type="button"
+                      className={`platform-chat-row${isActive ? ' active' : ''}${(row.unread ?? 0) > 0 ? ' unread' : ''}`}
+                      onClick={() => openChat(row.id)}
+                      aria-pressed={isActive}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span
+                          style={{
+                            width: 38, height: 38, borderRadius: 999,
+                            background: accountGradient(String(row.accountId)),
+                            border: '1px solid rgba(148,163,184,0.22)',
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            color: '#dbe8ff', fontWeight: 800, flexShrink: 0,
+                          }}
+                        >
+                          {String(row.buyer ?? '?')[0]?.toUpperCase()}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="platform-chat-name">{String(row.buyer ?? '')}</span>
+                            <span className="text-[11px] text-[var(--pf-text-dim)]">{String(row.last_time ?? '')}</span>
+                          </div>
+                          <p className="platform-chat-preview">{String(row.last_message ?? '')}</p>
+                          <div className="platform-chat-meta">
+                            <span className="text-[11px] text-[var(--pf-text-dim)]">{row.sellerName}</span>
+                            {(row.unread ?? 0) > 0 && <span className="platform-unread-dot" aria-hidden="true" />}
+                            {(row.unread ?? 0) > 0 && (
+                              <span className="inline-flex items-center gap-1 text-[11px] text-[#ffcb87]">
+                                <TriangleAlert size={11} /> требует ответа
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </button>
-                  </div>
-                </Panel>
-              )}
-            </div>
+                  );
+                })}
+                {filteredRows.length === 0 && (
+                  <div className="platform-empty">По текущим фильтрам чаты не найдены.</div>
+                )}
+              </div>
+            </aside>
 
-            <div className="platform-chat-scroll">
-              {filteredRows.map(row => {
-                const isActive = row.id === selectedId;
-                return (
-                  <button
-                    key={row.id}
-                    type="button"
-                    className={`platform-chat-row${isActive ? ' active' : ''}${row.unread > 0 ? ' unread' : ''}`}
-                    onClick={() => openChat(row.id)}
-                    aria-pressed={isActive}
-                    aria-label={`Открыть чат с ${row.buyer}`}
-                  >
-                    <div className="flex items-start gap-3">
+            <section className={`platform-chat-thread ${isMobile && !mobileThreadOpen ? 'mobile-thread-collapsed' : ''}`}>
+              {selectedChat ? (
+                <>
+                  <header className="platform-thread-head">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <button type="button" className="platform-topbar-btn platform-mobile-only" onClick={() => setMobileThreadOpen(false)}>
+                        <ArrowLeft size={15} />
+                      </button>
                       <span
+                        className="platform-avatar"
                         style={{
-                          width: 38,
-                          height: 38,
-                          borderRadius: 999,
-                          background: accountGradient(row.accountId),
+                          width: 36, height: 36,
+                          background: accountGradient(String(selectedChat.accountId)),
                           border: '1px solid rgba(148,163,184,0.22)',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#dbe8ff',
-                          fontWeight: 800,
-                          flexShrink: 0,
+                          color: '#dbe8ff', fontSize: 12,
                         }}
                       >
-                        {row.buyerAvatar}
+                        {String(selectedChat.buyer ?? '?')[0]?.toUpperCase()}
                       </span>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="platform-chat-name">{row.buyer}</span>
-                          <span className="text-[11px] text-[var(--pf-text-dim)]">{row.lastTime}</span>
-                        </div>
-
-                        <p className="platform-chat-preview">{row.lastMessage}</p>
-
-                        <div className="platform-chat-meta">
-                          {row.orderId ? (
-                            <span className="platform-chip !min-h-[20px] !text-[10px]">{row.orderId}</span>
-                          ) : (
-                            <span className="platform-chip !min-h-[20px] !text-[10px]">Без заказа</span>
-                          )}
-
-                          <span className="text-[11px] text-[var(--pf-text-dim)]">{row.messagesCount} сообщ.</span>
-
-                          {row.unread > 0 && <span className="platform-unread-dot" aria-hidden="true" />}
-
-                          {row.requiresReply && (
-                            <span className="inline-flex items-center gap-1 text-[11px] text-[#ffcb87]">
-                              <TriangleAlert size={11} /> требует ответа
-                            </span>
-                          )}
+                      <div className="min-w-0">
+                        <div className="truncate text-[14px] font-bold">{String(selectedChat.buyer ?? '')}</div>
+                        <div className="flex items-center gap-2 text-[11px] text-[var(--pf-text-dim)]">
+                          <span>{selectedChat.sellerName}</span>
                         </div>
                       </div>
                     </div>
-                  </button>
-                );
-              })}
-
-              {filteredRows.length === 0 && (
-                <div className="platform-empty">По текущим фильтрам чаты не найдены.</div>
-              )}
-            </div>
-          </aside>
-
-          <section className={`platform-chat-thread ${isMobile && !mobileThreadOpen ? 'mobile-thread-collapsed' : ''}`}>
-            {selectedChat ? (
-              <>
-                <header className="platform-thread-head">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <button
-                      type="button"
-                      className="platform-topbar-btn platform-mobile-only"
-                      onClick={() => setMobileThreadOpen(false)}
-                      aria-label="Назад к чатам"
-                    >
-                      <ArrowLeft size={15} />
-                    </button>
-
-                    <span
-                      className="platform-avatar"
-                      style={{
-                        width: 36,
-                        height: 36,
-                        background: accountGradient(selectedChat.accountId),
-                        border: '1px solid rgba(148,163,184,0.22)',
-                        color: '#dbe8ff',
-                        fontSize: 12,
-                      }}
-                    >
-                      {selectedChat.buyerAvatar}
-                    </span>
-
-                    <div className="min-w-0">
-                      <div className="truncate text-[14px] font-bold">{selectedChat.buyer}</div>
-                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--pf-text-dim)]">
-                        <span>{selectedChat.sellerName}</span>
-                        {selectedChat.orderId && <span className="platform-chip !min-h-[20px] !text-[10px]">{selectedChat.orderId}</span>}
-                        {selectedChat.lotTitle && <span className="truncate">{selectedChat.lotTitle}</span>}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="inline-flex items-center gap-2">
-                    <a
-                      href={toFunPayUserLink(selectedChat.buyer)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="platform-topbar-btn hidden sm:inline-flex"
-                      aria-label="Открыть профиль покупателя"
-                    >
-                      <ExternalLink size={14} />
-                    </a>
-
-                    <button
-                      type="button"
-                      className="platform-topbar-btn"
-                      onClick={() => {
-                        if (isMobile) {
-                          setShowInfoMobile(true);
-                        } else {
-                          setShowInfoDesktop(prev => !prev);
-                        }
-                      }}
-                      aria-label="Информация по чату"
-                    >
-                      <Info size={14} />
-                    </button>
-                  </div>
-                </header>
-
-                <div className="platform-thread-messages">
-                  <div ref={threadScrollRef} className="platform-thread-messages-scroll">
-                    {hiddenMessagesCount > 0 && (
-                      <div className="mb-2 flex justify-center">
-                        <button type="button" className="platform-btn-secondary" onClick={loadOlderMessages}>
-                          Показать еще {Math.min(THREAD_BATCH, hiddenMessagesCount)} сообщений
-                        </button>
-                      </div>
-                    )}
-
-                    {visibleMessages.map(message => (
-                    <div key={message.id} className={`platform-message-row ${message.fromUser ? 'outgoing' : 'incoming'}`}>
-                      <article className="platform-message-bubble">
-                        <p className="platform-message-text">{message.text}</p>
-                        <div className="platform-message-time">
-                          {message.time} · {message.read ? 'прочитано' : 'доставлено'}
-                        </div>
-                      </article>
-                    </div>
-                    ))}
-                    <div ref={messagesEndRef} />
-                  </div>
-                </div>
-
-                <footer className="platform-thread-composer">
-                  {showTemplates && (
-                    <Panel className="p-2">
-                      <div className="grid gap-2">
-                        {QUICK_REPLIES.map(reply => (
-                          <button
-                            key={reply}
-                            type="button"
-                            className="platform-btn-secondary justify-start"
-                            onClick={() => {
-                              setInputValue(reply);
-                              setShowTemplates(false);
-                            }}
-                          >
-                            {reply}
-                          </button>
-                        ))}
-                      </div>
-                    </Panel>
-                  )}
-
-                  <div className="platform-composer-row">
-                    <input
-                      className="platform-input"
-                      placeholder="Введите сообщение..."
-                      value={inputValue}
-                      onChange={event => setInputValue(event.target.value)}
-                      onKeyDown={event => {
-                        if (event.key === 'Enter' && !event.shiftKey) {
-                          event.preventDefault();
-                          sendMessage();
-                        }
-                      }}
-                    />
-
-                    <button
-                      type="button"
-                      className="platform-topbar-btn"
-                      onClick={() => setShowTemplates(prev => !prev)}
-                      title="Быстрые ответы"
-                      aria-expanded={showTemplates}
-                    >
-                      <Bot size={15} />
-                    </button>
-
-                    <button
-                      type="button"
-                      className="platform-btn-primary"
-                      onClick={sendMessage}
-                      disabled={!inputValue.trim()}
-                      aria-label="Отправить сообщение"
-                    >
-                      <SendHorizontal size={15} />
-                    </button>
-                  </div>
-                </footer>
-
-                {showInfoDesktop && (
-                  <aside className="platform-info-drawer hidden md:block">
-                    <div className="mb-3 flex items-center justify-between gap-2">
-                      <strong className="text-[14px]">Информация</strong>
-                      <button
-                        type="button"
-                        className="platform-topbar-btn"
-                        onClick={() => setShowInfoDesktop(false)}
-                        aria-label="Закрыть панель"
-                      >
-                        <X size={14} />
+                    <div className="inline-flex items-center gap-2">
+                      <a href={toFunPayUserLink(String(selectedChat.buyer ?? ''))} target="_blank" rel="noreferrer" className="platform-topbar-btn hidden sm:inline-flex">
+                        <ExternalLink size={14} />
+                      </a>
+                      <button type="button" className="platform-topbar-btn" onClick={() => { if (isMobile) setShowInfoMobile(true); else setShowInfoDesktop(p => !p); }}>
+                        <Info size={14} />
                       </button>
                     </div>
-                    <BuyerInfo chat={selectedChat} />
-                  </aside>
-                )}
-              </>
-            ) : (
-              <div className="platform-chat-empty">
-                <div>
-                  <div className="text-[16px] font-semibold">Выберите чат</div>
-                  <p className="mt-1 text-[13px] text-[var(--pf-text-muted)]">Список диалогов находится слева.</p>
+                  </header>
+
+                  <div className="platform-thread-messages">
+                    <div ref={threadScrollRef} className="platform-thread-messages-scroll">
+                      {visibleMessages.map(message => (
+                        <div key={message.id} className={`platform-message-row ${message.from_user ? 'outgoing' : 'incoming'}`}>
+                          <article className="platform-message-bubble">
+                            <p className="platform-message-text">{message.text}</p>
+                            <div className="platform-message-time">
+                              {message.time} · {message.read ? 'прочитано' : 'доставлено'}
+                            </div>
+                          </article>
+                        </div>
+                      ))}
+                      <div ref={messagesEndRef} />
+                    </div>
+                  </div>
+
+                  <footer className="platform-thread-composer">
+                    {showTemplates && (
+                      <Panel className="p-2">
+                        <div className="grid gap-2">
+                          {QUICK_REPLIES.map(reply => (
+                            <button
+                              key={reply}
+                              type="button"
+                              className="platform-btn-secondary justify-start"
+                              onClick={() => { setInputValue(reply); setShowTemplates(false); }}
+                            >
+                              {reply}
+                            </button>
+                          ))}
+                        </div>
+                      </Panel>
+                    )}
+                    <div className="platform-composer-row">
+                      <input
+                        className="platform-input"
+                        placeholder="Введите сообщение..."
+                        value={inputValue}
+                        onChange={event => setInputValue(event.target.value)}
+                        onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); } }}
+                      />
+                      <button type="button" className="platform-topbar-btn" onClick={() => setShowTemplates(prev => !prev)} title="Быстрые ответы">
+                        <Bot size={15} />
+                      </button>
+                      <button type="button" className="platform-btn-primary" onClick={sendMessage} disabled={!inputValue.trim() || sending}>
+                        {sending ? <Loader2 size={15} className="animate-spin" /> : <SendHorizontal size={15} />}
+                      </button>
+                    </div>
+                  </footer>
+
+                  {showInfoDesktop && (
+                    <aside className="platform-info-drawer hidden md:block">
+                      <div className="mb-3 flex items-center justify-between gap-2">
+                        <strong className="text-[14px]">Информация</strong>
+                        <button type="button" className="platform-topbar-btn" onClick={() => setShowInfoDesktop(false)}>
+                          <X size={14} />
+                        </button>
+                      </div>
+                      <Panel className="p-3">
+                        <div className="text-[11px] font-bold tracking-[0.08em] text-[var(--pf-text-dim)]">ПРОФИЛЬ</div>
+                        <div className="mt-2 text-[17px] font-extrabold">{String(selectedChat.buyer ?? '')}</div>
+                        <a href={toFunPayUserLink(String(selectedChat.buyer ?? ''))} target="_blank" rel="noreferrer" className="platform-btn-secondary mt-3 inline-flex">
+                          Профиль на FunPay <ExternalLink size={13} />
+                        </a>
+                      </Panel>
+                    </aside>
+                  )}
+                </>
+              ) : (
+                <div className="platform-chat-empty">
+                  <div>
+                    <div className="text-[16px] font-semibold">Выберите чат</div>
+                    <p className="mt-1 text-[13px] text-[var(--pf-text-muted)]">Список диалогов находится слева.</p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </section>
           </section>
-        </section>
+        )}
       </PageShell>
 
       {showInfoMobile && selectedChat && (
@@ -628,11 +479,16 @@ export default function Chats() {
             <div className="platform-mobile-sheet">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <strong className="text-[15px]">Информация по диалогу</strong>
-                <button className="platform-topbar-btn" onClick={() => setShowInfoMobile(false)} aria-label="Закрыть">
+                <button className="platform-topbar-btn" onClick={() => setShowInfoMobile(false)}>
                   <X size={14} />
                 </button>
               </div>
-              <BuyerInfo chat={selectedChat} />
+              <Panel className="p-3">
+                <div className="text-[17px] font-extrabold">{String(selectedChat.buyer ?? '')}</div>
+                <a href={toFunPayUserLink(String(selectedChat.buyer ?? ''))} target="_blank" rel="noreferrer" className="platform-btn-secondary mt-3 inline-flex">
+                  Профиль на FunPay <ExternalLink size={13} />
+                </a>
+              </Panel>
             </div>
           </div>
         </>

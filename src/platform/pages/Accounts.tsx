@@ -1,8 +1,23 @@
-import React, { useMemo, useState } from 'react';
+'use client';
+
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { CircleCheck, CircleOff, Plus, Search, ShieldCheck, Star, Trash2 } from 'lucide-react';
+import {
+  CircleCheck,
+  CircleOff,
+  Loader2,
+  Pause,
+  Play,
+  Plus,
+  Search,
+  ShieldCheck,
+  Square,
+  Trash2,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
-import { Account, accounts as initialAccounts } from '@/platform/data/demoData';
+import { accountsApi, ApiAccount } from '@/lib/api';
+import { sanitizeInput, validateGoldenKey } from '@/lib/sanitize';
 import {
   DataTableWrap,
   EmptyState,
@@ -16,56 +31,107 @@ import {
 } from '@/platform/components/primitives';
 
 export default function Accounts() {
-  const [list, setList] = useState<Account[]>(initialAccounts);
+  const [list, setList] = useState<ApiAccount[]>([]);
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'online' | 'offline'>('all');
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ username: '', balance: '' });
+  const [goldenKey, setGoldenKey] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [stoppingAll, setStoppingAll] = useState(false);
+  // Map of accountId → loading state for raiser toggle
+  const [raisingIds, setRaisingIds] = useState<Set<string | number>>(new Set());
+
+  async function loadAccounts() {
+    setLoading(true);
+    try {
+      const data = await accountsApi.list();
+      setList(data);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка загрузки аккаунтов');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { loadAccounts(); }, []);
 
   const filtered = useMemo(() => {
     return list.filter(acc => {
-      if (statusFilter === 'online' && !acc.online) return false;
-      if (statusFilter === 'offline' && acc.online) return false;
+      if (statusFilter === 'online' && !acc.keeper_active) return false;
+      if (statusFilter === 'offline' && acc.keeper_active) return false;
       if (query && !acc.username.toLowerCase().includes(query.toLowerCase())) return false;
       return true;
     });
   }, [list, query, statusFilter]);
 
-  function createAccount() {
-    const username = form.username.trim();
-    const balance = Number(form.balance);
-    if (!username || Number.isNaN(balance)) return;
+  async function createAccount() {
+    const key = sanitizeInput(goldenKey);
+    if (!validateGoldenKey(key)) {
+      toast.error('Golden Key должен содержать 20–64 латинских букв или цифр');
+      return;
+    }
 
-    setList(prev => [
-      {
-        id: `acc-${Date.now()}`,
-        username,
-        avatar: username[0]?.toUpperCase() ?? 'U',
-        balance,
-        lotsCount: 0,
-        online: true,
-        rating: 4.8,
-        sales: 0,
-        verified: false,
-      },
-      ...prev,
-    ]);
-
-    setForm({ username: '', balance: '' });
-    setShowCreate(false);
+    setCreating(true);
+    try {
+      const newAcc = await accountsApi.add(key);
+      setList(prev => [newAcc, ...prev]);
+      setGoldenKey('');
+      setShowCreate(false);
+      toast.success('Аккаунт успешно добавлен');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка добавления аккаунта');
+    } finally {
+      setCreating(false);
+    }
   }
 
-  function toggleStatus(id: string) {
-    setList(prev => prev.map(acc => (acc.id === id ? { ...acc, online: !acc.online } : acc)));
+  async function removeAccount(id: string | number) {
+    try {
+      await accountsApi.delete(id);
+      setList(prev => prev.filter(acc => acc.id !== id));
+      toast.success('Аккаунт удалён');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка удаления аккаунта');
+    }
   }
 
-  function removeAccount(id: string) {
-    setList(prev => prev.filter(acc => acc.id !== id));
+  async function toggleRaiser(acc: ApiAccount) {
+    setRaisingIds(prev => new Set(prev).add(acc.id));
+    try {
+      if (acc.raiser_active) {
+        await accountsApi.stopRaiser(acc.id);
+        setList(prev => prev.map(a => a.id === acc.id ? { ...a, raiser_active: false } : a));
+        toast.success(`Автоподнятие остановлено (${acc.username})`);
+      } else {
+        await accountsApi.startRaiser(acc.id);
+        setList(prev => prev.map(a => a.id === acc.id ? { ...a, raiser_active: true } : a));
+        toast.success(`Автоподнятие запущено (${acc.username})`);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка управления воркером');
+    } finally {
+      setRaisingIds(prev => { const next = new Set(prev); next.delete(acc.id); return next; });
+    }
   }
 
-  const verifiedCount = list.filter(a => a.verified).length;
-  const onlineCount = list.filter(a => a.online).length;
-  const offlineCount = list.filter(a => !a.online).length;
+  async function stopAll() {
+    if (list.length === 0) return;
+    setStoppingAll(true);
+    try {
+      await Promise.allSettled(list.map(acc => accountsApi.stopRaiser(acc.id)));
+      setList(prev => prev.map(a => ({ ...a, raiser_active: false })));
+      toast.success('Все воркеры остановлены');
+    } catch {
+      toast.error('Ошибка при остановке воркеров');
+    } finally {
+      setStoppingAll(false);
+    }
+  }
+
+  const onlineCount = list.filter(a => a.keeper_active).length;
+  const offlineCount = list.filter(a => !a.keeper_active).length;
+  const raisingCount = list.filter(a => a.raiser_active).length;
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
@@ -75,42 +141,53 @@ export default function Accounts() {
             title="Аккаунты"
             subtitle="Управление фермами аккаунтов: статусы, баланс, рейтинг и операционные действия в одном месте."
           />
-          <button className="platform-btn-primary" onClick={() => setShowCreate(true)}>
-            <Plus size={15} /> Добавить аккаунт
-          </button>
+          <div className="inline-flex items-center gap-2 flex-wrap">
+            <button
+              className="platform-btn-secondary"
+              onClick={stopAll}
+              disabled={stoppingAll || list.length === 0}
+            >
+              {stoppingAll ? <Loader2 size={14} className="animate-spin" /> : <Square size={14} />}
+              Остановить всё
+            </button>
+            <button className="platform-btn-primary" onClick={() => setShowCreate(true)}>
+              <Plus size={15} /> Добавить аккаунт
+            </button>
+          </div>
         </PageHeader>
 
         <KpiGrid>
           <KpiCard>
             <div className="inline-flex items-center gap-2 text-[13px] font-semibold">
               <ShieldCheck size={15} color="#4ade80" />
-              Верифицированы
+              Аккаунтов
             </div>
-            <strong className="text-[26px]">{verifiedCount}</strong>
-            <span className="platform-kpi-meta">Подтвержденные аккаунты</span>
+            <strong className="text-[26px]">{list.length}</strong>
+            <span className="platform-kpi-meta">Всего в управлении</span>
           </KpiCard>
           <KpiCard>
             <div className="inline-flex items-center gap-2 text-[13px] font-semibold">
               <CircleCheck size={15} color="#4ade80" />
-              Онлайн
+              Keeper онлайн
             </div>
             <strong className="text-[26px]">{onlineCount}</strong>
-            <span className="platform-kpi-meta">Аккаунты доступны сейчас</span>
+            <span className="platform-kpi-meta">Аккаунты активны сейчас</span>
           </KpiCard>
           <KpiCard>
             <div className="inline-flex items-center gap-2 text-[13px] font-semibold">
               <CircleOff size={15} color="#fbbf24" />
-              Оффлайн
+              Keeper оффлайн
             </div>
             <strong className="text-[26px]">{offlineCount}</strong>
             <span className="platform-kpi-meta">Требуется проверка</span>
           </KpiCard>
           <KpiCard>
-            <div className="inline-flex items-center gap-2 text-[13px] font-semibold">Баланс аккаунтов</div>
-            <strong className="text-[26px]">
-              {list.reduce((sum, item) => sum + item.balance, 0).toLocaleString('ru-RU')} ₽
-            </strong>
-            <span className="platform-kpi-meta">Суммарный доступный остаток</span>
+            <div className="inline-flex items-center gap-2 text-[13px] font-semibold">
+              <Play size={15} color="#60a5fa" />
+              Авторайзер
+            </div>
+            <strong className="text-[26px]">{raisingCount}</strong>
+            <span className="platform-kpi-meta">Автоподнятие активно</span>
           </KpiCard>
         </KpiGrid>
 
@@ -133,112 +210,136 @@ export default function Accounts() {
               style={{ maxWidth: 220 }}
             >
               <option value="all">Все статусы</option>
-              <option value="online">Онлайн</option>
-              <option value="offline">Оффлайн</option>
+              <option value="online">Keeper онлайн</option>
+              <option value="offline">Keeper оффлайн</option>
             </select>
-
-            <button className="platform-btn-secondary">Импорт CSV</button>
           </ToolbarRow>
         </SectionCard>
 
         <SectionCard className="p-0">
-          <div className="platform-desktop-table">
-            <DataTableWrap>
-              <table className="platform-table" style={{ minWidth: 840 }}>
-                <thead>
-                  <tr>
-                    <th style={{ width: 270 }}>Аккаунт</th>
-                    <th>Статус</th>
-                    <th style={{ textAlign: 'right' }}>Баланс</th>
-                    <th style={{ textAlign: 'right' }}>Лоты</th>
-                    <th style={{ textAlign: 'right' }}>Продажи</th>
-                    <th style={{ textAlign: 'right' }}>Рейтинг</th>
-                    <th style={{ textAlign: 'right' }}>Действия</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(acc => (
-                    <tr key={acc.id}>
-                      <td>
-                        <div className="flex items-center gap-3">
-                          <span className="platform-avatar">{acc.avatar}</span>
-                          <div>
-                            <div className="font-semibold">{acc.username}</div>
-                            <div className="text-[12px] text-[var(--pf-text-muted)]">
-                              {acc.verified ? 'Верифицирован' : 'Требует верификации'}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className={acc.online ? 'badge-active' : 'badge-inactive'}>
-                          {acc.online ? 'Онлайн' : 'Оффлайн'}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: 'right', fontWeight: 700 }}>{acc.balance.toLocaleString('ru-RU')} ₽</td>
-                      <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>{acc.lotsCount}</td>
-                      <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>{acc.sales}</td>
-                      <td style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>
-                        <span className="inline-flex items-center gap-1">
-                          <Star size={12} color="#f5b94c" />
-                          {acc.rating.toFixed(1)}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 size={28} className="animate-spin text-[var(--pf-accent)]" />
+            </div>
+          ) : (
+            <>
+              <div className="platform-desktop-table">
+                <DataTableWrap>
+                  <table className="platform-table" style={{ minWidth: 760 }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: 270 }}>Аккаунт</th>
+                        <th>Keeper</th>
+                        <th>Раисер</th>
+                        <th style={{ textAlign: 'right' }}>Действия</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map(acc => {
+                        const isRaising = raisingIds.has(acc.id);
+                        return (
+                          <tr key={acc.id}>
+                            <td>
+                              <div className="flex items-center gap-3">
+                                <span className="platform-avatar">
+                                  {acc.username[0]?.toUpperCase() ?? 'U'}
+                                </span>
+                                <div className="font-semibold">{acc.username}</div>
+                              </div>
+                            </td>
+                            <td>
+                              <span className={acc.keeper_active ? 'badge-active' : 'badge-inactive'}>
+                                {acc.keeper_active ? 'Онлайн' : 'Оффлайн'}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={acc.raiser_active ? 'badge-active' : 'badge-inactive'}>
+                                {acc.raiser_active ? 'Запущен' : 'Остановлен'}
+                              </span>
+                            </td>
+                            <td style={{ textAlign: 'right' }}>
+                              <div className="inline-flex items-center gap-2">
+                                <button
+                                  className="platform-btn-secondary"
+                                  onClick={() => toggleRaiser(acc)}
+                                  disabled={isRaising}
+                                  title={acc.raiser_active ? 'Остановить автоподнятие' : 'Запустить автоподнятие'}
+                                >
+                                  {isRaising ? (
+                                    <Loader2 size={14} className="animate-spin" />
+                                  ) : acc.raiser_active ? (
+                                    <><Pause size={14} /> Пауза</>
+                                  ) : (
+                                    <><Play size={14} /> Запуск</>
+                                  )}
+                                </button>
+                                <button
+                                  className="platform-topbar-btn"
+                                  onClick={() => removeAccount(acc.id)}
+                                  aria-label="Удалить аккаунт"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </DataTableWrap>
+              </div>
+
+              <div className="platform-mobile-cards">
+                {filtered.map(acc => {
+                  const isRaising = raisingIds.has(acc.id);
+                  return (
+                    <article key={acc.id} className="platform-mobile-card">
+                      <div className="platform-mobile-card-head">
                         <div className="inline-flex items-center gap-2">
-                          <button className="platform-topbar-btn" onClick={() => toggleStatus(acc.id)} aria-label="Переключить статус">
-                            {acc.online ? <CircleOff size={15} /> : <CircleCheck size={15} />}
-                          </button>
-                          <button className="platform-topbar-btn" onClick={() => removeAccount(acc.id)} aria-label="Удалить аккаунт">
-                            <Trash2 size={15} />
-                          </button>
+                          <span className="platform-avatar">
+                            {acc.username[0]?.toUpperCase() ?? 'U'}
+                          </span>
+                          <div className="text-[13px] font-semibold">{acc.username}</div>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </DataTableWrap>
-          </div>
-
-          <div className="platform-mobile-cards">
-            {filtered.map(acc => (
-              <article key={acc.id} className="platform-mobile-card">
-                <div className="platform-mobile-card-head">
-                  <div className="inline-flex items-center gap-2">
-                    <span className="platform-avatar">{acc.avatar}</span>
-                    <div>
-                      <div className="text-[13px] font-semibold">{acc.username}</div>
-                      <div className="text-[12px] text-[var(--pf-text-muted)]">
-                        {acc.verified ? 'Верифицирован' : 'Требует верификации'}
+                        <span className={acc.keeper_active ? 'badge-active' : 'badge-inactive'}>
+                          {acc.keeper_active ? 'Онлайн' : 'Оффлайн'}
+                        </span>
                       </div>
-                    </div>
-                  </div>
-                  <span className={acc.online ? 'badge-active' : 'badge-inactive'}>
-                    {acc.online ? 'Онлайн' : 'Оффлайн'}
-                  </span>
-                </div>
 
-                <div className="platform-mobile-meta">
-                  <span>Баланс: {acc.balance.toLocaleString('ru-RU')} ₽</span>
-                  <span>Лоты: {acc.lotsCount}</span>
-                  <span>Продажи: {acc.sales}</span>
-                  <span>Рейтинг: {acc.rating.toFixed(1)}</span>
-                </div>
+                      <div className="platform-mobile-meta">
+                        <span>Раисер: {acc.raiser_active ? 'Запущен' : 'Остановлен'}</span>
+                      </div>
 
-                <div className="platform-mobile-actions">
-                  <button className="platform-btn-secondary" onClick={() => toggleStatus(acc.id)}>
-                    {acc.online ? <CircleOff size={14} /> : <CircleCheck size={14} />}
-                    {acc.online ? 'Оффлайн' : 'Онлайн'}
-                  </button>
-                  <button className="platform-topbar-btn" onClick={() => removeAccount(acc.id)} aria-label="Удалить аккаунт">
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-          {filtered.length === 0 && <EmptyState>По текущим фильтрам аккаунты не найдены.</EmptyState>}
+                      <div className="platform-mobile-actions">
+                        <button
+                          className="platform-btn-secondary"
+                          onClick={() => toggleRaiser(acc)}
+                          disabled={isRaising}
+                        >
+                          {isRaising ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : acc.raiser_active ? (
+                            <><Pause size={14} /> Пауза</>
+                          ) : (
+                            <><Play size={14} /> Запуск</>
+                          )}
+                        </button>
+                        <button
+                          className="platform-topbar-btn"
+                          onClick={() => removeAccount(acc.id)}
+                          aria-label="Удалить аккаунт"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+              {filtered.length === 0 && <EmptyState>По текущим фильтрам аккаунты не найдены.</EmptyState>}
+            </>
+          )}
         </SectionCard>
       </PageShell>
 
@@ -248,29 +349,27 @@ export default function Accounts() {
             <DialogTitle>Новый аккаунт</DialogTitle>
           </DialogHeader>
           <p className="text-[14px] text-[var(--pf-text-muted)]">
-            Добавьте аккаунт в ферму и сразу включите его в автоматизацию.
+            Введите Golden Key от аккаунта FunPay для подключения к ферме.
           </p>
           <div className="grid gap-3">
-            <input
-              className="platform-input"
-              value={form.username}
-              onChange={event => setForm(prev => ({ ...prev, username: event.target.value }))}
-              placeholder="Логин аккаунта"
-            />
-            <input
-              className="platform-input"
-              value={form.balance}
-              onChange={event => setForm(prev => ({ ...prev, balance: event.target.value }))}
-              placeholder="Баланс, ₽"
-              inputMode="numeric"
-            />
+            <div>
+              <input
+                className="platform-input"
+                value={goldenKey}
+                onChange={event => setGoldenKey(event.target.value)}
+                placeholder="Golden Key (20–64 символа)"
+              />
+              <p className="mt-1 text-[12px] text-[var(--pf-text-dim)]">
+                Найти в настройках профиля на FunPay
+              </p>
+            </div>
           </div>
           <div className="mt-2 flex gap-2">
             <button className="platform-btn-secondary flex-1" onClick={() => setShowCreate(false)}>
               Отмена
             </button>
-            <button className="platform-btn-primary flex-1" onClick={createAccount}>
-              Создать
+            <button className="platform-btn-primary flex-1" onClick={createAccount} disabled={creating}>
+              {creating ? <Loader2 size={14} className="animate-spin" /> : 'Добавить'}
             </button>
           </div>
         </DialogContent>

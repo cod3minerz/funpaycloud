@@ -3,8 +3,12 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { AuthShell } from "@/auth/components/AuthShell";
+import { authApi } from "@/lib/api";
+import { setToken } from "@/lib/auth";
+import { sanitizeInput, validateEmail, validatePassword } from "@/lib/sanitize";
 
 const fieldClass =
   "h-12 w-full rounded-xl border border-slate-200/12 bg-[rgba(15,23,42,0.72)] px-4 text-[14px] text-white placeholder:text-slate-500 outline-none transition focus:border-blue-300/45 focus:ring-2 focus:ring-blue-400/25";
@@ -36,15 +40,35 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
 
-  function goVerify() {
-    const nextEmail = email.trim() || "user@funpay.cloud";
-    router.push(`/auth/verify?mode=login&email=${encodeURIComponent(nextEmail)}`);
+  function validate(): boolean {
+    const errors: { email?: string; password?: string } = {};
+    if (!validateEmail(email)) errors.email = "Введите корректный email";
+    const pwdCheck = validatePassword(password);
+    if (!pwdCheck.valid) errors.password = pwdCheck.error;
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   }
 
-  function handleLogin(event: FormEvent) {
+  async function handleLogin(event: FormEvent) {
     event.preventDefault();
-    goVerify();
+    if (!validate()) return;
+
+    setLoading(true);
+    try {
+      const result = await authApi.login(
+        sanitizeInput(email),
+        sanitizeInput(password),
+      );
+      setToken(result.token);
+      router.push("/platform/dashboard");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Ошибка входа");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -62,6 +86,9 @@ export default function LoginPage() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
+          {fieldErrors.email && (
+            <p className="text-[12px] text-red-400">{fieldErrors.email}</p>
+          )}
         </div>
 
         <div className="space-y-1.5">
@@ -78,15 +105,21 @@ export default function LoginPage() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
+          {fieldErrors.password && (
+            <p className="text-[12px] text-red-400">{fieldErrors.password}</p>
+          )}
         </div>
 
-        <button type="submit" className="platform-btn-primary h-12 w-full rounded-xl text-[14px] font-bold">
-          Войти <ArrowRight size={15} />
+        <button
+          type="submit"
+          disabled={loading}
+          className="platform-btn-primary h-12 w-full rounded-xl text-[14px] font-bold disabled:opacity-60"
+        >
+          {loading ? <Loader2 size={15} className="animate-spin" /> : <>Войти <ArrowRight size={15} /></>}
         </button>
 
         <button
           type="button"
-          onClick={goVerify}
           className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200/16 bg-[rgba(15,23,42,0.72)] text-[14px] font-semibold text-slate-200 transition hover:bg-slate-700/30"
         >
           <GoogleMark />

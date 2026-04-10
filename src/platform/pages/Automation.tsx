@@ -1,47 +1,63 @@
-import React, { useState } from 'react';
+'use client';
+
+import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Check, ChevronRight, Edit2, Handshake, MessageSquare, Plus, TriangleAlert, Trash2, User, Zap } from 'lucide-react';
+import {
+  Check,
+  ChevronRight,
+  Edit2,
+  Handshake,
+  Loader2,
+  MessageSquare,
+  Plus,
+  TriangleAlert,
+  Trash2,
+  User,
+  Zap,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { Switch } from '@/app/components/ui/switch';
-import { automationRules as initialRules, AutomationRule } from '@/platform/data/demoData';
+import { ApiAutomationRule, automationApi } from '@/lib/api';
+import { sanitizeInput } from '@/lib/sanitize';
 import { PageHeader, PageShell, PageTitle, Panel, SectionCard } from '@/platform/components/primitives';
 
 const PRESETS = [
   {
     name: 'Приветствие новому покупателю',
     icon: User,
-    trigger: 'new_message_first',
+    trigger_type: 'new_message_first',
     triggerLabel: 'Покупатель написал впервые',
-    action: 'send_message',
+    action_type: 'send_message',
     actionLabel: 'Отправить сообщение',
-    actionText: 'Здравствуйте! Рады приветствовать вас.',
+    action_value: 'Здравствуйте! Рады приветствовать вас.',
   },
   {
     name: 'Уведомление об окончании товаров',
     icon: TriangleAlert,
-    trigger: 'low_stock',
+    trigger_type: 'low_stock',
     triggerLabel: 'Остаток товара < 5',
-    action: 'notify_telegram',
+    action_type: 'notify_telegram',
     actionLabel: 'Уведомить в Telegram',
-    actionText: 'Внимание! Товары заканчиваются.',
+    action_value: 'Внимание! Товары заканчиваются.',
   },
   {
     name: 'Автоответ на запрос цены',
     icon: MessageSquare,
-    trigger: 'new_message',
+    trigger_type: 'new_message',
     triggerLabel: 'Новое сообщение',
-    action: 'send_message',
+    action_type: 'send_message',
     actionLabel: 'Отправить сообщение',
-    actionText: 'Цены указаны в описании лота. Для скидок от 5 штук — пишите!',
+    action_value: 'Цены указаны в описании лота. Для скидок от 5 штук — пишите!',
   },
   {
     name: 'Благодарность после заказа',
     icon: Handshake,
-    trigger: 'order_completed',
+    trigger_type: 'order_completed',
     triggerLabel: 'Заказ выполнен',
-    action: 'send_message',
+    action_type: 'send_message',
     actionLabel: 'Отправить сообщение',
-    actionText: 'Спасибо за покупку! Пожалуйста, оставьте отзыв.',
+    action_value: 'Спасибо за покупку! Пожалуйста, оставьте отзыв.',
   },
 ];
 
@@ -62,97 +78,122 @@ const ACTIONS = [
   { value: 'raise_lots', label: 'Поднять лоты' },
 ];
 
+function getTriggerLabel(type: string) {
+  return TRIGGERS.find(t => t.value === type)?.label ?? type;
+}
+function getActionLabel(type: string) {
+  return ACTIONS.find(a => a.value === type)?.label ?? type;
+}
+
 export default function Automation() {
-  const [rules, setRules] = useState<AutomationRule[]>(initialRules);
+  const [rules, setRules] = useState<ApiAutomationRule[]>([]);
+  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [togglingIds, setTogglingIds] = useState<Set<string | number>>(new Set());
   const [form, setForm] = useState({
     name: '',
-    trigger: 'new_message',
-    condition: '',
-    action: 'send_message',
-    actionText: '',
+    trigger_type: 'new_message',
+    trigger_value: '',
+    action_type: 'send_message',
+    action_value: '',
   });
 
-  function toggleRule(id: string) {
-    setRules(prev => prev.map(rule => (rule.id === id ? { ...rule, enabled: !rule.enabled } : rule)));
+  useEffect(() => {
+    automationApi
+      .list()
+      .then(setRules)
+      .catch(err => toast.error(err instanceof Error ? err.message : 'Ошибка загрузки автоматизации'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function toggleRule(id: string | number) {
+    setTogglingIds(prev => new Set(prev).add(id));
+    try {
+      const updated = await automationApi.toggle(id);
+      setRules(prev => prev.map(r => r.id === id ? updated : r));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка переключения правила');
+    } finally {
+      setTogglingIds(prev => { const next = new Set(prev); next.delete(id); return next; });
+    }
   }
 
-  function deleteRule(id: string) {
-    setRules(prev => prev.filter(rule => rule.id !== id));
+  async function deleteRule(id: string | number) {
+    try {
+      await automationApi.delete(id);
+      setRules(prev => prev.filter(r => r.id !== id));
+      toast.success('Правило удалено');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка удаления правила');
+    }
   }
 
-  function addPreset(preset: (typeof PRESETS)[number]) {
-    const exists = rules.some(rule => rule.name === preset.name);
-    if (exists) return;
-
-    const newRule: AutomationRule = {
-      id: `rule-${Date.now()}`,
-      name: preset.name,
-      enabled: true,
-      trigger: preset.trigger,
-      triggerLabel: preset.triggerLabel,
-      action: preset.action,
-      actionLabel: preset.actionLabel,
-      actionText: preset.actionText,
-    };
-    setRules(prev => [...prev, newRule]);
+  async function addPreset(preset: (typeof PRESETS)[number]) {
+    if (rules.some(r => r.name === preset.name)) return;
+    setSaving(true);
+    try {
+      const newRule = await automationApi.create({
+        name: preset.name,
+        trigger_type: preset.trigger_type,
+        action_type: preset.action_type,
+        action_value: preset.action_value,
+      });
+      setRules(prev => [...prev, newRule]);
+      toast.success('Пресет добавлен');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка добавления пресета');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function openNewRule() {
     setEditingId(null);
-    setForm({ name: '', trigger: 'new_message', condition: '', action: 'send_message', actionText: '' });
+    setForm({ name: '', trigger_type: 'new_message', trigger_value: '', action_type: 'send_message', action_value: '' });
     setDialogOpen(true);
   }
 
-  function saveRule() {
-    if (!form.name.trim()) return;
-    const triggerObj = TRIGGERS.find(item => item.value === form.trigger);
-    const actionObj = ACTIONS.find(item => item.value === form.action);
+  async function saveRule() {
+    const name = sanitizeInput(form.name);
+    if (!name) { toast.error('Введите название правила'); return; }
 
-    if (editingId) {
-      setRules(prev =>
-        prev.map(rule =>
-          rule.id === editingId
-            ? {
-                ...rule,
-                name: form.name,
-                trigger: form.trigger,
-                triggerLabel: triggerObj?.label ?? form.trigger,
-                condition: form.condition || undefined,
-                action: form.action,
-                actionLabel: actionObj?.label ?? form.action,
-                actionText: form.actionText || undefined,
-              }
-            : rule,
-        ),
-      );
-    } else {
-      const newRule: AutomationRule = {
-        id: `rule-${Date.now()}`,
-        name: form.name,
-        enabled: true,
-        trigger: form.trigger,
-        triggerLabel: triggerObj?.label ?? form.trigger,
-        condition: form.condition || undefined,
-        action: form.action,
-        actionLabel: actionObj?.label ?? form.action,
-        actionText: form.actionText || undefined,
-      };
-      setRules(prev => [...prev, newRule]);
+    const payload = {
+      name,
+      trigger_type: form.trigger_type,
+      trigger_value: form.trigger_value ? sanitizeInput(form.trigger_value) : undefined,
+      action_type: form.action_type,
+      action_value: form.action_value ? sanitizeInput(form.action_value) : undefined,
+    };
+
+    setSaving(true);
+    try {
+      if (editingId) {
+        const updated = await automationApi.update(editingId, payload);
+        setRules(prev => prev.map(r => r.id === editingId ? updated : r));
+        toast.success('Правило обновлено');
+      } else {
+        const newRule = await automationApi.create(payload);
+        setRules(prev => [...prev, newRule]);
+        toast.success('Правило создано');
+      }
+      setDialogOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка сохранения правила');
+    } finally {
+      setSaving(false);
     }
-
-    setDialogOpen(false);
   }
 
-  function startEditRule(rule: AutomationRule) {
+  function startEditRule(rule: ApiAutomationRule) {
     setEditingId(rule.id);
     setForm({
       name: rule.name,
-      trigger: rule.trigger,
-      condition: rule.condition ?? '',
-      action: rule.action,
-      actionText: rule.actionText ?? '',
+      trigger_type: rule.trigger_type,
+      trigger_value: rule.trigger_value ?? '',
+      action_type: rule.action_type,
+      action_value: rule.action_value ?? '',
     });
     setDialogOpen(true);
   }
@@ -174,7 +215,7 @@ export default function Automation() {
           <div className="mb-3 text-[11px] font-bold tracking-[0.1em] text-[var(--pf-text-dim)]">ГОТОВЫЕ СЦЕНАРИИ</div>
           <div className="grid gap-3 md:grid-cols-2">
             {PRESETS.map(preset => {
-              const added = rules.some(rule => rule.name === preset.name);
+              const added = rules.some(r => r.name === preset.name);
               const Icon = preset.icon;
               return (
                 <button
@@ -182,15 +223,14 @@ export default function Automation() {
                   className="platform-panel flex items-center gap-3 p-3 text-left"
                   onClick={() => !added && addPreset(preset)}
                   style={{ opacity: added ? 0.7 : 1, cursor: added ? 'default' : 'pointer' }}
+                  disabled={saving}
                 >
                   <span className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-[var(--pf-border)] bg-[var(--pf-surface-2)] text-[var(--pf-text-muted)]">
                     <Icon size={17} />
                   </span>
                   <span className="flex-1">
                     <span className="block text-[13px] font-bold">{preset.name}</span>
-                    <span className="text-[11px] text-[var(--pf-text-dim)]">
-                      {preset.triggerLabel} → {preset.actionLabel}
-                    </span>
+                    <span className="text-[11px] text-[var(--pf-text-dim)]">{preset.triggerLabel} → {preset.actionLabel}</span>
                   </span>
                   <span
                     className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--pf-border)]"
@@ -206,60 +246,65 @@ export default function Automation() {
 
         <SectionCard>
           <div className="mb-3 text-[11px] font-bold tracking-[0.1em] text-[var(--pf-text-dim)]">МОИ ПРАВИЛА ({rules.length})</div>
-          <div className="grid gap-3">
-            <AnimatePresence>
-              {rules.map(rule => (
-                <motion.div
-                  key={rule.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                >
-                  <Panel className="p-3">
-                    <div className="mb-3 flex items-center gap-2">
-                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-[10px] border border-[var(--pf-border)] bg-[var(--pf-surface-2)]">
-                        <Zap size={14} color="#60a5fa" />
-                      </span>
-                      <strong className="flex-1 text-[15px]">{rule.name}</strong>
-                      <Switch checked={rule.enabled} onCheckedChange={() => toggleRule(rule.id)} />
-                      <button className="platform-topbar-btn" onClick={() => startEditRule(rule)}>
-                        <Edit2 size={14} />
-                      </button>
-                      <button className="platform-topbar-btn" onClick={() => deleteRule(rule.id)}>
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="platform-chip">{rule.triggerLabel}</span>
-                      <ChevronRight size={14} color="var(--pf-text-dim)" />
-                      {rule.condition && (
-                        <>
-                          <span className="platform-chip" style={{ color: '#fbbf24' }}>
-                            {rule.condition}
+          {loading ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 size={24} className="animate-spin text-[var(--pf-accent)]" />
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              <AnimatePresence>
+                {rules.map(rule => {
+                  const isToggling = togglingIds.has(rule.id);
+                  return (
+                    <motion.div key={rule.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }}>
+                      <Panel className="p-3">
+                        <div className="mb-3 flex items-center gap-2">
+                          <span className="inline-flex h-8 w-8 items-center justify-center rounded-[10px] border border-[var(--pf-border)] bg-[var(--pf-surface-2)]">
+                            <Zap size={14} color="#60a5fa" />
                           </span>
+                          <strong className="flex-1 text-[15px]">{rule.name}</strong>
+                          {isToggling ? (
+                            <Loader2 size={16} className="animate-spin" />
+                          ) : (
+                            <Switch checked={rule.enabled} onCheckedChange={() => toggleRule(rule.id)} />
+                          )}
+                          <button className="platform-topbar-btn" onClick={() => startEditRule(rule)}>
+                            <Edit2 size={14} />
+                          </button>
+                          <button className="platform-topbar-btn" onClick={() => deleteRule(rule.id)}>
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="platform-chip">{getTriggerLabel(rule.trigger_type)}</span>
                           <ChevronRight size={14} color="var(--pf-text-dim)" />
-                        </>
-                      )}
-                      <span className="platform-chip" style={{ color: '#4ade80' }}>
-                        {rule.actionLabel}
-                      </span>
-                    </div>
+                          {rule.trigger_value && (
+                            <>
+                              <span className="platform-chip" style={{ color: '#fbbf24' }}>{rule.trigger_value}</span>
+                              <ChevronRight size={14} color="var(--pf-text-dim)" />
+                            </>
+                          )}
+                          <span className="platform-chip" style={{ color: '#4ade80' }}>{getActionLabel(rule.action_type)}</span>
+                        </div>
 
-                    {rule.actionText && (
-                      <p className="mt-2 text-[12px] italic text-[var(--pf-text-muted)]">«{rule.actionText}»</p>
-                    )}
+                        {rule.action_value && (
+                          <p className="mt-2 text-[12px] italic text-[var(--pf-text-muted)]">«{rule.action_value}»</p>
+                        )}
 
-                    {!rule.enabled && (
-                      <div className="mt-2 rounded-[10px] border border-[rgba(251,113,133,0.34)] bg-[rgba(251,113,133,0.08)] px-2 py-1 text-[12px] font-semibold text-[#fb7185]">
-                        Правило отключено
-                      </div>
-                    )}
-                  </Panel>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
+                        {!rule.enabled && (
+                          <div className="mt-2 rounded-[10px] border border-[rgba(251,113,133,0.34)] bg-[rgba(251,113,133,0.08)] px-2 py-1 text-[12px] font-semibold text-[#fb7185]">
+                            Правило отключено
+                          </div>
+                        )}
+                      </Panel>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+              {rules.length === 0 && <div className="platform-empty">Нет правил автоматизации</div>}
+            </div>
+          )}
         </SectionCard>
       </PageShell>
 
@@ -274,71 +319,48 @@ export default function Automation() {
               <input
                 className="platform-input"
                 value={form.name}
-                onChange={event => setForm(prev => ({ ...prev, name: event.target.value }))}
+                onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Например: Ответ на заказ"
               />
             </div>
-
             <div>
               <label className="mb-1 block text-[13px] text-[var(--pf-text-muted)]">Триггер</label>
-              <select
-                className="platform-select"
-                value={form.trigger}
-                onChange={event => setForm(prev => ({ ...prev, trigger: event.target.value }))}
-              >
-                {TRIGGERS.map(trigger => (
-                  <option key={trigger.value} value={trigger.value}>
-                    {trigger.label}
-                  </option>
-                ))}
+              <select className="platform-select" value={form.trigger_type} onChange={e => setForm(prev => ({ ...prev, trigger_type: e.target.value }))}>
+                {TRIGGERS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
-
             <div>
               <label className="mb-1 block text-[13px] text-[var(--pf-text-muted)]">Условие (необязательно)</label>
               <input
                 className="platform-input"
-                value={form.condition}
-                onChange={event => setForm(prev => ({ ...prev, condition: event.target.value }))}
+                value={form.trigger_value}
+                onChange={e => setForm(prev => ({ ...prev, trigger_value: e.target.value }))}
                 placeholder="Например: сумма заказа > 500"
               />
             </div>
-
             <div>
               <label className="mb-1 block text-[13px] text-[var(--pf-text-muted)]">Действие</label>
-              <select
-                className="platform-select"
-                value={form.action}
-                onChange={event => setForm(prev => ({ ...prev, action: event.target.value }))}
-              >
-                {ACTIONS.map(action => (
-                  <option key={action.value} value={action.value}>
-                    {action.label}
-                  </option>
-                ))}
+              <select className="platform-select" value={form.action_type} onChange={e => setForm(prev => ({ ...prev, action_type: e.target.value }))}>
+                {ACTIONS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
               </select>
             </div>
-
-            {form.action === 'send_message' && (
+            {form.action_type === 'send_message' && (
               <div>
                 <label className="mb-1 block text-[13px] text-[var(--pf-text-muted)]">Текст сообщения</label>
                 <textarea
                   className="platform-textarea"
-                  value={form.actionText}
-                  onChange={event => setForm(prev => ({ ...prev, actionText: event.target.value }))}
+                  value={form.action_value}
+                  onChange={e => setForm(prev => ({ ...prev, action_value: e.target.value }))}
                   rows={4}
                   placeholder="Введите текст сообщения"
                 />
               </div>
             )}
-
             <div className="mt-1 flex gap-2">
-              <button className="platform-btn-primary flex-1" onClick={saveRule}>
-                {editingId ? 'Сохранить' : 'Создать правило'}
+              <button className="platform-btn-primary flex-1" onClick={saveRule} disabled={saving}>
+                {saving ? <Loader2 size={14} className="animate-spin" /> : (editingId ? 'Сохранить' : 'Создать правило')}
               </button>
-              <button className="platform-btn-secondary flex-1" onClick={() => setDialogOpen(false)}>
-                Отмена
-              </button>
+              <button className="platform-btn-secondary flex-1" onClick={() => setDialogOpen(false)}>Отмена</button>
             </div>
           </div>
         </DialogContent>

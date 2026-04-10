@@ -1,6 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'motion/react';
+import { toast } from 'sonner';
+import { settingsApi } from '@/lib/api';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import {
   BadgePercent,
@@ -9,6 +11,7 @@ import {
   Copy,
   LifeBuoy,
   LineChart,
+  Loader2,
   Megaphone,
   Rocket,
   Share2,
@@ -16,6 +19,7 @@ import {
   Users,
   Wallet,
 } from 'lucide-react';
+
 import {
   DataTableWrap,
   KpiCard,
@@ -40,8 +44,6 @@ type ReferralEvent = {
   date: string;
 };
 
-const REF_CODE = 'FUNPAYCLOUD-KIRILL';
-const REF_LINK = `https://funpay.cloud/r/${REF_CODE}`;
 const PARTNER_THRESHOLD = 50;
 
 const earningsTrend = [
@@ -118,9 +120,26 @@ function formatRub(value: number) {
 }
 
 export default function Referrals() {
-  const [currentReferrals] = useState(38);
+  const [loading, setLoading] = useState(true);
+  const [refCode, setRefCode] = useState('');
+  const [currentReferrals, setCurrentReferrals] = useState(0);
+  const [totalEarned, setTotalEarned] = useState(0);
   const [copied, setCopied] = useState<'link' | null>(null);
   const [shareState, setShareState] = useState<'idle' | 'done'>('idle');
+
+  useEffect(() => {
+    settingsApi
+      .getReferral()
+      .then(data => {
+        setRefCode(data.referral_code);
+        setCurrentReferrals(data.referrals);
+        setTotalEarned(data.total_earned);
+      })
+      .catch(err => toast.error(err instanceof Error ? err.message : 'Ошибка загрузки реферальных данных'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const refLink = refCode ? `https://funpay.cloud/r/${refCode}` : '';
 
   const currentLevel: ReferralLevel = currentReferrals >= PARTNER_THRESHOLD ? 'partner' : 'starter';
   const toPartner = Math.max(PARTNER_THRESHOLD - currentReferrals, 0);
@@ -132,18 +151,19 @@ export default function Referrals() {
       registrations: 512,
       active: 173,
       purchases: 119,
-      totalIncome: 286430,
+      totalIncome: totalEarned,
       pendingIncome: 17340,
       periodPayout: 74210,
       forecast: 39100,
       conversion: 7.9,
     }),
-    [],
+    [totalEarned],
   );
 
   async function handleCopyLink() {
+    if (!refLink) return;
     try {
-      await navigator.clipboard.writeText(REF_LINK);
+      await navigator.clipboard.writeText(refLink);
       setCopied('link');
       window.setTimeout(() => setCopied(null), 1400);
     } catch {
@@ -152,21 +172,30 @@ export default function Referrals() {
   }
 
   async function handleShare() {
+    if (!refLink) return;
     try {
       if (navigator.share) {
         await navigator.share({
           title: 'FunPay Cloud',
           text: 'Подключайтесь к FunPay Cloud по моей ссылке.',
-          url: REF_LINK,
+          url: refLink,
         });
       } else {
-        await navigator.clipboard.writeText(REF_LINK);
+        await navigator.clipboard.writeText(refLink);
       }
       setShareState('done');
       window.setTimeout(() => setShareState('idle'), 1700);
     } catch {
       setShareState('idle');
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 size={28} className="animate-spin text-[var(--pf-accent)]" />
+      </div>
+    );
   }
 
   return (
@@ -202,7 +231,7 @@ export default function Referrals() {
                   Ваша реферальная ссылка
                 </div>
                 <div className="mt-2 rounded-[10px] border border-[var(--pf-border)] bg-[var(--pf-surface-2)] px-3 py-2 text-[13px] font-semibold">
-                  <span className="block truncate">{REF_LINK}</span>
+                  <span className="block truncate">{refLink || '—'}</span>
                 </div>
                 <div className="platform-referral-actions mt-3">
                   <button className="platform-btn-primary w-full" onClick={handleCopyLink}>
