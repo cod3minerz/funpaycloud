@@ -93,7 +93,7 @@ export const dashboardApi = {
 
 export type ApiAccount = {
   id: number | string;
-  username: string;
+  username?: string;
   keeper_active: boolean;
   raiser_active: boolean;
 };

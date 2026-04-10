@@ -46,7 +46,7 @@ export default function Accounts() {
     setLoading(true);
     try {
       const data = await accountsApi.list();
-      setList(data);
+      setList(Array.isArray(data) ? data : []);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Ошибка загрузки аккаунтов');
     } finally {
@@ -60,7 +60,7 @@ export default function Accounts() {
     return list.filter(acc => {
       if (statusFilter === 'online' && !acc.keeper_active) return false;
       if (statusFilter === 'offline' && acc.keeper_active) return false;
-      if (query && !acc.username.toLowerCase().includes(query.toLowerCase())) return false;
+      if (query && !acc.username?.toLowerCase().includes(query.toLowerCase())) return false;
       return true;
     });
   }, [list, query, statusFilter]);
@@ -102,11 +102,11 @@ export default function Accounts() {
       if (acc.raiser_active) {
         await accountsApi.stopRaiser(acc.id);
         setList(prev => prev.map(a => a.id === acc.id ? { ...a, raiser_active: false } : a));
-        toast.success(`Автоподнятие остановлено (${acc.username})`);
+        toast.success(`Автоподнятие остановлено (${acc.username ?? acc.id})`);
       } else {
         await accountsApi.startRaiser(acc.id);
         setList(prev => prev.map(a => a.id === acc.id ? { ...a, raiser_active: true } : a));
-        toast.success(`Автоподнятие запущено (${acc.username})`);
+        toast.success(`Автоподнятие запущено (${acc.username ?? acc.id})`);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Ошибка управления воркером');
@@ -242,9 +242,9 @@ export default function Accounts() {
                             <td>
                               <div className="flex items-center gap-3">
                                 <span className="platform-avatar">
-                                  {acc.username[0]?.toUpperCase() ?? 'U'}
+                                  {acc.username?.[0]?.toUpperCase() ?? 'U'}
                                 </span>
-                                <div className="font-semibold">{acc.username}</div>
+                                <div className="font-semibold">{acc.username ?? `ID ${acc.id}`}</div>
                               </div>
                             </td>
                             <td>
@@ -298,9 +298,9 @@ export default function Accounts() {
                       <div className="platform-mobile-card-head">
                         <div className="inline-flex items-center gap-2">
                           <span className="platform-avatar">
-                            {acc.username[0]?.toUpperCase() ?? 'U'}
+                            {acc.username?.[0]?.toUpperCase() ?? 'U'}
                           </span>
-                          <div className="text-[13px] font-semibold">{acc.username}</div>
+                          <div className="text-[13px] font-semibold">{acc.username ?? `ID ${acc.id}`}</div>
                         </div>
                         <span className={acc.keeper_active ? 'badge-active' : 'badge-inactive'}>
                           {acc.keeper_active ? 'Онлайн' : 'Оффлайн'}
