@@ -18,7 +18,7 @@ import {
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { Switch } from '@/app/components/ui/switch';
-import { ApiAutomationRule, automationApi } from '@/lib/api';
+import { accountsApi, ApiAccount, ApiAutomationRule, automationApi } from '@/lib/api';
 import { sanitizeInput } from '@/lib/sanitize';
 import { PageHeader, PageShell, PageTitle, Panel, SectionCard } from '@/platform/components/primitives';
 
@@ -86,6 +86,8 @@ function getActionLabel(type: string) {
 }
 
 export default function Automation() {
+  const [accounts, setAccounts] = useState<ApiAccount[]>([]);
+  const [selectedAccountID, setSelectedAccountID] = useState<number | null>(null);
   const [rules, setRules] = useState<ApiAutomationRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -99,11 +101,20 @@ export default function Automation() {
     action_type: 'send_message',
     action_value: '',
   });
+  const visibleRules = selectedAccountID
+    ? rules.filter(rule => rule.funpay_account_id === selectedAccountID)
+    : rules;
 
   useEffect(() => {
+    accountsApi.list().then(rows => {
+      const safe = Array.isArray(rows) ? rows : [];
+      setAccounts(safe);
+      if (safe.length > 0) setSelectedAccountID(safe[0].id);
+    }).catch(() => {});
+
     automationApi
       .list()
-      .then(setRules)
+      .then(rows => setRules(Array.isArray(rows) ? rows : []))
       .catch(err => toast.error(err instanceof Error ? err.message : 'Ошибка загрузки автоматизации'))
       .finally(() => setLoading(false));
   }, []);
@@ -131,7 +142,11 @@ export default function Automation() {
   }
 
   async function addPreset(preset: (typeof PRESETS)[number]) {
-    if (rules.some(r => r.name === preset.name)) return;
+    if (!selectedAccountID) {
+      toast.error('Выберите аккаунт');
+      return;
+    }
+    if (rules.some(r => r.name === preset.name && r.funpay_account_id === selectedAccountID)) return;
     setSaving(true);
     try {
       const newRule = await automationApi.create({
@@ -139,6 +154,7 @@ export default function Automation() {
         trigger_type: preset.trigger_type,
         action_type: preset.action_type,
         action_value: preset.action_value,
+        funpay_account_id: selectedAccountID,
       });
       setRules(prev => [...prev, newRule]);
       toast.success('Пресет добавлен');
@@ -158,6 +174,7 @@ export default function Automation() {
   async function saveRule() {
     const name = sanitizeInput(form.name);
     if (!name) { toast.error('Введите название правила'); return; }
+    if (!selectedAccountID) { toast.error('Выберите аккаунт'); return; }
 
     const payload = {
       name,
@@ -165,6 +182,7 @@ export default function Automation() {
       trigger_value: form.trigger_value ? sanitizeInput(form.trigger_value) : undefined,
       action_type: form.action_type,
       action_value: form.action_value ? sanitizeInput(form.action_value) : undefined,
+      funpay_account_id: selectedAccountID,
     };
 
     setSaving(true);
@@ -187,6 +205,7 @@ export default function Automation() {
   }
 
   function startEditRule(rule: ApiAutomationRule) {
+    setSelectedAccountID(rule.funpay_account_id);
     setEditingId(rule.id);
     setForm({
       name: rule.name,
@@ -212,10 +231,23 @@ export default function Automation() {
         </PageHeader>
 
         <SectionCard>
+          <div className="mb-3">
+            <select
+              className="platform-select"
+              value={selectedAccountID ?? ''}
+              onChange={event => setSelectedAccountID(Number(event.target.value))}
+            >
+              {accounts.map(acc => (
+                <option key={acc.id} value={acc.id}>{acc.username || `ID ${acc.id}`}</option>
+              ))}
+            </select>
+          </div>
           <div className="mb-3 text-[11px] font-bold tracking-[0.1em] text-[var(--pf-text-dim)]">ГОТОВЫЕ СЦЕНАРИИ</div>
           <div className="grid gap-3 md:grid-cols-2">
             {PRESETS.map(preset => {
-              const added = rules.some(r => r.name === preset.name);
+              const added = selectedAccountID
+                ? rules.some(r => r.name === preset.name && r.funpay_account_id === selectedAccountID)
+                : false;
               const Icon = preset.icon;
               return (
                 <button
@@ -245,7 +277,7 @@ export default function Automation() {
         </SectionCard>
 
         <SectionCard>
-          <div className="mb-3 text-[11px] font-bold tracking-[0.1em] text-[var(--pf-text-dim)]">МОИ ПРАВИЛА ({rules.length})</div>
+          <div className="mb-3 text-[11px] font-bold tracking-[0.1em] text-[var(--pf-text-dim)]">МОИ ПРАВИЛА ({visibleRules.length})</div>
           {loading ? (
             <div className="flex items-center justify-center py-10">
               <Loader2 size={24} className="animate-spin text-[var(--pf-accent)]" />
@@ -253,7 +285,7 @@ export default function Automation() {
           ) : (
             <div className="grid gap-3">
               <AnimatePresence>
-                {rules.map(rule => {
+                {visibleRules.map(rule => {
                   const isToggling = togglingIds.has(rule.id);
                   return (
                     <motion.div key={rule.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }}>
@@ -286,6 +318,7 @@ export default function Automation() {
                             </>
                           )}
                           <span className="platform-chip" style={{ color: '#4ade80' }}>{getActionLabel(rule.action_type)}</span>
+                          <span className="platform-chip">Аккаунт: {accounts.find(acc => acc.id === rule.funpay_account_id)?.username || `ID ${rule.funpay_account_id}`}</span>
                         </div>
 
                         {rule.action_value && (
@@ -302,7 +335,7 @@ export default function Automation() {
                   );
                 })}
               </AnimatePresence>
-              {rules.length === 0 && <div className="platform-empty">Нет правил автоматизации</div>}
+              {visibleRules.length === 0 && <div className="platform-empty">Нет правил автоматизации</div>}
             </div>
           )}
         </SectionCard>

@@ -1,136 +1,85 @@
+'use client';
+
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowUpCircle, Bot, Box, Clapperboard, Clock, Edit2, Gamepad2, Megaphone, Music2, Search, Trash2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
-import { Switch } from '@/app/components/ui/switch';
-import { Lot, lots as initialLots } from '@/platform/data/demoData';
-import {
-  DataTableWrap,
-  EmptyState,
-  PageHeader,
-  PageShell,
-  PageTitle,
-  Panel,
-  SectionCard,
-  ToolbarRow,
-} from '@/platform/components/primitives';
-
-function formatTime(seconds: number) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
-
-function LotIcon({ category }: { category: string }) {
-  const Icon =
-    category === 'Игры'
-      ? Gamepad2
-      : category === 'SMM'
-        ? Megaphone
-        : category === 'Музыка'
-          ? Music2
-          : category === 'Стриминг'
-            ? Clapperboard
-            : category === 'AI'
-              ? Bot
-              : Box;
-
-  return (
-    <span className="platform-lot-glyph" aria-hidden="true">
-      <Icon size={16} />
-    </span>
-  );
-}
+import { ArrowUpCircle, Loader2, Search } from 'lucide-react';
+import { toast } from 'sonner';
+import { accountsApi, ApiAccount, ApiLot, lotsApi } from '@/lib/api';
+import { DataTableWrap, EmptyState, PageHeader, PageShell, PageTitle, SectionCard, ToolbarRow } from '@/platform/components/primitives';
 
 export default function Lots() {
-  const [lots, setLots] = useState<Lot[]>(initialLots);
+  const [accounts, setAccounts] = useState<ApiAccount[]>([]);
+  const [lots, setLots] = useState<ApiLot[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [raisingIDs, setRaisingIDs] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
-  const [autoRaise, setAutoRaise] = useState(true);
-  const [interval, setIntervalHours] = useState(4);
-  const [countdown, setCountdown] = useState(interval * 3600 - 37 * 60 - 43);
-  const [editLot, setEditLot] = useState<Lot | null>(null);
-  const [editForm, setEditForm] = useState<Partial<Lot>>({});
+  const [accountFilter, setAccountFilter] = useState('all');
 
   useEffect(() => {
-    if (!autoRaise) return;
-    const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 0) return interval * 3600;
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [autoRaise, interval]);
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      try {
+        const accs = await accountsApi.list();
+        const safeAccs = Array.isArray(accs) ? accs : [];
+        if (cancelled) return;
+        setAccounts(safeAccs);
+
+        const collected: ApiLot[] = [];
+        const perAccount = await Promise.allSettled(safeAccs.map(acc => lotsApi.listByAccount(acc.id)));
+        for (let i = 0; i < perAccount.length; i += 1) {
+          const result = perAccount[i];
+          const account = safeAccs[i];
+          if (result.status !== 'fulfilled') continue;
+          const rows = Array.isArray(result.value) ? result.value : [];
+          for (const row of rows) {
+            collected.push({ ...row, account_username: row.account_username || account.username || `ID ${account.id}` });
+          }
+        }
+        if (!cancelled) setLots(collected);
+      } catch (err) {
+        if (!cancelled) toast.error(err instanceof Error ? err.message : 'Ошибка загрузки лотов');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return lots.filter(lot => {
-      if (statusFilter !== 'all' && lot.status !== statusFilter) return false;
-      if (search && !`${lot.title} ${lot.category}`.toLowerCase().includes(search.toLowerCase())) return false;
-      return true;
+      if (accountFilter !== 'all' && String(lot.funpay_account_id) !== accountFilter) return false;
+      if (!q) return true;
+      return `${lot.title} ${lot.category_name} ${lot.lot_id} ${lot.account_username}`.toLowerCase().includes(q);
     });
-  }, [lots, search, statusFilter]);
+  }, [lots, search, accountFilter]);
 
-  function toggleStatus(id: string) {
-    setLots(prev =>
-      prev.map(lot => (lot.id === id ? { ...lot, status: lot.status === 'active' ? 'inactive' : 'active' } : lot)),
-    );
-  }
-
-  function openEdit(lot: Lot) {
-    setEditLot(lot);
-    setEditForm({ ...lot });
-  }
-
-  function saveEdit() {
-    if (!editLot) return;
-    setLots(prev => prev.map(lot => (lot.id === editLot.id ? { ...lot, ...editForm } : lot)));
-    setEditLot(null);
-  }
-
-  function deleteLot(id: string) {
-    setLots(prev => prev.filter(lot => lot.id !== id));
+  async function raise(lot: ApiLot) {
+    const key = `${lot.funpay_account_id}:${lot.lot_id}`;
+    setRaisingIDs(prev => new Set(prev).add(key));
+    try {
+      await lotsApi.raiseLot(lot.funpay_account_id, lot.lot_id);
+      toast.success(`Лот поднят: ${lot.title}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка поднятия лота');
+    } finally {
+      setRaisingIDs(prev => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
   }
 
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }}>
       <PageShell>
         <PageHeader>
-          <PageTitle
-            title="Лоты"
-            subtitle="Управление ассортиментом, ценой, статусами и автоподнятием в единой операционной панели."
-          />
-          <Panel className="platform-lots-raise-panel w-full p-3">
-            <div className="platform-lots-raise-head">
-              <div className="inline-flex items-center gap-2 text-[13px] font-semibold">
-                <ArrowUpCircle size={15} color="var(--pf-text-muted)" />
-                Автоподнятие
-              </div>
-              <Switch checked={autoRaise} onCheckedChange={setAutoRaise} />
-            </div>
-            <div className="platform-lots-raise-controls mt-2">
-              <span className="platform-kpi-meta">Интервал</span>
-              <input
-                type="range"
-                min={1}
-                max={24}
-                value={interval}
-                onChange={event => {
-                  const next = Number(event.target.value);
-                  setIntervalHours(next);
-                  setCountdown(next * 3600);
-                }}
-                className="platform-lots-raise-range"
-                style={{ accentColor: 'var(--pf-accent)' }}
-              />
-              <span className="text-[12px] font-semibold">{interval}ч</span>
-            </div>
-            <div className="mt-2 inline-flex items-center gap-2 text-[12px] text-[var(--pf-text-muted)]">
-              <Clock size={12} />
-              {autoRaise ? `Следующее поднятие через ${formatTime(countdown)}` : 'Автоподнятие выключено'}
-            </div>
-          </Panel>
+          <PageTitle title="Лоты" subtitle="Реальные лоты из аккаунтов с ручным поднятием и привязкой к аккаунту." />
         </PageHeader>
 
         <SectionCard>
@@ -139,197 +88,66 @@ export default function Lots() {
               <Search size={14} color="var(--pf-text-dim)" />
               <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Поиск по лотам" />
             </label>
-
-            <select
-              className="platform-select"
-              value={statusFilter}
-              onChange={event => setStatusFilter(event.target.value as typeof statusFilter)}
-              style={{ maxWidth: 200 }}
-            >
-              <option value="all">Все статусы</option>
-              <option value="active">Активные</option>
-              <option value="inactive">Неактивные</option>
+            <select className="platform-select" value={accountFilter} onChange={event => setAccountFilter(event.target.value)}>
+              <option value="all">Все аккаунты</option>
+              {accounts.map(acc => (
+                <option key={acc.id} value={acc.id}>{acc.username || `ID ${acc.id}`}</option>
+              ))}
             </select>
-
-            <span className="platform-chip">Найдено: {filtered.length}</span>
           </ToolbarRow>
         </SectionCard>
 
         <SectionCard className="p-0">
-          <div className="platform-desktop-table">
-            <DataTableWrap className="tablet-dense-scroll">
-              <table className="platform-table" style={{ minWidth: 840 }}>
-                <thead>
-                  <tr>
-                    <th style={{ width: 340 }}>Лот</th>
-                    <th className="platform-col-tablet-hide">Категория</th>
-                    <th style={{ textAlign: 'right' }}>Цена</th>
-                    <th className="platform-col-tablet-hide" style={{ textAlign: 'right' }}>
-                      Продажи / мес
-                    </th>
-                    <th>Статус</th>
-                    <th style={{ textAlign: 'right' }}>Действия</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(lot => (
-                    <tr key={lot.id}>
-                      <td>
-                        <div className="flex items-start gap-3">
-                          <LotIcon category={lot.category} />
-                          <div>
-                            <div className="font-semibold">{lot.title}</div>
-                            <div className="text-[12px] text-[var(--pf-text-muted)]">{lot.description}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="platform-col-tablet-hide">
-                        <span className="platform-chip">{lot.category}</span>
-                      </td>
-                      <td style={{ textAlign: 'right', fontWeight: 700 }}>{lot.price} ₽</td>
-                      <td className="platform-col-tablet-hide" style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>
-                        {lot.salesMonth}
-                      </td>
-                      <td>
-                        <div className="inline-flex items-center gap-2">
-                          <Switch checked={lot.status === 'active'} onCheckedChange={() => toggleStatus(lot.id)} />
-                          <span className={lot.status === 'active' ? 'badge-active' : 'badge-inactive'}>
-                            {lot.status === 'active' ? 'Активен' : 'Неактивен'}
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="inline-flex w-full items-center justify-end gap-2">
-                          <button className="platform-topbar-btn" onClick={() => openEdit(lot)} title="Редактировать">
-                            <Edit2 size={14} />
-                          </button>
-                          <button className="platform-topbar-btn" title="Поднять">
-                            <ArrowUpCircle size={14} />
-                          </button>
-                          <button className="platform-topbar-btn" onClick={() => deleteLot(lot.id)} title="Удалить">
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </DataTableWrap>
-          </div>
-
-          <div className="platform-mobile-cards">
-            {filtered.map(lot => (
-              <article key={lot.id} className="platform-mobile-card">
-                <div className="platform-mobile-card-head">
-                  <div className="inline-flex min-w-0 items-start gap-2">
-                    <LotIcon category={lot.category} />
-                    <div className="min-w-0">
-                      <div className="truncate text-[13px] font-semibold">{lot.title}</div>
-                      <div className="text-[12px] text-[var(--pf-text-muted)]">{lot.category}</div>
-                    </div>
-                  </div>
-                  <span className={lot.status === 'active' ? 'badge-active' : 'badge-inactive'}>
-                    {lot.status === 'active' ? 'Активен' : 'Неактивен'}
-                  </span>
-                </div>
-
-                <div className="platform-mobile-meta">
-                  <span>Цена: {lot.price} ₽</span>
-                  <span>Продажи / мес: {lot.salesMonth}</span>
-                  <span>{lot.description}</span>
-                </div>
-
-                <div className="platform-mobile-card-actions">
-                  <button className="platform-btn-primary w-full" onClick={() => openEdit(lot)}>
-                    <Edit2 size={14} /> Редактировать
-                  </button>
-                  <div className="platform-mobile-subactions">
-                    <button className="platform-btn-secondary">
-                      <ArrowUpCircle size={14} /> Поднять
-                    </button>
-                    <button className="platform-btn-secondary" onClick={() => toggleStatus(lot.id)}>
-                      {lot.status === 'active' ? 'Отключить' : 'Включить'}
-                    </button>
-                  </div>
-                  <button className="platform-btn-danger-subtle w-full" onClick={() => deleteLot(lot.id)}>
-                    <Trash2 size={14} /> Удалить лот
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-          {filtered.length === 0 && <EmptyState>Лоты по текущим фильтрам не найдены.</EmptyState>}
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 size={28} className="animate-spin text-[var(--pf-accent)]" />
+            </div>
+          ) : (
+            <>
+              <div className="platform-desktop-table">
+                <DataTableWrap>
+                  <table className="platform-table" style={{ minWidth: 960 }}>
+                    <thead>
+                      <tr>
+                        <th>Лот</th>
+                        <th>Категория</th>
+                        <th>Аккаунт</th>
+                        <th style={{ textAlign: 'right' }}>Цена</th>
+                        <th>Статус</th>
+                        <th style={{ textAlign: 'right' }}>Действия</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map(lot => {
+                        const key = `${lot.funpay_account_id}:${lot.lot_id}`;
+                        return (
+                          <tr key={`${lot.funpay_account_id}-${lot.lot_id}`}>
+                            <td>{lot.title}</td>
+                            <td>{lot.category_name}</td>
+                            <td>{lot.account_username || `ID ${lot.funpay_account_id}`}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 700 }}>{Number(lot.price || 0)} ₽</td>
+                            <td>
+                              <span className={lot.is_active ? 'badge-active' : 'badge-inactive'}>
+                                {lot.is_active ? 'Активен' : 'Неактивен'}
+                              </span>
+                            </td>
+                            <td style={{ textAlign: 'right' }}>
+                              <button className="platform-btn-primary" onClick={() => raise(lot)} disabled={raisingIDs.has(key)}>
+                                {raisingIDs.has(key) ? <Loader2 size={14} className="animate-spin" /> : <><ArrowUpCircle size={14} /> Поднять</>}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </DataTableWrap>
+              </div>
+              {filtered.length === 0 && <EmptyState>Лоты по текущим фильтрам не найдены.</EmptyState>}
+            </>
+          )}
         </SectionCard>
       </PageShell>
-
-      <Dialog open={!!editLot} onOpenChange={() => setEditLot(null)}>
-        <DialogContent className="platform-dialog-content" style={{ maxWidth: 560 }}>
-          <DialogHeader>
-            <DialogTitle>Редактировать лот</DialogTitle>
-          </DialogHeader>
-          {editLot && (
-            <div className="grid gap-3">
-              <div>
-                <label className="mb-1 block text-[13px] text-[var(--pf-text-muted)]">Название</label>
-                <input
-                  className="platform-input"
-                  value={editForm.title ?? ''}
-                  onChange={event => setEditForm(prev => ({ ...prev, title: event.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-[13px] text-[var(--pf-text-muted)]">Описание</label>
-                <textarea
-                  className="platform-textarea"
-                  value={editForm.description ?? ''}
-                  onChange={event => setEditForm(prev => ({ ...prev, description: event.target.value }))}
-                  rows={3}
-                />
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-[13px] text-[var(--pf-text-muted)]">Цена</label>
-                  <input
-                    className="platform-input"
-                    type="number"
-                    value={editForm.price ?? ''}
-                    onChange={event => setEditForm(prev => ({ ...prev, price: Number(event.target.value) }))}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-[13px] text-[var(--pf-text-muted)]">Статус</label>
-                  <select
-                    className="platform-select"
-                    value={editForm.status ?? 'inactive'}
-                    onChange={event => setEditForm(prev => ({ ...prev, status: event.target.value as Lot['status'] }))}
-                  >
-                    <option value="active">Активен</option>
-                    <option value="inactive">Неактивен</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-[13px] text-[var(--pf-text-muted)]">Автовыдача</label>
-                <textarea
-                  className="platform-textarea"
-                  value={editForm.autoDelivery ?? ''}
-                  onChange={event => setEditForm(prev => ({ ...prev, autoDelivery: event.target.value }))}
-                  rows={2}
-                />
-              </div>
-              <div className="mt-1 flex gap-2">
-                <button className="platform-btn-secondary" style={{ flex: 1 }} onClick={() => setEditLot(null)}>
-                  Отмена
-                </button>
-                <button className="platform-btn-primary" style={{ flex: 1 }} onClick={saveEdit}>
-                  Сохранить
-                </button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </motion.div>
   );
 }

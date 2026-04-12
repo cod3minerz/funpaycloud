@@ -1,8 +1,11 @@
+'use client';
+
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { ArrowDownCircle, Download, Filter, TrendingUp, Wallet } from 'lucide-react';
-import { accounts, orders, Transaction, transactions } from '@/platform/data/demoData';
+import { Download, Filter, Loader2, TrendingUp, Wallet } from 'lucide-react';
+import { toast } from 'sonner';
+import { accountsApi, ApiAccount, financesApi, FinancesData } from '@/lib/api';
 import {
   DataTableWrap,
   EmptyState,
@@ -14,6 +17,8 @@ import {
   SectionCard,
   ToolbarRow,
 } from '@/platform/components/primitives';
+
+type Tx = FinancesData['transactions'][number];
 
 const typeLabelMap: Record<string, string> = {
   sale: 'Продажа',
@@ -31,52 +36,91 @@ const typeColorMap: Record<string, string> = {
 
 const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
 
-function getMonthlyData(txs: Transaction[]) {
+function fmtDate(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return `${d.toLocaleDateString('ru-RU')} ${d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+function csvEscape(value: string | number) {
+  const stringified = String(value ?? '');
+  if (/[",\n]/.test(stringified)) return `"${stringified.replace(/"/g, '""')}"`;
+  return stringified;
+}
+
+function getMonthlyData(txs: Tx[]) {
   const map: Record<string, number> = {};
-  txs.forEach(t => {
-    if (t.type !== 'sale') return;
-    const d = new Date(t.date);
+  for (const tx of txs) {
+    if (tx.type !== 'sale') continue;
+    const d = new Date(tx.date);
+    if (Number.isNaN(d.getTime())) continue;
     const key = `${d.getFullYear()}-${d.getMonth()}`;
-    map[key] = (map[key] || 0) + t.amount;
-  });
+    map[key] = (map[key] || 0) + Number(tx.amount || 0);
+  }
 
   const now = new Date();
-  const result = [];
+  const result: Array<{ name: string; revenue: number }> = [];
   for (let i = 5; i >= 0; i -= 1) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const key = `${d.getFullYear()}-${d.getMonth()}`;
-    result.push({ name: monthNames[d.getMonth()], revenue: map[key] || 0 });
+    result.push({ name: monthNames[d.getMonth()], revenue: Number(map[key] || 0) });
   }
   return result;
 }
 
 export default function Finances() {
-  const [isMobile, setIsMobile] = useState(false);
+  const [accounts, setAccounts] = useState<ApiAccount[]>([]);
+  const [loading, setLoading] = useState(true);
   const [accountFilter, setAccountFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [showExportAlert, setShowExportAlert] = useState(false);
+  const [data, setData] = useState<FinancesData>({
+    total_revenue: 0,
+    total_orders: 0,
+    accounts_count: 0,
+    transactions: [],
+  });
 
-  const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
-  const frozenAmount = orders.filter(order => order.status === 'paid').reduce((sum, order) => sum + order.amount, 0);
-  const withdrawnThisMonth = transactions
-    .filter(tx => tx.type === 'withdrawal' && tx.date.startsWith('2026-04'))
-    .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+  useEffect(() => {
+    accountsApi
+      .list()
+      .then(rows => setAccounts(Array.isArray(rows) ? rows : []))
+      .catch(() => {});
+  }, []);
 
-  const filteredTxs = useMemo(() => {
-    return transactions.filter(tx => {
-      if (accountFilter !== 'all' && tx.accountId !== accountFilter) return false;
-      if (typeFilter !== 'all' && tx.type !== typeFilter) return false;
-      return true;
-    });
-  }, [accountFilter, typeFilter]);
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    financesApi
+      .get({ account_id: accountFilter === 'all' ? undefined : Number(accountFilter), limit: 500 })
+      .then(response => {
+        if (cancelled) return;
+        setData({
+          total_revenue: Number(response.total_revenue || 0),
+          total_orders: Number(response.total_orders || 0),
+          accounts_count: Number(response.accounts_count || 0),
+          transactions: Array.isArray(response.transactions) ? response.transactions : [],
+        });
+      })
+      .catch(err => {
+        if (!cancelled) {
+          toast.error(err instanceof Error ? err.message : 'Ошибка загрузки финансовых данных');
+          setData({ total_revenue: 0, total_orders: 0, accounts_count: 0, transactions: [] });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
 
-  const monthlyData = useMemo(() => getMonthlyData(transactions), []);
+    return () => {
+      cancelled = true;
+    };
+  }, [accountFilter]);
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 767px)');
     const sync = () => {
-      setIsMobile(media.matches);
       if (!media.matches) setShowFilters(false);
     };
     sync();
@@ -84,7 +128,58 @@ export default function Finances() {
     return () => media.removeEventListener('change', sync);
   }, []);
 
+  const transactions = useMemo(() => (Array.isArray(data.transactions) ? data.transactions : []), [data.transactions]);
+
+  const filteredTxs = useMemo(() => {
+    return transactions.filter(tx => {
+      if (accountFilter !== 'all' && String(tx.funpay_account_id) !== accountFilter) return false;
+      if (typeFilter !== 'all' && tx.type !== typeFilter) return false;
+      return true;
+    });
+  }, [transactions, accountFilter, typeFilter]);
+
+  const monthlyData = useMemo(() => getMonthlyData(filteredTxs), [filteredTxs]);
+
+  const revenueByFilter = useMemo(
+    () => filteredTxs.filter(tx => tx.type === 'sale').reduce((sum, tx) => sum + Number(tx.amount || 0), 0),
+    [filteredTxs],
+  );
+
+  const withdrawalsByFilter = useMemo(
+    () =>
+      filteredTxs
+        .filter(tx => tx.type === 'withdrawal')
+        .reduce((sum, tx) => sum + Math.abs(Number(tx.amount || 0)), 0),
+    [filteredTxs],
+  );
+
   function handleExport() {
+    if (filteredTxs.length === 0) {
+      toast.error('Нет данных для экспорта');
+      return;
+    }
+
+    const header = ['Дата', 'Тип', 'Описание', 'Аккаунт', 'Сумма'];
+    const lines = filteredTxs.map(tx => [
+      csvEscape(fmtDate(tx.date)),
+      csvEscape(typeLabelMap[tx.type] || tx.type),
+      csvEscape(tx.description || ''),
+      csvEscape(tx.account_username || `ID ${tx.funpay_account_id}`),
+      csvEscape(Number(tx.amount || 0).toFixed(2)),
+    ]);
+
+    const csv = [header, ...lines].map(row => row.join(',')).join('\n');
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `finances-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
     setShowExportAlert(true);
     setTimeout(() => setShowExportAlert(false), 2200);
   }
@@ -95,14 +190,14 @@ export default function Finances() {
         <PageHeader>
           <PageTitle
             title="Финансы"
-            subtitle="Финансовые потоки, операции и экспорт отчётов в едином операционном стандарте."
+            subtitle="Финансовые потоки, операции и экспорт отчётов на основе реальных данных."
           />
         </PageHeader>
 
         {showExportAlert && (
           <SectionCard className="border-[rgba(34,197,94,0.35)] bg-[rgba(34,197,94,0.08)] py-3">
             <div className="inline-flex items-center gap-2 text-[13px] font-semibold text-[#86efac]">
-              <Download size={15} /> Файл CSV подготовлен и скачивается.
+              <Download size={15} /> CSV выгружен.
             </div>
           </SectionCard>
         )}
@@ -111,31 +206,35 @@ export default function Finances() {
           <KpiCard>
             <div className="inline-flex items-center gap-2 text-[13px] font-semibold">
               <Wallet size={15} color="#60a5fa" />
-              Доступный баланс
+              Общая выручка
             </div>
-            <strong className="text-[26px]">{totalBalance.toLocaleString('ru-RU')} ₽</strong>
-            <span className="platform-kpi-meta">По всем аккаунтам</span>
+            <strong className="text-[26px]">
+              {Number(accountFilter === 'all' ? data.total_revenue : revenueByFilter).toLocaleString('ru-RU')} ₽
+            </strong>
+            <span className="platform-kpi-meta">
+              {accountFilter === 'all' ? 'По всем аккаунтам' : 'По выбранному аккаунту'}
+            </span>
           </KpiCard>
+
           <KpiCard>
             <div className="inline-flex items-center gap-2 text-[13px] font-semibold">
               <TrendingUp size={15} color="#fbbf24" />
-              Заморожено
+              Заказов
             </div>
-            <strong className="text-[26px]">{frozenAmount.toLocaleString('ru-RU')} ₽</strong>
-            <span className="platform-kpi-meta">В активных заказах</span>
+            <strong className="text-[26px]">{Number(data.total_orders || 0)}</strong>
+            <span className="platform-kpi-meta">Всего оплаченных заказов</span>
           </KpiCard>
+
           <KpiCard>
-            <div className="inline-flex items-center gap-2 text-[13px] font-semibold">
-              <ArrowDownCircle size={15} color="#34d399" />
-              Выведено за апрель
-            </div>
-            <strong className="text-[26px]">{withdrawnThisMonth.toLocaleString('ru-RU')} ₽</strong>
-            <span className="platform-kpi-meta">Апрель 2026</span>
+            <div className="inline-flex items-center gap-2 text-[13px] font-semibold">Выводы</div>
+            <strong className="text-[26px]">{withdrawalsByFilter.toLocaleString('ru-RU')} ₽</strong>
+            <span className="platform-kpi-meta">По активным фильтрам</span>
           </KpiCard>
+
           <KpiCard>
             <div className="inline-flex items-center gap-2 text-[13px] font-semibold">Операций</div>
             <strong className="text-[26px]">{filteredTxs.length}</strong>
-            <span className="platform-kpi-meta">С учётом активных фильтров</span>
+            <span className="platform-kpi-meta">С учётом фильтров</span>
           </KpiCard>
         </KpiGrid>
 
@@ -173,61 +272,24 @@ export default function Finances() {
               Фильтры
             </div>
 
-            {isMobile ? (
-              <button
-                className={showFilters ? 'platform-btn-primary' : 'platform-btn-secondary'}
-                onClick={() => setShowFilters(prev => !prev)}
-              >
-                {showFilters ? 'Скрыть' : 'Показать'}
-              </button>
-            ) : (
-              <>
-                <select
-                  className="platform-select"
-                  value={accountFilter}
-                  onChange={event => setAccountFilter(event.target.value)}
-                  style={{ maxWidth: 220 }}
-                >
-                  <option value="all">Все аккаунты</option>
-                  {accounts.map(account => (
-                    <option key={account.id} value={account.id}>
-                      {account.username}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  className="platform-select"
-                  value={typeFilter}
-                  onChange={event => setTypeFilter(event.target.value)}
-                  style={{ maxWidth: 220 }}
-                >
-                  <option value="all">Все операции</option>
-                  <option value="sale">Продажи</option>
-                  <option value="withdrawal">Выводы</option>
-                  <option value="refund">Возвраты</option>
-                  <option value="fee">Комиссии</option>
-                </select>
-              </>
-            )}
-
-            <button className="platform-btn-secondary" onClick={handleExport}>
-              <Download size={14} /> Экспорт CSV
+            <button
+              className={showFilters ? 'platform-btn-primary md:hidden' : 'platform-btn-secondary md:hidden'}
+              onClick={() => setShowFilters(prev => !prev)}
+            >
+              {showFilters ? 'Скрыть' : 'Показать'}
             </button>
-          </ToolbarRow>
 
-          {isMobile && showFilters && (
-            <ToolbarRow className="mt-2">
+            <div className="hidden md:flex md:flex-wrap md:items-center md:gap-2">
               <select
                 className="platform-select"
                 value={accountFilter}
                 onChange={event => setAccountFilter(event.target.value)}
-                style={{ maxWidth: 220 }}
+                style={{ maxWidth: 240 }}
               >
                 <option value="all">Все аккаунты</option>
                 {accounts.map(account => (
                   <option key={account.id} value={account.id}>
-                    {account.username}
+                    {account.username || `ID ${account.id}`}
                   </option>
                 ))}
               </select>
@@ -236,7 +298,42 @@ export default function Finances() {
                 className="platform-select"
                 value={typeFilter}
                 onChange={event => setTypeFilter(event.target.value)}
-                style={{ maxWidth: 220 }}
+                style={{ maxWidth: 240 }}
+              >
+                <option value="all">Все операции</option>
+                <option value="sale">Продажи</option>
+                <option value="withdrawal">Выводы</option>
+                <option value="refund">Возвраты</option>
+                <option value="fee">Комиссии</option>
+              </select>
+            </div>
+
+            <button className="platform-btn-secondary" onClick={handleExport}>
+              <Download size={14} /> Экспорт CSV
+            </button>
+          </ToolbarRow>
+
+          {showFilters && (
+            <ToolbarRow className="mt-2 md:hidden">
+              <select
+                className="platform-select"
+                value={accountFilter}
+                onChange={event => setAccountFilter(event.target.value)}
+                style={{ maxWidth: 240 }}
+              >
+                <option value="all">Все аккаунты</option>
+                {accounts.map(account => (
+                  <option key={account.id} value={account.id}>
+                    {account.username || `ID ${account.id}`}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                className="platform-select"
+                value={typeFilter}
+                onChange={event => setTypeFilter(event.target.value)}
+                style={{ maxWidth: 240 }}
               >
                 <option value="all">Все операции</option>
                 <option value="sale">Продажи</option>
@@ -249,92 +346,62 @@ export default function Finances() {
         </SectionCard>
 
         <SectionCard className="p-0">
-          <div className="platform-desktop-table">
-            <DataTableWrap className="tablet-dense-scroll">
-              <table className="platform-table" style={{ minWidth: 760 }}>
-                <thead>
-                  <tr>
-                    <th>Дата</th>
-                    <th>Тип</th>
-                    <th>Описание</th>
-                    <th className="platform-col-tablet-hide">Аккаунт</th>
-                    <th style={{ textAlign: 'right' }}>Сумма</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTxs.map(tx => {
-                    const isPositive = tx.type === 'sale';
-                    const amountSign = tx.type === 'sale' ? '+' : '-';
-                    return (
-                      <tr key={tx.id}>
-                        <td className="whitespace-nowrap">
-                          {new Date(tx.date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                        </td>
-                        <td>
-                          <span
-                            className="platform-chip !min-h-[22px] !text-[11px]"
-                            style={{ color: typeColorMap[tx.type], borderColor: `${typeColorMap[tx.type]}66` }}
-                          >
-                            {typeLabelMap[tx.type]}
-                          </span>
-                        </td>
-                        <td>{tx.description}</td>
-                        <td className="platform-col-tablet-hide text-[var(--pf-text-muted)]">
-                          {accounts.find(account => account.id === tx.accountId)?.username ?? tx.accountId}
-                        </td>
-                        <td
-                          style={{
-                            textAlign: 'right',
-                            whiteSpace: 'nowrap',
-                            fontWeight: 700,
-                            color: isPositive ? '#4ade80' : '#fb7185',
-                          }}
-                        >
-                          {amountSign}
-                          {Math.abs(tx.amount).toLocaleString('ru-RU')} ₽
-                        </td>
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 size={28} className="animate-spin text-[var(--pf-accent)]" />
+            </div>
+          ) : (
+            <>
+              <div className="platform-desktop-table">
+                <DataTableWrap className="tablet-dense-scroll">
+                  <table className="platform-table" style={{ minWidth: 760 }}>
+                    <thead>
+                      <tr>
+                        <th>Дата</th>
+                        <th>Тип</th>
+                        <th>Описание</th>
+                        <th className="platform-col-tablet-hide">Аккаунт</th>
+                        <th style={{ textAlign: 'right' }}>Сумма</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </DataTableWrap>
-          </div>
+                    </thead>
+                    <tbody>
+                      {filteredTxs.map(tx => {
+                        const isPositive = tx.type === 'sale';
+                        const amountSign = isPositive ? '+' : '-';
+                        const color = typeColorMap[tx.type] || '#94a3b8';
+                        return (
+                          <tr key={`${tx.id}-${tx.date}`}>
+                            <td className="whitespace-nowrap">{fmtDate(tx.date)}</td>
+                            <td>
+                              <span
+                                className="platform-chip !min-h-[22px] !text-[11px]"
+                                style={{ color, borderColor: `${color}66` }}
+                              >
+                                {typeLabelMap[tx.type] || tx.type}
+                              </span>
+                            </td>
+                            <td>{tx.description || '—'}</td>
+                            <td className="platform-col-tablet-hide">{tx.account_username || `ID ${tx.funpay_account_id}`}</td>
+                            <td
+                              style={{
+                                textAlign: 'right',
+                                fontWeight: 700,
+                                color: isPositive ? '#4ade80' : '#f87171',
+                              }}
+                            >
+                              {amountSign}{Math.abs(Number(tx.amount || 0)).toLocaleString('ru-RU')} ₽
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </DataTableWrap>
+              </div>
 
-          <div className="platform-mobile-cards">
-            {filteredTxs.map(tx => {
-              const isPositive = tx.type === 'sale';
-              const amountSign = tx.type === 'sale' ? '+' : '-';
-              const accountName = accounts.find(account => account.id === tx.accountId)?.username ?? tx.accountId;
-              return (
-                <article key={tx.id} className="platform-mobile-card">
-                  <div className="platform-mobile-card-head">
-                    <strong>{new Date(tx.date).toLocaleDateString('ru-RU')}</strong>
-                    <span
-                      className="platform-chip !min-h-[22px] !text-[11px]"
-                      style={{ color: typeColorMap[tx.type], borderColor: `${typeColorMap[tx.type]}66` }}
-                    >
-                      {typeLabelMap[tx.type]}
-                    </span>
-                  </div>
-                  <div className="text-[13px] text-[var(--pf-text-muted)]">{tx.description}</div>
-                  <div className="platform-mobile-meta">
-                    <span>Аккаунт: {accountName}</span>
-                    <span
-                      style={{
-                        fontWeight: 700,
-                        color: isPositive ? '#4ade80' : '#fb7185',
-                      }}
-                    >
-                      {amountSign}
-                      {Math.abs(tx.amount).toLocaleString('ru-RU')} ₽
-                    </span>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-          {filteredTxs.length === 0 && <EmptyState>Транзакции по текущим фильтрам не найдены.</EmptyState>}
+              {filteredTxs.length === 0 && <EmptyState>Операции по текущим фильтрам не найдены.</EmptyState>}
+            </>
+          )}
         </SectionCard>
       </PageShell>
     </motion.div>

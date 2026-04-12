@@ -24,7 +24,7 @@ function formatRub(value: number) {
 export default function Referrals() {
   const [loading, setLoading] = useState(true);
   const [refCode, setRefCode] = useState('');
-  const [referrals, setReferrals] = useState(0);
+  const [referrals, setReferrals] = useState<Array<Record<string, unknown>>>([]);
   const [totalEarned, setTotalEarned] = useState(0);
   const [copied, setCopied] = useState(false);
   const [shareState, setShareState] = useState<'idle' | 'done'>('idle');
@@ -34,7 +34,7 @@ export default function Referrals() {
       .getReferral()
       .then(data => {
         setRefCode(data.referral_code);
-        setReferrals(data.referrals);
+        setReferrals(Array.isArray(data.referrals) ? data.referrals : []);
         setTotalEarned(data.total_earned);
       })
       .catch(err => toast.error(err instanceof Error ? err.message : 'Ошибка загрузки реферальных данных'))
@@ -119,7 +119,7 @@ export default function Referrals() {
               <span className="platform-kpi-meta">Приглашено</span>
               <Users size={15} color="var(--pf-accent)" />
             </div>
-            <strong className="text-[28px] font-black">{referrals.toLocaleString('ru-RU')}</strong>
+            <strong className="text-[28px] font-black">{referrals.length.toLocaleString('ru-RU')}</strong>
             <span className="platform-kpi-meta">пользователей</span>
           </KpiCard>
 
@@ -145,7 +145,7 @@ export default function Referrals() {
         {/* 3. Referrals table */}
         <SectionCard>
           <h3 className="m-0 mb-3 text-[16px] font-bold">Рефералы</h3>
-          {referrals === 0 ? (
+          {referrals.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-10 text-center">
               <Users size={32} color="var(--pf-text-dim)" />
               <p className="m-0 text-[14px] font-semibold text-[var(--pf-text-muted)]">
@@ -167,11 +167,14 @@ export default function Referrals() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td colSpan={4} className="py-6 text-center text-[13px] text-[var(--pf-text-dim)]">
-                      Детальная информация по рефералам недоступна
-                    </td>
-                  </tr>
+                  {referrals.map((ref, idx) => (
+                    <tr key={idx}>
+                      <td>{String(ref.email ?? `Реферал #${idx + 1}`)}</td>
+                      <td>{String(ref.created_at ?? '—')}</td>
+                      <td>Активен</td>
+                      <td style={{ textAlign: 'right' }}>—</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

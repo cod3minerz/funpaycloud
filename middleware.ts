@@ -12,7 +12,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Если пользователь уже залогинен и заходит на страницы авторизации
-  if ((pathname.startsWith('/auth/login') || pathname.startsWith('/auth/register')) && token) {
+  if ((pathname === '/login' || pathname.startsWith('/auth/login') || pathname.startsWith('/auth/register')) && token) {
     return NextResponse.redirect(new URL('/platform/dashboard', request.url));
   }
 
@@ -20,5 +20,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/platform/:path*', '/auth/login', '/auth/register'],
+  matcher: ['/platform/:path*', '/auth/login', '/auth/register', '/login'],
 };

@@ -20,5 +20,5 @@ export function logout(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem('token');
   document.cookie = 'token=; path=/; max-age=0';
-  window.location.href = '/auth/login';
+  window.location.href = '/login';
 }

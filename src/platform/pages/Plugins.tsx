@@ -2,125 +2,82 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import type { LucideIcon } from 'lucide-react';
-import {
-  Bot,
-  Download,
-  Gamepad2,
-  LayoutGrid,
-  List,
-  Loader2,
-  Megaphone,
-  Package,
-  Puzzle,
-  Search,
-  Settings,
-  Star,
-  Trash2,
-  Wallet,
-} from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
-import { ApiPlugin, pluginsApi } from '@/lib/api';
-import {
-  DataTableWrap,
-  EmptyState,
-  PageHeader,
-  PageShell,
-  PageTitle,
-  Panel,
-  SectionCard,
-  ToolbarRow,
-} from '@/platform/components/primitives';
-
-const CATEGORIES = ['Все', 'Автоматизация', 'Игровые товары', 'SMM', 'Финансы', 'Интеграции'];
-
-const MOCK_REVIEWS = [
-  { user: 'maxim_99', rating: 5, text: 'Плагин работает стабильно, всё завелось без доработок.' },
-  { user: 'anna_shop', rating: 4, text: 'Хороший базовый функционал, удобно для ежедневной рутины.' },
-  { user: 'peter_gamer', rating: 5, text: 'Сильно ускорил обработку заказов, поставил на все аккаунты.' },
-];
-
-const pluginIconByCategory: Record<string, LucideIcon> = {
-  Автоматизация: Bot,
-  'Игровые товары': Gamepad2,
-  SMM: Megaphone,
-  Финансы: Wallet,
-  Интеграции: Puzzle,
-};
-
-function PluginIcon({ plugin }: { plugin: ApiPlugin }) {
-  const Icon = pluginIconByCategory[plugin.category] ?? Package;
-  return (
-    <span className="platform-plugin-glyph" aria-hidden="true">
-      <Icon size={18} />
-    </span>
-  );
-}
-
-function Stars({ rating }: { rating: number }) {
-  return (
-    <div className="inline-flex items-center gap-0.5">
-      {Array.from({ length: 5 }, (_, idx) => (
-        <Star
-          key={idx}
-          size={12}
-          fill={idx < Math.round(rating) ? '#f59e0b' : 'none'}
-          color={idx < Math.round(rating) ? '#f59e0b' : '#64748b'}
-        />
-      ))}
-    </div>
-  );
-}
+import { accountsApi, ApiAccount, ApiPlugin, pluginsApi } from '@/lib/api';
+import { DataTableWrap, EmptyState, PageHeader, PageShell, PageTitle, SectionCard, ToolbarRow } from '@/platform/components/primitives';
 
 export default function Plugins() {
+  const [accounts, setAccounts] = useState<ApiAccount[]>([]);
+  const [selectedAccountID, setSelectedAccountID] = useState<number | null>(null);
   const [plugins, setPlugins] = useState<ApiPlugin[]>([]);
   const [loading, setLoading] = useState(true);
-  const [togglingIds, setTogglingIds] = useState<Set<string | number>>(new Set());
-  const [category, setCategory] = useState('Все');
-  const [query, setQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
-  const [selectedPlugin, setSelectedPlugin] = useState<ApiPlugin | null>(null);
+  const [togglingIDs, setTogglingIDs] = useState<Set<number>>(new Set());
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
-    pluginsApi
+    accountsApi
       .list()
-      .then(setPlugins)
-      .catch(err => toast.error(err instanceof Error ? err.message : 'Ошибка загрузки плагинов'))
-      .finally(() => setLoading(false));
+      .then(rows => {
+        const safe = Array.isArray(rows) ? rows : [];
+        setAccounts(safe);
+        if (safe.length > 0) {
+          setSelectedAccountID(safe[0].id);
+        } else {
+          setSelectedAccountID(null);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        setAccounts([]);
+        setSelectedAccountID(null);
+        setLoading(false);
+      });
   }, []);
 
-  const installed = useMemo(() => plugins.filter(p => p.installed), [plugins]);
+  useEffect(() => {
+    if (!selectedAccountID) {
+      setPlugins([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    Promise.all([pluginsApi.list(selectedAccountID), pluginsApi.installed(selectedAccountID)])
+      .then(([catalogRows, installedRows]) => {
+        const catalog = Array.isArray(catalogRows) ? catalogRows : [];
+        const installed = Array.isArray(installedRows) ? installedRows : [];
+        const installedByID = new Set(installed.map(item => item.id));
+        setPlugins(catalog.map(item => ({ ...item, installed: installedByID.has(item.id) })));
+      })
+      .catch(err => toast.error(err instanceof Error ? err.message : 'Ошибка загрузки плагинов'))
+      .finally(() => setLoading(false));
+  }, [selectedAccountID]);
 
   const filtered = useMemo(() => {
-    return plugins.filter(plugin => {
-      if (category !== 'Все' && plugin.category !== category) return false;
-      if (query && !`${plugin.name} ${plugin.description}`.toLowerCase().includes(query.toLowerCase())) return false;
-      return true;
-    });
-  }, [plugins, category, query]);
+    const q = search.trim().toLowerCase();
+    if (!q) return plugins;
+    return plugins.filter(plugin => `${plugin.name} ${plugin.description} ${plugin.category}`.toLowerCase().includes(q));
+  }, [plugins, search]);
 
-  async function toggleInstall(plugin: ApiPlugin) {
-    const isInstalling = !plugin.installed;
-    setTogglingIds(prev => new Set(prev).add(plugin.id));
+  async function toggle(plugin: ApiPlugin) {
+    if (!selectedAccountID) return;
+    setTogglingIDs(prev => new Set(prev).add(plugin.id));
     try {
-      if (isInstalling) {
-        await pluginsApi.install(plugin.slug);
-        toast.success(`Плагин ${plugin.name} установлен`);
+      if (plugin.installed) {
+        await pluginsApi.uninstall(plugin.slug, selectedAccountID);
       } else {
-        await pluginsApi.uninstall(plugin.slug);
-        toast.success(`Плагин ${plugin.name} удалён`);
+        await pluginsApi.install(plugin.slug, selectedAccountID);
       }
-      setPlugins(prev =>
-        prev.map(p => p.id === plugin.id ? { ...p, installed: isInstalling } : p),
-      );
-      setSelectedPlugin(prev =>
-        prev && prev.id === plugin.id ? { ...prev, installed: isInstalling } : prev,
-      );
+      setPlugins(prev => prev.map(item => (item.id === plugin.id ? { ...item, installed: !item.installed } : item)));
+      toast.success(plugin.installed ? 'Плагин удалён' : 'Плагин установлен');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Ошибка управления плагином');
+      toast.error(err instanceof Error ? err.message : 'Ошибка изменения статуса плагина');
     } finally {
-      setTogglingIds(prev => { const next = new Set(prev); next.delete(plugin.id); return next; });
+      setTogglingIDs(prev => {
+        const next = new Set(prev);
+        next.delete(plugin.id);
+        return next;
+      });
     }
   }
 
@@ -128,37 +85,20 @@ export default function Plugins() {
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
       <PageShell>
         <PageHeader>
-          <PageTitle
-            title="Плагины"
-            subtitle="Премиальный каталог расширений: единый стиль, чистые статусы установки и быстрые действия."
-          />
-          <ToolbarRow>
-            <span className="platform-chip">Установлено: {installed.length}</span>
-            <span className="platform-chip">Каталог: {plugins.length}</span>
-          </ToolbarRow>
+          <PageTitle title="Плагины" subtitle="Каталог и установка плагинов для выбранного аккаунта." />
         </PageHeader>
 
         <SectionCard>
           <ToolbarRow>
-            <label className="platform-search platform-toolbar-grow max-w-none">
-              <Search size={15} color="var(--pf-text-dim)" />
-              <input
-                value={query}
-                onChange={event => setQuery(event.target.value)}
-                placeholder="Поиск по названию или описанию"
-              />
-            </label>
-            <select className="platform-select" value={category} onChange={event => setCategory(event.target.value)} style={{ maxWidth: 230 }}>
-              {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+            <select className="platform-select" value={selectedAccountID ?? ''} onChange={event => setSelectedAccountID(Number(event.target.value))}>
+              {accounts.map(acc => (
+                <option key={acc.id} value={acc.id}>{acc.username || `ID ${acc.id}`}</option>
+              ))}
             </select>
-            <div className="platform-view-switch" role="tablist">
-              <button type="button" className={`platform-view-switch-btn${viewMode === 'cards' ? ' active' : ''}`} onClick={() => setViewMode('cards')}>
-                <LayoutGrid size={14} /> Карточки
-              </button>
-              <button type="button" className={`platform-view-switch-btn${viewMode === 'list' ? ' active' : ''}`} onClick={() => setViewMode('list')}>
-                <List size={14} /> Список
-              </button>
-            </div>
+            <label className="platform-search platform-toolbar-grow max-w-none">
+              <Search size={14} color="var(--pf-text-dim)" />
+              <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Поиск по плагинам" />
+            </label>
           </ToolbarRow>
         </SectionCard>
 
@@ -169,178 +109,50 @@ export default function Plugins() {
             </div>
           ) : (
             <>
-              {viewMode === 'list' && (
-                <div className="platform-desktop-table">
-                  <DataTableWrap>
-                    <table className="platform-table" style={{ minWidth: 900 }}>
-                      <thead>
-                        <tr>
-                          <th style={{ width: 320 }}>Плагин</th>
-                          <th>Категория</th>
-                          <th>Рейтинг</th>
-                          <th>Цена</th>
-                          <th>Статус</th>
-                          <th style={{ textAlign: 'right' }}>Действия</th>
+              <div className="platform-desktop-table">
+                <DataTableWrap>
+                  <table className="platform-table" style={{ minWidth: 980 }}>
+                    <thead>
+                      <tr>
+                        <th>Плагин</th>
+                        <th>Категория</th>
+                        <th style={{ textAlign: 'right' }}>Цена/мес</th>
+                        <th style={{ textAlign: 'right' }}>Рейтинг</th>
+                        <th>Статус</th>
+                        <th style={{ textAlign: 'right' }}>Действие</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map(plugin => (
+                        <tr key={plugin.id}>
+                          <td>
+                            <div className="font-semibold">{plugin.name}</div>
+                            <div className="text-[12px] text-[var(--pf-text-muted)]">{plugin.description}</div>
+                          </td>
+                          <td>{plugin.category}</td>
+                          <td style={{ textAlign: 'right' }}>{plugin.price_month > 0 ? `${plugin.price_month} ₽` : 'Бесплатно'}</td>
+                          <td style={{ textAlign: 'right' }}>{Number(plugin.rating || 0)} ({plugin.reviews_count || 0})</td>
+                          <td>
+                            <span className={plugin.installed ? 'badge-active' : 'badge-inactive'}>
+                              {plugin.installed ? 'Установлен' : 'Не установлен'}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <button className={plugin.installed ? 'platform-btn-secondary' : 'platform-btn-primary'} onClick={() => toggle(plugin)} disabled={togglingIDs.has(plugin.id)}>
+                              {togglingIDs.has(plugin.id) ? <Loader2 size={14} className="animate-spin" /> : plugin.installed ? 'Удалить' : 'Установить'}
+                            </button>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {filtered.map(plugin => {
-                          const isToggling = togglingIds.has(plugin.id);
-                          return (
-                            <tr key={plugin.id}>
-                              <td>
-                                <button type="button" onClick={() => setSelectedPlugin(plugin)} className="w-full bg-transparent p-0 text-left text-inherit" style={{ border: 0, cursor: 'pointer' }}>
-                                  <div className="flex items-start gap-3">
-                                    <PluginIcon plugin={plugin} />
-                                    <div className="min-w-0">
-                                      <div className="font-semibold">{plugin.name}</div>
-                                      <div className="line-clamp-2 text-[12px] text-[var(--pf-text-muted)]">{plugin.description}</div>
-                                    </div>
-                                  </div>
-                                </button>
-                              </td>
-                              <td><span className="platform-chip">{plugin.category}</span></td>
-                              <td>
-                                <div className="flex items-center gap-2">
-                                  <Stars rating={plugin.rating} />
-                                  <span className="text-[12px] font-bold text-[#f59e0b]">{plugin.rating}</span>
-                                  {plugin.reviews && <span className="text-[12px] text-[var(--pf-text-dim)]">({plugin.reviews})</span>}
-                                </div>
-                              </td>
-                              <td className="font-bold">{plugin.price === 'free' ? 'Бесплатно' : `${plugin.price} ₽/мес`}</td>
-                              <td><span className={plugin.installed ? 'badge-active' : 'badge-inactive'}>{plugin.installed ? 'Установлен' : 'Не установлен'}</span></td>
-                              <td style={{ textAlign: 'right' }}>
-                                <div className="inline-flex items-center gap-2">
-                                  <button className="platform-topbar-btn" onClick={() => setSelectedPlugin(plugin)}><Settings size={14} /></button>
-                                  <button
-                                    className={plugin.installed ? 'platform-topbar-btn' : 'platform-btn-primary'}
-                                    style={plugin.installed ? { color: '#fb7185', borderColor: 'rgba(251,113,133,0.44)' } : { minHeight: 34 }}
-                                    onClick={() => toggleInstall(plugin)}
-                                    disabled={isToggling}
-                                  >
-                                    {isToggling ? <Loader2 size={14} className="animate-spin" /> : plugin.installed ? <Trash2 size={14} /> : <Download size={14} />}
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </DataTableWrap>
-                </div>
-              )}
-
-              <div className={`platform-plugin-grid${viewMode === 'list' ? ' platform-plugin-grid-mobile-only' : ''}`}>
-                {filtered.map(plugin => {
-                  const isToggling = togglingIds.has(plugin.id);
-                  return (
-                    <article key={plugin.id} className="platform-plugin-card">
-                      <div className="platform-mobile-card-head">
-                        <div className="inline-flex min-w-0 items-center gap-2">
-                          <PluginIcon plugin={plugin} />
-                          <div className="min-w-0">
-                            <div className="truncate text-[13px] font-semibold">{plugin.name}</div>
-                            <div className="text-[12px] text-[var(--pf-text-muted)]">{plugin.category}</div>
-                          </div>
-                        </div>
-                        <span className={plugin.installed ? 'badge-active' : 'badge-inactive'}>{plugin.installed ? 'Установлен' : 'Не установлен'}</span>
-                      </div>
-                      <div className="text-[13px] text-[var(--pf-text-muted)]">{plugin.description}</div>
-                      <div className="platform-mobile-meta">
-                        <span className="inline-flex items-center gap-2">
-                          <Stars rating={plugin.rating} />
-                          <span>{plugin.rating}</span>
-                          {plugin.reviews && <span className="text-[var(--pf-text-dim)]">({plugin.reviews})</span>}
-                        </span>
-                        <span className="font-semibold">{plugin.price === 'free' ? 'Бесплатно' : `${plugin.price} ₽/мес`}</span>
-                      </div>
-                      <div className="platform-mobile-actions">
-                        <button className="platform-btn-secondary" onClick={() => setSelectedPlugin(plugin)}><Settings size={14} /> Подробнее</button>
-                        <button
-                          className={plugin.installed ? 'platform-topbar-btn' : 'platform-btn-primary'}
-                          style={plugin.installed ? { color: '#fb7185', borderColor: 'rgba(251,113,133,0.44)' } : undefined}
-                          onClick={() => toggleInstall(plugin)}
-                          disabled={isToggling}
-                        >
-                          {isToggling ? <Loader2 size={14} className="animate-spin" /> : plugin.installed ? <Trash2 size={14} /> : <Download size={14} />}
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
+                      ))}
+                    </tbody>
+                  </table>
+                </DataTableWrap>
               </div>
-              {filtered.length === 0 && <EmptyState>По текущим фильтрам плагины не найдены.</EmptyState>}
+              {filtered.length === 0 && <EmptyState>Плагины не найдены.</EmptyState>}
             </>
           )}
         </SectionCard>
       </PageShell>
-
-      <Dialog open={!!selectedPlugin} onOpenChange={() => setSelectedPlugin(null)}>
-        <DialogContent className="platform-dialog-content" style={{ maxWidth: 620, maxHeight: '80vh', overflowY: 'auto' }}>
-          {selectedPlugin && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-white">
-                  <div className="flex items-center gap-3">
-                    <PluginIcon plugin={selectedPlugin} />
-                    <div>
-                      <div>{selectedPlugin.name}</div>
-                      <div className="mt-1 flex items-center gap-2">
-                        <Stars rating={selectedPlugin.rating} />
-                        <span className="text-[12px] font-bold text-[#f59e0b]">{selectedPlugin.rating}</span>
-                        {selectedPlugin.reviews && <span className="text-[12px] text-[var(--pf-text-dim)]">({selectedPlugin.reviews} отзывов)</span>}
-                      </div>
-                    </div>
-                  </div>
-                </DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4">
-                <p className="text-[14px] leading-6 text-[var(--pf-text-muted)]">{selectedPlugin.description}</p>
-                <Panel className="p-3">
-                  <div className="mb-2 font-bold">Как подключить</div>
-                  <ol className="list-decimal pl-4 text-[13px] leading-7 text-[var(--pf-text-muted)]">
-                    <li>Установите плагин в один клик.</li>
-                    <li>Откройте настройки и заполните параметры.</li>
-                    <li>Активируйте модуль и проверьте тестовый сценарий.</li>
-                  </ol>
-                </Panel>
-                <div>
-                  <div className="mb-2 font-bold">Отзывы</div>
-                  <div className="grid gap-2">
-                    {MOCK_REVIEWS.map((review, idx) => (
-                      <Panel key={idx} className="p-3">
-                        <div className="mb-1 flex items-center gap-2">
-                          <span className="platform-avatar !h-6 !w-6 !text-[10px]">{review.user[0].toUpperCase()}</span>
-                          <span className="text-[12px] font-bold">{review.user}</span>
-                          <Stars rating={review.rating} />
-                        </div>
-                        <p className="m-0 text-[13px] text-[var(--pf-text-muted)]">{review.text}</p>
-                      </Panel>
-                    ))}
-                  </div>
-                </div>
-                <button
-                  className={selectedPlugin.installed ? 'platform-btn-secondary' : 'platform-btn-primary'}
-                  onClick={() => toggleInstall(selectedPlugin)}
-                  disabled={togglingIds.has(selectedPlugin.id)}
-                  style={selectedPlugin.installed ? { color: '#fb7185', borderColor: 'rgba(251,113,133,0.44)' } : undefined}
-                >
-                  {togglingIds.has(selectedPlugin.id) ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : selectedPlugin.installed ? (
-                    'Удалить плагин'
-                  ) : selectedPlugin.price === 'free' ? (
-                    'Установить бесплатно'
-                  ) : (
-                    `Подключить за ${selectedPlugin.price} ₽/мес`
-                  )}
-                </button>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
     </motion.div>
   );
 }

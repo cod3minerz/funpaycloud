@@ -90,7 +90,11 @@ export default function Settings() {
 
     setSavingProfile(true);
     try {
-      await settingsApi.updateProfile({ login });
+      await settingsApi.updateProfile({
+        login,
+        timezone: sanitizeInput(profile.timezone) || 'Europe/Moscow',
+        telegram: sanitizeInput(profile.telegram),
+      });
       showSavedToast();
       toast.success('Профиль сохранён');
     } catch (err) {

@@ -41,12 +41,16 @@ export default function Accounts() {
   const [stoppingAll, setStoppingAll] = useState(false);
   // Map of accountId → loading state for raiser toggle
   const [raisingIds, setRaisingIds] = useState<Set<string | number>>(new Set());
+  const [savingScheduleIds, setSavingScheduleIds] = useState<Set<string | number>>(new Set());
+  const [scheduleDrafts, setScheduleDrafts] = useState<Record<string, string>>({});
 
   async function loadAccounts() {
     setLoading(true);
     try {
       const data = await accountsApi.list();
-      setList(Array.isArray(data) ? data : []);
+      const next = Array.isArray(data) ? data : [];
+      setList(next);
+      setScheduleDrafts(Object.fromEntries(next.map(acc => [String(acc.id), String(acc.raiser_time ?? '12:00').slice(0, 5)])));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Ошибка загрузки аккаунтов');
     } finally {
@@ -126,6 +130,24 @@ export default function Accounts() {
       toast.error('Ошибка при остановке воркеров');
     } finally {
       setStoppingAll(false);
+    }
+  }
+
+  async function saveSchedule(acc: ApiAccount) {
+    const nextTime = scheduleDrafts[String(acc.id)] || '12:00';
+    setSavingScheduleIds(prev => new Set(prev).add(acc.id));
+    try {
+      await accountsApi.updateRaiserSchedule(acc.id, nextTime, acc.raiser_timezone || 'Europe/Moscow');
+      setList(prev => prev.map(a => (a.id === acc.id ? { ...a, raiser_time: nextTime } : a)));
+      toast.success(`Время поднятия сохранено (${acc.username || `ID ${acc.id}`})`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка сохранения расписания');
+    } finally {
+      setSavingScheduleIds(prev => {
+        const next = new Set(prev);
+        next.delete(acc.id);
+        return next;
+      });
     }
   }
 
@@ -225,12 +247,13 @@ export default function Accounts() {
             <>
               <div className="platform-desktop-table">
                 <DataTableWrap>
-                  <table className="platform-table" style={{ minWidth: 760 }}>
+                  <table className="platform-table" style={{ minWidth: 960 }}>
                     <thead>
                       <tr>
                         <th style={{ width: 270 }}>Аккаунт</th>
                         <th>Keeper</th>
                         <th>Раисер</th>
+                        <th>Время поднятия</th>
                         <th style={{ textAlign: 'right' }}>Действия</th>
                       </tr>
                     </thead>
@@ -256,6 +279,30 @@ export default function Accounts() {
                               <span className={acc.raiser_active ? 'badge-active' : 'badge-inactive'}>
                                 {acc.raiser_active ? 'Запущен' : 'Остановлен'}
                               </span>
+                            </td>
+                            <td>
+                              <div className="inline-flex items-center gap-2">
+                                <input
+                                  type="time"
+                                  className="platform-input"
+                                  style={{ minHeight: 34, padding: '4px 8px', width: 140 }}
+                                  value={scheduleDrafts[String(acc.id)] || '12:00'}
+                                  onChange={event =>
+                                    setScheduleDrafts(prev => ({ ...prev, [String(acc.id)]: event.target.value }))
+                                  }
+                                />
+                                <button
+                                  className="platform-btn-secondary"
+                                  onClick={() => saveSchedule(acc)}
+                                  disabled={savingScheduleIds.has(acc.id)}
+                                >
+                                  {savingScheduleIds.has(acc.id) ? (
+                                    <Loader2 size={14} className="animate-spin" />
+                                  ) : (
+                                    'Сохранить'
+                                  )}
+                                </button>
+                              </div>
                             </td>
                             <td style={{ textAlign: 'right' }}>
                               <div className="inline-flex items-center gap-2">
@@ -309,9 +356,30 @@ export default function Accounts() {
 
                       <div className="platform-mobile-meta">
                         <span>Раисер: {acc.raiser_active ? 'Запущен' : 'Остановлен'}</span>
+                        <span>Поднятие: {scheduleDrafts[String(acc.id)] || '12:00'}</span>
                       </div>
 
                       <div className="platform-mobile-actions">
+                        <input
+                          type="time"
+                          className="platform-input"
+                          style={{ minHeight: 34, padding: '4px 8px' }}
+                          value={scheduleDrafts[String(acc.id)] || '12:00'}
+                          onChange={event =>
+                            setScheduleDrafts(prev => ({ ...prev, [String(acc.id)]: event.target.value }))
+                          }
+                        />
+                        <button
+                          className="platform-btn-secondary"
+                          onClick={() => saveSchedule(acc)}
+                          disabled={savingScheduleIds.has(acc.id)}
+                        >
+                          {savingScheduleIds.has(acc.id) ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            'Сохранить время'
+                          )}
+                        </button>
                         <button
                           className="platform-btn-secondary"
                           onClick={() => toggleRaiser(acc)}
