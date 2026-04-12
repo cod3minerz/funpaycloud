@@ -6,7 +6,7 @@ import { Loader2, SendHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { accountsApi, ApiAccount, ApiChat, ApiMessage, chatsApi, createAccountWebSocket } from '@/lib/api';
 import { sanitizeInput } from '@/lib/sanitize';
-import { EmptyState, PageHeader, PageShell, PageTitle, SectionCard, ToolbarRow } from '@/platform/components/primitives';
+import { EmptyState, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard, ToolbarRow } from '@/platform/components/primitives';
 
 type ChatRow = ApiChat & { accountName: string; unread_count: number };
 
@@ -21,6 +21,7 @@ export default function Chats() {
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [chats, setChats] = useState<ChatRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedChatID, setSelectedChatID] = useState<number | null>(null);
   const [messagesByChat, setMessagesByChat] = useState<Record<number, ApiMessage[]>>({});
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -30,11 +31,13 @@ export default function Chats() {
   const reconnectTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
   const sockets = useRef<Map<number, WebSocket>>(new Map());
   const closedRef = useRef(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       setLoading(true);
+      setLoadError(null);
       try {
         const accs = await accountsApi.list();
         if (cancelled) return;
@@ -64,7 +67,9 @@ export default function Chats() {
         setChats(merged);
         if (merged.length > 0) setSelectedChatID(merged[0].id);
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Ошибка загрузки чатов');
+        const message = err instanceof Error ? err.message : 'Ошибка загрузки чатов';
+        setLoadError(message);
+        toast.error(message);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -79,7 +84,7 @@ export default function Chats() {
       sockets.current.forEach(ws => ws.close());
       sockets.current.clear();
     };
-  }, []);
+  }, [reloadKey]);
 
   useEffect(() => {
     if (accounts.length === 0) return;
@@ -212,6 +217,13 @@ export default function Chats() {
           <div className="flex items-center justify-center py-16">
             <Loader2 size={28} className="animate-spin text-[var(--pf-accent)]" />
           </div>
+        ) : loadError ? (
+          <SectionCard>
+            <RequestErrorState
+              message={loadError}
+              onRetry={() => setReloadKey(prev => prev + 1)}
+            />
+          </SectionCard>
         ) : (
           <section className="platform-chat-shell">
             <aside className="platform-chat-list">

@@ -26,6 +26,7 @@ import {
   PageHeader,
   PageShell,
   PageTitle,
+  RequestErrorState,
   SectionCard,
   ToolbarRow,
 } from '@/platform/components/primitives';
@@ -33,6 +34,7 @@ import {
 export default function Accounts() {
   const [list, setList] = useState<ApiAccount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'online' | 'offline'>('all');
   const [showCreate, setShowCreate] = useState(false);
@@ -46,13 +48,16 @@ export default function Accounts() {
 
   async function loadAccounts() {
     setLoading(true);
+    setLoadError(null);
     try {
       const data = await accountsApi.list();
       const next = Array.isArray(data) ? data : [];
       setList(next);
       setScheduleDrafts(Object.fromEntries(next.map(acc => [String(acc.id), String(acc.raiser_time ?? '12:00').slice(0, 5)])));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Ошибка загрузки аккаунтов');
+      const message = err instanceof Error ? err.message : 'Ошибка загрузки аккаунтов';
+      setLoadError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -243,6 +248,8 @@ export default function Accounts() {
             <div className="flex items-center justify-center py-16">
               <Loader2 size={28} className="animate-spin text-[var(--pf-accent)]" />
             </div>
+          ) : loadError ? (
+            <RequestErrorState message={loadError} onRetry={loadAccounts} />
           ) : (
             <>
               <div className="platform-desktop-table">

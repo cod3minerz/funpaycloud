@@ -20,7 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/componen
 import { Switch } from '@/app/components/ui/switch';
 import { accountsApi, ApiAccount, ApiAutomationRule, automationApi } from '@/lib/api';
 import { sanitizeInput } from '@/lib/sanitize';
-import { PageHeader, PageShell, PageTitle, Panel, SectionCard } from '@/platform/components/primitives';
+import { PageHeader, PageShell, PageTitle, Panel, RequestErrorState, SectionCard } from '@/platform/components/primitives';
 
 const PRESETS = [
   {
@@ -90,6 +90,7 @@ export default function Automation() {
   const [selectedAccountID, setSelectedAccountID] = useState<number | null>(null);
   const [rules, setRules] = useState<ApiAutomationRule[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | number | null>(null);
   const [saving, setSaving] = useState(false);
@@ -104,20 +105,34 @@ export default function Automation() {
   const visibleRules = selectedAccountID
     ? rules.filter(rule => rule.funpay_account_id === selectedAccountID)
     : rules;
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    accountsApi.list().then(rows => {
-      const safe = Array.isArray(rows) ? rows : [];
-      setAccounts(safe);
-      if (safe.length > 0) setSelectedAccountID(safe[0].id);
-    }).catch(() => {});
-
-    automationApi
-      .list()
-      .then(rows => setRules(Array.isArray(rows) ? rows : []))
-      .catch(err => toast.error(err instanceof Error ? err.message : 'Ошибка загрузки автоматизации'))
-      .finally(() => setLoading(false));
-  }, []);
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    Promise.all([accountsApi.list(), automationApi.list()])
+      .then(([accountRows, ruleRows]) => {
+        if (cancelled) return;
+        const safeAccounts = Array.isArray(accountRows) ? accountRows : [];
+        const safeRules = Array.isArray(ruleRows) ? ruleRows : [];
+        setAccounts(safeAccounts);
+        setRules(safeRules);
+        if (safeAccounts.length > 0) setSelectedAccountID(safeAccounts[0].id);
+      })
+      .catch(err => {
+        if (cancelled) return;
+        const message = err instanceof Error ? err.message : 'Ошибка загрузки автоматизации';
+        setLoadError(message);
+        toast.error(message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
 
   async function toggleRule(id: string | number) {
     setTogglingIds(prev => new Set(prev).add(id));
@@ -282,6 +297,8 @@ export default function Automation() {
             <div className="flex items-center justify-center py-10">
               <Loader2 size={24} className="animate-spin text-[var(--pf-accent)]" />
             </div>
+          ) : loadError ? (
+            <RequestErrorState message={loadError} onRetry={() => setReloadKey(prev => prev + 1)} />
           ) : (
             <div className="grid gap-3">
               <AnimatePresence>

@@ -5,20 +5,23 @@ import { motion } from 'motion/react';
 import { ArrowUpCircle, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { accountsApi, ApiAccount, ApiLot, lotsApi } from '@/lib/api';
-import { DataTableWrap, EmptyState, PageHeader, PageShell, PageTitle, SectionCard, ToolbarRow } from '@/platform/components/primitives';
+import { DataTableWrap, EmptyState, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard, ToolbarRow } from '@/platform/components/primitives';
 
 export default function Lots() {
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [lots, setLots] = useState<ApiLot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [raisingIDs, setRaisingIDs] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [accountFilter, setAccountFilter] = useState('all');
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       setLoading(true);
+      setLoadError(null);
       try {
         const accs = await accountsApi.list();
         const safeAccs = Array.isArray(accs) ? accs : [];
@@ -38,7 +41,11 @@ export default function Lots() {
         }
         if (!cancelled) setLots(collected);
       } catch (err) {
-        if (!cancelled) toast.error(err instanceof Error ? err.message : 'Ошибка загрузки лотов');
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : 'Ошибка загрузки лотов';
+          setLoadError(message);
+          toast.error(message);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -47,7 +54,7 @@ export default function Lots() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -102,6 +109,8 @@ export default function Lots() {
             <div className="flex items-center justify-center py-16">
               <Loader2 size={28} className="animate-spin text-[var(--pf-accent)]" />
             </div>
+          ) : loadError ? (
+            <RequestErrorState message={loadError} onRetry={() => setReloadKey(prev => prev + 1)} />
           ) : (
             <>
               <div className="platform-desktop-table">

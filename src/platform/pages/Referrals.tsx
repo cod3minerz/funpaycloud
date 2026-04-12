@@ -12,6 +12,7 @@ import {
   PageShell,
   PageTitle,
   Panel,
+  RequestErrorState,
   SectionCard,
 } from '@/platform/components/primitives';
 
@@ -28,8 +29,11 @@ export default function Referrals() {
   const [totalEarned, setTotalEarned] = useState(0);
   const [copied, setCopied] = useState(false);
   const [shareState, setShareState] = useState<'idle' | 'done'>('idle');
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    setLoadError(null);
     settingsApi
       .getReferral()
       .then(data => {
@@ -37,9 +41,13 @@ export default function Referrals() {
         setReferrals(Array.isArray(data.referrals) ? data.referrals : []);
         setTotalEarned(data.total_earned);
       })
-      .catch(err => toast.error(err instanceof Error ? err.message : 'Ошибка загрузки реферальных данных'))
+      .catch(err => {
+        const message = err instanceof Error ? err.message : 'Ошибка загрузки реферальных данных';
+        setLoadError(message);
+        toast.error(message);
+      })
       .finally(() => setLoading(false));
-  }, []);
+  }, [reloadKey]);
 
   const refLink = refCode ? `https://funpay.cloud/r/${refCode}` : '';
 
@@ -75,6 +83,16 @@ export default function Referrals() {
       <div className="flex items-center justify-center py-24">
         <Loader2 size={28} className="animate-spin text-[var(--pf-accent)]" />
       </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <PageShell>
+        <SectionCard>
+          <RequestErrorState message={loadError} onRetry={() => { setLoading(true); setReloadKey(prev => prev + 1); }} />
+        </SectionCard>
+      </PageShell>
     );
   }
 

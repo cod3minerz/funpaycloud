@@ -5,32 +5,42 @@ import { motion } from 'motion/react';
 import { Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { accountsApi, ApiAccount, ApiProxy, proxiesApi } from '@/lib/api';
-import { DataTableWrap, EmptyState, PageHeader, PageShell, PageTitle, SectionCard, ToolbarRow } from '@/platform/components/primitives';
+import { DataTableWrap, EmptyState, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard, ToolbarRow } from '@/platform/components/primitives';
 
 export default function ProxyMarket() {
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [selectedAccountID, setSelectedAccountID] = useState<number | null>(null);
   const [proxies, setProxies] = useState<ApiProxy[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [rentingIDs, setRentingIDs] = useState<Set<number>>(new Set());
   const [search, setSearch] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    setLoadError(null);
     accountsApi.list().then(rows => {
       const safe = Array.isArray(rows) ? rows : [];
       setAccounts(safe);
       if (safe.length > 0) setSelectedAccountID(safe[0].id);
-    }).catch(() => {});
-  }, []);
+    }).catch(() => {
+      setLoadError('Не удалось загрузить список аккаунтов');
+    });
+  }, [reloadKey]);
 
   useEffect(() => {
     setLoading(true);
+    setLoadError(null);
     proxiesApi
       .market({ page: 1, limit: 200 })
       .then(data => setProxies(Array.isArray(data.proxies) ? data.proxies : []))
-      .catch(err => toast.error(err instanceof Error ? err.message : 'Ошибка загрузки прокси'))
+      .catch(err => {
+        const message = err instanceof Error ? err.message : 'Ошибка загрузки прокси';
+        setLoadError(message);
+        toast.error(message);
+      })
       .finally(() => setLoading(false));
-  }, []);
+  }, [reloadKey]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -86,6 +96,8 @@ export default function ProxyMarket() {
             <div className="flex items-center justify-center py-16">
               <Loader2 size={28} className="animate-spin text-[var(--pf-accent)]" />
             </div>
+          ) : loadError ? (
+            <RequestErrorState message={loadError} onRetry={() => setReloadKey(prev => prev + 1)} />
           ) : (
             <>
               <div className="platform-desktop-table">

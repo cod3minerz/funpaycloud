@@ -5,17 +5,20 @@ import { motion } from 'motion/react';
 import { Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { accountsApi, ApiAccount, ApiPlugin, pluginsApi } from '@/lib/api';
-import { DataTableWrap, EmptyState, PageHeader, PageShell, PageTitle, SectionCard, ToolbarRow } from '@/platform/components/primitives';
+import { DataTableWrap, EmptyState, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard, ToolbarRow } from '@/platform/components/primitives';
 
 export default function Plugins() {
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [selectedAccountID, setSelectedAccountID] = useState<number | null>(null);
   const [plugins, setPlugins] = useState<ApiPlugin[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [togglingIDs, setTogglingIDs] = useState<Set<number>>(new Set());
   const [search, setSearch] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    setLoadError(null);
     accountsApi
       .list()
       .then(rows => {
@@ -31,9 +34,10 @@ export default function Plugins() {
       .catch(() => {
         setAccounts([]);
         setSelectedAccountID(null);
+        setLoadError('Не удалось загрузить список аккаунтов');
         setLoading(false);
       });
-  }, []);
+  }, [reloadKey]);
 
   useEffect(() => {
     if (!selectedAccountID) {
@@ -42,6 +46,7 @@ export default function Plugins() {
       return;
     }
     setLoading(true);
+    setLoadError(null);
     Promise.all([pluginsApi.list(selectedAccountID), pluginsApi.installed(selectedAccountID)])
       .then(([catalogRows, installedRows]) => {
         const catalog = Array.isArray(catalogRows) ? catalogRows : [];
@@ -49,9 +54,13 @@ export default function Plugins() {
         const installedByID = new Set(installed.map(item => item.id));
         setPlugins(catalog.map(item => ({ ...item, installed: installedByID.has(item.id) })));
       })
-      .catch(err => toast.error(err instanceof Error ? err.message : 'Ошибка загрузки плагинов'))
+      .catch(err => {
+        const message = err instanceof Error ? err.message : 'Ошибка загрузки плагинов';
+        setLoadError(message);
+        toast.error(message);
+      })
       .finally(() => setLoading(false));
-  }, [selectedAccountID]);
+  }, [selectedAccountID, reloadKey]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -107,6 +116,8 @@ export default function Plugins() {
             <div className="flex items-center justify-center py-16">
               <Loader2 size={28} className="animate-spin text-[var(--pf-accent)]" />
             </div>
+          ) : loadError ? (
+            <RequestErrorState message={loadError} onRetry={() => setReloadKey(prev => prev + 1)} />
           ) : (
             <>
               <div className="platform-desktop-table">

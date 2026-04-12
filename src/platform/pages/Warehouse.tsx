@@ -15,6 +15,7 @@ import {
   PageShell,
   PageTitle,
   Panel,
+  RequestErrorState,
   SectionCard,
   ToolbarRow,
 } from '@/platform/components/primitives';
@@ -35,6 +36,7 @@ export default function Warehouse() {
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [accountFilter, setAccountFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [lots, setLots] = useState<ApiWarehouseLot[]>([]);
   const [selectedLotId, setSelectedLotId] = useState<number | null>(null);
 
@@ -47,6 +49,7 @@ export default function Warehouse() {
   const [templateDraft, setTemplateDraft] = useState('');
   const [autoDeliveryDraft, setAutoDeliveryDraft] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -62,6 +65,7 @@ export default function Warehouse() {
 
   async function loadLots(selectedAccount?: string) {
     setLoading(true);
+    setLoadError(null);
     try {
       const accountID = selectedAccount && selectedAccount !== 'all' ? Number(selectedAccount) : undefined;
       const rows = await warehouseApi.list(accountID);
@@ -82,7 +86,9 @@ export default function Warehouse() {
 
       setSelectedLotId(prev => (prev && safe.some(lot => lot.id === prev) ? prev : safe[0].id));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Ошибка загрузки склада');
+      const message = err instanceof Error ? err.message : 'Ошибка загрузки склада';
+      setLoadError(message);
+      toast.error(message);
       setLots([]);
       setSelectedLotId(null);
     } finally {
@@ -96,7 +102,7 @@ export default function Warehouse() {
 
   useEffect(() => {
     loadLots(accountFilter);
-  }, [accountFilter]);
+  }, [accountFilter, reloadKey]);
 
   const selectedLot = useMemo(
     () => lots.find(lot => lot.id === selectedLotId) ?? null,
@@ -282,6 +288,8 @@ export default function Warehouse() {
               <div className="flex items-center justify-center py-8">
                 <Loader2 size={24} className="animate-spin text-[var(--pf-accent)]" />
               </div>
+            ) : loadError ? (
+              <RequestErrorState message={loadError} onRetry={() => setReloadKey(prev => prev + 1)} />
             ) : (
               <div className="grid max-h-[640px] overflow-y-auto">
                 {lots.map(lot => {

@@ -14,6 +14,7 @@ import {
   PageHeader,
   PageShell,
   PageTitle,
+  RequestErrorState,
   SectionCard,
   ToolbarRow,
 } from '@/platform/components/primitives';
@@ -71,10 +72,12 @@ function getMonthlyData(txs: Tx[]) {
 export default function Finances() {
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [accountFilter, setAccountFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [showExportAlert, setShowExportAlert] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [data, setData] = useState<FinancesData>({
     total_revenue: 0,
     total_orders: 0,
@@ -92,6 +95,7 @@ export default function Finances() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setLoadError(null);
     financesApi
       .get({ account_id: accountFilter === 'all' ? undefined : Number(accountFilter), limit: 500 })
       .then(response => {
@@ -105,7 +109,9 @@ export default function Finances() {
       })
       .catch(err => {
         if (!cancelled) {
-          toast.error(err instanceof Error ? err.message : 'Ошибка загрузки финансовых данных');
+          const message = err instanceof Error ? err.message : 'Ошибка загрузки финансовых данных';
+          setLoadError(message);
+          toast.error(message);
           setData({ total_revenue: 0, total_orders: 0, accounts_count: 0, transactions: [] });
         }
       })
@@ -116,7 +122,7 @@ export default function Finances() {
     return () => {
       cancelled = true;
     };
-  }, [accountFilter]);
+  }, [accountFilter, reloadKey]);
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 767px)');
@@ -350,6 +356,8 @@ export default function Finances() {
             <div className="flex items-center justify-center py-16">
               <Loader2 size={28} className="animate-spin text-[var(--pf-accent)]" />
             </div>
+          ) : loadError ? (
+            <RequestErrorState message={loadError} onRetry={() => setReloadKey(prev => prev + 1)} />
           ) : (
             <>
               <div className="platform-desktop-table">

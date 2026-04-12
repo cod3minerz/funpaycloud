@@ -60,3 +60,23 @@ export function EmptyState({
   return <div className={cn('platform-empty', className)}>{children}</div>;
 }
 
+export function RequestErrorState({
+  message,
+  onRetry,
+  buttonLabel = 'Повторить',
+  className,
+}: {
+  message: string;
+  onRetry: () => void;
+  buttonLabel?: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn('platform-empty', className)}>
+      <p className="mb-3">{message}</p>
+      <button className="platform-btn-secondary" onClick={onRetry}>
+        {buttonLabel}
+      </button>
+    </div>
+  );
+}

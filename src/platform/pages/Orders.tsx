@@ -5,7 +5,7 @@ import { motion } from 'motion/react';
 import { Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { accountsApi, ApiAccount, ApiOrder, ordersApi } from '@/lib/api';
-import { DataTableWrap, EmptyState, PageHeader, PageShell, PageTitle, SectionCard, ToolbarRow } from '@/platform/components/primitives';
+import { DataTableWrap, EmptyState, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard, ToolbarRow } from '@/platform/components/primitives';
 
 const STATUS_NUM_LABEL: Record<number, string> = {
   0: 'Оплачен',
@@ -26,10 +26,12 @@ export default function Orders() {
   const [orders, setOrders] = useState<ApiOrder[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [accountFilter, setAccountFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 0 | 1 | 2>('all');
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     accountsApi.list().then(rows => setAccounts(Array.isArray(rows) ? rows : [])).catch(() => {});
@@ -38,6 +40,7 @@ export default function Orders() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setLoadError(null);
     const params: Parameters<typeof ordersApi.list>[0] = { page, limit: PAGE_SIZE };
     if (accountFilter !== 'all') params.account_id = accountFilter;
     if (statusFilter !== 'all') params.status = statusFilter;
@@ -50,7 +53,11 @@ export default function Orders() {
         setTotal(Number(data.total || 0));
       })
       .catch(err => {
-        if (!cancelled) toast.error(err instanceof Error ? err.message : 'Ошибка загрузки заказов');
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : 'Ошибка загрузки заказов';
+          setLoadError(message);
+          toast.error(message);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -58,7 +65,7 @@ export default function Orders() {
     return () => {
       cancelled = true;
     };
-  }, [page, accountFilter, statusFilter]);
+  }, [page, accountFilter, statusFilter, reloadKey]);
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -111,6 +118,8 @@ export default function Orders() {
             <div className="flex items-center justify-center py-16">
               <Loader2 size={28} className="animate-spin text-[var(--pf-accent)]" />
             </div>
+          ) : loadError ? (
+            <RequestErrorState message={loadError} onRetry={() => setReloadKey(prev => prev + 1)} />
           ) : (
             <>
               <div className="platform-desktop-table">

@@ -7,7 +7,7 @@ import type { LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { settingsApi } from '@/lib/api';
 import { readCurrentPlanId, subscriptionPlans, writeCurrentPlanId } from '@/shared/subscriptions';
-import { Panel, PageHeader, PageShell, PageTitle, SectionCard } from '@/platform/components/primitives';
+import { Panel, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard } from '@/platform/components/primitives';
 import { sanitizeInput, validatePassword } from '@/lib/sanitize';
 
 type SectionKey = 'profile' | 'notifications' | 'plan' | 'security';
@@ -42,6 +42,7 @@ export default function Settings() {
   const [activeSection, setActiveSection] = useState<SectionKey>('profile');
   const [currentPlanId, setCurrentPlanId] = useState<'start' | 'pro' | 'team'>('pro');
   const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -68,6 +69,7 @@ export default function Settings() {
     settingsApi
       .getProfile()
       .then(data => {
+        setProfileError(null);
         setProfile({
           displayName: String(data.login ?? ''),
           email: String(data.email ?? ''),
@@ -75,7 +77,11 @@ export default function Settings() {
           telegram: String(data.telegram ?? ''),
         });
       })
-      .catch(() => {})
+      .catch(err => {
+        const message = err instanceof Error ? err.message : 'Ошибка загрузки профиля';
+        setProfileError(message);
+        toast.error(message);
+      })
       .finally(() => setProfileLoading(false));
   }, []);
 
@@ -162,6 +168,30 @@ export default function Settings() {
                   <div className="flex items-center justify-center py-10">
                     <Loader2 size={24} className="animate-spin text-[var(--pf-accent)]" />
                   </div>
+                ) : profileError ? (
+                  <RequestErrorState
+                    message={profileError}
+                    onRetry={() => {
+                      setProfileLoading(true);
+                      settingsApi
+                        .getProfile()
+                        .then(data => {
+                          setProfileError(null);
+                          setProfile({
+                            displayName: String(data.login ?? ''),
+                            email: String(data.email ?? ''),
+                            timezone: String(data.timezone ?? 'Europe/Moscow'),
+                            telegram: String(data.telegram ?? ''),
+                          });
+                        })
+                        .catch(err => {
+                          const message = err instanceof Error ? err.message : 'Ошибка загрузки профиля';
+                          setProfileError(message);
+                          toast.error(message);
+                        })
+                        .finally(() => setProfileLoading(false));
+                    }}
+                  />
                 ) : (
                   <>
                     <div className="mt-4 grid gap-3 md:grid-cols-2">

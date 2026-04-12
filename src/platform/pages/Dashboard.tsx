@@ -7,7 +7,7 @@ import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { analyticsApi, dashboardApi, DashboardData, AnalyticsData } from '@/lib/api';
-import { DataTableWrap, EmptyState, KpiCard, KpiGrid, PageHeader, PageShell, PageTitle, SectionCard } from '@/platform/components/primitives';
+import { DataTableWrap, EmptyState, KpiCard, KpiGrid, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard } from '@/platform/components/primitives';
 
 type Period = 'week' | 'month' | 'quarter';
 
@@ -23,10 +23,13 @@ export default function Dashboard() {
   const [dashData, setDashData] = useState<DashboardData | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setLoadError(null);
     Promise.all([dashboardApi.get(), analyticsApi.get({ period })])
       .then(([dash, anal]) => {
         if (cancelled) return;
@@ -34,7 +37,11 @@ export default function Dashboard() {
         setAnalytics(anal);
       })
       .catch(err => {
-        if (!cancelled) toast.error(err instanceof Error ? err.message : 'Ошибка загрузки дашборда');
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : 'Ошибка загрузки дашборда';
+          setLoadError(message);
+          toast.error(message);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -42,7 +49,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [period]);
+  }, [period, reloadKey]);
 
   const recentOrders = useMemo(() => (Array.isArray(dashData?.recent_orders) ? dashData!.recent_orders : []), [dashData]);
   const recentChats = useMemo(() => (Array.isArray(dashData?.recent_chats) ? dashData!.recent_chats : []), [dashData]);
@@ -70,6 +77,10 @@ export default function Dashboard() {
           <div className="flex items-center justify-center py-16">
             <Loader2 size={28} className="animate-spin text-[var(--pf-accent)]" />
           </div>
+        ) : loadError ? (
+          <SectionCard>
+            <RequestErrorState message={loadError} onRetry={() => setReloadKey(prev => prev + 1)} />
+          </SectionCard>
         ) : (
           <>
             <KpiGrid>

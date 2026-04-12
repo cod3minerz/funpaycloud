@@ -1,6 +1,6 @@
 import { getToken, logout } from './auth';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.funpay.cloud';
+const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://api.funpay.cloud').replace(/\/+$/, '');
 
 const PUBLIC_AUTH_PATHS = new Set([
   '/api/auth/login',
@@ -27,6 +27,10 @@ export async function apiRequest<T = unknown>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  if (!path.startsWith('/api/')) {
+    throw new ApiError(`Неверный путь API: ${path}`);
+  }
+
   const token = getToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -38,10 +42,24 @@ export async function apiRequest<T = unknown>(
   }
 
   let response: Response;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
   try {
-    response = await fetch(`${BASE_URL}${path}`, { ...options, headers });
-  } catch {
-    throw new ApiError('Сетевая ошибка. Проверьте подключение к интернету.');
+    response = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+      mode: 'cors',
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new ApiError('Сервер долго не отвечает. Попробуйте снова через несколько секунд.');
+    }
+    throw new ApiError(
+      `Не удалось связаться с API (${BASE_URL}). Проверьте интернет или доступность сервера.`,
+    );
+  } finally {
+    clearTimeout(timeout);
   }
 
   let envelope: ApiEnvelope<T> = { success: false, error: 'Ошибка запроса' };
