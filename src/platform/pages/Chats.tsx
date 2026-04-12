@@ -310,8 +310,9 @@ export default function Chats() {
         </PageHeader>
 
         {loading ? (
-          <div className="flex items-center justify-center py-16">
+          <div className="flex flex-col items-center justify-center gap-3 py-16">
             <Loader2 size={28} className="animate-spin text-[var(--pf-accent)]" />
+            <p className="text-sm text-[var(--pf-text-dim)]">Подгружаем ваши чаты с FunPay...</p>
           </div>
         ) : loadError ? (
           <SectionCard>
