@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Loader2, SendHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
@@ -19,6 +19,7 @@ function formatTime(value?: string) {
 
 export default function Chats() {
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
+  const [activeAccountID, setActiveAccountID] = useState<number | null>(null);
   const [chats, setChats] = useState<ChatRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -28,123 +29,197 @@ export default function Chats() {
   const [inputValue, setInputValue] = useState('');
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState('');
-  const reconnectTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
-  const sockets = useRef<Map<number, WebSocket>>(new Map());
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const socketRef = useRef<WebSocket | null>(null);
   const closedRef = useRef(false);
   const [reloadKey, setReloadKey] = useState(0);
 
+  const refreshChats = useCallback(async (accountID: number, preserveSelection: boolean) => {
+    const history = await chatsApi.history(accountID);
+    const safe = Array.isArray(history) ? history : [];
+    const accountName = accounts.find(acc => acc.id === accountID)?.username || `ID ${accountID}`;
+
+    const next: ChatRow[] = safe
+      .map(chat => ({
+        ...chat,
+        accountName,
+        unread_count: chat.unread ? 1 : 0,
+      }))
+      .sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at));
+
+    setChats(next);
+    if (next.length === 0) {
+      setSelectedChatID(null);
+      return;
+    }
+
+    if (preserveSelection && selectedChatID && next.some(chat => chat.id === selectedChatID)) {
+      return;
+    }
+
+    setSelectedChatID(next[0].id);
+  }, [accounts, selectedChatID]);
+
   useEffect(() => {
     let cancelled = false;
+
     async function load() {
       setLoading(true);
       setLoadError(null);
+      setMessagesByChat({});
+      setChats([]);
+
       try {
-        const accs = await accountsApi.list();
+        const rows = await accountsApi.list();
         if (cancelled) return;
-        const safeAccounts = Array.isArray(accs) ? accs : [];
+
+        const safeAccounts = Array.isArray(rows) ? rows : [];
         setAccounts(safeAccounts);
 
-        const rows = await Promise.allSettled(
-          safeAccounts.map(async acc => {
-            const history = await chatsApi.history(acc.id);
-            return { acc, history: Array.isArray(history) ? history : [] };
-          }),
-        );
+        if (safeAccounts.length === 0) {
+          setActiveAccountID(null);
+          setSelectedChatID(null);
+          return;
+        }
+
+        const firstAccountID = safeAccounts[0].id;
+        setActiveAccountID(firstAccountID);
+
+        const history = await chatsApi.history(firstAccountID);
         if (cancelled) return;
 
-        const merged: ChatRow[] = [];
-        for (const row of rows) {
-          if (row.status !== 'fulfilled') continue;
-          for (const chat of row.value.history) {
-            merged.push({
-              ...chat,
-              accountName: row.value.acc.username || `ID ${row.value.acc.id}`,
-              unread_count: chat.unread ? 1 : 0,
-            });
-          }
-        }
-        merged.sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at));
-        setChats(merged);
-        if (merged.length > 0) setSelectedChatID(merged[0].id);
+        const safeHistory = Array.isArray(history) ? history : [];
+        const accountName = safeAccounts[0].username || `ID ${firstAccountID}`;
+        const nextChats: ChatRow[] = safeHistory
+          .map(chat => ({ ...chat, accountName, unread_count: chat.unread ? 1 : 0 }))
+          .sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at));
+
+        setChats(nextChats);
+        setSelectedChatID(nextChats[0]?.id ?? null);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Ошибка загрузки чатов';
         setLoadError(message);
         toast.error(message);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
     load();
+
     return () => {
       cancelled = true;
       closedRef.current = true;
-      reconnectTimers.current.forEach(timer => clearTimeout(timer));
-      reconnectTimers.current.clear();
-      sockets.current.forEach(ws => ws.close());
-      sockets.current.clear();
+      if (reconnectTimer.current) {
+        clearTimeout(reconnectTimer.current);
+      }
+      if (socketRef.current) {
+        socketRef.current.close();
+      }
     };
   }, [reloadKey]);
 
   useEffect(() => {
-    if (accounts.length === 0) return;
+    if (!activeAccountID) return;
     closedRef.current = false;
 
-    function connect(accountID: number, attempt = 0) {
-      if (closedRef.current) return;
-      const ws = createAccountWebSocket(accountID, event => {
+    function connect(attempt = 0) {
+      if (closedRef.current || !activeAccountID) return;
+
+      const ws = createAccountWebSocket(activeAccountID, event => {
         if (event.type !== 'new_message') return;
-        const chatID = Number(event.data.chat_id);
+
+        const nodeID = String(event.data.chat_node_id ?? event.data.node_id ?? '');
+        if (!nodeID) return;
+
         const text = String(event.data.text ?? '');
-        const authorName = String(event.data.author_name ?? '');
+        const authorName = String(event.data.author_name ?? event.data.with_user ?? '');
+        const withUser = String(event.data.with_user ?? '');
+        const isMyMsg = Boolean(event.data.is_my_msg);
         const created = new Date().toISOString();
 
-        setChats(prev =>
-          prev
-            .map(row =>
-              row.id === chatID
-                ? {
-                    ...row,
-                    last_message: text,
-                    updated_at: created,
-                    unread_count: row.id === selectedChatID ? 0 : row.unread_count + 1,
-                  }
-                : row,
-            )
-            .sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at)),
-        );
+        let targetChatID = 0;
+        let found = false;
+
+        setChats(prev => {
+          const next = prev.map(row => {
+            if (row.node_id !== nodeID) {
+              return row;
+            }
+            found = true;
+            targetChatID = row.id;
+            return {
+              ...row,
+              with_user: withUser || row.with_user,
+              last_message: text,
+              updated_at: created,
+              unread_count: row.id === selectedChatID ? 0 : row.unread_count + 1,
+            };
+          });
+
+          if (!found) {
+            void refreshChats(activeAccountID, true);
+            return prev;
+          }
+
+          return next.sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at));
+        });
+
+        if (!found || targetChatID === 0) return;
 
         setMessagesByChat(prev => {
-          const existing = prev[chatID] || [];
+          const existing = prev[targetChatID] || [];
           const next: ApiMessage = {
             id: Date.now(),
-            chat_id: chatID,
+            chat_id: targetChatID,
             author_id: 0,
             author_name: authorName,
             text,
-            is_my_msg: false,
+            is_my_msg: isMyMsg,
             created_at: created,
           };
-          return { ...prev, [chatID]: [...existing, next] };
+          return { ...prev, [targetChatID]: [...existing, next] };
         });
       });
 
       ws.onclose = () => {
-        sockets.current.delete(accountID);
+        if (socketRef.current === ws) {
+          socketRef.current = null;
+        }
         if (closedRef.current) return;
         const backoff = Math.min(15000, 1000 * Math.pow(2, attempt)) + Math.floor(Math.random() * 300);
-        const timer = setTimeout(() => connect(accountID, attempt + 1), backoff);
-        reconnectTimers.current.set(accountID, timer);
+        reconnectTimer.current = setTimeout(() => connect(attempt + 1), backoff);
       };
+
       ws.onerror = () => ws.close();
-      sockets.current.set(accountID, ws);
+      socketRef.current = ws;
     }
 
-    for (const acc of accounts) {
-      if (sockets.current.has(acc.id)) continue;
-      connect(Number(acc.id));
+    if (socketRef.current) {
+      socketRef.current.close();
+      socketRef.current = null;
     }
-  }, [accounts, selectedChatID]);
+    if (reconnectTimer.current) {
+      clearTimeout(reconnectTimer.current);
+      reconnectTimer.current = null;
+    }
+
+    connect();
+
+    return () => {
+      closedRef.current = true;
+      if (reconnectTimer.current) {
+        clearTimeout(reconnectTimer.current);
+        reconnectTimer.current = null;
+      }
+      if (socketRef.current) {
+        socketRef.current.close();
+        socketRef.current = null;
+      }
+    };
+  }, [activeAccountID, refreshChats, selectedChatID]);
 
   useEffect(() => {
     if (!selectedChatID) return;
@@ -181,7 +256,7 @@ export default function Chats() {
 
     setSending(true);
     try {
-      await chatsApi.send(selectedChat.funpay_account_id, selectedChatID, text);
+      await chatsApi.send(selectedChat.funpay_account_id, selectedChat.node_id, text);
       const now = new Date().toISOString();
       const own: ApiMessage = {
         id: Date.now(),
@@ -195,7 +270,11 @@ export default function Chats() {
       setMessagesByChat(prev => ({ ...prev, [selectedChatID]: [...(prev[selectedChatID] || []), own] }));
       setChats(prev =>
         prev
-          .map(chat => (chat.id === selectedChatID ? { ...chat, last_message: text, updated_at: now } : chat))
+          .map(chat =>
+            chat.id === selectedChatID
+              ? { ...chat, last_message: text, updated_at: now, unread_count: 0 }
+              : chat,
+          )
           .sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at)),
       );
       setInputValue('');
@@ -206,11 +285,28 @@ export default function Chats() {
     }
   }
 
+  async function switchAccount(nextAccountID: number) {
+    setActiveAccountID(nextAccountID);
+    setSelectedChatID(null);
+    setMessagesByChat({});
+    setLoading(true);
+    setLoadError(null);
+    try {
+      await refreshChats(nextAccountID, false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Ошибка загрузки чатов';
+      setLoadError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
       <PageShell>
         <PageHeader>
-          <PageTitle title="Чаты" subtitle="История и сообщения в реальном времени по всем аккаунтам." />
+          <PageTitle title="Чаты" subtitle="История и сообщения в реальном времени по аккаунту." />
         </PageHeader>
 
         {loading ? (
@@ -228,6 +324,18 @@ export default function Chats() {
           <section className="platform-chat-shell">
             <aside className="platform-chat-list">
               <div className="platform-chat-list-head">
+                <select
+                  className="platform-select mb-2"
+                  value={activeAccountID ?? ''}
+                  onChange={event => switchAccount(Number(event.target.value))}
+                >
+                  {accounts.map(account => (
+                    <option key={account.id} value={account.id}>
+                      {account.username || `ID ${account.id}`}
+                    </option>
+                  ))}
+                </select>
+
                 <label className="platform-search max-w-none">
                   <input
                     value={search}
@@ -259,7 +367,12 @@ export default function Chats() {
                     </div>
                   </button>
                 ))}
-                {filteredChats.length === 0 && <EmptyState>Чаты не найдены.</EmptyState>}
+                {filteredChats.length === 0 && chats.length === 0 && (
+                  <EmptyState>Чаты загружаются... Если вы только что добавили аккаунт, подождите 30 секунд</EmptyState>
+                )}
+                {filteredChats.length === 0 && chats.length > 0 && (
+                  <EmptyState>Чаты не найдены по текущему фильтру.</EmptyState>
+                )}
               </div>
             </aside>
 

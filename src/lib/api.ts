@@ -210,7 +210,7 @@ export const chatsApi = {
   send: (accountId: number | string, chat_id: number | string, text: string) =>
     apiRequest(`/api/accounts/${accountId}/messages`, {
       method: 'POST',
-      body: JSON.stringify({ chat_id: Number(chat_id), text }),
+      body: JSON.stringify({ chat_id, text }),
     }),
 };
 
