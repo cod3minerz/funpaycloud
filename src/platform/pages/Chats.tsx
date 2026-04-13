@@ -8,7 +8,13 @@ import { accountsApi, ApiAccount, ApiChat, ApiMessage, chatsApi, createAccountWe
 import { sanitizeInput } from '@/lib/sanitize';
 import { EmptyState, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard, ToolbarRow } from '@/platform/components/primitives';
 
-type ChatRow = ApiChat & { accountName: string; unread_count: number };
+type ChatRow = ApiChat & { unread_count: number };
+type DeliveryState = 'sent' | 'delivered';
+type ThreadMessage = ApiMessage & { delivery_state?: DeliveryState };
+
+function sortChatsByUpdatedAt(chats: ChatRow[]) {
+  return [...chats].sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at));
+}
 
 function formatTime(value?: string) {
   if (!value) return '';
@@ -30,7 +36,7 @@ export default function Chats() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedChatID, setSelectedChatID] = useState<number | null>(null);
-  const [messagesByChat, setMessagesByChat] = useState<Record<number, ApiMessage[]>>({});
+  const [messagesByChat, setMessagesByChat] = useState<Record<number, ThreadMessage[]>>({});
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [messagesError, setMessagesError] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
@@ -62,15 +68,14 @@ export default function Chats() {
   const refreshChats = useCallback(async (accountID: number, preserveSelection: boolean) => {
     const history = await chatsApi.history(accountID);
     const safe = Array.isArray(history) ? history : [];
-    const accountName = accounts.find(acc => acc.id === accountID)?.username || `ID ${accountID}`;
 
-    const next: ChatRow[] = safe
+    const next: ChatRow[] = sortChatsByUpdatedAt(
+      safe
       .map(chat => ({
         ...chat,
-        accountName,
         unread_count: chat.unread ? 1 : 0,
-      }))
-      .sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at));
+      })),
+    );
 
     setChats(next);
     if (next.length === 0) {
@@ -84,7 +89,7 @@ export default function Chats() {
     }
 
     setSelectedChatID(next[0].id);
-  }, [accounts]);
+  }, []);
 
   useEffect(() => {
     selectedChatIDRef.current = selectedChatID;
@@ -129,10 +134,9 @@ export default function Chats() {
         if (cancelled) return;
 
         const safeHistory = Array.isArray(history) ? history : [];
-        const accountName = safeAccounts[0].username || `ID ${firstAccountID}`;
-        const nextChats: ChatRow[] = safeHistory
-          .map(chat => ({ ...chat, accountName, unread_count: chat.unread ? 1 : 0 }))
-          .sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at));
+        const nextChats: ChatRow[] = sortChatsByUpdatedAt(
+          safeHistory.map(chat => ({ ...chat, unread_count: chat.unread ? 1 : 0 })),
+        );
 
         setChats(nextChats);
         setSelectedChatID(nextChats[0]?.id ?? null);
@@ -169,7 +173,7 @@ export default function Chats() {
       if (cancelled || !activeAccountID) return;
 
       const ws = createAccountWebSocket(activeAccountID, event => {
-        if (event.type !== 'new_message') return;
+        if (event.type !== 'new_message' && event.type !== 'message_sent') return;
 
         const nodeID = String(event.data.node_id ?? event.data.chat_node_id ?? '');
         if (!nodeID) return;
@@ -180,7 +184,7 @@ export default function Chats() {
         const isMyMsg = Boolean(event.data.is_my_msg);
         const created = String(event.data.created_at ?? new Date().toISOString());
 
-        let targetChatID = 0;
+        let targetChatID = Number(event.data.chat_id ?? 0);
         let found = false;
         let isOpenedChat = false;
 
@@ -197,8 +201,8 @@ export default function Chats() {
               with_user: withUser || row.with_user,
               last_message: text,
               updated_at: created,
-              unread: isOpenedChat ? false : true,
-              unread_count: isOpenedChat ? 0 : row.unread_count + 1,
+              unread: isOpenedChat ? false : !isMyMsg,
+              unread_count: isOpenedChat || isMyMsg ? 0 : row.unread_count + 1,
             };
           });
 
@@ -207,21 +211,28 @@ export default function Chats() {
             return prev;
           }
 
-          return next.sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at));
+          return sortChatsByUpdatedAt(next);
         });
 
         if (!found || targetChatID === 0 || !isOpenedChat) return;
 
         setMessagesByChat(prev => {
           const existing = prev[targetChatID] || [];
-          const next: ApiMessage = {
-            id: Date.now(),
+          const hasDuplicate = existing.some(msg =>
+            msg.is_my_msg === isMyMsg && msg.text === text && msg.created_at === created,
+          );
+          if (hasDuplicate) {
+            return prev;
+          }
+          const next: ThreadMessage = {
+            id: Number(event.data.id ?? Date.now()),
             chat_id: targetChatID,
             author_id: 0,
             author_name: authorName,
             text,
             is_my_msg: isMyMsg,
             created_at: created,
+            delivery_state: isMyMsg ? 'delivered' : undefined,
           };
           return { ...prev, [targetChatID]: [...existing, next] };
         });
@@ -285,7 +296,10 @@ export default function Chats() {
     chatsApi
       .messages(selectedChatID, 50)
       .then(rows => {
-        const safeRows = Array.isArray(rows) ? rows : [];
+        const safeRows: ThreadMessage[] = (Array.isArray(rows) ? rows : []).map(msg => ({
+          ...msg,
+          delivery_state: msg.is_my_msg ? 'delivered' : undefined,
+        }));
         setMessagesByChat(prev => ({ ...prev, [selectedChatID]: safeRows }));
         setChats(prev =>
           prev.map(chat => (chat.id === selectedChatID ? { ...chat, unread: false, unread_count: 0 } : chat)),
@@ -306,6 +320,11 @@ export default function Chats() {
     return chats.filter(row => row.with_user.toLowerCase().includes(q) || row.last_message.toLowerCase().includes(q));
   }, [chats, search]);
 
+  const activeAccountName = useMemo(() => {
+    if (!activeAccountID) return '';
+    return accounts.find(account => account.id === activeAccountID)?.username || `ID ${activeAccountID}`;
+  }, [accounts, activeAccountID]);
+
   const selectedChat = chats.find(chat => chat.id === selectedChatID) || null;
   const messages = selectedChatID ? messagesByChat[selectedChatID] || [] : [];
 
@@ -317,8 +336,9 @@ export default function Chats() {
     setSending(true);
     const now = new Date().toISOString();
     const previousLastMessage = selectedChat.last_message;
+    const previousUpdatedAt = selectedChat.updated_at;
     const optimisticID = Date.now();
-    const optimistic: ApiMessage = {
+    const optimistic: ThreadMessage = {
       id: optimisticID,
       chat_id: selectedChatID,
       author_id: 0,
@@ -326,17 +346,18 @@ export default function Chats() {
       text,
       is_my_msg: true,
       created_at: now,
+      delivery_state: 'sent',
     };
 
     setMessagesByChat(prev => ({ ...prev, [selectedChatID]: [...(prev[selectedChatID] || []), optimistic] }));
     setChats(prev =>
-      prev
-        .map(chat =>
+      sortChatsByUpdatedAt(
+        prev.map(chat =>
           chat.id === selectedChatID
             ? { ...chat, last_message: text, updated_at: now, unread: false, unread_count: 0 }
             : chat,
-        )
-        .sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at)),
+        ),
+      ),
     );
     setInputValue('');
     requestAnimationFrame(() => {
@@ -345,17 +366,47 @@ export default function Chats() {
     });
 
     try {
-      await chatsApi.send(activeAccountID, selectedChat.node_id, text);
+      const response = await chatsApi.send(activeAccountID, selectedChat.node_id, text) as {
+        id?: number;
+        created_at?: string;
+      };
+      const confirmedTime = response?.created_at || now;
+      const confirmedID = response?.id ?? optimisticID;
+      setMessagesByChat(prev => ({
+        ...prev,
+        [selectedChatID]: (prev[selectedChatID] || []).map(message =>
+          message.id === optimisticID
+            ? { ...message, id: confirmedID, created_at: confirmedTime, delivery_state: 'delivered' }
+            : message,
+        ),
+      }));
+      setChats(prev =>
+        sortChatsByUpdatedAt(
+          prev.map(chat =>
+            chat.id === selectedChatID
+              ? { ...chat, last_message: text, updated_at: confirmedTime, unread: false, unread_count: 0 }
+              : chat,
+          ),
+        ),
+      );
     } catch (err) {
       setMessagesByChat(prev => ({
         ...prev,
         [selectedChatID]: (prev[selectedChatID] || []).filter(message => message.id !== optimisticID),
       }));
       setChats(prev =>
-        prev.map(chat =>
-          chat.id === selectedChatID
-            ? { ...chat, last_message: previousLastMessage, unread: false, unread_count: 0 }
-            : chat,
+        sortChatsByUpdatedAt(
+          prev.map(chat =>
+            chat.id === selectedChatID
+              ? {
+                  ...chat,
+                  last_message: previousLastMessage,
+                  updated_at: previousUpdatedAt,
+                  unread: false,
+                  unread_count: 0,
+                }
+              : chat,
+          ),
         ),
       );
       setInputValue(text);
@@ -451,6 +502,7 @@ export default function Chats() {
                   <span className="platform-chip">Чатов: {chats.length}</span>
                   <span className="platform-chip">Непрочитано: {chats.reduce((sum, item) => sum + item.unread_count, 0)}</span>
                 </ToolbarRow>
+                {activeAccountName && <div className="platform-account-badge">{activeAccountName}</div>}
               </div>
 
               <div className="platform-chat-scroll">
@@ -465,10 +517,11 @@ export default function Chats() {
                       <span className="text-[11px] text-[var(--pf-text-dim)]">{formatTime(chat.updated_at)}</span>
                     </div>
                     <p className="platform-chat-preview">{chat.last_message || ''}</p>
-                    <div className="platform-chat-meta">
-                      <span>{chat.accountName}</span>
-                      {chat.unread_count > 0 && <span className="platform-chip">{chat.unread_count}</span>}
-                    </div>
+                    {chat.unread_count > 0 && (
+                      <div className="platform-chat-meta">
+                        <span className="platform-chip">{chat.unread_count}</span>
+                      </div>
+                    )}
                   </button>
                 ))}
                 {filteredChats.length === 0 && chats.length === 0 && (
@@ -488,7 +541,7 @@ export default function Chats() {
                   <header className="platform-thread-head">
                     <div>
                       <div className="text-[14px] font-bold">{selectedChat.with_user || 'Пользователь'}</div>
-                      <div className="text-[12px] text-[var(--pf-text-dim)]">{selectedChat.accountName}</div>
+                      <div className="text-[12px] text-[var(--pf-text-dim)]">{activeAccountName}</div>
                     </div>
                   </header>
 
@@ -520,14 +573,21 @@ export default function Chats() {
                                 {getAvatarLabel(message.author_name || selectedChat.with_user)}
                               </div>
                             )}
-                            <article className="platform-message-bubble">
+                            <article className={`platform-message-bubble ${message.is_my_msg ? 'outgoing' : 'incoming'}`}>
                               {!message.is_my_msg && (
                                 <div className="mb-1 text-[11px] font-semibold text-[var(--pf-text-dim)]">
                                   {message.author_name || selectedChat.with_user || 'Собеседник'}
                                 </div>
                               )}
                               <p className="platform-message-text">{message.text}</p>
-                              <div className="platform-message-time">{formatTime(message.created_at)}</div>
+                              <div className="platform-message-time">
+                                {formatTime(message.created_at)}
+                                {message.is_my_msg && (
+                                  <span className="platform-message-status">
+                                    {message.delivery_state === 'delivered' ? ' ✓✓' : ' ✓'}
+                                  </span>
+                                )}
+                              </div>
                             </article>
                           </div>
                         ))
@@ -545,7 +605,7 @@ export default function Chats() {
                         onChange={event => setInputValue(event.target.value)}
                         onInput={event => resizeComposer(event.currentTarget)}
                         onKeyDown={event => {
-                          if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                          if (event.key === 'Enter' && !event.shiftKey) {
                             event.preventDefault();
                             sendMessage();
                           }
