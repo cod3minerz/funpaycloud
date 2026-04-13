@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { Loader2, SendHorizontal } from 'lucide-react';
+import { Check, CheckCheck, Loader2, SendHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { accountsApi, ApiAccount, ApiChat, ApiMessage, chatsApi, createAccountWebSocket } from '@/lib/api';
 import { sanitizeInput } from '@/lib/sanitize';
@@ -14,6 +14,16 @@ type ThreadMessage = ApiMessage & { delivery_state?: DeliveryState };
 
 function sortChatsByUpdatedAt(chats: ChatRow[]) {
   return [...chats].sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at));
+}
+
+function moveChatToTop(chats: ChatRow[], nodeID: string) {
+  const idx = chats.findIndex(chat => chat.node_id === nodeID);
+  if (idx > 0) {
+    const updated = [...chats];
+    const [chat] = updated.splice(idx, 1);
+    return [chat, ...updated];
+  }
+  return chats;
 }
 
 function formatTime(value?: string) {
@@ -189,7 +199,7 @@ export default function Chats() {
         let isOpenedChat = false;
 
         setChats(prev => {
-          const next = prev.map(row => {
+          const updated = prev.map(row => {
             if (row.node_id !== nodeID) {
               return row;
             }
@@ -211,7 +221,7 @@ export default function Chats() {
             return prev;
           }
 
-          return sortChatsByUpdatedAt(next);
+          return moveChatToTop(updated, nodeID);
         });
 
         if (!found || targetChatID === 0 || !isOpenedChat) return;
@@ -351,12 +361,13 @@ export default function Chats() {
 
     setMessagesByChat(prev => ({ ...prev, [selectedChatID]: [...(prev[selectedChatID] || []), optimistic] }));
     setChats(prev =>
-      sortChatsByUpdatedAt(
+      moveChatToTop(
         prev.map(chat =>
-          chat.id === selectedChatID
+          chat.node_id === selectedChat.node_id
             ? { ...chat, last_message: text, updated_at: now, unread: false, unread_count: 0 }
             : chat,
         ),
+        selectedChat.node_id,
       ),
     );
     setInputValue('');
@@ -381,12 +392,13 @@ export default function Chats() {
         ),
       }));
       setChats(prev =>
-        sortChatsByUpdatedAt(
+        moveChatToTop(
           prev.map(chat =>
-            chat.id === selectedChatID
+            chat.node_id === selectedChat.node_id
               ? { ...chat, last_message: text, updated_at: confirmedTime, unread: false, unread_count: 0 }
               : chat,
           ),
+          selectedChat.node_id,
         ),
       );
     } catch (err) {
@@ -583,8 +595,12 @@ export default function Chats() {
                               <div className="platform-message-time">
                                 {formatTime(message.created_at)}
                                 {message.is_my_msg && (
-                                  <span className="platform-message-status">
-                                    {message.delivery_state === 'delivered' ? ' ✓✓' : ' ✓'}
+                                  <span className="platform-message-status" aria-label={message.delivery_state === 'delivered' ? 'Доставлено' : 'Отправлено'}>
+                                    {message.delivery_state === 'delivered' ? (
+                                      <CheckCheck size={12} />
+                                    ) : (
+                                      <Check size={12} />
+                                    )}
                                   </span>
                                 )}
                               </div>

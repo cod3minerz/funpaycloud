@@ -1872,7 +1872,7 @@
   border-radius: 14px;
   padding: 10px 12px;
   border: 1px solid rgba(148, 163, 184, 0.24);
-  background: #2a2a2a;
+  background: #1e3a5f;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.01);
 }
 
@@ -1903,8 +1903,11 @@
 }
 
 .platform-message-status {
-  color: #c7d7ff;
+  color: #93c5fd;
   font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
 }
 
 .platform-thread-composer {
