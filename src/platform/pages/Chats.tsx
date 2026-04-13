@@ -140,7 +140,7 @@ export default function Chats() {
       const ws = createAccountWebSocket(activeAccountID, event => {
         if (event.type !== 'new_message') return;
 
-        const nodeID = String(event.data.chat_node_id ?? event.data.node_id ?? '');
+        const nodeID = String(event.data.node_id ?? event.data.chat_node_id ?? '');
         if (!nodeID) return;
 
         const text = String(event.data.text ?? '');
