@@ -31,7 +31,8 @@ export default function Chats() {
   const [search, setSearch] = useState('');
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
-  const closedRef = useRef(false);
+  const selectedChatIDRef = useRef<number | null>(null);
+  const refreshChatsRef = useRef<(accountID: number, preserveSelection: boolean) => Promise<void>>(async () => {});
   const [reloadKey, setReloadKey] = useState(0);
 
   const refreshChats = useCallback(async (accountID: number, preserveSelection: boolean) => {
@@ -53,12 +54,21 @@ export default function Chats() {
       return;
     }
 
-    if (preserveSelection && selectedChatID && next.some(chat => chat.id === selectedChatID)) {
+    const currentSelected = selectedChatIDRef.current;
+    if (preserveSelection && currentSelected && next.some(chat => chat.id === currentSelected)) {
       return;
     }
 
     setSelectedChatID(next[0].id);
-  }, [accounts, selectedChatID]);
+  }, [accounts]);
+
+  useEffect(() => {
+    selectedChatIDRef.current = selectedChatID;
+  }, [selectedChatID]);
+
+  useEffect(() => {
+    refreshChatsRef.current = refreshChats;
+  }, [refreshChats]);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,7 +121,6 @@ export default function Chats() {
 
     return () => {
       cancelled = true;
-      closedRef.current = true;
       if (reconnectTimer.current) {
         clearTimeout(reconnectTimer.current);
       }
@@ -123,10 +132,10 @@ export default function Chats() {
 
   useEffect(() => {
     if (!activeAccountID) return;
-    closedRef.current = false;
+    let cancelled = false;
 
     function connect(attempt = 0) {
-      if (closedRef.current || !activeAccountID) return;
+      if (cancelled || !activeAccountID) return;
 
       const ws = createAccountWebSocket(activeAccountID, event => {
         if (event.type !== 'new_message') return;
@@ -155,12 +164,12 @@ export default function Chats() {
               with_user: withUser || row.with_user,
               last_message: text,
               updated_at: created,
-              unread_count: row.id === selectedChatID ? 0 : row.unread_count + 1,
+              unread_count: row.id === selectedChatIDRef.current ? 0 : row.unread_count + 1,
             };
           });
 
           if (!found) {
-            void refreshChats(activeAccountID, true);
+            void refreshChatsRef.current(activeAccountID, true);
             return prev;
           }
 
@@ -188,7 +197,7 @@ export default function Chats() {
         if (socketRef.current === ws) {
           socketRef.current = null;
         }
-        if (closedRef.current) return;
+        if (cancelled) return;
         const backoff = Math.min(15000, 1000 * Math.pow(2, attempt)) + Math.floor(Math.random() * 300);
         reconnectTimer.current = setTimeout(() => connect(attempt + 1), backoff);
       };
@@ -209,7 +218,7 @@ export default function Chats() {
     connect();
 
     return () => {
-      closedRef.current = true;
+      cancelled = true;
       if (reconnectTimer.current) {
         clearTimeout(reconnectTimer.current);
         reconnectTimer.current = null;
@@ -219,7 +228,7 @@ export default function Chats() {
         socketRef.current = null;
       }
     };
-  }, [activeAccountID, refreshChats, selectedChatID]);
+  }, [activeAccountID]);
 
   useEffect(() => {
     if (!selectedChatID) return;
@@ -369,7 +378,7 @@ export default function Chats() {
                   </button>
                 ))}
                 {filteredChats.length === 0 && chats.length === 0 && (
-                  <EmptyState>Чаты загружаются... Если вы только что добавили аккаунт, подождите 30 секунд</EmptyState>
+                  <EmptyState>Чаты не найдены. Если вы только что добавили аккаунт, подождите 30 секунд и обновите страницу.</EmptyState>
                 )}
                 {filteredChats.length === 0 && chats.length > 0 && (
                   <EmptyState>Чаты не найдены по текущему фильтру.</EmptyState>
