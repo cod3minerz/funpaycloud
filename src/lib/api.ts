@@ -205,8 +205,8 @@ export type ApiMessage = {
 export const chatsApi = {
   history: (accountId: number | string) =>
     apiRequest<ApiChat[]>(`/api/accounts/${accountId}/chats/history`),
-  messages: (chatId: number | string, limit = 50) =>
-    apiRequest<ApiMessage[]>(`/api/chats/${chatId}/messages?limit=${limit}`),
+  messages: (chatId: number | string, limit = 50, beforeId = 0) =>
+    apiRequest<ApiMessage[]>(`/api/chats/${chatId}/messages?limit=${limit}&before_id=${beforeId}`),
   send: (accountId: number | string, chat_id: string, text: string) =>
     apiRequest(`/api/accounts/${accountId}/messages`, {
       method: 'POST',

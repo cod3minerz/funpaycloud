@@ -17,6 +17,12 @@ function formatTime(value?: string) {
   return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 }
 
+function getAvatarLabel(name?: string) {
+  const normalized = (name || '').trim();
+  if (!normalized) return '?';
+  return normalized[0].toUpperCase();
+}
+
 export default function Chats() {
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [activeAccountID, setActiveAccountID] = useState<number | null>(null);
@@ -26,6 +32,7 @@ export default function Chats() {
   const [selectedChatID, setSelectedChatID] = useState<number | null>(null);
   const [messagesByChat, setMessagesByChat] = useState<Record<number, ApiMessage[]>>({});
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [messagesError, setMessagesError] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState('');
@@ -34,6 +41,7 @@ export default function Chats() {
   const selectedChatIDRef = useRef<number | null>(null);
   const selectedChatNodeIDRef = useRef<string>('');
   const threadScrollRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const refreshChatsRef = useRef<(accountID: number, preserveSelection: boolean) => Promise<void>>(async () => {});
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -41,6 +49,14 @@ export default function Chats() {
     const node = threadScrollRef.current;
     if (!node) return;
     node.scrollTop = node.scrollHeight;
+  }, []);
+
+  const resizeComposer = useCallback((node?: HTMLTextAreaElement | null) => {
+    const target = node ?? composerRef.current;
+    if (!target) return;
+    target.style.height = '44px';
+    const nextHeight = Math.min(120, Math.max(44, target.scrollHeight));
+    target.style.height = `${nextHeight}px`;
   }, []);
 
   const refreshChats = useCallback(async (accountID: number, preserveSelection: boolean) => {
@@ -90,6 +106,7 @@ export default function Chats() {
       setLoading(true);
       setLoadError(null);
       setMessagesByChat({});
+      setMessagesError(null);
       setChats([]);
 
       try {
@@ -119,6 +136,7 @@ export default function Chats() {
 
         setChats(nextChats);
         setSelectedChatID(nextChats[0]?.id ?? null);
+        setMessagesError(null);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Ошибка загрузки чатов';
         setLoadError(message);
@@ -248,8 +266,13 @@ export default function Chats() {
   }, [activeAccountID, scrollThreadToBottom]);
 
   useEffect(() => {
-    if (!selectedChatID) return;
+    if (!selectedChatID) {
+      setMessagesError(null);
+      setLoadingMessages(false);
+      return;
+    }
     if (messagesByChat[selectedChatID]) {
+      setMessagesError(null);
       setChats(prev =>
         prev.map(chat => (chat.id === selectedChatID ? { ...chat, unread: false, unread_count: 0 } : chat)),
       );
@@ -258,6 +281,7 @@ export default function Chats() {
     }
 
     setLoadingMessages(true);
+    setMessagesError(null);
     chatsApi
       .messages(selectedChatID, 50)
       .then(rows => {
@@ -268,7 +292,11 @@ export default function Chats() {
         );
         requestAnimationFrame(scrollThreadToBottom);
       })
-      .catch(err => toast.error(err instanceof Error ? err.message : 'Ошибка загрузки сообщений'))
+      .catch(err => {
+        const message = err instanceof Error ? err.message : 'Не удалось загрузить сообщения';
+        setMessagesError(message);
+        toast.error(message);
+      })
       .finally(() => setLoadingMessages(false));
   }, [selectedChatID, messagesByChat, scrollThreadToBottom]);
 
@@ -287,32 +315,55 @@ export default function Chats() {
     if (!text) return;
 
     setSending(true);
+    const now = new Date().toISOString();
+    const previousLastMessage = selectedChat.last_message;
+    const optimisticID = Date.now();
+    const optimistic: ApiMessage = {
+      id: optimisticID,
+      chat_id: selectedChatID,
+      author_id: 0,
+      author_name: 'Вы',
+      text,
+      is_my_msg: true,
+      created_at: now,
+    };
+
+    setMessagesByChat(prev => ({ ...prev, [selectedChatID]: [...(prev[selectedChatID] || []), optimistic] }));
+    setChats(prev =>
+      prev
+        .map(chat =>
+          chat.id === selectedChatID
+            ? { ...chat, last_message: text, updated_at: now, unread: false, unread_count: 0 }
+            : chat,
+        )
+        .sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at)),
+    );
+    setInputValue('');
+    requestAnimationFrame(() => {
+      resizeComposer();
+      scrollThreadToBottom();
+    });
+
     try {
       await chatsApi.send(activeAccountID, selectedChat.node_id, text);
-      const now = new Date().toISOString();
-      const own: ApiMessage = {
-        id: Date.now(),
-        chat_id: selectedChatID,
-        author_id: 0,
-        author_name: 'Вы',
-        text,
-        is_my_msg: true,
-        created_at: now,
-      };
-      setMessagesByChat(prev => ({ ...prev, [selectedChatID]: [...(prev[selectedChatID] || []), own] }));
-      setChats(prev =>
-        prev
-          .map(chat =>
-            chat.id === selectedChatID
-              ? { ...chat, last_message: text, updated_at: now, unread: false, unread_count: 0 }
-              : chat,
-          )
-          .sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at)),
-      );
-      setInputValue('');
-      requestAnimationFrame(scrollThreadToBottom);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Ошибка отправки сообщения');
+      setMessagesByChat(prev => ({
+        ...prev,
+        [selectedChatID]: (prev[selectedChatID] || []).filter(message => message.id !== optimisticID),
+      }));
+      setChats(prev =>
+        prev.map(chat =>
+          chat.id === selectedChatID
+            ? { ...chat, last_message: previousLastMessage, unread: false, unread_count: 0 }
+            : chat,
+        ),
+      );
+      setInputValue(text);
+      requestAnimationFrame(() => {
+        resizeComposer();
+        composerRef.current?.focus();
+      });
+      toast.error(err instanceof Error ? err.message : 'Не удалось отправить сообщение');
     } finally {
       setSending(false);
     }
@@ -322,6 +373,7 @@ export default function Chats() {
     setActiveAccountID(nextAccountID);
     setSelectedChatID(null);
     setMessagesByChat({});
+    setMessagesError(null);
     setLoading(true);
     setLoadError(null);
     try {
@@ -337,9 +389,20 @@ export default function Chats() {
 
   function selectChat(chat: ChatRow) {
     setSelectedChatID(chat.id);
+    setMessagesError(null);
     setChats(prev =>
       prev.map(row => (row.id === chat.id ? { ...row, unread: false, unread_count: 0 } : row)),
     );
+  }
+
+  function retrySelectedMessages() {
+    if (!selectedChatID) return;
+    setMessagesByChat(prev => {
+      const next = { ...prev };
+      delete next[selectedChatID];
+      return next;
+    });
+    setMessagesError(null);
   }
 
   return (
@@ -437,6 +500,13 @@ export default function Chats() {
                           <div className="ml-auto h-14 w-[56%] animate-pulse rounded-xl bg-[rgba(110,139,255,0.18)]" />
                           <div className="h-14 w-[68%] animate-pulse rounded-xl bg-[rgba(148,163,184,0.15)]" />
                         </div>
+                      ) : messagesError ? (
+                        <div className="platform-chat-empty gap-3">
+                          <p>{messagesError || 'Не удалось загрузить сообщения'}</p>
+                          <button className="platform-btn-secondary" onClick={retrySelectedMessages}>
+                            Повторить
+                          </button>
+                        </div>
                       ) : messages.length === 0 ? (
                         <EmptyState>Нет сообщений. Начните диалог!</EmptyState>
                       ) : (
@@ -445,6 +515,11 @@ export default function Chats() {
                             key={`${message.id}-${message.created_at}`}
                             className={`platform-message-row ${message.is_my_msg ? 'outgoing' : 'incoming'}`}
                           >
+                            {!message.is_my_msg && (
+                              <div className="platform-message-avatar" aria-hidden="true">
+                                {getAvatarLabel(message.author_name || selectedChat.with_user)}
+                              </div>
+                            )}
                             <article className="platform-message-bubble">
                               {!message.is_my_msg && (
                                 <div className="mb-1 text-[11px] font-semibold text-[var(--pf-text-dim)]">
@@ -463,17 +538,19 @@ export default function Chats() {
                   <footer className="platform-thread-composer">
                     <div className="platform-composer-row">
                       <textarea
+                        ref={composerRef}
                         className="platform-textarea"
                         placeholder="Введите сообщение..."
                         value={inputValue}
                         onChange={event => setInputValue(event.target.value)}
+                        onInput={event => resizeComposer(event.currentTarget)}
                         onKeyDown={event => {
                           if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
                             event.preventDefault();
                             sendMessage();
                           }
                         }}
-                        rows={3}
+                        rows={1}
                       />
                       <button className="platform-btn-primary" onClick={sendMessage} disabled={sending || !inputValue.trim()}>
                         {sending ? <Loader2 size={15} className="animate-spin" /> : <SendHorizontal size={15} />}

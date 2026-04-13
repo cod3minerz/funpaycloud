@@ -1832,8 +1832,28 @@
   display: flex;
 }
 
+.platform-message-row.incoming {
+  align-items: flex-end;
+  gap: 8px;
+}
+
 .platform-message-row.outgoing {
   justify-content: flex-end;
+}
+
+.platform-message-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 800;
+  color: #e7f0ff;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: linear-gradient(135deg, rgba(40, 55, 78, 0.95), rgba(21, 31, 46, 0.95));
 }
 
 .platform-message-bubble {
@@ -1876,9 +1896,18 @@
 
 .platform-composer-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
-  align-items: center;
+  align-items: end;
+}
+
+.platform-thread-composer .platform-textarea {
+  resize: none;
+  min-height: 44px;
+  max-height: 120px;
+  overflow-y: auto;
+  padding-top: 11px;
+  padding-bottom: 11px;
 }
 
 .platform-chat-empty {
