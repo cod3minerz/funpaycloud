@@ -32,8 +32,16 @@ export default function Chats() {
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const selectedChatIDRef = useRef<number | null>(null);
+  const selectedChatNodeIDRef = useRef<string>('');
+  const threadScrollRef = useRef<HTMLDivElement | null>(null);
   const refreshChatsRef = useRef<(accountID: number, preserveSelection: boolean) => Promise<void>>(async () => {});
   const [reloadKey, setReloadKey] = useState(0);
+
+  const scrollThreadToBottom = useCallback(() => {
+    const node = threadScrollRef.current;
+    if (!node) return;
+    node.scrollTop = node.scrollHeight;
+  }, []);
 
   const refreshChats = useCallback(async (accountID: number, preserveSelection: boolean) => {
     const history = await chatsApi.history(accountID);
@@ -65,6 +73,11 @@ export default function Chats() {
   useEffect(() => {
     selectedChatIDRef.current = selectedChatID;
   }, [selectedChatID]);
+
+  useEffect(() => {
+    const active = chats.find(chat => chat.id === selectedChatID);
+    selectedChatNodeIDRef.current = active?.node_id ?? '';
+  }, [selectedChatID, chats]);
 
   useEffect(() => {
     refreshChatsRef.current = refreshChats;
@@ -147,10 +160,11 @@ export default function Chats() {
         const authorName = String(event.data.author_name ?? event.data.with_user ?? '');
         const withUser = String(event.data.with_user ?? '');
         const isMyMsg = Boolean(event.data.is_my_msg);
-        const created = new Date().toISOString();
+        const created = String(event.data.created_at ?? new Date().toISOString());
 
         let targetChatID = 0;
         let found = false;
+        let isOpenedChat = false;
 
         setChats(prev => {
           const next = prev.map(row => {
@@ -159,12 +173,14 @@ export default function Chats() {
             }
             found = true;
             targetChatID = row.id;
+            isOpenedChat = row.node_id === selectedChatNodeIDRef.current && row.id === selectedChatIDRef.current;
             return {
               ...row,
               with_user: withUser || row.with_user,
               last_message: text,
               updated_at: created,
-              unread_count: row.id === selectedChatIDRef.current ? 0 : row.unread_count + 1,
+              unread: isOpenedChat ? false : true,
+              unread_count: isOpenedChat ? 0 : row.unread_count + 1,
             };
           });
 
@@ -176,7 +192,7 @@ export default function Chats() {
           return next.sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at));
         });
 
-        if (!found || targetChatID === 0) return;
+        if (!found || targetChatID === 0 || !isOpenedChat) return;
 
         setMessagesByChat(prev => {
           const existing = prev[targetChatID] || [];
@@ -191,6 +207,7 @@ export default function Chats() {
           };
           return { ...prev, [targetChatID]: [...existing, next] };
         });
+        requestAnimationFrame(scrollThreadToBottom);
       });
 
       ws.onclose = () => {
@@ -228,12 +245,15 @@ export default function Chats() {
         socketRef.current = null;
       }
     };
-  }, [activeAccountID]);
+  }, [activeAccountID, scrollThreadToBottom]);
 
   useEffect(() => {
     if (!selectedChatID) return;
     if (messagesByChat[selectedChatID]) {
-      setChats(prev => prev.map(chat => (chat.id === selectedChatID ? { ...chat, unread_count: 0 } : chat)));
+      setChats(prev =>
+        prev.map(chat => (chat.id === selectedChatID ? { ...chat, unread: false, unread_count: 0 } : chat)),
+      );
+      requestAnimationFrame(scrollThreadToBottom);
       return;
     }
 
@@ -243,11 +263,14 @@ export default function Chats() {
       .then(rows => {
         const safeRows = Array.isArray(rows) ? rows : [];
         setMessagesByChat(prev => ({ ...prev, [selectedChatID]: safeRows }));
-        setChats(prev => prev.map(chat => (chat.id === selectedChatID ? { ...chat, unread_count: 0 } : chat)));
+        setChats(prev =>
+          prev.map(chat => (chat.id === selectedChatID ? { ...chat, unread: false, unread_count: 0 } : chat)),
+        );
+        requestAnimationFrame(scrollThreadToBottom);
       })
       .catch(err => toast.error(err instanceof Error ? err.message : 'Ошибка загрузки сообщений'))
       .finally(() => setLoadingMessages(false));
-  }, [selectedChatID, messagesByChat]);
+  }, [selectedChatID, messagesByChat, scrollThreadToBottom]);
 
   const filteredChats = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -259,13 +282,13 @@ export default function Chats() {
   const messages = selectedChatID ? messagesByChat[selectedChatID] || [] : [];
 
   async function sendMessage() {
-    if (!selectedChat || !selectedChatID) return;
+    if (!selectedChat || !selectedChatID || !activeAccountID) return;
     const text = sanitizeInput(inputValue.trim());
     if (!text) return;
 
     setSending(true);
     try {
-      await chatsApi.send(selectedChat.funpay_account_id, selectedChat.node_id, text);
+      await chatsApi.send(activeAccountID, selectedChat.node_id, text);
       const now = new Date().toISOString();
       const own: ApiMessage = {
         id: Date.now(),
@@ -281,12 +304,13 @@ export default function Chats() {
         prev
           .map(chat =>
             chat.id === selectedChatID
-              ? { ...chat, last_message: text, updated_at: now, unread_count: 0 }
+              ? { ...chat, last_message: text, updated_at: now, unread: false, unread_count: 0 }
               : chat,
           )
           .sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at)),
       );
       setInputValue('');
+      requestAnimationFrame(scrollThreadToBottom);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Ошибка отправки сообщения');
     } finally {
@@ -309,6 +333,13 @@ export default function Chats() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function selectChat(chat: ChatRow) {
+    setSelectedChatID(chat.id);
+    setChats(prev =>
+      prev.map(row => (row.id === chat.id ? { ...row, unread: false, unread_count: 0 } : row)),
+    );
   }
 
   return (
@@ -363,8 +394,8 @@ export default function Chats() {
                 {filteredChats.map(chat => (
                   <button
                     key={chat.id}
-                    className={`platform-chat-row ${chat.id === selectedChatID ? 'active' : ''}`}
-                    onClick={() => setSelectedChatID(chat.id)}
+                    className={`platform-chat-row ${chat.id === selectedChatID ? 'active' : ''} ${chat.unread_count > 0 && chat.id !== selectedChatID ? 'unread' : ''}`}
+                    onClick={() => selectChat(chat)}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <strong className="platform-chat-name">{chat.with_user || 'Пользователь'}</strong>
@@ -399,11 +430,15 @@ export default function Chats() {
                   </header>
 
                   <div className="platform-thread-messages">
-                    <div className="platform-thread-messages-scroll">
+                    <div ref={threadScrollRef} className="platform-thread-messages-scroll">
                       {loadingMessages ? (
-                        <div className="flex items-center justify-center py-10">
-                          <Loader2 size={24} className="animate-spin text-[var(--pf-accent)]" />
+                        <div className="space-y-3 py-2">
+                          <div className="h-14 w-[72%] animate-pulse rounded-xl bg-[rgba(148,163,184,0.15)]" />
+                          <div className="ml-auto h-14 w-[56%] animate-pulse rounded-xl bg-[rgba(110,139,255,0.18)]" />
+                          <div className="h-14 w-[68%] animate-pulse rounded-xl bg-[rgba(148,163,184,0.15)]" />
                         </div>
+                      ) : messages.length === 0 ? (
+                        <EmptyState>Нет сообщений. Начните диалог!</EmptyState>
                       ) : (
                         messages.map(message => (
                           <div
@@ -411,6 +446,11 @@ export default function Chats() {
                             className={`platform-message-row ${message.is_my_msg ? 'outgoing' : 'incoming'}`}
                           >
                             <article className="platform-message-bubble">
+                              {!message.is_my_msg && (
+                                <div className="mb-1 text-[11px] font-semibold text-[var(--pf-text-dim)]">
+                                  {message.author_name || selectedChat.with_user || 'Собеседник'}
+                                </div>
+                              )}
                               <p className="platform-message-text">{message.text}</p>
                               <div className="platform-message-time">{formatTime(message.created_at)}</div>
                             </article>
@@ -422,17 +462,18 @@ export default function Chats() {
 
                   <footer className="platform-thread-composer">
                     <div className="platform-composer-row">
-                      <input
-                        className="platform-input"
+                      <textarea
+                        className="platform-textarea"
                         placeholder="Введите сообщение..."
                         value={inputValue}
                         onChange={event => setInputValue(event.target.value)}
                         onKeyDown={event => {
-                          if (event.key === 'Enter' && !event.shiftKey) {
+                          if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
                             event.preventDefault();
                             sendMessage();
                           }
                         }}
+                        rows={3}
                       />
                       <button className="platform-btn-primary" onClick={sendMessage} disabled={sending || !inputValue.trim()}>
                         {sending ? <Loader2 size={15} className="animate-spin" /> : <SendHorizontal size={15} />}

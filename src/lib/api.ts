@@ -183,7 +183,7 @@ export const lotsApi = {
 
 export type ApiChat = {
   id: number;
-  funpay_account_id: number;
+  funpay_account_id?: number;
   node_id: string;
   with_user: string;
   last_message: string;
@@ -194,8 +194,8 @@ export type ApiChat = {
 
 export type ApiMessage = {
   id: number;
-  chat_id: number;
-  author_id: number;
+  chat_id?: number;
+  author_id?: number;
   author_name: string;
   text: string;
   is_my_msg: boolean;
@@ -207,7 +207,7 @@ export const chatsApi = {
     apiRequest<ApiChat[]>(`/api/accounts/${accountId}/chats/history`),
   messages: (chatId: number | string, limit = 50) =>
     apiRequest<ApiMessage[]>(`/api/chats/${chatId}/messages?limit=${limit}`),
-  send: (accountId: number | string, chat_id: number | string, text: string) =>
+  send: (accountId: number | string, chat_id: string, text: string) =>
     apiRequest(`/api/accounts/${accountId}/messages`, {
       method: 'POST',
       body: JSON.stringify({ chat_id, text }),
