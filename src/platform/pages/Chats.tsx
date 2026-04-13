@@ -39,6 +39,13 @@ function getAvatarLabel(name?: string) {
   return normalized[0].toUpperCase();
 }
 
+function toThreadMessages(rows: ApiMessage[]): ThreadMessage[] {
+  return rows.map(msg => ({
+    ...msg,
+    delivery_state: msg.is_my_msg ? 'delivered' : undefined,
+  }));
+}
+
 export default function Chats() {
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [activeAccountID, setActiveAccountID] = useState<number | null>(null);
@@ -46,20 +53,32 @@ export default function Chats() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedChatID, setSelectedChatID] = useState<number | null>(null);
-  const [messagesByChat, setMessagesByChat] = useState<Record<number, ThreadMessage[]>>({});
+  const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [messagesError, setMessagesError] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState('');
-  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
-  const selectedChatIDRef = useRef<number | null>(null);
-  const selectedChatNodeIDRef = useRef<string>('');
   const threadScrollRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
-  const refreshChatsRef = useRef<(accountID: number, preserveSelection: boolean) => Promise<void>>(async () => {});
-  const [reloadKey, setReloadKey] = useState(0);
+  const selectedChatRef = useRef<ChatRow | null>(null);
+  const messageLoadSeqRef = useRef(0);
+  const loadChatsRef = useRef<(accountID: number, preserveSelection: boolean) => Promise<number | null>>(
+    async () => null,
+  );
+
+  const selectedChat = useMemo(
+    () => chats.find(chat => chat.id === selectedChatID) || null,
+    [chats, selectedChatID],
+  );
+
+  useEffect(() => {
+    selectedChatRef.current = selectedChat;
+  }, [selectedChat]);
 
   const scrollThreadToBottom = useCallback(() => {
     const node = threadScrollRef.current;
@@ -75,54 +94,97 @@ export default function Chats() {
     target.style.height = `${nextHeight}px`;
   }, []);
 
-  const refreshChats = useCallback(async (accountID: number, preserveSelection: boolean) => {
-    const history = await chatsApi.history(accountID);
-    const safe = Array.isArray(history) ? history : [];
+  const loadMessages = useCallback(
+    async (chatID: number, options?: { silent?: boolean }) => {
+      const requestID = ++messageLoadSeqRef.current;
+      const silent = Boolean(options?.silent);
 
-    const next: ChatRow[] = sortChatsByUpdatedAt(
-      safe
-      .map(chat => ({
+      if (!silent) {
+        setMessages([]);
+      }
+      setMessagesError(null);
+      setLoadingMessages(true);
+
+      try {
+        const rows = await chatsApi.messages(chatID, 50);
+        if (requestID !== messageLoadSeqRef.current) return;
+
+        const safeRows = Array.isArray(rows) ? rows : [];
+        setMessages(toThreadMessages(safeRows));
+        setChats(prev =>
+          prev.map(chat => (chat.id === chatID ? { ...chat, unread: false, unread_count: 0 } : chat)),
+        );
+        requestAnimationFrame(scrollThreadToBottom);
+      } catch (err) {
+        if (requestID !== messageLoadSeqRef.current) return;
+        const message = err instanceof Error ? err.message : 'Не удалось загрузить сообщения';
+        setMessagesError(message);
+        if (!silent) {
+          setMessages([]);
+          toast.error(message);
+        }
+      } finally {
+        if (requestID === messageLoadSeqRef.current) {
+          setLoadingMessages(false);
+        }
+      }
+    },
+    [scrollThreadToBottom],
+  );
+
+  const loadChats = useCallback(async (accountID: number, preserveSelection: boolean) => {
+    const history = await chatsApi.history(accountID);
+    const safeHistory = Array.isArray(history) ? history : [];
+
+    const nextChats = sortChatsByUpdatedAt(
+      safeHistory.map(chat => ({
         ...chat,
         unread_count: chat.unread ? 1 : 0,
       })),
     );
 
-    setChats(next);
-    if (next.length === 0) {
+    setChats(nextChats);
+    if (nextChats.length === 0) {
       setSelectedChatID(null);
-      return;
+      return null;
     }
 
-    const currentSelected = selectedChatIDRef.current;
-    if (preserveSelection && currentSelected && next.some(chat => chat.id === currentSelected)) {
-      return;
-    }
-
-    setSelectedChatID(next[0].id);
+    const currentSelected = selectedChatRef.current?.id;
+    const nextSelected =
+      preserveSelection && currentSelected && nextChats.some(chat => chat.id === currentSelected)
+        ? currentSelected
+        : nextChats[0].id;
+    setSelectedChatID(nextSelected);
+    return nextSelected;
   }, []);
 
   useEffect(() => {
-    selectedChatIDRef.current = selectedChatID;
-  }, [selectedChatID]);
+    loadChatsRef.current = loadChats;
+  }, [loadChats]);
 
-  useEffect(() => {
-    const active = chats.find(chat => chat.id === selectedChatID);
-    selectedChatNodeIDRef.current = active?.node_id ?? '';
-  }, [selectedChatID, chats]);
-
-  useEffect(() => {
-    refreshChatsRef.current = refreshChats;
-  }, [refreshChats]);
+  const handleChatSelect = useCallback(
+    async (chat: ChatRow) => {
+      setSelectedChatID(chat.id);
+      setMessagesError(null);
+      setChats(prev =>
+        prev.map(row => (row.id === chat.id ? { ...row, unread: false, unread_count: 0 } : row)),
+      );
+      await loadMessages(chat.id);
+      requestAnimationFrame(scrollThreadToBottom);
+    },
+    [loadMessages, scrollThreadToBottom],
+  );
 
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
+    async function bootstrap() {
       setLoading(true);
       setLoadError(null);
-      setMessagesByChat({});
       setMessagesError(null);
+      setMessages([]);
       setChats([]);
+      setSelectedChatID(null);
 
       try {
         const rows = await accountsApi.list();
@@ -133,28 +195,23 @@ export default function Chats() {
 
         if (safeAccounts.length === 0) {
           setActiveAccountID(null);
-          setSelectedChatID(null);
           return;
         }
 
         const firstAccountID = safeAccounts[0].id;
         setActiveAccountID(firstAccountID);
-
-        const history = await chatsApi.history(firstAccountID);
+        const nextSelected = await loadChats(firstAccountID, false);
         if (cancelled) return;
 
-        const safeHistory = Array.isArray(history) ? history : [];
-        const nextChats: ChatRow[] = sortChatsByUpdatedAt(
-          safeHistory.map(chat => ({ ...chat, unread_count: chat.unread ? 1 : 0 })),
-        );
-
-        setChats(nextChats);
-        setSelectedChatID(nextChats[0]?.id ?? null);
-        setMessagesError(null);
+        if (nextSelected) {
+          await loadMessages(nextSelected);
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Ошибка загрузки чатов';
-        setLoadError(message);
-        toast.error(message);
+        if (!cancelled) {
+          setLoadError(message);
+          toast.error(message);
+        }
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -162,25 +219,49 @@ export default function Chats() {
       }
     }
 
-    load();
-
+    bootstrap();
     return () => {
       cancelled = true;
-      if (reconnectTimer.current) {
-        clearTimeout(reconnectTimer.current);
-      }
-      if (socketRef.current) {
-        socketRef.current.close();
-      }
     };
-  }, [reloadKey]);
+  }, [reloadKey, loadChats, loadMessages]);
 
   useEffect(() => {
     if (!activeAccountID) return;
+
+    const onVisible = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const currentSelected = selectedChatRef.current?.id ?? null;
+        const nextSelected = await loadChatsRef.current(activeAccountID, true);
+        const target = currentSelected && nextSelected === currentSelected ? currentSelected : nextSelected;
+        if (target) {
+          await loadMessages(target, { silent: true });
+        }
+      } catch {
+        // no-op
+      }
+    };
+
+    const onFocus = () => {
+      void onVisible();
+    };
+
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [activeAccountID, loadMessages]);
+
+  useEffect(() => {
+    if (!activeAccountID) return;
+
     let cancelled = false;
 
-    function connect(attempt = 0) {
-      if (cancelled || !activeAccountID) return;
+    const connect = (attempt = 0) => {
+      if (cancelled) return;
 
       const ws = createAccountWebSocket(activeAccountID, event => {
         if (event.type !== 'new_message' && event.type !== 'message_sent') return;
@@ -191,143 +272,119 @@ export default function Chats() {
         const text = String(event.data.text ?? '');
         const authorName = String(event.data.author_name ?? event.data.with_user ?? '');
         const withUser = String(event.data.with_user ?? '');
+        const createdAt = String(event.data.created_at ?? new Date().toISOString());
         const isMyMsg = Boolean(event.data.is_my_msg);
-        const created = String(event.data.created_at ?? new Date().toISOString());
 
-        let targetChatID = Number(event.data.chat_id ?? 0);
         let found = false;
-        let isOpenedChat = false;
+        let isOpened = false;
+        let targetChatID = 0;
 
         setChats(prev => {
-          const updated = prev.map(row => {
-            if (row.node_id !== nodeID) {
-              return row;
-            }
+          const updated = prev.map(chat => {
+            if (chat.node_id !== nodeID) return chat;
+
             found = true;
-            targetChatID = row.id;
-            isOpenedChat = row.node_id === selectedChatNodeIDRef.current && row.id === selectedChatIDRef.current;
+            targetChatID = chat.id;
+            isOpened = selectedChatRef.current?.node_id === nodeID;
+
+            const unread = isOpened ? false : !isMyMsg;
             return {
-              ...row,
-              with_user: withUser || row.with_user,
+              ...chat,
+              with_user: withUser || chat.with_user,
               last_message: text,
-              updated_at: created,
-              unread: isOpenedChat ? false : !isMyMsg,
-              unread_count: isOpenedChat || isMyMsg ? 0 : row.unread_count + 1,
+              updated_at: createdAt,
+              unread,
+              unread_count: unread ? chat.unread_count + 1 : 0,
             };
           });
 
           if (!found) {
-            void refreshChatsRef.current(activeAccountID, true);
+            void loadChatsRef.current(activeAccountID, true);
             return prev;
           }
-
           return moveChatToTop(updated, nodeID);
         });
 
-        if (!found || targetChatID === 0 || !isOpenedChat) return;
+        if (!found || !isOpened || targetChatID === 0) return;
 
-        setMessagesByChat(prev => {
-          const existing = prev[targetChatID] || [];
-          const hasDuplicate = existing.some(msg =>
-            msg.is_my_msg === isMyMsg && msg.text === text && msg.created_at === created,
-          );
-          if (hasDuplicate) {
-            return prev;
-          }
-          const next: ThreadMessage = {
+        const parsedCreatedAt = new Date(createdAt).getTime();
+        setMessages(prev => {
+          const duplicate = prev.some(message => {
+            if (message.is_my_msg !== isMyMsg || message.text !== text) return false;
+            if (message.created_at === createdAt) return true;
+
+            const currentTime = new Date(message.created_at).getTime();
+            if (!Number.isNaN(parsedCreatedAt) && !Number.isNaN(currentTime)) {
+              return Math.abs(currentTime - parsedCreatedAt) <= 5000;
+            }
+            return false;
+          });
+          if (duplicate) return prev;
+
+          const nextMessage: ThreadMessage = {
             id: Number(event.data.id ?? Date.now()),
             chat_id: targetChatID,
-            author_id: 0,
+            author_id: Number(event.data.author_id ?? 0),
             author_name: authorName,
             text,
             is_my_msg: isMyMsg,
-            created_at: created,
+            created_at: createdAt,
             delivery_state: isMyMsg ? 'delivered' : undefined,
           };
-          return { ...prev, [targetChatID]: [...existing, next] };
+          return [...prev, nextMessage];
         });
+
         requestAnimationFrame(scrollThreadToBottom);
       });
 
+      ws.onerror = () => ws.close();
       ws.onclose = () => {
         if (socketRef.current === ws) {
           socketRef.current = null;
         }
         if (cancelled) return;
-        const backoff = Math.min(15000, 1000 * Math.pow(2, attempt)) + Math.floor(Math.random() * 300);
-        reconnectTimer.current = setTimeout(() => connect(attempt + 1), backoff);
+
+        const backoff = Math.min(15000, 3000 * Math.pow(2, attempt));
+        const jitter = Math.floor(Math.random() * 400);
+        reconnectTimerRef.current = setTimeout(() => connect(attempt + 1), backoff + jitter);
       };
 
-      ws.onerror = () => ws.close();
       socketRef.current = ws;
-    }
+    };
 
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
     if (socketRef.current) {
       socketRef.current.close();
       socketRef.current = null;
-    }
-    if (reconnectTimer.current) {
-      clearTimeout(reconnectTimer.current);
-      reconnectTimer.current = null;
     }
 
     connect();
 
     return () => {
       cancelled = true;
-      if (reconnectTimer.current) {
-        clearTimeout(reconnectTimer.current);
-        reconnectTimer.current = null;
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
       }
       if (socketRef.current) {
         socketRef.current.close();
         socketRef.current = null;
       }
     };
-  }, [activeAccountID, scrollThreadToBottom]);
-
-  useEffect(() => {
-    if (!selectedChatID) {
-      setMessagesError(null);
-      setLoadingMessages(false);
-      return;
-    }
-    if (messagesByChat[selectedChatID]) {
-      setMessagesError(null);
-      setChats(prev =>
-        prev.map(chat => (chat.id === selectedChatID ? { ...chat, unread: false, unread_count: 0 } : chat)),
-      );
-      requestAnimationFrame(scrollThreadToBottom);
-      return;
-    }
-
-    setLoadingMessages(true);
-    setMessagesError(null);
-    chatsApi
-      .messages(selectedChatID, 50)
-      .then(rows => {
-        const safeRows: ThreadMessage[] = (Array.isArray(rows) ? rows : []).map(msg => ({
-          ...msg,
-          delivery_state: msg.is_my_msg ? 'delivered' : undefined,
-        }));
-        setMessagesByChat(prev => ({ ...prev, [selectedChatID]: safeRows }));
-        setChats(prev =>
-          prev.map(chat => (chat.id === selectedChatID ? { ...chat, unread: false, unread_count: 0 } : chat)),
-        );
-        requestAnimationFrame(scrollThreadToBottom);
-      })
-      .catch(err => {
-        const message = err instanceof Error ? err.message : 'Не удалось загрузить сообщения';
-        setMessagesError(message);
-        toast.error(message);
-      })
-      .finally(() => setLoadingMessages(false));
-  }, [selectedChatID, messagesByChat, scrollThreadToBottom]);
+  }, [activeAccountID]);
 
   const filteredChats = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return chats;
-    return chats.filter(row => row.with_user.toLowerCase().includes(q) || row.last_message.toLowerCase().includes(q));
+    const query = search.trim().toLowerCase();
+    if (!query) return chats;
+
+    return chats.filter(chat => {
+      const user = (chat.with_user || '').toLowerCase();
+      const preview = (chat.last_message || '').toLowerCase();
+      return user.includes(query) || preview.includes(query);
+    });
   }, [chats, search]);
 
   const activeAccountName = useMemo(() => {
@@ -335,41 +392,62 @@ export default function Chats() {
     return accounts.find(account => account.id === activeAccountID)?.username || `ID ${activeAccountID}`;
   }, [accounts, activeAccountID]);
 
-  const selectedChat = chats.find(chat => chat.id === selectedChatID) || null;
-  const messages = selectedChatID ? messagesByChat[selectedChatID] || [] : [];
+  async function switchAccount(nextAccountID: number) {
+    setActiveAccountID(nextAccountID);
+    setSelectedChatID(null);
+    setMessages([]);
+    setMessagesError(null);
+    setLoading(true);
+    setLoadError(null);
+
+    try {
+      const nextSelected = await loadChats(nextAccountID, false);
+      if (nextSelected) {
+        await loadMessages(nextSelected);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Ошибка загрузки чатов';
+      setLoadError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function sendMessage() {
-    if (!selectedChat || !selectedChatID || !activeAccountID) return;
+    if (!selectedChat || !activeAccountID) return;
+
     const text = sanitizeInput(inputValue.trim());
-    if (!text) return;
+    if (!text || sending) return;
 
     setSending(true);
-    const now = new Date().toISOString();
+    const nowISO = new Date().toISOString();
+    const optimisticID = Date.now();
     const previousLastMessage = selectedChat.last_message;
     const previousUpdatedAt = selectedChat.updated_at;
-    const optimisticID = Date.now();
     const optimistic: ThreadMessage = {
       id: optimisticID,
-      chat_id: selectedChatID,
+      chat_id: selectedChat.id,
       author_id: 0,
       author_name: 'Вы',
       text,
       is_my_msg: true,
-      created_at: now,
+      created_at: nowISO,
       delivery_state: 'sent',
     };
 
-    setMessagesByChat(prev => ({ ...prev, [selectedChatID]: [...(prev[selectedChatID] || []), optimistic] }));
+    setMessages(prev => [...prev, optimistic]);
     setChats(prev =>
       moveChatToTop(
         prev.map(chat =>
           chat.node_id === selectedChat.node_id
-            ? { ...chat, last_message: text, updated_at: now, unread: false, unread_count: 0 }
+            ? { ...chat, last_message: text, updated_at: nowISO, unread: false, unread_count: 0 }
             : chat,
         ),
         selectedChat.node_id,
       ),
     );
+
     setInputValue('');
     requestAnimationFrame(() => {
       resizeComposer();
@@ -377,20 +455,21 @@ export default function Chats() {
     });
 
     try {
-      const response = await chatsApi.send(activeAccountID, selectedChat.node_id, text) as {
+      const response = (await chatsApi.send(activeAccountID, selectedChat.node_id, text)) as {
         id?: number;
         created_at?: string;
       };
-      const confirmedTime = response?.created_at || now;
       const confirmedID = response?.id ?? optimisticID;
-      setMessagesByChat(prev => ({
-        ...prev,
-        [selectedChatID]: (prev[selectedChatID] || []).map(message =>
+      const confirmedTime = response?.created_at || nowISO;
+
+      setMessages(prev =>
+        prev.map(message =>
           message.id === optimisticID
             ? { ...message, id: confirmedID, created_at: confirmedTime, delivery_state: 'delivered' }
             : message,
         ),
-      }));
+      );
+
       setChats(prev =>
         moveChatToTop(
           prev.map(chat =>
@@ -402,14 +481,11 @@ export default function Chats() {
         ),
       );
     } catch (err) {
-      setMessagesByChat(prev => ({
-        ...prev,
-        [selectedChatID]: (prev[selectedChatID] || []).filter(message => message.id !== optimisticID),
-      }));
+      setMessages(prev => prev.filter(message => message.id !== optimisticID));
       setChats(prev =>
         sortChatsByUpdatedAt(
           prev.map(chat =>
-            chat.id === selectedChatID
+            chat.id === selectedChat.id
               ? {
                   ...chat,
                   last_message: previousLastMessage,
@@ -432,40 +508,9 @@ export default function Chats() {
     }
   }
 
-  async function switchAccount(nextAccountID: number) {
-    setActiveAccountID(nextAccountID);
-    setSelectedChatID(null);
-    setMessagesByChat({});
-    setMessagesError(null);
-    setLoading(true);
-    setLoadError(null);
-    try {
-      await refreshChats(nextAccountID, false);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Ошибка загрузки чатов';
-      setLoadError(message);
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function selectChat(chat: ChatRow) {
-    setSelectedChatID(chat.id);
-    setMessagesError(null);
-    setChats(prev =>
-      prev.map(row => (row.id === chat.id ? { ...row, unread: false, unread_count: 0 } : row)),
-    );
-  }
-
-  function retrySelectedMessages() {
-    if (!selectedChatID) return;
-    setMessagesByChat(prev => {
-      const next = { ...prev };
-      delete next[selectedChatID];
-      return next;
-    });
-    setMessagesError(null);
+  async function retrySelectedMessages() {
+    if (!selectedChat) return;
+    await loadMessages(selectedChat.id);
   }
 
   return (
@@ -482,10 +527,7 @@ export default function Chats() {
           </div>
         ) : loadError ? (
           <SectionCard>
-            <RequestErrorState
-              message={loadError}
-              onRetry={() => setReloadKey(prev => prev + 1)}
-            />
+            <RequestErrorState message={loadError} onRetry={() => setReloadKey(prev => prev + 1)} />
           </SectionCard>
         ) : (
           <section className="platform-chat-shell">
@@ -521,8 +563,10 @@ export default function Chats() {
                 {filteredChats.map(chat => (
                   <button
                     key={chat.id}
-                    className={`platform-chat-row ${chat.id === selectedChatID ? 'active' : ''} ${chat.unread_count > 0 && chat.id !== selectedChatID ? 'unread' : ''}`}
-                    onClick={() => selectChat(chat)}
+                    className={`platform-chat-row ${chat.id === selectedChatID ? 'active' : ''} ${
+                      chat.unread_count > 0 && chat.id !== selectedChatID ? 'unread' : ''
+                    }`}
+                    onClick={() => void handleChatSelect(chat)}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <strong className="platform-chat-name">{chat.with_user || 'Пользователь'}</strong>
@@ -568,12 +612,12 @@ export default function Chats() {
                       ) : messagesError ? (
                         <div className="platform-chat-empty gap-3">
                           <p>{messagesError || 'Не удалось загрузить сообщения'}</p>
-                          <button className="platform-btn-secondary" onClick={retrySelectedMessages}>
+                          <button className="platform-btn-secondary" onClick={() => void retrySelectedMessages()}>
                             Повторить
                           </button>
                         </div>
                       ) : messages.length === 0 ? (
-                        <EmptyState>Нет сообщений. Начните диалог!</EmptyState>
+                        <EmptyState>Нет сообщений. Напишите первым!</EmptyState>
                       ) : (
                         messages.map(message => (
                           <div
@@ -595,12 +639,11 @@ export default function Chats() {
                               <div className="platform-message-time">
                                 {formatTime(message.created_at)}
                                 {message.is_my_msg && (
-                                  <span className="platform-message-status" aria-label={message.delivery_state === 'delivered' ? 'Доставлено' : 'Отправлено'}>
-                                    {message.delivery_state === 'delivered' ? (
-                                      <CheckCheck size={12} />
-                                    ) : (
-                                      <Check size={12} />
-                                    )}
+                                  <span
+                                    className="platform-message-status"
+                                    aria-label={message.delivery_state === 'delivered' ? 'Доставлено' : 'Отправлено'}
+                                  >
+                                    {message.delivery_state === 'delivered' ? <CheckCheck size={12} /> : <Check size={12} />}
                                   </span>
                                 )}
                               </div>
@@ -623,12 +666,12 @@ export default function Chats() {
                         onKeyDown={event => {
                           if (event.key === 'Enter' && !event.shiftKey) {
                             event.preventDefault();
-                            sendMessage();
+                            void sendMessage();
                           }
                         }}
                         rows={1}
                       />
-                      <button className="platform-btn-primary" onClick={sendMessage} disabled={sending || !inputValue.trim()}>
+                      <button className="platform-btn-primary" onClick={() => void sendMessage()} disabled={sending || !inputValue.trim()}>
                         {sending ? <Loader2 size={15} className="animate-spin" /> : <SendHorizontal size={15} />}
                       </button>
                     </div>
