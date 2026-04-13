@@ -195,10 +195,21 @@ export type ApiChat = {
 export type ApiMessage = {
   id: number;
   chat_id?: number;
+  temp_id?: number;
+  funpay_message_id?: number;
   author_id?: number;
   author_name: string;
   text: string;
   is_my_msg: boolean;
+  status?: 'pending' | 'delivered' | 'failed';
+  created_at: string;
+};
+
+export type SendMessageResponse = {
+  temp_id: number;
+  text: string;
+  is_my_msg: boolean;
+  status: 'pending' | 'delivered' | 'failed';
   created_at: string;
 };
 
@@ -208,7 +219,7 @@ export const chatsApi = {
   messages: (chatId: number | string, limit = 50, beforeId = 0) =>
     apiRequest<ApiMessage[]>(`/api/chats/${chatId}/messages?limit=${limit}&before_id=${beforeId}`),
   send: (accountId: number | string, chat_id: string, text: string) =>
-    apiRequest(`/api/accounts/${accountId}/messages`, {
+    apiRequest<SendMessageResponse>(`/api/accounts/${accountId}/messages`, {
       method: 'POST',
       body: JSON.stringify({ chat_id, text }),
     }),

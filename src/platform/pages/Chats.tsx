@@ -4,13 +4,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'motion/react';
 import { Check, CheckCheck, Loader2, SendHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
-import { accountsApi, ApiAccount, ApiChat, ApiMessage, chatsApi, createAccountWebSocket } from '@/lib/api';
+import { accountsApi, ApiAccount, ApiChat, ApiMessage, chatsApi, createAccountWebSocket, SendMessageResponse } from '@/lib/api';
 import { sanitizeInput } from '@/lib/sanitize';
 import { EmptyState, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard, ToolbarRow } from '@/platform/components/primitives';
 
 type ChatRow = ApiChat & { unread_count: number };
-type DeliveryState = 'sent' | 'delivered';
-type ThreadMessage = ApiMessage & { delivery_state?: DeliveryState };
+type ThreadMessage = ApiMessage;
 
 function sortChatsByUpdatedAt(chats: ChatRow[]) {
   return [...chats].sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at));
@@ -42,7 +41,7 @@ function getAvatarLabel(name?: string) {
 function toThreadMessages(rows: ApiMessage[]): ThreadMessage[] {
   return rows.map(msg => ({
     ...msg,
-    delivery_state: msg.is_my_msg ? 'delivered' : undefined,
+    status: msg.status || (msg.is_my_msg ? 'delivered' : undefined),
   }));
 }
 
@@ -203,9 +202,6 @@ export default function Chats() {
         const nextSelected = await loadChats(firstAccountID, false);
         if (cancelled) return;
 
-        if (nextSelected) {
-          await loadMessages(nextSelected);
-        }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Ошибка загрузки чатов';
         if (!cancelled) {
@@ -264,6 +260,27 @@ export default function Chats() {
       if (cancelled) return;
 
       const ws = createAccountWebSocket(activeAccountID, event => {
+        if (event.type === 'message_confirmed') {
+          const tempID = Number(event.data.temp_id ?? 0);
+          const realID = Number(event.data.real_funpay_message_id ?? 0);
+          if (!tempID) return;
+
+          setMessages(prev =>
+            prev.map(message => {
+              const msgTempID = Number(message.temp_id ?? message.id);
+              if (msgTempID !== tempID) return message;
+              return {
+                ...message,
+                id: realID || message.id,
+                temp_id: tempID,
+                funpay_message_id: realID || message.funpay_message_id,
+                status: 'delivered',
+              };
+            }),
+          );
+          return;
+        }
+
         if (event.type !== 'new_message' && event.type !== 'message_sent') return;
 
         const nodeID = String(event.data.node_id ?? event.data.chat_node_id ?? '');
@@ -273,7 +290,9 @@ export default function Chats() {
         const authorName = String(event.data.author_name ?? event.data.with_user ?? '');
         const withUser = String(event.data.with_user ?? '');
         const createdAt = String(event.data.created_at ?? new Date().toISOString());
+        const tempID = Number(event.data.temp_id ?? 0);
         const isMyMsg = Boolean(event.data.is_my_msg);
+        const status = String(event.data.status ?? (isMyMsg ? 'pending' : 'delivered'));
 
         let found = false;
         let isOpened = false;
@@ -322,14 +341,16 @@ export default function Chats() {
           if (duplicate) return prev;
 
           const nextMessage: ThreadMessage = {
-            id: Number(event.data.id ?? Date.now()),
+            id: Number(event.data.id ?? (tempID || Date.now())),
+            temp_id: tempID || undefined,
+            funpay_message_id: Number(event.data.real_funpay_message_id ?? event.data.funpay_message_id ?? 0) || undefined,
             chat_id: targetChatID,
             author_id: Number(event.data.author_id ?? 0),
             author_name: authorName,
             text,
             is_my_msg: isMyMsg,
             created_at: createdAt,
-            delivery_state: isMyMsg ? 'delivered' : undefined,
+            status: isMyMsg ? (status as ThreadMessage['status']) : 'delivered',
           };
           return [...prev, nextMessage];
         });
@@ -337,6 +358,14 @@ export default function Chats() {
         requestAnimationFrame(scrollThreadToBottom);
       });
 
+      ws.onopen = () => {
+        void loadChatsRef.current(activeAccountID, true).then(nextSelected => {
+          const selectedID = selectedChatRef.current?.id ?? nextSelected;
+          if (selectedID) {
+            void loadMessages(selectedID, { silent: true });
+          }
+        });
+      };
       ws.onerror = () => ws.close();
       ws.onclose = () => {
         if (socketRef.current === ws) {
@@ -374,7 +403,7 @@ export default function Chats() {
         socketRef.current = null;
       }
     };
-  }, [activeAccountID]);
+  }, [activeAccountID, loadMessages]);
 
   const filteredChats = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -401,10 +430,7 @@ export default function Chats() {
     setLoadError(null);
 
     try {
-      const nextSelected = await loadChats(nextAccountID, false);
-      if (nextSelected) {
-        await loadMessages(nextSelected);
-      }
+      await loadChats(nextAccountID, false);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Ошибка загрузки чатов';
       setLoadError(message);
@@ -422,18 +448,19 @@ export default function Chats() {
 
     setSending(true);
     const nowISO = new Date().toISOString();
-    const optimisticID = Date.now();
+    const optimisticID = -Date.now();
     const previousLastMessage = selectedChat.last_message;
     const previousUpdatedAt = selectedChat.updated_at;
     const optimistic: ThreadMessage = {
       id: optimisticID,
+      temp_id: optimisticID,
       chat_id: selectedChat.id,
       author_id: 0,
       author_name: 'Вы',
       text,
       is_my_msg: true,
       created_at: nowISO,
-      delivery_state: 'sent',
+      status: 'pending',
     };
 
     setMessages(prev => [...prev, optimistic]);
@@ -455,17 +482,20 @@ export default function Chats() {
     });
 
     try {
-      const response = (await chatsApi.send(activeAccountID, selectedChat.node_id, text)) as {
-        id?: number;
-        created_at?: string;
-      };
-      const confirmedID = response?.id ?? optimisticID;
-      const confirmedTime = response?.created_at || nowISO;
+      const response = await chatsApi.send(activeAccountID, selectedChat.node_id, text);
+      const pendingTempID = response?.temp_id ?? optimisticID;
+      const pendingTime = response?.created_at || nowISO;
 
       setMessages(prev =>
         prev.map(message =>
           message.id === optimisticID
-            ? { ...message, id: confirmedID, created_at: confirmedTime, delivery_state: 'delivered' }
+            ? {
+                ...message,
+                id: pendingTempID,
+                temp_id: pendingTempID,
+                created_at: pendingTime,
+                status: (response?.status as SendMessageResponse['status']) || 'pending',
+              }
             : message,
         ),
       );
@@ -474,7 +504,7 @@ export default function Chats() {
         moveChatToTop(
           prev.map(chat =>
             chat.node_id === selectedChat.node_id
-              ? { ...chat, last_message: text, updated_at: confirmedTime, unread: false, unread_count: 0 }
+              ? { ...chat, last_message: text, updated_at: pendingTime, unread: false, unread_count: 0 }
               : chat,
           ),
           selectedChat.node_id,
@@ -621,7 +651,7 @@ export default function Chats() {
                       ) : (
                         messages.map(message => (
                           <div
-                            key={`${message.id}-${message.created_at}`}
+                            key={`${message.temp_id ?? message.id}-${message.created_at}`}
                             className={`platform-message-row ${message.is_my_msg ? 'outgoing' : 'incoming'}`}
                           >
                             {!message.is_my_msg && (
@@ -641,9 +671,13 @@ export default function Chats() {
                                 {message.is_my_msg && (
                                   <span
                                     className="platform-message-status"
-                                    aria-label={message.delivery_state === 'delivered' ? 'Доставлено' : 'Отправлено'}
+                                    aria-label={message.status === 'delivered' ? 'Доставлено' : 'Отправлено'}
                                   >
-                                    {message.delivery_state === 'delivered' ? <CheckCheck size={12} /> : <Check size={12} />}
+                                    {message.status === 'delivered' ? (
+                                      <CheckCheck size={12} className="text-blue-400" />
+                                    ) : (
+                                      <Check size={12} className="text-gray-400" />
+                                    )}
                                   </span>
                                 )}
                               </div>
