@@ -6,10 +6,11 @@ import { Check, CheckCheck, Loader2, SendHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { accountsApi, ApiAccount, ApiChat, ApiMessage, chatsApi, createAccountWebSocket, SendMessageResponse } from '@/lib/api';
 import { sanitizeInput } from '@/lib/sanitize';
-import { EmptyState, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard, ToolbarRow } from '@/platform/components/primitives';
+import { EmptyState, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard } from '@/platform/components/primitives';
 
 type ChatRow = ApiChat & { unread_count: number };
 type ThreadMessage = ApiMessage;
+type AccountScope = 'all' | number;
 type ThreadRenderItem =
   | { type: 'separator'; key: string; label: string }
   | { type: 'message'; key: string; message: ThreadMessage; grouped: boolean };
@@ -29,8 +30,12 @@ function sortChatsByUpdatedAt(chats: ChatRow[]) {
   return [...chats].sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at));
 }
 
-function moveChatToTop(chats: ChatRow[], nodeID: string) {
-  const idx = chats.findIndex(chat => chat.node_id === nodeID);
+function moveChatToTop(chats: ChatRow[], nodeID: string, accountID?: number) {
+  const idx = chats.findIndex(chat => {
+    if (chat.node_id !== nodeID) return false;
+    if (!accountID) return true;
+    return (chat.funpay_account_id ?? 0) === accountID;
+  });
   if (idx > 0) {
     const updated = [...chats];
     const [chat] = updated.splice(idx, 1);
@@ -80,7 +85,7 @@ function toThreadMessages(rows: ApiMessage[]): ThreadMessage[] {
 
 export default function Chats() {
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
-  const [activeAccountID, setActiveAccountID] = useState<number | null>(null);
+  const [accountScope, setAccountScope] = useState<AccountScope>('all');
   const [chats, setChats] = useState<ChatRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -93,13 +98,14 @@ export default function Chats() {
   const [search, setSearch] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
 
-  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const socketRef = useRef<WebSocket | null>(null);
+  const reconnectTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+  const socketsRef = useRef<Map<number, WebSocket>>(new Map());
+  const wsResyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const threadScrollRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const selectedChatRef = useRef<ChatRow | null>(null);
   const messageLoadSeqRef = useRef(0);
-  const loadChatsRef = useRef<(accountID: number, preserveSelection: boolean) => Promise<number | null>>(
+  const loadChatsRef = useRef<(scope: AccountScope, preserveSelection: boolean) => Promise<number | null>>(
     async () => null,
   );
 
@@ -210,31 +216,73 @@ export default function Chats() {
     [scrollThreadToBottom],
   );
 
-  const loadChats = useCallback(async (accountID: number, preserveSelection: boolean) => {
-    const history = await chatsApi.history(accountID);
-    const safeHistory = Array.isArray(history) ? history : [];
+  const loadChats = useCallback(
+    async (scope: AccountScope, preserveSelection: boolean) => {
+      const normalizeRows = (rows: ApiChat[], accountID: number): ChatRow[] =>
+        rows.map(chat => ({
+          ...chat,
+          funpay_account_id: chat.funpay_account_id ?? accountID,
+          unread_count: chat.unread ? 1 : 0,
+        }));
 
-    const nextChats = sortChatsByUpdatedAt(
-      safeHistory.map(chat => ({
-        ...chat,
-        unread_count: chat.unread ? 1 : 0,
-      })),
-    );
+      let mergedChats: ChatRow[] = [];
 
-    setChats(nextChats);
-    if (nextChats.length === 0) {
-      setSelectedChatID(null);
-      return null;
-    }
+      if (scope === 'all') {
+        const listed = await accountsApi.list();
+        const safeAccounts = Array.isArray(listed) ? listed : [];
+        setAccounts(prev => {
+          if (
+            prev.length === safeAccounts.length &&
+            prev.every((account, index) => {
+              const next = safeAccounts[index];
+              return account.id === next.id && (account.username || '') === (next.username || '');
+            })
+          ) {
+            return prev;
+          }
+          return safeAccounts;
+        });
 
-    const currentSelected = selectedChatRef.current?.id;
-    const nextSelected =
-      preserveSelection && currentSelected && nextChats.some(chat => chat.id === currentSelected)
-        ? currentSelected
-        : nextChats[0].id;
-    setSelectedChatID(nextSelected);
-    return nextSelected;
-  }, []);
+        if (safeAccounts.length > 0) {
+          const allHistories = await Promise.all(
+            safeAccounts.map(async account => {
+              const rows = await chatsApi.history(account.id);
+              const safeRows = Array.isArray(rows) ? rows : [];
+              return normalizeRows(safeRows, account.id);
+            }),
+          );
+          mergedChats = allHistories.flat();
+        }
+      } else {
+        const history = await chatsApi.history(scope);
+        const safeHistory = Array.isArray(history) ? history : [];
+        mergedChats = normalizeRows(safeHistory, scope);
+      }
+
+      const nextChats = sortChatsByUpdatedAt(mergedChats);
+
+      setChats(nextChats);
+      if (nextChats.length === 0) {
+        setSelectedChatID(null);
+        return null;
+      }
+
+      const currentSelected = selectedChatRef.current;
+      const nextSelected =
+        preserveSelection &&
+        currentSelected &&
+        nextChats.some(
+          chat =>
+            chat.id === currentSelected.id &&
+            (chat.funpay_account_id ?? 0) === (currentSelected.funpay_account_id ?? 0),
+        )
+          ? currentSelected.id
+          : nextChats[0].id;
+      setSelectedChatID(nextSelected);
+      return nextSelected;
+    },
+    [],
+  );
 
   useEffect(() => {
     loadChatsRef.current = loadChats;
@@ -270,15 +318,13 @@ export default function Chats() {
 
         const safeAccounts = Array.isArray(rows) ? rows : [];
         setAccounts(safeAccounts);
+        setAccountScope('all');
 
         if (safeAccounts.length === 0) {
-          setActiveAccountID(null);
           return;
         }
 
-        const firstAccountID = safeAccounts[0].id;
-        setActiveAccountID(firstAccountID);
-        const nextSelected = await loadChats(firstAccountID, false);
+        await loadChats('all', false);
         if (cancelled) return;
 
       } catch (err) {
@@ -298,16 +344,16 @@ export default function Chats() {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey, loadChats, loadMessages]);
+  }, [reloadKey, loadChats]);
 
   useEffect(() => {
-    if (!activeAccountID) return;
+    if (accounts.length === 0) return;
 
     const onVisible = async () => {
       if (document.visibilityState !== 'visible') return;
       try {
         const currentSelected = selectedChatRef.current?.id ?? null;
-        const nextSelected = await loadChatsRef.current(activeAccountID, true);
+        const nextSelected = await loadChatsRef.current(accountScope, true);
         const target = currentSelected && nextSelected === currentSelected ? currentSelected : nextSelected;
         if (target) {
           await loadMessages(target, { silent: true });
@@ -322,17 +368,39 @@ export default function Chats() {
     return () => {
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [activeAccountID, loadMessages]);
+  }, [accountScope, accounts.length, loadMessages]);
 
   useEffect(() => {
-    if (!activeAccountID) return;
+    const targetAccountIDs =
+      accountScope === 'all'
+        ? accounts.map(account => account.id)
+        : typeof accountScope === 'number'
+          ? [accountScope]
+          : [];
+    if (targetAccountIDs.length === 0) return;
 
     let cancelled = false;
 
-    const connect = (attempt = 0) => {
+    const scheduleResync = () => {
+      if (wsResyncTimerRef.current) {
+        clearTimeout(wsResyncTimerRef.current);
+      }
+      wsResyncTimerRef.current = setTimeout(() => {
+        void loadChatsRef.current(accountScope, true).then(nextSelected => {
+          const selectedID = selectedChatRef.current?.id ?? nextSelected;
+          if (selectedID) {
+            void loadMessages(selectedID, { silent: true });
+          }
+        });
+      }, 120);
+    };
+
+    const connect = (accountID: number, attempt = 0) => {
       if (cancelled) return;
 
-      const ws = createAccountWebSocket(activeAccountID, event => {
+      const ws = createAccountWebSocket(accountID, event => {
+        const eventAccountID = Number(event.data.account_id ?? accountID);
+
         if (event.type === 'message_confirmed') {
           const tempID = Number(event.data.temp_id ?? 0);
           const realID = Number(event.data.real_funpay_message_id ?? 0);
@@ -340,6 +408,9 @@ export default function Chats() {
 
           setMessages(prev =>
             prev.map(message => {
+              const selectedAccountID = selectedChatRef.current?.funpay_account_id ?? 0;
+              if (selectedAccountID !== eventAccountID) return message;
+
               const msgTempID = Number(message.temp_id ?? message.id);
               if (msgTempID !== tempID) return message;
               return {
@@ -373,11 +444,14 @@ export default function Chats() {
 
         setChats(prev => {
           const updated = prev.map(chat => {
-            if (chat.node_id !== nodeID) return chat;
+            const chatAccountID = chat.funpay_account_id ?? 0;
+            if (chat.node_id !== nodeID || chatAccountID !== eventAccountID) return chat;
 
             found = true;
             targetChatID = chat.id;
-            isOpened = selectedChatRef.current?.node_id === nodeID;
+            isOpened =
+              selectedChatRef.current?.node_id === nodeID &&
+              (selectedChatRef.current?.funpay_account_id ?? 0) === eventAccountID;
 
             const unread = isOpened ? false : !isMyMsg;
             return {
@@ -391,10 +465,10 @@ export default function Chats() {
           });
 
           if (!found) {
-            void loadChatsRef.current(activeAccountID, true);
+            void loadChatsRef.current(accountScope, true);
             return prev;
           }
-          return moveChatToTop(updated, nodeID);
+          return moveChatToTop(updated, nodeID, eventAccountID);
         });
 
         if (!found || !isOpened || targetChatID === 0) return;
@@ -416,7 +490,8 @@ export default function Chats() {
           const nextMessage: ThreadMessage = {
             id: Number(event.data.id ?? (tempID || Date.now())),
             temp_id: tempID || undefined,
-            funpay_message_id: Number(event.data.real_funpay_message_id ?? event.data.funpay_message_id ?? 0) || undefined,
+            funpay_message_id:
+              Number(event.data.real_funpay_message_id ?? event.data.funpay_message_id ?? 0) || undefined,
             chat_id: targetChatID,
             author_id: Number(event.data.author_id ?? 0),
             author_name: authorName,
@@ -432,51 +507,44 @@ export default function Chats() {
       });
 
       ws.onopen = () => {
-        void loadChatsRef.current(activeAccountID, true).then(nextSelected => {
-          const selectedID = selectedChatRef.current?.id ?? nextSelected;
-          if (selectedID) {
-            void loadMessages(selectedID, { silent: true });
-          }
-        });
+        scheduleResync();
       };
       ws.onerror = () => ws.close();
       ws.onclose = () => {
-        if (socketRef.current === ws) {
-          socketRef.current = null;
+        const currentSocket = socketsRef.current.get(accountID);
+        if (currentSocket === ws) {
+          socketsRef.current.delete(accountID);
         }
         if (cancelled) return;
 
         const backoff = Math.min(15000, 3000 * Math.pow(2, attempt));
         const jitter = Math.floor(Math.random() * 400);
-        reconnectTimerRef.current = setTimeout(() => connect(attempt + 1), backoff + jitter);
+        const timer = setTimeout(() => connect(accountID, attempt + 1), backoff + jitter);
+        reconnectTimersRef.current.set(accountID, timer);
       };
 
-      socketRef.current = ws;
+      socketsRef.current.set(accountID, ws);
     };
 
-    if (reconnectTimerRef.current) {
-      clearTimeout(reconnectTimerRef.current);
-      reconnectTimerRef.current = null;
-    }
-    if (socketRef.current) {
-      socketRef.current.close();
-      socketRef.current = null;
-    }
+    reconnectTimersRef.current.forEach(timer => clearTimeout(timer));
+    reconnectTimersRef.current.clear();
+    socketsRef.current.forEach(socket => socket.close());
+    socketsRef.current.clear();
 
-    connect();
+    targetAccountIDs.forEach(accountID => connect(accountID));
 
     return () => {
       cancelled = true;
-      if (reconnectTimerRef.current) {
-        clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = null;
-      }
-      if (socketRef.current) {
-        socketRef.current.close();
-        socketRef.current = null;
+      reconnectTimersRef.current.forEach(timer => clearTimeout(timer));
+      reconnectTimersRef.current.clear();
+      socketsRef.current.forEach(socket => socket.close());
+      socketsRef.current.clear();
+      if (wsResyncTimerRef.current) {
+        clearTimeout(wsResyncTimerRef.current);
+        wsResyncTimerRef.current = null;
       }
     };
-  }, [activeAccountID, loadMessages]);
+  }, [accountScope, accounts, loadMessages, scrollThreadToBottom]);
 
   const filteredChats = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -489,13 +557,15 @@ export default function Chats() {
     });
   }, [chats, search]);
 
-  const activeAccountName = useMemo(() => {
-    if (!activeAccountID) return '';
-    return accounts.find(account => account.id === activeAccountID)?.username || `ID ${activeAccountID}`;
-  }, [accounts, activeAccountID]);
+  const selectedChatAccountName = useMemo(() => {
+    if (!selectedChat) return '';
+    const accountID = selectedChat.funpay_account_id;
+    if (!accountID) return accountScope === 'all' ? 'Все аккаунты' : '';
+    return accounts.find(account => account.id === accountID)?.username || `ID ${accountID}`;
+  }, [accounts, accountScope, selectedChat]);
 
-  async function switchAccount(nextAccountID: number) {
-    setActiveAccountID(nextAccountID);
+  async function switchAccount(nextScope: AccountScope) {
+    setAccountScope(nextScope);
     setSelectedChatID(null);
     setMessages([]);
     setMessagesError(null);
@@ -503,7 +573,7 @@ export default function Chats() {
     setLoadError(null);
 
     try {
-      await loadChats(nextAccountID, false);
+      await loadChats(nextScope, false);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Ошибка загрузки чатов';
       setLoadError(message);
@@ -514,10 +584,17 @@ export default function Chats() {
   }
 
   async function sendMessage() {
-    if (!selectedChat || !activeAccountID) return;
+    if (!selectedChat) return;
 
     const text = sanitizeInput(inputValue.trim());
     if (!text || sending) return;
+
+    const scopeAccountID = typeof accountScope === 'number' ? accountScope : null;
+    const targetAccountID = selectedChat.funpay_account_id ?? scopeAccountID;
+    if (!targetAccountID) {
+      toast.error('Не удалось определить аккаунт для отправки');
+      return;
+    }
 
     setSending(true);
     const nowISO = new Date().toISOString();
@@ -540,11 +617,13 @@ export default function Chats() {
     setChats(prev =>
       moveChatToTop(
         prev.map(chat =>
-          chat.node_id === selectedChat.node_id
+          chat.node_id === selectedChat.node_id &&
+          (chat.funpay_account_id ?? 0) === (selectedChat.funpay_account_id ?? 0)
             ? { ...chat, last_message: text, updated_at: nowISO, unread: false, unread_count: 0 }
             : chat,
         ),
         selectedChat.node_id,
+        selectedChat.funpay_account_id,
       ),
     );
 
@@ -555,7 +634,7 @@ export default function Chats() {
     });
 
     try {
-      const response = await chatsApi.send(activeAccountID, selectedChat.node_id, text);
+      const response = await chatsApi.send(targetAccountID, selectedChat.node_id, text);
       const pendingTempID = response?.temp_id ?? optimisticID;
       const pendingTime = response?.created_at || nowISO;
 
@@ -576,11 +655,13 @@ export default function Chats() {
       setChats(prev =>
         moveChatToTop(
           prev.map(chat =>
-            chat.node_id === selectedChat.node_id
+            chat.node_id === selectedChat.node_id &&
+            (chat.funpay_account_id ?? 0) === (selectedChat.funpay_account_id ?? 0)
               ? { ...chat, last_message: text, updated_at: pendingTime, unread: false, unread_count: 0 }
               : chat,
           ),
           selectedChat.node_id,
+          selectedChat.funpay_account_id,
         ),
       );
     } catch (err) {
@@ -639,9 +720,13 @@ export default function Chats() {
               <div className="platform-chat-list-head">
                 <select
                   className="platform-select mb-2"
-                  value={activeAccountID ?? ''}
-                  onChange={event => switchAccount(Number(event.target.value))}
+                  value={accountScope === 'all' ? 'all' : String(accountScope)}
+                  onChange={event => {
+                    const value = event.target.value;
+                    void switchAccount(value === 'all' ? 'all' : Number(value));
+                  }}
                 >
+                  <option value="all">Все аккаунты</option>
                   {accounts.map(account => (
                     <option key={account.id} value={account.id}>
                       {account.username || `ID ${account.id}`}
@@ -656,11 +741,6 @@ export default function Chats() {
                     placeholder="Поиск по чатам"
                   />
                 </label>
-                <ToolbarRow>
-                  <span className="platform-chip">Чатов: {chats.length}</span>
-                  <span className="platform-chip">Непрочитано: {chats.reduce((sum, item) => sum + item.unread_count, 0)}</span>
-                </ToolbarRow>
-                {activeAccountName && <div className="platform-account-badge">{activeAccountName}</div>}
               </div>
 
               <div className="platform-chat-scroll">
@@ -677,9 +757,11 @@ export default function Chats() {
                       <span className="text-[11px] text-[var(--pf-text-dim)]">{formatTime(chat.updated_at)}</span>
                     </div>
                     <p className="platform-chat-preview">{chat.last_message || ''}</p>
-                    {chat.unread_count > 0 && (
+                    {chat.unread_count > 0 && chat.id !== selectedChatID && (
                       <div className="platform-chat-meta">
-                        <span className="platform-chip">{chat.unread_count}</span>
+                        <span className="inline-flex min-w-5 h-5 px-1.5 items-center justify-center rounded-full bg-blue-500 text-white text-[10px] font-semibold">
+                          {chat.unread_count > 9 ? '9+' : chat.unread_count}
+                        </span>
                       </div>
                     )}
                   </button>
@@ -701,7 +783,7 @@ export default function Chats() {
                   <header className="platform-thread-head">
                     <div>
                       <div className="text-[14px] font-bold">{selectedChat.with_user || 'Пользователь'}</div>
-                      <div className="text-[12px] text-[var(--pf-text-dim)]">{activeAccountName}</div>
+                      <div className="text-[12px] text-[var(--pf-text-dim)]">{selectedChatAccountName}</div>
                     </div>
                   </header>
 
