@@ -10,6 +10,20 @@ import { EmptyState, PageHeader, PageShell, PageTitle, RequestErrorState, Sectio
 
 type ChatRow = ApiChat & { unread_count: number };
 type ThreadMessage = ApiMessage;
+type ThreadRenderItem =
+  | { type: 'separator'; key: string; label: string }
+  | { type: 'message'; key: string; message: ThreadMessage; grouped: boolean };
+
+const AVATAR_COLORS = [
+  '#3b82f6',
+  '#10b981',
+  '#f59e0b',
+  '#ef4444',
+  '#8b5cf6',
+  '#06b6d4',
+  '#84cc16',
+  '#f97316',
+] as const;
 
 function sortChatsByUpdatedAt(chats: ChatRow[]) {
   return [...chats].sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at));
@@ -36,6 +50,25 @@ function getAvatarLabel(name?: string) {
   const normalized = (name || '').trim();
   if (!normalized) return '?';
   return normalized[0].toUpperCase();
+}
+
+function getAvatarColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i += 1) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function formatDateSeparator(value?: string) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'short',
+    weekday: 'short',
+  });
 }
 
 function toThreadMessages(rows: ApiMessage[]): ThreadMessage[] {
@@ -74,6 +107,52 @@ export default function Chats() {
     () => chats.find(chat => chat.id === selectedChatID) || null,
     [chats, selectedChatID],
   );
+
+  const threadRenderItems = useMemo<ThreadRenderItem[]>(() => {
+    const items: ThreadRenderItem[] = [];
+    let previousMessage: ThreadMessage | null = null;
+    let previousDateKey = '';
+
+    messages.forEach((message, index) => {
+      const messageDate = new Date(message.created_at);
+      const dateKey = Number.isNaN(messageDate.getTime())
+        ? `unknown-${message.created_at}-${index}`
+        : `${messageDate.getFullYear()}-${messageDate.getMonth()}-${messageDate.getDate()}`;
+
+      if (dateKey !== previousDateKey) {
+        items.push({
+          type: 'separator',
+          key: `sep-${dateKey}-${index}`,
+          label: formatDateSeparator(message.created_at),
+        });
+        previousDateKey = dateKey;
+      }
+
+      const currentTimestamp = messageDate.getTime();
+      const previousTimestamp = previousMessage ? new Date(previousMessage.created_at).getTime() : Number.NaN;
+      const withinFiveMinutes =
+        !Number.isNaN(currentTimestamp) &&
+        !Number.isNaN(previousTimestamp) &&
+        currentTimestamp - previousTimestamp < 5 * 60 * 1000;
+
+      const grouped =
+        Boolean(previousMessage) &&
+        previousMessage?.is_my_msg === message.is_my_msg &&
+        (previousMessage?.author_name || '').trim() === (message.author_name || '').trim() &&
+        withinFiveMinutes;
+
+      items.push({
+        type: 'message',
+        key: `msg-${message.temp_id ?? message.id}-${message.created_at}-${index}`,
+        message,
+        grouped,
+      });
+
+      previousMessage = message;
+    });
+
+    return items;
+  }, [messages]);
 
   useEffect(() => {
     selectedChatRef.current = selectedChat;
@@ -630,9 +709,9 @@ export default function Chats() {
                     <div ref={threadScrollRef} className="platform-thread-messages-scroll">
                       {loadingMessages ? (
                         <div className="space-y-3 py-2">
-                          <div className="h-14 w-[72%] animate-pulse rounded-xl bg-[rgba(148,163,184,0.15)]" />
-                          <div className="ml-auto h-14 w-[56%] animate-pulse rounded-xl bg-[rgba(110,139,255,0.18)]" />
-                          <div className="h-14 w-[68%] animate-pulse rounded-xl bg-[rgba(148,163,184,0.15)]" />
+                          <div className="h-14 w-[72%] animate-pulse rounded bg-[rgba(148,163,184,0.15)]" />
+                          <div className="h-14 w-[56%] animate-pulse rounded bg-[rgba(110,139,255,0.18)]" />
+                          <div className="h-14 w-[68%] animate-pulse rounded bg-[rgba(148,163,184,0.15)]" />
                         </div>
                       ) : messagesError ? (
                         <div className="platform-chat-empty gap-3">
@@ -644,41 +723,82 @@ export default function Chats() {
                       ) : messages.length === 0 ? (
                         <EmptyState>Нет сообщений. Напишите первым!</EmptyState>
                       ) : (
-                        messages.map(message => (
-                          <div
-                            key={`${message.temp_id ?? message.id}-${message.created_at}`}
-                            className={`platform-message-row ${message.is_my_msg ? 'outgoing' : 'incoming'}`}
-                          >
-                            {!message.is_my_msg && (
-                              <div className="platform-message-avatar" aria-hidden="true">
-                                {getAvatarLabel(message.author_name || selectedChat.with_user)}
+                        threadRenderItems.map(item => {
+                          if (item.type === 'separator') {
+                            return (
+                              <div key={item.key} className="flex items-center gap-3 px-4 py-3">
+                                <div className="flex-1 h-px bg-white/[0.06]" />
+                                <span className="text-xs text-slate-500 flex-shrink-0">{item.label}</span>
+                                <div className="flex-1 h-px bg-white/[0.06]" />
                               </div>
-                            )}
-                            <article className={`platform-message-bubble ${message.is_my_msg ? 'outgoing' : 'incoming'}`}>
-                              {!message.is_my_msg && (
-                                <div className="mb-1 text-[11px] font-semibold text-[var(--pf-text-dim)]">
-                                  {message.author_name || selectedChat.with_user || 'Собеседник'}
+                            );
+                          }
+
+                          const message = item.message;
+                          const isOutgoing = message.is_my_msg;
+                          const authorName = (message.author_name || (isOutgoing ? 'Вы' : selectedChat.with_user || 'Собеседник')).trim() || 'Пользователь';
+                          const formattedTime = formatTime(message.created_at);
+
+                          return (
+                            <div
+                              key={item.key}
+                              className={
+                                isOutgoing
+                                  ? 'flex gap-2.5 px-4 py-1 rounded border-l-2 border-blue-500 pl-[14px] bg-blue-500/[0.05] hover:bg-blue-500/[0.08] group'
+                                  : 'flex gap-2.5 px-4 py-1 rounded hover:bg-white/[0.03] group'
+                              }
+                            >
+                              {item.grouped ? (
+                                <div className="w-8 flex-shrink-0" />
+                              ) : (
+                                <div
+                                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white flex-shrink-0 mt-0.5"
+                                  style={{ backgroundColor: isOutgoing ? '#2563eb' : getAvatarColor(authorName) }}
+                                  aria-hidden="true"
+                                >
+                                  {getAvatarLabel(authorName)}
                                 </div>
                               )}
-                              <p className="platform-message-text">{message.text}</p>
-                              <div className="platform-message-time">
-                                {formatTime(message.created_at)}
-                                {message.is_my_msg && (
-                                  <span
-                                    className="platform-message-status"
-                                    aria-label={message.status === 'delivered' ? 'Доставлено' : 'Отправлено'}
-                                  >
-                                    {message.status === 'delivered' ? (
-                                      <CheckCheck size={12} className="text-blue-400" />
-                                    ) : (
-                                      <Check size={12} className="text-gray-400" />
+
+                              <div className="flex-1 min-w-0">
+                                {item.grouped ? (
+                                  <div className="h-4 flex items-center gap-1.5">
+                                    <span className="text-[11px] text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      {formattedTime}
+                                    </span>
+                                    {isOutgoing && (
+                                      <span
+                                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                        aria-label={message.status === 'delivered' ? 'Доставлено' : 'Отправлено'}
+                                      >
+                                        {message.status === 'delivered' ? (
+                                          <CheckCheck size={11} className="text-blue-400" />
+                                        ) : (
+                                          <Check size={11} className="text-slate-500" />
+                                        )}
+                                      </span>
                                     )}
-                                  </span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-baseline gap-2">
+                                    <span className={`text-sm font-semibold ${isOutgoing ? 'text-blue-300' : 'text-slate-200'}`}>{authorName}</span>
+                                    <span className="text-[11px] text-slate-500">{formattedTime}</span>
+                                    {isOutgoing && (
+                                      <span aria-label={message.status === 'delivered' ? 'Доставлено' : 'Отправлено'}>
+                                        {message.status === 'delivered' ? (
+                                          <CheckCheck size={11} className="text-blue-400 ml-1" />
+                                        ) : (
+                                          <Check size={11} className="text-slate-500 ml-1" />
+                                        )}
+                                      </span>
+                                    )}
+                                  </div>
                                 )}
+                                <p className="text-sm text-slate-300 leading-relaxed mt-0.5 break-words whitespace-pre-wrap">{message.text}</p>
                               </div>
-                            </article>
-                          </div>
-                        ))
+                            </div>
+                          );
+                        })
                       )}
                     </div>
                   </div>
@@ -687,7 +807,7 @@ export default function Chats() {
                     <div className="platform-composer-row">
                       <textarea
                         ref={composerRef}
-                        className="platform-textarea"
+                        className="w-full bg-white/[0.05] border border-white/[0.08] rounded-lg px-4 py-3 text-sm text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-blue-500/50 focus:bg-white/[0.07] transition-colors"
                         placeholder="Введите сообщение..."
                         value={inputValue}
                         onChange={event => setInputValue(event.target.value)}
@@ -699,6 +819,7 @@ export default function Chats() {
                           }
                         }}
                         rows={1}
+                        style={{ minHeight: '44px', maxHeight: '120px' }}
                       />
                       <button className="platform-btn-primary" onClick={() => void sendMessage()} disabled={sending || !inputValue.trim()}>
                         {sending ? <Loader2 size={15} className="animate-spin" /> : <SendHorizontal size={15} />}
