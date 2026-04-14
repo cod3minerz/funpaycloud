@@ -41,6 +41,7 @@ async function bootstrapChatPage(page: Page) {
       nodeID: string;
       chats: MockChat[];
       messages: MockMessage[];
+      accountsRequests: number;
       historyRequests: number;
       messagesRequests: number;
       sendRequests: number;
@@ -70,6 +71,7 @@ async function bootstrapChatPage(page: Page) {
           created_at: '2026-04-14T09:58:00Z',
         },
       ],
+      accountsRequests: 0,
       historyRequests: 0,
       messagesRequests: 0,
       sendRequests: 0,
@@ -93,8 +95,10 @@ async function bootstrapChatPage(page: Page) {
       if (!path.startsWith('/api/')) {
         return originalFetch(input, init);
       }
+      console.log('[mock-fetch]', method, path);
 
       if (path === '/api/accounts' && method === 'GET') {
+        state.accountsRequests += 1;
         return envelope([
           {
             id: state.accountID,
@@ -236,10 +240,25 @@ async function bootstrapChatPage(page: Page) {
       }
     }
 
+    const NativeWebSocket = window.WebSocket;
+    const PatchedWebSocket = function (this: unknown, url: string | URL, protocols?: string | string[]) {
+      const target = String(url);
+      if (target.includes('/ws/')) {
+        return new MockWebSocket(url);
+      }
+      return new NativeWebSocket(url, protocols as string | string[] | undefined);
+    } as unknown as typeof WebSocket;
+
+    PatchedWebSocket.prototype = NativeWebSocket.prototype;
+    Object.defineProperty(PatchedWebSocket, 'CONNECTING', { value: NativeWebSocket.CONNECTING });
+    Object.defineProperty(PatchedWebSocket, 'OPEN', { value: NativeWebSocket.OPEN });
+    Object.defineProperty(PatchedWebSocket, 'CLOSING', { value: NativeWebSocket.CLOSING });
+    Object.defineProperty(PatchedWebSocket, 'CLOSED', { value: NativeWebSocket.CLOSED });
+
     Object.defineProperty(window, 'WebSocket', {
       configurable: true,
       writable: true,
-      value: MockWebSocket,
+      value: PatchedWebSocket,
     });
 
     (window as any).__chatTest = {
