@@ -132,10 +132,14 @@ export const dashboardApi = {
 export type ApiAccount = {
   id: number;
   username?: string;
+  runner_active?: boolean;
+  runner_events_today?: number;
+  runner_last_event_at?: string | null;
   keeper_active: boolean;
   raiser_active: boolean;
   raiser_time?: string;
   raiser_timezone?: string;
+  active_lots_count?: number;
 };
 
 export const accountsApi = {

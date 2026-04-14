@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   CircleCheck,
-  CircleOff,
   Loader2,
   Pause,
   Play,
@@ -31,6 +30,82 @@ import {
   ToolbarRow,
 } from '@/platform/components/primitives';
 
+const AVATAR_COLORS = [
+  '#3b82f6',
+  '#10b981',
+  '#f59e0b',
+  '#ef4444',
+  '#8b5cf6',
+  '#06b6d4',
+  '#84cc16',
+  '#f97316',
+];
+
+function getAvatarColor(name: string): string {
+  if (!name) return '#475569';
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function displayName(acc: ApiAccount): string {
+  const value = acc.username?.trim();
+  return value ? value : 'Загрузка...';
+}
+
+function formatRelativeTime(value?: string | null): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  const diffMs = Date.now() - date.getTime();
+  if (diffMs < 0) return 'только что';
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return 'только что';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin} мин назад`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `${diffHours} ч назад`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} дн назад`;
+}
+
+function getMinutesInTimezone(timezone: string): number {
+  try {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date());
+    const hour = Number(parts.find(part => part.type === 'hour')?.value ?? 0);
+    const minute = Number(parts.find(part => part.type === 'minute')?.value ?? 0);
+    return hour * 60 + minute;
+  } catch {
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  }
+}
+
+function getNextRaiseCountdown(timeValue?: string, timezoneValue?: string): string {
+  const raw = (timeValue || '').trim();
+  if (!/^\d{2}:\d{2}$/.test(raw)) return '—';
+  const [hh, mm] = raw.split(':').map(Number);
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return '—';
+
+  const currentMinutes = getMinutesInTimezone(timezoneValue || 'Europe/Moscow');
+  const targetMinutes = hh * 60 + mm;
+  let delta = targetMinutes - currentMinutes;
+  if (delta <= 0) delta += 24 * 60;
+
+  const hours = Math.floor(delta / 60);
+  const minutes = delta % 60;
+  if (hours === 0) return `через ${minutes}м`;
+  if (minutes === 0) return `через ${hours}ч`;
+  return `через ${hours}ч ${minutes}м`;
+}
+
 export default function Accounts() {
   const [list, setList] = useState<ApiAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +120,7 @@ export default function Accounts() {
   const [raisingIds, setRaisingIds] = useState<Set<string | number>>(new Set());
   const [savingScheduleIds, setSavingScheduleIds] = useState<Set<string | number>>(new Set());
   const [scheduleDrafts, setScheduleDrafts] = useState<Record<string, string>>({});
+  const [, setMinuteTick] = useState(Date.now());
 
   async function loadAccounts() {
     setLoading(true);
@@ -64,12 +140,17 @@ export default function Accounts() {
   }
 
   useEffect(() => { loadAccounts(); }, []);
+  useEffect(() => {
+    const interval = setInterval(() => setMinuteTick(Date.now()), 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const filtered = useMemo(() => {
+    const q = query.toLowerCase().trim();
     return list.filter(acc => {
       if (statusFilter === 'online' && !acc.keeper_active) return false;
       if (statusFilter === 'offline' && acc.keeper_active) return false;
-      if (query && !acc.username?.toLowerCase().includes(query.toLowerCase())) return false;
+      if (q && !(acc.username || '').toLowerCase().includes(q)) return false;
       return true;
     });
   }, [list, query, statusFilter]);
@@ -111,11 +192,11 @@ export default function Accounts() {
       if (acc.raiser_active) {
         await accountsApi.stopRaiser(acc.id);
         setList(prev => prev.map(a => a.id === acc.id ? { ...a, raiser_active: false } : a));
-        toast.success(`Автоподнятие остановлено (${acc.username ?? acc.id})`);
+        toast.success(`Автоподнятие остановлено (${displayName(acc)})`);
       } else {
         await accountsApi.startRaiser(acc.id);
         setList(prev => prev.map(a => a.id === acc.id ? { ...a, raiser_active: true } : a));
-        toast.success(`Автоподнятие запущено (${acc.username ?? acc.id})`);
+        toast.success(`Автоподнятие запущено (${displayName(acc)})`);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Ошибка управления воркером');
@@ -144,7 +225,7 @@ export default function Accounts() {
     try {
       await accountsApi.updateRaiserSchedule(acc.id, nextTime, acc.raiser_timezone || 'Europe/Moscow');
       setList(prev => prev.map(a => (a.id === acc.id ? { ...a, raiser_time: nextTime } : a)));
-      toast.success(`Время поднятия сохранено (${acc.username || `ID ${acc.id}`})`);
+      toast.success(`Расписание сохранено (${displayName(acc)})`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Ошибка сохранения расписания');
     } finally {
@@ -156,8 +237,8 @@ export default function Accounts() {
     }
   }
 
+  const runnerActiveCount = list.filter(a => a.runner_active).length;
   const onlineCount = list.filter(a => a.keeper_active).length;
-  const offlineCount = list.filter(a => !a.keeper_active).length;
   const raisingCount = list.filter(a => a.raiser_active).length;
 
   return (
@@ -194,27 +275,27 @@ export default function Accounts() {
           </KpiCard>
           <KpiCard>
             <div className="inline-flex items-center gap-2 text-[13px] font-semibold">
+              <CircleCheck size={15} color="#60a5fa" />
+              Runner активен
+            </div>
+            <strong className="text-[26px]">{runnerActiveCount}</strong>
+            <span className="platform-kpi-meta">Ловит события прямо сейчас</span>
+          </KpiCard>
+          <KpiCard>
+            <div className="inline-flex items-center gap-2 text-[13px] font-semibold">
               <CircleCheck size={15} color="#4ade80" />
               Keeper онлайн
             </div>
             <strong className="text-[26px]">{onlineCount}</strong>
-            <span className="platform-kpi-meta">Аккаунты активны сейчас</span>
-          </KpiCard>
-          <KpiCard>
-            <div className="inline-flex items-center gap-2 text-[13px] font-semibold">
-              <CircleOff size={15} color="#fbbf24" />
-              Keeper оффлайн
-            </div>
-            <strong className="text-[26px]">{offlineCount}</strong>
-            <span className="platform-kpi-meta">Требуется проверка</span>
+            <span className="platform-kpi-meta">Сессии поддерживаются</span>
           </KpiCard>
           <KpiCard>
             <div className="inline-flex items-center gap-2 text-[13px] font-semibold">
               <Play size={15} color="#60a5fa" />
-              Авторайзер
+              Raiser запущен
             </div>
             <strong className="text-[26px]">{raisingCount}</strong>
-            <span className="platform-kpi-meta">Автоподнятие активно</span>
+            <span className="platform-kpi-meta">Автоподнятие включено</span>
           </KpiCard>
         </KpiGrid>
 
@@ -257,38 +338,76 @@ export default function Accounts() {
                   <table className="platform-table" style={{ minWidth: 960 }}>
                     <thead>
                       <tr>
-                        <th style={{ width: 270 }}>Аккаунт</th>
-                        <th>Keeper</th>
-                        <th>Раисер</th>
-                        <th>Время поднятия</th>
+                        <th style={{ width: 300 }}>Аккаунт</th>
+                        <th>Статусы</th>
+                        <th>Метрики</th>
+                        <th>Следующее поднятие</th>
                         <th style={{ textAlign: 'right' }}>Действия</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filtered.map(acc => {
                         const isRaising = raisingIds.has(acc.id);
+                        const name = displayName(acc);
+                        const runnerEventsToday = acc.runner_events_today ?? 0;
+                        const nextRaiseCountdown = getNextRaiseCountdown(
+                          scheduleDrafts[String(acc.id)] || acc.raiser_time,
+                          acc.raiser_timezone,
+                        );
                         return (
                           <tr key={acc.id}>
                             <td>
                               <div className="flex items-center gap-3">
-                                <span className="platform-avatar">
-                                  {acc.username?.[0]?.toUpperCase() ?? 'U'}
+                                <span className="platform-avatar" style={{ backgroundColor: getAvatarColor(name) }}>
+                                  {name[0]?.toUpperCase() ?? 'U'}
                                 </span>
-                                <div className="font-semibold">{acc.username ?? `ID ${acc.id}`}</div>
+                                <div>
+                                  <div className="font-semibold">{name}</div>
+                                  <div className="text-[12px] text-[var(--pf-text-dim)] inline-flex items-center gap-1.5">
+                                    <span
+                                      className="inline-block w-2 h-2 rounded-full"
+                                      style={{ backgroundColor: acc.keeper_active ? '#22c55e' : '#64748b' }}
+                                    />
+                                    {acc.keeper_active ? 'Онлайн' : 'Оффлайн'}
+                                  </div>
+                                </div>
                               </div>
                             </td>
                             <td>
-                              <span className={acc.keeper_active ? 'badge-active' : 'badge-inactive'}>
-                                {acc.keeper_active ? 'Онлайн' : 'Оффлайн'}
-                              </span>
+                              <div className="text-[12px] leading-6 space-y-0.5">
+                                <div>
+                                  Runner:{' '}
+                                  <span className={acc.runner_active ? 'badge-active' : 'badge-inactive'}>
+                                    ● {acc.runner_active ? 'Активен' : 'Остановлен'}
+                                  </span>
+                                </div>
+                                <div>
+                                  Keeper:{' '}
+                                  <span className={acc.keeper_active ? 'badge-active' : 'badge-inactive'}>
+                                    ● {acc.keeper_active ? 'Онлайн' : 'Оффлайн'}
+                                  </span>
+                                </div>
+                                <div>
+                                  Raiser:{' '}
+                                  <span className={acc.raiser_active ? 'badge-active' : 'badge-inactive'}>
+                                    ● {acc.raiser_active ? 'Запущен' : 'Остановлен'}
+                                  </span>
+                                </div>
+                              </div>
                             </td>
                             <td>
-                              <span className={acc.raiser_active ? 'badge-active' : 'badge-inactive'}>
-                                {acc.raiser_active ? 'Запущен' : 'Остановлен'}
-                              </span>
+                              <div className="text-[12px] leading-6 text-[var(--pf-text-muted)]">
+                                <div>Событий Runner сегодня: <strong>{runnerEventsToday}</strong></div>
+                                <div>Последнее событие: <strong>{formatRelativeTime(acc.runner_last_event_at)}</strong></div>
+                                <div>Активных лотов: <strong>{acc.active_lots_count ?? 0}</strong></div>
+                              </div>
                             </td>
                             <td>
-                              <div className="inline-flex items-center gap-2">
+                              <div className="flex flex-col gap-2">
+                                <div className="text-[12px] text-[var(--pf-text-muted)]">
+                                  {nextRaiseCountdown}
+                                </div>
+                                <div className="inline-flex items-center gap-2">
                                 <input
                                   type="time"
                                   className="platform-input"
@@ -310,6 +429,7 @@ export default function Accounts() {
                                   )}
                                 </button>
                               </div>
+                              </div>
                             </td>
                             <td style={{ textAlign: 'right' }}>
                               <div className="inline-flex items-center gap-2">
@@ -322,9 +442,9 @@ export default function Accounts() {
                                   {isRaising ? (
                                     <Loader2 size={14} className="animate-spin" />
                                   ) : acc.raiser_active ? (
-                                    <><Pause size={14} /> Пауза</>
+                                    <><Pause size={14} /> Пауза Raiser</>
                                   ) : (
-                                    <><Play size={14} /> Запуск</>
+                                    <><Play size={14} /> Запуск Raiser</>
                                   )}
                                 </button>
                                 <button
@@ -347,14 +467,19 @@ export default function Accounts() {
               <div className="platform-mobile-cards">
                 {filtered.map(acc => {
                   const isRaising = raisingIds.has(acc.id);
+                  const name = displayName(acc);
+                  const nextRaiseCountdown = getNextRaiseCountdown(
+                    scheduleDrafts[String(acc.id)] || acc.raiser_time,
+                    acc.raiser_timezone,
+                  );
                   return (
                     <article key={acc.id} className="platform-mobile-card">
                       <div className="platform-mobile-card-head">
                         <div className="inline-flex items-center gap-2">
-                          <span className="platform-avatar">
-                            {acc.username?.[0]?.toUpperCase() ?? 'U'}
+                          <span className="platform-avatar" style={{ backgroundColor: getAvatarColor(name) }}>
+                            {name[0]?.toUpperCase() ?? 'U'}
                           </span>
-                          <div className="text-[13px] font-semibold">{acc.username ?? `ID ${acc.id}`}</div>
+                          <div className="text-[13px] font-semibold">{name}</div>
                         </div>
                         <span className={acc.keeper_active ? 'badge-active' : 'badge-inactive'}>
                           {acc.keeper_active ? 'Онлайн' : 'Оффлайн'}
@@ -362,8 +487,13 @@ export default function Accounts() {
                       </div>
 
                       <div className="platform-mobile-meta">
-                        <span>Раисер: {acc.raiser_active ? 'Запущен' : 'Остановлен'}</span>
-                        <span>Поднятие: {scheduleDrafts[String(acc.id)] || '12:00'}</span>
+                        <span>Runner: {acc.runner_active ? '● Активен' : '● Остановлен'}</span>
+                        <span>Keeper: {acc.keeper_active ? '● Онлайн' : '● Оффлайн'}</span>
+                        <span>Raiser: {acc.raiser_active ? '● Запущен' : '● Остановлен'}</span>
+                        <span>Событий сегодня: {acc.runner_events_today ?? 0}</span>
+                        <span>Последнее событие: {formatRelativeTime(acc.runner_last_event_at)}</span>
+                        <span>Следующее поднятие: {nextRaiseCountdown}</span>
+                        <span>Активных лотов: {acc.active_lots_count ?? 0}</span>
                       </div>
 
                       <div className="platform-mobile-actions">
@@ -384,7 +514,7 @@ export default function Accounts() {
                           {savingScheduleIds.has(acc.id) ? (
                             <Loader2 size={14} className="animate-spin" />
                           ) : (
-                            'Сохранить время'
+                            'Сохранить'
                           )}
                         </button>
                         <button
@@ -395,9 +525,9 @@ export default function Accounts() {
                           {isRaising ? (
                             <Loader2 size={14} className="animate-spin" />
                           ) : acc.raiser_active ? (
-                            <><Pause size={14} /> Пауза</>
+                            <><Pause size={14} /> Пауза Raiser</>
                           ) : (
-                            <><Play size={14} /> Запуск</>
+                            <><Play size={14} /> Запуск Raiser</>
                           )}
                         </button>
                         <button
