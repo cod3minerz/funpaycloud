@@ -21,6 +21,12 @@ function formatDate(iso: string) {
   return `${d.toLocaleDateString('ru-RU')} ${d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
 }
 
+function formatDelivery(order: ApiOrder) {
+  if (!order.delivered_at) return '—';
+  const via = order.delivered_via === 'manual' ? 'вручную' : 'авто';
+  return `${formatDate(order.delivered_at)} (${via})`;
+}
+
 export default function Orders() {
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [orders, setOrders] = useState<ApiOrder[]>([]);
@@ -152,6 +158,7 @@ export default function Orders() {
                         <th>Аккаунт</th>
                         <th style={{ textAlign: 'right' }}>Сумма</th>
                         <th>Статус</th>
+                        <th>Выдача</th>
                         <th style={{ textAlign: 'right' }}>Действие</th>
                         <th style={{ textAlign: 'right' }}>Дата</th>
                       </tr>
@@ -166,13 +173,18 @@ export default function Orders() {
                           <td>{accounts.find(acc => acc.id === order.funpay_account_id)?.username || `ID ${order.funpay_account_id}`}</td>
                           <td style={{ textAlign: 'right', fontWeight: 700 }}>{Number(order.price || 0)} ₽</td>
                           <td>{STATUS_NUM_LABEL[order.status] || String(order.status)}</td>
+                          <td>{formatDelivery(order)}</td>
                           <td style={{ textAlign: 'right' }}>
                             <button
                               className="platform-btn-secondary"
                               onClick={() => void deliver(order)}
-                              disabled={order.status !== 0 || deliveringIDs.has(order.id)}
+                              disabled={order.status !== 0 || Boolean(order.delivered_at) || deliveringIDs.has(order.id)}
                             >
-                              {deliveringIDs.has(order.id) ? <Loader2 size={14} className="animate-spin" /> : <><Send size={14} /> Выдать</>}
+                              {deliveringIDs.has(order.id)
+                                ? <Loader2 size={14} className="animate-spin" />
+                                : order.delivered_at
+                                  ? 'Выдан'
+                                  : <><Send size={14} /> Выдать</>}
                             </button>
                           </td>
                           <td style={{ textAlign: 'right' }}>{formatDate(order.created_at)}</td>

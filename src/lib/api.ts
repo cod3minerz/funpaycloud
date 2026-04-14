@@ -273,6 +273,9 @@ export type ApiOrder = {
   buyer_id: number;
   status: number;
   created_at: string;
+  delivered_at?: string | null;
+  delivered_via?: string;
+  delivered_item?: string;
 };
 
 export type OrdersResponse = {
