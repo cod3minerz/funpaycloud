@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { AlertTriangle, Download, Loader2, Plus, Save, Upload, XCircle } from 'lucide-react';
+import { AlertTriangle, Download, Loader2, Plus, Save, Trash2, Upload, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Switch } from '@/app/components/ui/switch';
 import { accountsApi, ApiAccount, ApiWarehouseItem, ApiWarehouseLot, warehouseApi } from '@/lib/api';
@@ -143,7 +143,7 @@ export default function Warehouse() {
 
     setAdding(true);
     try {
-      await warehouseApi.addItems(selectedLot.id, items);
+      await warehouseApi.addStock(selectedLot.funpay_account_id, selectedLot.lot_id, items);
       toast.success(`Добавлено позиций: ${items.length}`);
       setSingleInput('');
       setListInput('');
@@ -160,7 +160,7 @@ export default function Warehouse() {
 
     setSavingSettings(true);
     try {
-      await warehouseApi.updateSettings(selectedLot.id, {
+      await warehouseApi.updateStockByLotID(selectedLot.funpay_account_id, selectedLot.lot_id, {
         auto_delivery_enabled: autoDeliveryDraft,
         auto_delivery_template: templateDraft,
       });
@@ -170,6 +170,17 @@ export default function Warehouse() {
       toast.error(err instanceof Error ? err.message : 'Ошибка сохранения настроек');
     } finally {
       setSavingSettings(false);
+    }
+  }
+
+  async function removeItem(index: number) {
+    if (!selectedLot) return;
+    try {
+      await warehouseApi.deleteStockItem(selectedLot.funpay_account_id, selectedLot.lot_id, index);
+      toast.success('Позиция удалена');
+      await loadLots(accountFilter);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка удаления позиции');
     }
   }
 
@@ -504,6 +515,7 @@ export default function Warehouse() {
                               <th>Товар</th>
                               <th>Статус</th>
                               <th className="platform-col-tablet-hide" style={{ textAlign: 'right' }}>Дата выдачи</th>
+                              <th style={{ textAlign: 'right' }}>Действие</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -523,6 +535,15 @@ export default function Warehouse() {
                                         minute: '2-digit',
                                       })}`
                                     : '—'}
+                                </td>
+                                <td style={{ textAlign: 'right' }}>
+                                  <button
+                                    className="platform-btn-secondary"
+                                    onClick={() => void removeItem(idx)}
+                                    disabled={item.status !== 'available'}
+                                  >
+                                    <Trash2 size={14} /> Удалить
+                                  </button>
                                 </td>
                               </tr>
                             ))}
@@ -550,6 +571,15 @@ export default function Warehouse() {
                                   })}`
                                 : 'Дата выдачи: —'}
                             </span>
+                          </div>
+                          <div className="mt-2">
+                            <button
+                              className="platform-btn-secondary"
+                              onClick={() => void removeItem(idx)}
+                              disabled={item.status !== 'available'}
+                            >
+                              <Trash2 size={14} /> Удалить
+                            </button>
                           </div>
                         </article>
                       ))}

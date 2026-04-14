@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { Loader2, Search } from 'lucide-react';
+import { Loader2, Search, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { accountsApi, ApiAccount, ApiOrder, ordersApi } from '@/lib/api';
 import { DataTableWrap, EmptyState, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard, ToolbarRow } from '@/platform/components/primitives';
@@ -32,6 +32,7 @@ export default function Orders() {
   const [accountFilter, setAccountFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 0 | 1 | 2>('all');
   const [reloadKey, setReloadKey] = useState(0);
+  const [deliveringIDs, setDeliveringIDs] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     accountsApi.list().then(rows => setAccounts(Array.isArray(rows) ? rows : [])).catch(() => {});
@@ -76,6 +77,23 @@ export default function Orders() {
   }, [orders, search]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  async function deliver(order: ApiOrder) {
+    setDeliveringIDs(prev => new Set(prev).add(order.id));
+    try {
+      await ordersApi.deliver(order.id);
+      toast.success(`Товар выдан по заказу #${order.funpay_order_id}`);
+      setReloadKey(prev => prev + 1);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка выдачи');
+    } finally {
+      setDeliveringIDs(prev => {
+        const next = new Set(prev);
+        next.delete(order.id);
+        return next;
+      });
+    }
+  }
 
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }}>
@@ -134,6 +152,7 @@ export default function Orders() {
                         <th>Аккаунт</th>
                         <th style={{ textAlign: 'right' }}>Сумма</th>
                         <th>Статус</th>
+                        <th style={{ textAlign: 'right' }}>Действие</th>
                         <th style={{ textAlign: 'right' }}>Дата</th>
                       </tr>
                     </thead>
@@ -147,6 +166,15 @@ export default function Orders() {
                           <td>{accounts.find(acc => acc.id === order.funpay_account_id)?.username || `ID ${order.funpay_account_id}`}</td>
                           <td style={{ textAlign: 'right', fontWeight: 700 }}>{Number(order.price || 0)} ₽</td>
                           <td>{STATUS_NUM_LABEL[order.status] || String(order.status)}</td>
+                          <td style={{ textAlign: 'right' }}>
+                            <button
+                              className="platform-btn-secondary"
+                              onClick={() => void deliver(order)}
+                              disabled={order.status !== 0 || deliveringIDs.has(order.id)}
+                            >
+                              {deliveringIDs.has(order.id) ? <Loader2 size={14} className="animate-spin" /> : <><Send size={14} /> Выдать</>}
+                            </button>
+                          </td>
                           <td style={{ textAlign: 'right' }}>{formatDate(order.created_at)}</td>
                         </tr>
                       ))}

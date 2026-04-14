@@ -165,12 +165,19 @@ export const accountsApi = {
 // ── Lots ──────────────────────────────────────────────────────────────────────
 
 export type ApiLot = {
-  id: number;
+  id: string;
+  db_id?: number;
   funpay_account_id: number;
   account_username: string;
   lot_id: string;
   title: string;
+  description?: string;
+  currency?: string;
   category_name: string;
+  category_id?: number;
+  node_id?: number;
+  image_url?: string;
+  amount?: number;
   price: number;
   is_active: boolean;
 };
@@ -178,6 +185,31 @@ export type ApiLot = {
 export const lotsApi = {
   listByAccount: (accountId: number | string) =>
     apiRequest<ApiLot[]>(`/api/accounts/${accountId}/lots`),
+  categories: (accountId: number | string) =>
+    apiRequest<Array<{
+      game_id: number;
+      game_title: string;
+      subcategories: Array<{ id: number; name: string }>;
+    }>>(`/api/accounts/${accountId}/lots/categories`),
+  create: (
+    accountId: number | string,
+    payload: { node_id: number; title: string; description: string; price: number; amount: number },
+  ) =>
+    apiRequest<{ id?: string }>(`/api/accounts/${accountId}/lots`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  update: (
+    accountId: number | string,
+    lotId: number | string,
+    payload: { title: string; description: string; price: number; amount: number; is_active: boolean },
+  ) =>
+    apiRequest(`/api/accounts/${accountId}/lots/${lotId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  delete: (accountId: number | string, lotId: number | string) =>
+    apiRequest(`/api/accounts/${accountId}/lots/${lotId}`, { method: 'DELETE' }),
   listAll: () => apiRequest<ApiLot[]>('/api/lots'),
   raiseLot: (accountId: number | string, lotId: number | string) =>
     apiRequest(`/api/accounts/${accountId}/lots/${lotId}/raise`, { method: 'POST' }),
@@ -259,6 +291,10 @@ export const ordersApi = {
     if (params.limit !== undefined) query.set('limit', String(params.limit));
     return apiRequest<OrdersResponse>(`/api/orders?${query.toString()}`);
   },
+  deliver: (id: number | string) =>
+    apiRequest(`/api/orders/${id}/deliver`, {
+      method: 'POST',
+    }),
 };
 
 // ── Analytics ─────────────────────────────────────────────────────────────────
@@ -487,6 +523,26 @@ export const warehouseApi = {
     data: { auto_delivery_enabled: boolean; auto_delivery_template: string },
   ) =>
     apiRequest(`/api/warehouse/lots/${warehouseLotID}/settings`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  getStock: (accountId: number | string, lotId: number | string) =>
+    apiRequest<ApiWarehouseLot>(`/api/accounts/${accountId}/lots/${lotId}/stock`),
+  addStock: (accountId: number | string, lotId: number | string, items: string[]) =>
+    apiRequest(`/api/accounts/${accountId}/lots/${lotId}/stock`, {
+      method: 'POST',
+      body: JSON.stringify({ items }),
+    }),
+  deleteStockItem: (accountId: number | string, lotId: number | string, itemIndex: number) =>
+    apiRequest(`/api/accounts/${accountId}/lots/${lotId}/stock/${itemIndex}`, {
+      method: 'DELETE',
+    }),
+  updateStockByLotID: (
+    accountId: number | string,
+    lotId: number | string,
+    data: { auto_delivery_enabled: boolean; auto_delivery_template: string },
+  ) =>
+    apiRequest(`/api/accounts/${accountId}/lots/${lotId}/stock/settings`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
