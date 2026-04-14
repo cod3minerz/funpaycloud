@@ -20,6 +20,14 @@ const syne = Syne({
 export const metadata: Metadata = {
   title: 'FunPay Cloud',
   description: 'Автоматизация продаж на FunPay — облачный SaaS для продавцов',
+  icons: {
+    icon: [
+      { url: '/favicon-16x16.png', sizes: '16x16' },
+      { url: '/favicon-32x32.png', sizes: '32x32' },
+    ],
+    apple: '/apple-touch-icon.png',
+  },
+  manifest: '/site.webmanifest',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
