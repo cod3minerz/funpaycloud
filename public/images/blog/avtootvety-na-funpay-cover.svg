@@ -1,0 +1,13 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g3" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1F2937"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g3)"/>
+  <rect x="75" y="80" width="1050" height="470" rx="28" fill="#111827" fill-opacity="0.72" stroke="#A78BFA" stroke-opacity="0.45"/>
+  <text x="135" y="250" fill="#C4B5FD" font-family="Manrope, Arial" font-size="28">Автоматизация</text>
+  <text x="135" y="320" fill="#F8FAFC" font-family="Manrope, Arial" font-size="56" font-weight="700">Автоответы на FunPay</text>
+  <text x="135" y="390" fill="#DDD6FE" font-family="Manrope, Arial" font-size="30">Сценарии, шаблоны и защита от спама</text>
+</svg>

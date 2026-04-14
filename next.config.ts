@@ -1,12 +1,18 @@
 import type { NextConfig } from 'next';
 import path from 'path';
+import createMDX from '@next/mdx';
+
+const withMDX = createMDX({
+  extension: /\.(md|mdx)$/,
+});
 
 const config: NextConfig = {
+  pageExtensions: ['ts', 'tsx', 'md', 'mdx'],
   experimental: {
-    optimizePackageImports: ["lucide-react", "recharts"],
+    optimizePackageImports: ['lucide-react', 'recharts'],
   },
   compiler: {
-    removeConsole: process.env.NODE_ENV === "production",
+    removeConsole: process.env.NODE_ENV === 'production',
   },
   async redirects() {
     return [
@@ -29,4 +35,4 @@ const config: NextConfig = {
   },
 };
 
-export default config;
+export default withMDX(config);

@@ -1,0 +1,11 @@
+<svg width="150" height="32" viewBox="0 0 150 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="1" y="1" width="30" height="30" rx="8" fill="url(#g)"/>
+  <path d="M8 11h16v2H8zm0 4h12v2H8zm0 4h9v2H8z" fill="#fff"/>
+  <text x="40" y="21" fill="#f8fafc" font-family="Manrope, Arial, sans-serif" font-size="16" font-weight="700">FunPay Cloud</text>
+  <defs>
+    <linearGradient id="g" x1="1" y1="1" x2="31" y2="31" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3b82f6"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+</svg>

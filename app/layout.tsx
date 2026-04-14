@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Manrope, Syne } from 'next/font/google';
 import { Toaster } from 'sonner';
 import './globals.css';
@@ -18,6 +18,7 @@ const syne = Syne({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://funpay.cloud'),
   title: 'FunPay Cloud',
   description: 'Автоматизация продаж на FunPay — облачный SaaS для продавцов',
   icons: {
@@ -30,9 +31,18 @@ export const metadata: Metadata = {
   manifest: '/site.webmanifest',
 };
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: [
+    { media: '(prefers-color-scheme: dark)', color: '#0a0f1a' },
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+  ],
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" className={`dark ${manrope.variable} ${syne.variable}`}>
+    <html lang="ru" className={`dark ${manrope.variable} ${syne.variable}`} suppressHydrationWarning>
       <body className="antialiased">
         {children}
         <Toaster

@@ -1,0 +1,14 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#1E3A8A"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g1)"/>
+  <circle cx="1040" cy="120" r="220" fill="#3B82F6" fill-opacity="0.2"/>
+  <rect x="80" y="90" width="1040" height="450" rx="24" fill="#0B1220" fill-opacity="0.72" stroke="#3B82F6" stroke-opacity="0.5"/>
+  <text x="140" y="250" fill="#93C5FD" font-family="Manrope, Arial" font-size="28">Руководство</text>
+  <text x="140" y="320" fill="#F8FAFC" font-family="Manrope, Arial" font-size="56" font-weight="700">Автоподнятие лотов на FunPay</text>
+  <text x="140" y="390" fill="#CBD5E1" font-family="Manrope, Arial" font-size="30">Практика, расписание и контроль результата</text>
+</svg>

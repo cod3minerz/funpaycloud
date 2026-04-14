@@ -1,0 +1,13 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g5" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#334155"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g5)"/>
+  <rect x="80" y="80" width="1040" height="470" rx="28" fill="#020617" fill-opacity="0.72" stroke="#38BDF8" stroke-opacity="0.4"/>
+  <text x="140" y="250" fill="#7DD3FC" font-family="Manrope, Arial" font-size="28">Сравнение</text>
+  <text x="140" y="320" fill="#F8FAFC" font-family="Manrope, Arial" font-size="56" font-weight="700">Облако против десктоп-ботов</text>
+  <text x="140" y="390" fill="#BFDBFE" font-family="Manrope, Arial" font-size="30">Надежность, риски и цена поддержки</text>
+</svg>

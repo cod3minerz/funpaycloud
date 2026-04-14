@@ -1,0 +1,13 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g2" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111827"/>
+      <stop offset="1" stop-color="#0F766E"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g2)"/>
+  <rect x="70" y="80" width="1060" height="470" rx="28" fill="#0B1220" fill-opacity="0.72" stroke="#14B8A6" stroke-opacity="0.45"/>
+  <text x="130" y="250" fill="#5EEAD4" font-family="Manrope, Arial" font-size="28">Безопасность</text>
+  <text x="130" y="320" fill="#F8FAFC" font-family="Manrope, Arial" font-size="56" font-weight="700">Что такое Golden Key на FunPay</text>
+  <text x="130" y="390" fill="#D1FAE5" font-family="Manrope, Arial" font-size="30">Где найти, как хранить и когда обновлять</text>
+</svg>
