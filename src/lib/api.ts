@@ -1,4 +1,4 @@
-import { getToken, logout } from './auth';
+import { clearAdminToken, getAdminToken, getToken, logout } from './auth';
 
 const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://api.funpay.cloud').replace(/\/+$/, '');
 
@@ -79,6 +79,65 @@ export async function apiRequest<T = unknown>(
 
   if (!response.ok || !envelope.success) {
     throw new ApiError(envelope.error || 'Ошибка запроса', response.status);
+  }
+
+  return (envelope.data as T) ?? ({} as T);
+}
+
+export async function adminApiRequest<T = unknown>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  if (!path.startsWith('/admin-api/')) {
+    throw new ApiError(`Неверный путь Admin API: ${path}`);
+  }
+
+  const token = getAdminToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> | undefined),
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  let response: Response;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    response = await fetch(path, {
+      ...options,
+      headers,
+      signal: controller.signal,
+      credentials: 'same-origin',
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new ApiError('Сервер долго не отвечает. Попробуйте снова через несколько секунд.');
+    }
+    throw new ApiError('Не удалось связаться с Admin API.');
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  let envelope: ApiEnvelope<T> = { success: false, error: 'Ошибка запроса' };
+  try {
+    envelope = (await response.json()) as ApiEnvelope<T>;
+  } catch {
+    // ignore
+  }
+
+  if (response.status === 401 || response.status === 403) {
+    clearAdminToken();
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin/login')) {
+      window.location.href = '/admin/login';
+    }
+    throw new ApiError(envelope.error || 'Доступ запрещён', response.status);
+  }
+
+  if (!response.ok || !envelope.success) {
+    throw new ApiError(envelope.error || 'Ошибка admin-запроса', response.status);
   }
 
   return (envelope.data as T) ?? ({} as T);
@@ -580,3 +639,158 @@ export function createAccountWebSocket(
 
   return ws;
 }
+
+// ── Admin ────────────────────────────────────────────────────────────────────
+
+export type AdminLog = {
+  id: number;
+  user_id?: number | null;
+  funpay_account_id?: number | null;
+  category: string;
+  action: string;
+  level: 'info' | 'warning' | 'error' | string;
+  message: string;
+  payload?: Record<string, unknown>;
+  ip_address?: string;
+  created_at: string;
+};
+
+export type AdminMetric = {
+  id: number;
+  cpu_usage?: number | null;
+  ram_used_mb: number;
+  ram_total_mb: number;
+  goroutines: number;
+  api_requests_per_min: number;
+  errors_per_min: number;
+  active_users: number;
+  recorded_at: string;
+};
+
+export type AdminUser = {
+  id: number;
+  email: string;
+  plan: string;
+  accounts_count: number;
+  created_at: string;
+  last_login?: string | null;
+};
+
+export type AdminRunner = {
+  account_id: number;
+  username: string;
+  user_id: number;
+  started_at?: string | null;
+  last_event_at?: string | null;
+  keeper_active: boolean;
+  raiser_active: boolean;
+  runner_active: boolean;
+};
+
+export type AdminBan = {
+  id: number;
+  type: string;
+  value: string;
+  reason?: string;
+  banned_by?: number | null;
+  created_at: string;
+};
+
+export type AdminStats = {
+  users_total: number;
+  users_by_plan: Record<string, number>;
+  accounts_total: number;
+  orders_today: number;
+  messages_today: number;
+  errors_last_hour: number;
+  active_goroutines: number;
+};
+
+export const adminApi = {
+  login: (email: string, password: string, totp: string) =>
+    adminApiRequest<{ token: string; user: { id: number; email: string } }>('/admin-api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password, totp }),
+    }),
+  logout: () =>
+    adminApiRequest('/admin-api/auth/logout', {
+      method: 'POST',
+    }),
+  me: () => adminApiRequest<{ id: number; email: string; plan: string }>('/admin-api/auth/me'),
+  stats: () => adminApiRequest<AdminStats>('/admin-api/stats'),
+  metrics: (period: '1h' | '24h' | '7d' = '24h') =>
+    adminApiRequest<{ current: AdminMetric; history: AdminMetric[]; period: string }>(`/admin-api/metrics?period=${period}`),
+  logs: (params: { category?: string; level?: string; user_id?: number; account_id?: number; from?: string; to?: string; page?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params.category) query.set('category', params.category);
+    if (params.level) query.set('level', params.level);
+    if (params.user_id !== undefined) query.set('user_id', String(params.user_id));
+    if (params.account_id !== undefined) query.set('account_id', String(params.account_id));
+    if (params.from) query.set('from', params.from);
+    if (params.to) query.set('to', params.to);
+    if (params.page !== undefined) query.set('page', String(params.page));
+    if (params.limit !== undefined) query.set('limit', String(params.limit));
+    return adminApiRequest<{ logs: AdminLog[]; total: number; page: number; limit: number }>(`/admin-api/logs?${query.toString()}`);
+  },
+  logsCsv: (params: { category?: string; level?: string; user_id?: number; account_id?: number; from?: string; to?: string }) => {
+    const query = new URLSearchParams({ format: 'csv' });
+    if (params.category) query.set('category', params.category);
+    if (params.level) query.set('level', params.level);
+    if (params.user_id !== undefined) query.set('user_id', String(params.user_id));
+    if (params.account_id !== undefined) query.set('account_id', String(params.account_id));
+    if (params.from) query.set('from', params.from);
+    if (params.to) query.set('to', params.to);
+    return fetch(`/admin-api/logs?${query.toString()}`, {
+      headers: (() => {
+        const token = getAdminToken();
+        return token ? { Authorization: `Bearer ${token}` } : {};
+      })(),
+      credentials: 'same-origin',
+    });
+  },
+  users: (params: { page?: number; limit?: number; search?: string }) => {
+    const query = new URLSearchParams();
+    if (params.page !== undefined) query.set('page', String(params.page));
+    if (params.limit !== undefined) query.set('limit', String(params.limit));
+    if (params.search) query.set('search', params.search);
+    return adminApiRequest<{ users: AdminUser[]; total: number; page: number; limit: number; search: string }>(`/admin-api/users?${query.toString()}`);
+  },
+  userDetail: (id: number | string) =>
+    adminApiRequest<{ user: AdminUser; accounts: Array<Record<string, unknown>>; logs: AdminLog[] }>(`/admin-api/users/${id}`),
+  updatePlan: (id: number | string, plan: string) =>
+    adminApiRequest(`/admin-api/users/${id}/plan`, {
+      method: 'PUT',
+      body: JSON.stringify({ plan }),
+    }),
+  banUser: (id: number | string, reason: string) =>
+    adminApiRequest(`/admin-api/users/${id}/ban`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
+  unbanUser: (id: number | string) =>
+    adminApiRequest(`/admin-api/users/${id}/ban`, {
+      method: 'DELETE',
+    }),
+  runners: () => adminApiRequest<AdminRunner[]>('/admin-api/runners'),
+  stopRunner: (accountId: number | string) =>
+    adminApiRequest(`/admin-api/runners/${accountId}/stop`, { method: 'POST' }),
+  restartRunner: (accountId: number | string) =>
+    adminApiRequest(`/admin-api/runners/${accountId}/restart`, { method: 'POST' }),
+  stopAllRunners: () =>
+    adminApiRequest<{ stopped: number }>('/admin-api/runners/stop-all', { method: 'POST' }),
+  bans: (params: { page?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params.page !== undefined) query.set('page', String(params.page));
+    if (params.limit !== undefined) query.set('limit', String(params.limit));
+    return adminApiRequest<{ items: AdminBan[]; total: number; page: number; limit: number }>(`/admin-api/bans?${query.toString()}`);
+  },
+  addBan: (payload: { type: string; value: string; reason?: string }) =>
+    adminApiRequest('/admin-api/bans', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  deleteBan: (id: number | string) =>
+    adminApiRequest(`/admin-api/bans/${id}`, {
+      method: 'DELETE',
+    }),
+};
