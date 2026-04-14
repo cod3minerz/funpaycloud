@@ -238,16 +238,10 @@ export default function Chats() {
       }
     };
 
-    const onFocus = () => {
-      void onVisible();
-    };
-
     document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('focus', onFocus);
 
     return () => {
       document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('focus', onFocus);
     };
   }, [activeAccountID, loadMessages]);
 
@@ -539,8 +533,9 @@ export default function Chats() {
   }
 
   async function retrySelectedMessages() {
-    if (!selectedChat) return;
-    await loadMessages(selectedChat.id);
+    const chat = selectedChatRef.current;
+    if (!chat) return;
+    await handleChatSelect(chat);
   }
 
   return (

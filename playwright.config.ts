@@ -31,5 +31,9 @@ export default defineConfig({
     url: 'http://localhost:3100/platform/dashboard',
     timeout: 120_000,
     reuseExistingServer: !process.env.CI,
+    env: {
+      ...process.env,
+      NEXT_PUBLIC_API_URL: 'http://localhost:3100',
+    },
   },
 });
