@@ -99,6 +99,7 @@ export default function Chats() {
   const [reloadKey, setReloadKey] = useState(0);
 
   const reconnectTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+  const heartbeatTimersRef = useRef<Map<number, ReturnType<typeof setInterval>>>(new Map());
   const socketsRef = useRef<Map<number, WebSocket>>(new Map());
   const wsResyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const threadScrollRef = useRef<HTMLDivElement | null>(null);
@@ -401,6 +402,10 @@ export default function Chats() {
       const ws = createAccountWebSocket(accountID, event => {
         const eventAccountID = Number(event.data.account_id ?? accountID);
 
+        if (event.type === 'pong') {
+          return;
+        }
+
         if (event.type === 'message_confirmed') {
           const tempID = Number(event.data.temp_id ?? 0);
           const realID = Number(event.data.real_funpay_message_id ?? 0);
@@ -507,10 +512,25 @@ export default function Chats() {
       });
 
       ws.onopen = () => {
+        const previousHeartbeat = heartbeatTimersRef.current.get(accountID);
+        if (previousHeartbeat) {
+          clearInterval(previousHeartbeat);
+        }
+        const heartbeat = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping' }));
+          }
+        }, 30000);
+        heartbeatTimersRef.current.set(accountID, heartbeat);
         scheduleResync();
       };
       ws.onerror = () => ws.close();
       ws.onclose = () => {
+        const heartbeat = heartbeatTimersRef.current.get(accountID);
+        if (heartbeat) {
+          clearInterval(heartbeat);
+          heartbeatTimersRef.current.delete(accountID);
+        }
         const currentSocket = socketsRef.current.get(accountID);
         if (currentSocket === ws) {
           socketsRef.current.delete(accountID);
@@ -528,6 +548,8 @@ export default function Chats() {
 
     reconnectTimersRef.current.forEach(timer => clearTimeout(timer));
     reconnectTimersRef.current.clear();
+    heartbeatTimersRef.current.forEach(timer => clearInterval(timer));
+    heartbeatTimersRef.current.clear();
     socketsRef.current.forEach(socket => socket.close());
     socketsRef.current.clear();
 
@@ -537,6 +559,8 @@ export default function Chats() {
       cancelled = true;
       reconnectTimersRef.current.forEach(timer => clearTimeout(timer));
       reconnectTimersRef.current.clear();
+      heartbeatTimersRef.current.forEach(timer => clearInterval(timer));
+      heartbeatTimersRef.current.clear();
       socketsRef.current.forEach(socket => socket.close());
       socketsRef.current.clear();
       if (wsResyncTimerRef.current) {
