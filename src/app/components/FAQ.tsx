@@ -53,14 +53,14 @@ export function FAQ() {
         <div className="text-center mb-16">
           <div
             className="inline-block mb-4 text-sm font-semibold text-blue-300 uppercase tracking-widest"
-            style={{ fontFamily: "Manrope, sans-serif" }}
+            style={{ fontFamily: "var(--font-sans)" }}
           >
             Частые вопросы
           </div>
           <h2
             className="text-white"
             style={{
-              fontFamily: "Manrope, sans-serif",
+              fontFamily: "var(--font-sans)",
               fontWeight: 800,
               fontSize: "clamp(28px, 5vw, 48px)",
               letterSpacing: "-1.5px",
@@ -95,7 +95,7 @@ export function FAQ() {
               <div className="flex items-center justify-between px-6 py-5">
                 <span
                   className="text-white font-semibold pr-4"
-                  style={{ fontFamily: "Manrope, sans-serif", fontSize: "15px" }}
+                  style={{ fontFamily: "var(--font-sans)", fontSize: "15px" }}
                 >
                   {faq.q}
                 </span>
@@ -108,7 +108,7 @@ export function FAQ() {
                 <div className="px-6 pb-5">
                   <p
                     className="leading-relaxed"
-                    style={{ fontFamily: "Manrope, sans-serif", fontSize: "14px", color: "#A8A8B3", lineHeight: 1.7 }}
+                    style={{ fontFamily: "var(--font-sans)", fontSize: "14px", color: "#A8A8B3", lineHeight: 1.7 }}
                   >
                     {faq.a}
                   </p>
@@ -119,7 +119,7 @@ export function FAQ() {
         </div>
 
         <div className="text-center mt-10">
-          <p className="text-[#525266] text-sm" style={{ fontFamily: "Manrope, sans-serif" }}>
+          <p className="text-[#525266] text-sm" style={{ fontFamily: "var(--font-sans)" }}>
             Не нашёл ответа?{" "}
             <a href="#" className="text-blue-400 hover:text-blue-300 transition-colors font-semibold">
               Напиши нам в Telegram

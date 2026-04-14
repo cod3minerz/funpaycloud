@@ -19,14 +19,14 @@ export function Pricing() {
         <div className="text-center mb-12">
           <div
             className="inline-block mb-4 text-sm font-semibold text-blue-400 uppercase tracking-widest"
-            style={{ fontFamily: "Manrope, sans-serif" }}
+            style={{ fontFamily: "var(--font-sans)" }}
           >
             Прозрачные тарифы
           </div>
           <h2
             className="text-white mb-4"
             style={{
-              fontFamily: "Manrope, sans-serif",
+              fontFamily: "var(--font-sans)",
               fontWeight: 800,
               fontSize: "clamp(30px, 5vw, 52px)",
               letterSpacing: "-1.5px",
@@ -48,7 +48,7 @@ export function Pricing() {
           <p
             className="max-w-[520px] mx-auto mb-8"
             style={{
-              fontFamily: "Manrope, sans-serif",
+              fontFamily: "var(--font-sans)",
               fontSize: "17px",
               color: "#A8A8B3",
               lineHeight: 1.7,
@@ -61,7 +61,7 @@ export function Pricing() {
           <div className="flex items-center justify-center gap-4">
             <span
               className={`text-sm font-semibold ${!isYearly ? "text-white" : "text-[#525266]"}`}
-              style={{ fontFamily: "Manrope, sans-serif" }}
+              style={{ fontFamily: "var(--font-sans)" }}
             >
               Ежемесячно
             </span>
@@ -76,13 +76,13 @@ export function Pricing() {
             <div className="flex items-center gap-2">
               <span
                 className={`text-sm font-semibold ${isYearly ? "text-white" : "text-[#525266]"}`}
-                style={{ fontFamily: "Manrope, sans-serif" }}
+                style={{ fontFamily: "var(--font-sans)" }}
               >
                 Ежегодно
               </span>
               <span
                 className="text-xs font-bold text-emerald-400 px-2 py-0.5 rounded-full"
-                style={{ background: "rgba(59,130,246,0.1)", fontFamily: "Manrope, sans-serif" }}
+                style={{ background: "rgba(59,130,246,0.1)", fontFamily: "var(--font-sans)" }}
               >
                 −20%
               </span>
@@ -114,7 +114,7 @@ export function Pricing() {
                     style={{
                       background: "linear-gradient(135deg, #60A5FA, #3B82F6)",
                       boxShadow: "0 8px 18px rgba(96,165,250,0.5)",
-                      fontFamily: "Manrope, sans-serif",
+                      fontFamily: "var(--font-sans)",
                     }}
                   >
                     ✦ Лучший выбор
@@ -126,26 +126,26 @@ export function Pricing() {
               <div className="mb-6">
                 <div
                   className={`text-sm font-semibold mb-1 ${plan.color}`}
-                  style={{ fontFamily: "Manrope, sans-serif" }}
+                  style={{ fontFamily: "var(--font-sans)" }}
                 >
                   {plan.tagline}
                 </div>
                 <div
                   className="text-white font-bold mb-4"
-                  style={{ fontFamily: "Manrope, sans-serif", fontSize: "24px" }}
+                  style={{ fontFamily: "var(--font-sans)", fontSize: "24px" }}
                 >
                   {plan.name}
                 </div>
                 <div className="flex items-end gap-2">
                   <span
                     className="text-white font-black"
-                    style={{ fontFamily: "Manrope, sans-serif", fontSize: "42px", letterSpacing: "-2px" }}
+                    style={{ fontFamily: "var(--font-sans)", fontSize: "42px", letterSpacing: "-2px" }}
                   >
                     {isYearly ? plan.priceYearly : plan.priceMonthly}₽
                   </span>
                   <span
                     className="text-[#525266] text-sm mb-2"
-                    style={{ fontFamily: "Manrope, sans-serif" }}
+                    style={{ fontFamily: "var(--font-sans)" }}
                   >
                     / мес
                   </span>
@@ -153,7 +153,7 @@ export function Pricing() {
                 {isYearly && (
                   <div
                     className="text-[#525266] text-sm line-through"
-                    style={{ fontFamily: "Manrope, sans-serif" }}
+                    style={{ fontFamily: "var(--font-sans)" }}
                   >
                     {plan.priceMonthly}₽/мес
                   </div>
@@ -174,12 +174,12 @@ export function Pricing() {
                   plan.ctaStyle === "gradient"
                     ? {
                         background: "linear-gradient(135deg, #60A5FA, #3B82F6)",
-                        fontFamily: "Manrope, sans-serif",
+                        fontFamily: "var(--font-sans)",
                         boxShadow: "0 10px 24px rgba(96,165,250,0.3)",
                       }
                     : {
                         border: `1px solid ${plan.border}`,
-                        fontFamily: "Manrope, sans-serif",
+                        fontFamily: "var(--font-sans)",
                       }
                 }
               >
@@ -204,7 +204,7 @@ export function Pricing() {
                     </div>
                     <span
                       className={`text-sm ${f.available ? "text-[#A8A8B3]" : "text-[#525266]"}`}
-                      style={{ fontFamily: "Manrope, sans-serif" }}
+                      style={{ fontFamily: "var(--font-sans)" }}
                     >
                       {f.text}
                     </span>
@@ -231,7 +231,7 @@ export function Pricing() {
               <span className="text-lg">{r.icon}</span>
               <span
                 className="text-sm text-[#A8A8B3]"
-                style={{ fontFamily: "Manrope, sans-serif" }}
+                style={{ fontFamily: "var(--font-sans)" }}
               >
                 {r.text}
               </span>

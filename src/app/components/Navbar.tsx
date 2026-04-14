@@ -40,7 +40,7 @@ export function Navbar() {
                 key={l.href}
                 href={l.href}
                 className="relative py-2 text-sm font-medium text-slate-300 transition-colors hover:text-white after:absolute after:left-0 after:-bottom-0.5 after:h-px after:w-full after:origin-left after:scale-x-0 after:bg-blue-300/80 after:transition-transform hover:after:scale-x-100"
-                style={{ fontFamily: "Manrope, sans-serif" }}
+                style={{ fontFamily: "var(--font-sans)" }}
               >
                 {l.label}
               </a>
@@ -52,14 +52,14 @@ export function Navbar() {
             <a
               href="/auth/login"
               className="text-slate-300 hover:text-white text-sm font-semibold transition-colors"
-              style={{ fontFamily: "Manrope, sans-serif" }}
+              style={{ fontFamily: "var(--font-sans)" }}
             >
               Войти
             </a>
             <a
               href="/auth/register"
               className="bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold text-sm px-5 py-2.5 rounded-xl block hover:opacity-95 transition-opacity border border-blue-200/20"
-              style={{ fontFamily: "Manrope, sans-serif" }}
+              style={{ fontFamily: "var(--font-sans)" }}
             >
               Начать бесплатно
             </a>
@@ -87,7 +87,7 @@ export function Navbar() {
                   href={l.href}
                   onClick={() => setMobileOpen(false)}
                   className="py-3 text-sm font-medium text-slate-300 hover:text-white border-b border-slate-200/10 transition-colors"
-                  style={{ fontFamily: "Manrope, sans-serif" }}
+                  style={{ fontFamily: "var(--font-sans)" }}
                 >
                   {l.label}
                 </a>
@@ -97,7 +97,7 @@ export function Navbar() {
               <a
                 href="/auth/login"
                 className="text-white text-sm font-semibold text-center py-2.5 border border-slate-200/20 rounded-xl"
-                style={{ fontFamily: "Manrope, sans-serif" }}
+                style={{ fontFamily: "var(--font-sans)" }}
               >
                 Войти
               </a>
@@ -105,7 +105,7 @@ export function Navbar() {
                 href="/auth/register"
                 onClick={() => setMobileOpen(false)}
                 className="bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold text-sm py-3 rounded-xl text-center border border-blue-200/20"
-                style={{ fontFamily: "Manrope, sans-serif" }}
+                style={{ fontFamily: "var(--font-sans)" }}
               >
                 Начать бесплатно
               </a>

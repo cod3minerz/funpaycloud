@@ -60,14 +60,14 @@ export function HowItWorks() {
         <div className="text-center mb-16">
           <div
             className="inline-block mb-4 text-sm font-semibold text-blue-400 uppercase tracking-widest"
-            style={{ fontFamily: "Manrope, sans-serif" }}
+            style={{ fontFamily: "var(--font-sans)" }}
           >
             Быстрый старт
           </div>
           <h2
             className="text-white mb-4"
             style={{
-              fontFamily: "Manrope, sans-serif",
+              fontFamily: "var(--font-sans)",
               fontWeight: 800,
               fontSize: "clamp(30px, 5vw, 52px)",
               letterSpacing: "-1.5px",
@@ -89,7 +89,7 @@ export function HowItWorks() {
           <p
             className="max-w-[520px] mx-auto"
             style={{
-              fontFamily: "Manrope, sans-serif",
+              fontFamily: "var(--font-sans)",
               fontSize: "17px",
               color: "#A8A8B3",
               lineHeight: 1.7,
@@ -117,7 +117,7 @@ export function HowItWorks() {
                 >
                   <span
                     className={`text-xl font-black ${step.color}`}
-                    style={{ fontFamily: "Manrope, sans-serif" }}
+                    style={{ fontFamily: "var(--font-sans)" }}
                   >
                     {step.number}
                   </span>
@@ -138,7 +138,7 @@ export function HowItWorks() {
                         <h3
                           className="text-white"
                           style={{
-                            fontFamily: "Manrope, sans-serif",
+                            fontFamily: "var(--font-sans)",
                             fontWeight: 700,
                             fontSize: "20px",
                           }}
@@ -149,7 +149,7 @@ export function HowItWorks() {
                       <p
                         className="leading-relaxed"
                         style={{
-                          fontFamily: "Manrope, sans-serif",
+                          fontFamily: "var(--font-sans)",
                           fontSize: "15px",
                           color: "#A8A8B3",
                           lineHeight: 1.7,
@@ -180,7 +180,7 @@ export function HowItWorks() {
                           </div>
                           <span
                             className={`text-sm ${step.color}`}
-                            style={{ fontFamily: "Manrope, sans-serif", fontWeight: 500 }}
+                            style={{ fontFamily: "var(--font-sans)", fontWeight: 500 }}
                           >
                             {d}
                           </span>
@@ -198,7 +198,7 @@ export function HowItWorks() {
         <div className="text-center mt-12">
           <p
             className="text-[#525266] text-sm"
-            style={{ fontFamily: "Manrope, sans-serif" }}
+            style={{ fontFamily: "var(--font-sans)" }}
           >
             Нужна помощь? Наша команда поможет настроить всё за тебя в рамках онбординга.
           </p>

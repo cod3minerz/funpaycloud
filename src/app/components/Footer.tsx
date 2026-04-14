@@ -27,7 +27,7 @@ export function Footer() {
             </a>
             <p
               className="text-[#525266] text-sm leading-relaxed mb-6"
-              style={{ fontFamily: "Manrope, sans-serif" }}
+              style={{ fontFamily: "var(--font-sans)" }}
             >
               Облачная платформа автоматизации продаж для профессиональных продавцов FunPay.
             </p>
@@ -40,7 +40,7 @@ export function Footer() {
                   style={{
                     background: "rgba(255,255,255,0.04)",
                     border: "1px solid rgba(255,255,255,0.07)",
-                    fontFamily: "Manrope, sans-serif",
+                    fontFamily: "var(--font-sans)",
                   }}
                 >
                   {s}
@@ -54,7 +54,7 @@ export function Footer() {
             <div key={col.title}>
               <div
                 className="text-white font-semibold mb-5 text-sm"
-                style={{ fontFamily: "Manrope, sans-serif" }}
+                style={{ fontFamily: "var(--font-sans)" }}
               >
                 {col.title}
               </div>
@@ -64,7 +64,7 @@ export function Footer() {
                     <a
                       href="#"
                       className="text-[#525266] hover:text-[#A8A8B3] text-sm transition-colors"
-                      style={{ fontFamily: "Manrope, sans-serif" }}
+                      style={{ fontFamily: "var(--font-sans)" }}
                     >
                       {link}
                     </a>
@@ -82,7 +82,7 @@ export function Footer() {
         >
           <p
             className="text-[#525266] text-sm"
-            style={{ fontFamily: "Manrope, sans-serif" }}
+            style={{ fontFamily: "var(--font-sans)" }}
           >
             © 2026 FunPay Cloud. Все права защищены.
           </p>
@@ -90,7 +90,7 @@ export function Footer() {
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span
               className="text-[#525266] text-sm"
-              style={{ fontFamily: "Manrope, sans-serif" }}
+              style={{ fontFamily: "var(--font-sans)" }}
             >
               Все системы работают
             </span>

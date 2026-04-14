@@ -102,14 +102,14 @@ export function Features() {
         <div className="text-center mb-16">
           <div
             className="inline-block mb-4 text-sm font-semibold text-blue-300 uppercase tracking-widest"
-            style={{ fontFamily: "Manrope, sans-serif" }}
+            style={{ fontFamily: "var(--font-sans)" }}
           >
             Модули системы
           </div>
           <h2
             className="text-white mb-4"
             style={{
-              fontFamily: "Manrope, sans-serif",
+              fontFamily: "var(--font-sans)",
               fontWeight: 800,
               fontSize: "clamp(30px, 5vw, 52px)",
               letterSpacing: "-1.5px",
@@ -132,7 +132,7 @@ export function Features() {
           <p
             className="max-w-[560px] mx-auto"
             style={{
-              fontFamily: "Manrope, sans-serif",
+              fontFamily: "var(--font-sans)",
               fontSize: "17px",
               color: "#A8A8B3",
               lineHeight: 1.7,
@@ -170,7 +170,7 @@ export function Features() {
                 </div>
                 <span
                   className={`text-xs font-semibold px-2.5 py-1 rounded-full ${f.badgeColor}`}
-                  style={{ background: f.badgeBg, fontFamily: "Manrope, sans-serif" }}
+                  style={{ background: f.badgeBg, fontFamily: "var(--font-sans)" }}
                 >
                   {f.badge}
                 </span>
@@ -179,7 +179,7 @@ export function Features() {
               <h3
                 className="text-white mb-3"
                 style={{
-                  fontFamily: "Manrope, sans-serif",
+                  fontFamily: "var(--font-sans)",
                   fontWeight: 700,
                   fontSize: "20px",
                   lineHeight: 1.3,
@@ -190,7 +190,7 @@ export function Features() {
               <p
                 className="mb-5"
                 style={{
-                  fontFamily: "Manrope, sans-serif",
+                  fontFamily: "var(--font-sans)",
                   fontSize: "14px",
                   color: "#A8A8B3",
                   lineHeight: 1.7,
@@ -219,7 +219,7 @@ export function Features() {
                     </div>
                     <span
                       className="text-sm text-[#A8A8B3]"
-                      style={{ fontFamily: "Manrope, sans-serif" }}
+                      style={{ fontFamily: "var(--font-sans)" }}
                     >
                       {item}
                     </span>

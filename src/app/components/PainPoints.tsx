@@ -38,14 +38,14 @@ export function PainPoints() {
         <div className="text-center mb-14">
           <div
             className="inline-block mb-4 text-sm font-semibold text-blue-300 uppercase tracking-widest"
-            style={{ fontFamily: "Manrope, sans-serif" }}
+            style={{ fontFamily: "var(--font-sans)" }}
           >
             Узнаёшь себя?
           </div>
           <h2
             className="text-white mb-4"
             style={{
-              fontFamily: "Manrope, sans-serif",
+              fontFamily: "var(--font-sans)",
               fontWeight: 800,
               fontSize: "clamp(32px, 5vw, 52px)",
               letterSpacing: "-1.5px",
@@ -67,7 +67,7 @@ export function PainPoints() {
           <p
             className="max-w-[640px] mx-auto"
             style={{
-              fontFamily: "Manrope, sans-serif",
+              fontFamily: "var(--font-sans)",
               fontSize: "17px",
               color: "#A8A8B3",
               lineHeight: 1.7,
@@ -91,7 +91,7 @@ export function PainPoints() {
             >
               <span
                 className="px-3 py-1.5 rounded-lg text-sm font-bold text-slate-200"
-                style={{ background: "rgba(30,41,59,0.9)", fontFamily: "Manrope, sans-serif" }}
+                style={{ background: "rgba(30,41,59,0.9)", fontFamily: "var(--font-sans)" }}
               >
                 😤 Ручной режим
               </span>
@@ -99,13 +99,13 @@ export function PainPoints() {
             <div className="px-6 py-4 flex items-center gap-3">
               <span
                 className="px-3 py-1.5 rounded-lg text-sm font-bold text-blue-200"
-                style={{ background: "rgba(59,130,246,0.2)", fontFamily: "Manrope, sans-serif" }}
+                style={{ background: "rgba(59,130,246,0.2)", fontFamily: "var(--font-sans)" }}
               >
                 ✅ Системный режим
               </span>
               <span
                 className="text-xs font-bold text-blue-200 flex items-center gap-1"
-                style={{ fontFamily: "Manrope, sans-serif" }}
+                style={{ fontFamily: "var(--font-sans)" }}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-300 animate-pulse" />
                 FunPay Cloud
@@ -117,14 +117,14 @@ export function PainPoints() {
             <div className="flex items-center gap-2 flex-wrap">
               <span
                 className="px-3 py-1.5 rounded-lg text-sm font-bold text-slate-200"
-                style={{ background: "rgba(30,41,59,0.9)", fontFamily: "Manrope, sans-serif" }}
+                style={{ background: "rgba(30,41,59,0.9)", fontFamily: "var(--font-sans)" }}
               >
                 😤 Ручной режим
               </span>
               <span className="text-slate-500 text-xs">vs</span>
               <span
                 className="px-3 py-1.5 rounded-lg text-sm font-bold text-blue-200"
-                style={{ background: "rgba(59,130,246,0.2)", fontFamily: "Manrope, sans-serif" }}
+                style={{ background: "rgba(59,130,246,0.2)", fontFamily: "var(--font-sans)" }}
               >
                 ✅ Системный режим · FunPay Cloud
               </span>
@@ -144,14 +144,14 @@ export function PainPoints() {
                 <div className="grid grid-cols-[34px_22px_1fr] gap-3 items-start">
                   <span
                     className="text-[11px] font-bold text-slate-400 mt-1"
-                    style={{ fontFamily: "Manrope, sans-serif", letterSpacing: "0.08em" }}
+                    style={{ fontFamily: "var(--font-sans)", letterSpacing: "0.08em" }}
                   >
                     {row.id}
                   </span>
                   <span className="text-lg leading-none mt-0.5">{row.manual.icon}</span>
                   <span
                     className="text-sm text-[#A8A8B3] leading-relaxed"
-                    style={{ fontFamily: "Manrope, sans-serif" }}
+                    style={{ fontFamily: "var(--font-sans)" }}
                   >
                     {row.manual.text}
                   </span>
@@ -164,14 +164,14 @@ export function PainPoints() {
                 <div className="grid grid-cols-[34px_22px_1fr] gap-3 items-start">
                   <span
                     className="text-[11px] font-bold text-blue-300/80 mt-1"
-                    style={{ fontFamily: "Manrope, sans-serif", letterSpacing: "0.08em" }}
+                    style={{ fontFamily: "var(--font-sans)", letterSpacing: "0.08em" }}
                   >
                     {row.id}
                   </span>
                   <span className="text-lg leading-none mt-0.5">{row.system.icon}</span>
                   <span
                     className="text-sm text-[#D1D5DB] leading-relaxed"
-                    style={{ fontFamily: "Manrope, sans-serif" }}
+                    style={{ fontFamily: "var(--font-sans)" }}
                   >
                     {row.system.text}
                   </span>
@@ -185,18 +185,18 @@ export function PainPoints() {
               className="px-5 md:px-6 py-4 md:py-5 md:border-r"
               style={{ borderColor: "rgba(148,163,184,0.16)" }}
             >
-              <div className="text-slate-200 font-bold text-sm mb-1" style={{ fontFamily: "Manrope, sans-serif" }}>
+              <div className="text-slate-200 font-bold text-sm mb-1" style={{ fontFamily: "var(--font-sans)" }}>
                 Итог: постоянное дежурство
               </div>
-              <div className="text-[#A8A8B3] text-sm" style={{ fontFamily: "Manrope, sans-serif" }}>
+              <div className="text-[#A8A8B3] text-sm" style={{ fontFamily: "var(--font-sans)" }}>
                 Ты работаешь как служащий своего же магазина. Без отдыха, без роста, без масштаба.
               </div>
             </div>
             <div className="px-5 md:px-6 py-4 md:py-5 border-t md:border-t-0" style={{ borderColor: "rgba(96,165,250,0.2)" }}>
-              <div className="text-blue-200 font-bold text-sm mb-1" style={{ fontFamily: "Manrope, sans-serif" }}>
+              <div className="text-blue-200 font-bold text-sm mb-1" style={{ fontFamily: "var(--font-sans)" }}>
                 Итог: магазин работает сам
               </div>
-              <div className="text-[#BFDBFE] text-sm" style={{ fontFamily: "Manrope, sans-serif" }}>
+              <div className="text-[#BFDBFE] text-sm" style={{ fontFamily: "var(--font-sans)" }}>
                 Ты думаешь о стратегии и росте, пока система делает всю рутину без остановок.
               </div>
             </div>
@@ -204,13 +204,13 @@ export function PainPoints() {
         </div>
 
         <div className="mt-10 text-center">
-          <p className="mb-4 text-sm text-slate-400" style={{ fontFamily: "Manrope, sans-serif" }}>
+          <p className="mb-4 text-sm text-slate-400" style={{ fontFamily: "var(--font-sans)" }}>
             Перейдите от ручного режима к системе за 10 минут
           </p>
           <a
             href="/auth/register"
             className="inline-flex items-center justify-center bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold text-sm px-7 py-3 rounded-xl border border-blue-200/20 hover:opacity-95 transition-opacity"
-            style={{ fontFamily: "Manrope, sans-serif" }}
+            style={{ fontFamily: "var(--font-sans)" }}
           >
             Начать бесплатно
           </a>

@@ -112,14 +112,14 @@ export function UseCases() {
         <div className="text-center mb-16">
           <div
             className="inline-block mb-4 text-sm font-semibold text-blue-300 uppercase tracking-widest"
-            style={{ fontFamily: "Manrope, sans-serif" }}
+            style={{ fontFamily: "var(--font-sans)" }}
           >
             Кто использует
           </div>
           <h2
             className="text-white mb-4"
             style={{
-              fontFamily: "Manrope, sans-serif",
+              fontFamily: "var(--font-sans)",
               fontWeight: 800,
               fontSize: "clamp(30px, 5vw, 52px)",
               letterSpacing: "-1.5px",
@@ -141,7 +141,7 @@ export function UseCases() {
           <p
             className="max-w-[560px] mx-auto"
             style={{
-              fontFamily: "Manrope, sans-serif",
+              fontFamily: "var(--font-sans)",
               fontSize: "17px",
               color: "#A8A8B3",
               lineHeight: 1.7,
@@ -164,7 +164,7 @@ export function UseCases() {
                   className="text-xs font-semibold px-2.5 py-1 rounded-full text-[#A8A8B3]"
                   style={{
                     background: "rgba(255,255,255,0.08)",
-                    fontFamily: "Manrope, sans-serif",
+                    fontFamily: "var(--font-sans)",
                   }}
                 >
                   {c.tag}
@@ -174,7 +174,7 @@ export function UseCases() {
               <h3
                 className="text-white mb-3"
                 style={{
-                  fontFamily: "Manrope, sans-serif",
+                  fontFamily: "var(--font-sans)",
                   fontWeight: 700,
                   fontSize: "18px",
                   lineHeight: 1.3,
@@ -185,7 +185,7 @@ export function UseCases() {
               <p
                 className="mb-5 leading-relaxed"
                 style={{
-                  fontFamily: "Manrope, sans-serif",
+                  fontFamily: "var(--font-sans)",
                   fontSize: "13px",
                   color: "#A8A8B3",
                   lineHeight: 1.7,
@@ -200,7 +200,7 @@ export function UseCases() {
               >
                 <div
                   className={`font-bold text-sm ${c.resultColor}`}
-                  style={{ fontFamily: "Manrope, sans-serif" }}
+                  style={{ fontFamily: "var(--font-sans)" }}
                 >
                   {c.result}
                 </div>
@@ -209,13 +209,13 @@ export function UseCases() {
                     <div key={s.label} className="text-right">
                       <div
                         className="text-white font-bold text-sm"
-                        style={{ fontFamily: "Manrope, sans-serif" }}
+                        style={{ fontFamily: "var(--font-sans)" }}
                       >
                         {s.value}
                       </div>
                       <div
                         className="text-[#525266] text-[10px]"
-                        style={{ fontFamily: "Manrope, sans-serif" }}
+                        style={{ fontFamily: "var(--font-sans)" }}
                       >
                         {s.label}
                       </div>

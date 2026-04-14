@@ -45,13 +45,13 @@ export function AuthShell({ title, subtitle, children }: AuthShellProps) {
           <header className="mb-6 text-center sm:mb-7">
             <h1
               className="text-[clamp(28px,4vw,36px)] font-black leading-[1.08] tracking-[-0.02em] text-white"
-              style={{ fontFamily: "Manrope, sans-serif" }}
+              style={{ fontFamily: "var(--font-sans)" }}
             >
               {title}
             </h1>
             <p
               className="mx-auto mt-3 max-w-[380px] text-[14px] leading-6 text-slate-300 sm:text-[15px]"
-              style={{ fontFamily: "Manrope, sans-serif" }}
+              style={{ fontFamily: "var(--font-sans)" }}
             >
               {subtitle}
             </p>

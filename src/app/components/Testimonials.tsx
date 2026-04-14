@@ -82,14 +82,14 @@ export function Testimonials() {
         <div className="text-center mb-16">
           <div
             className="inline-block mb-4 text-sm font-semibold text-blue-300 uppercase tracking-widest"
-            style={{ fontFamily: "Manrope, sans-serif" }}
+            style={{ fontFamily: "var(--font-sans)" }}
           >
             Реальные результаты
           </div>
           <h2
             className="text-white mb-4"
             style={{
-              fontFamily: "Manrope, sans-serif",
+              fontFamily: "var(--font-sans)",
               fontWeight: 800,
               fontSize: "clamp(30px, 5vw, 52px)",
               letterSpacing: "-1.5px",
@@ -111,7 +111,7 @@ export function Testimonials() {
           <p
             className="max-w-[520px] mx-auto"
             style={{
-              fontFamily: "Manrope, sans-serif",
+              fontFamily: "var(--font-sans)",
               fontSize: "17px",
               color: "#A8A8B3",
               lineHeight: 1.7,
@@ -143,7 +143,7 @@ export function Testimonials() {
               {/* Quote */}
               <p
                 className="flex-1 leading-relaxed italic"
-                style={{ fontFamily: "Manrope, sans-serif", fontSize: "14px", color: "#D1D5DB", lineHeight: 1.7 }}
+                style={{ fontFamily: "var(--font-sans)", fontSize: "14px", color: "#D1D5DB", lineHeight: 1.7 }}
               >
                 «{r.text}»
               </p>
@@ -155,7 +155,7 @@ export function Testimonials() {
                 >
                   <span
                     className="text-white font-bold text-sm"
-                    style={{ fontFamily: "Manrope, sans-serif" }}
+                    style={{ fontFamily: "var(--font-sans)" }}
                   >
                     {r.avatar}
                   </span>
@@ -163,13 +163,13 @@ export function Testimonials() {
                 <div className="flex-1 min-w-0">
                   <div
                     className="text-white font-semibold text-sm"
-                    style={{ fontFamily: "Manrope, sans-serif" }}
+                    style={{ fontFamily: "var(--font-sans)" }}
                   >
                     {r.name}
                   </div>
                   <div
                     className="text-[#525266] text-xs truncate"
-                    style={{ fontFamily: "Manrope, sans-serif" }}
+                    style={{ fontFamily: "var(--font-sans)" }}
                   >
                     {r.role}
                   </div>
@@ -179,13 +179,13 @@ export function Testimonials() {
                 >
                   <div
                     className="text-blue-300 font-bold text-sm"
-                    style={{ fontFamily: "Manrope, sans-serif" }}
+                    style={{ fontFamily: "var(--font-sans)" }}
                   >
                     {r.revenue}
                   </div>
                   <div
                     className="text-[#525266] text-xs"
-                    style={{ fontFamily: "Manrope, sans-serif" }}
+                    style={{ fontFamily: "var(--font-sans)" }}
                   >
                     в месяц
                   </div>
@@ -209,13 +209,13 @@ export function Testimonials() {
             <div key={s.label} className="text-center">
               <div
                 className={`font-black mb-1 ${s.color}`}
-                style={{ fontFamily: "Manrope, sans-serif", fontSize: "clamp(22px, 4vw, 36px)", letterSpacing: "-1px" }}
+                style={{ fontFamily: "var(--font-sans)", fontSize: "clamp(22px, 4vw, 36px)", letterSpacing: "-1px" }}
               >
                 {s.value}
               </div>
               <div
                 className="text-[#525266] text-sm"
-                style={{ fontFamily: "Manrope, sans-serif" }}
+                style={{ fontFamily: "var(--font-sans)" }}
               >
                 {s.label}
               </div>

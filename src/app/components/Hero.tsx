@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { BarChart3, Bot, Boxes, LayoutDashboard, MessageSquare, ShoppingCart, Tag } from "lucide-react";
 
 const sidebarItems = [
@@ -79,7 +80,7 @@ export function Hero() {
             <span className="w-2 h-2 rounded-full bg-blue-300 animate-pulse" />
             <span
               className="text-sm font-semibold text-blue-200"
-              style={{ fontFamily: "Manrope, sans-serif" }}
+              style={{ fontFamily: "var(--font-sans)" }}
             >
               Облачная платформа FunPay Cloud
             </span>
@@ -90,7 +91,7 @@ export function Hero() {
           <h1
             className="text-white mb-0 max-w-5xl"
             style={{
-              fontFamily: "Manrope, sans-serif",
+              fontFamily: "var(--font-sans)",
               fontWeight: 900,
               fontSize: "clamp(36px, 7vw, 78px)",
               lineHeight: 1.06,
@@ -115,7 +116,7 @@ export function Hero() {
         <p
           className="text-center max-w-[760px] mb-10"
           style={{
-            fontFamily: "Manrope, sans-serif",
+            fontFamily: "var(--font-sans)",
             fontWeight: 500,
             fontSize: "clamp(16px, 2vw, 21px)",
             lineHeight: 1.65,
@@ -130,7 +131,7 @@ export function Hero() {
           <a href="/auth/register" className="relative group">
             <span
               className="relative bg-gradient-to-r from-blue-500 to-blue-700 border border-blue-200/20 text-white font-bold px-8 py-4 rounded-2xl block text-base hover:opacity-95 transition-opacity"
-              style={{ fontFamily: "Manrope, sans-serif" }}
+              style={{ fontFamily: "var(--font-sans)" }}
             >
               Начать бесплатно
             </span>
@@ -139,7 +140,7 @@ export function Hero() {
             href="#howitworks"
             className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl border font-bold text-base text-white hover:bg-white/[0.05] transition-all"
             style={{
-              fontFamily: "Manrope, sans-serif",
+              fontFamily: "var(--font-sans)",
               background: "rgba(15,23,42,0.75)",
               borderColor: "rgba(148,163,184,0.22)",
             }}
@@ -149,7 +150,18 @@ export function Hero() {
           </a>
         </div>
 
-        <div className="w-full max-w-[1180px] px-1 sm:px-3 lg:px-0" style={{ perspective: "1380px" }}>
+        <div className="w-full max-w-[1180px] px-1 sm:px-3 lg:px-0 md:hidden">
+          <Image
+            src="/hero-poster.svg"
+            alt="Интерфейс FunPay Cloud"
+            width={1600}
+            height={1000}
+            priority
+            className="w-full h-auto rounded-3xl border border-slate-600/40 shadow-[0_34px_84px_rgba(2,8,23,0.58)]"
+          />
+        </div>
+
+        <div className="hidden md:block w-full max-w-[1180px] px-1 sm:px-3 lg:px-0" style={{ perspective: "1380px" }}>
           <motion.div
             className="relative"
             initial={{ opacity: 0, y: 36 }}
@@ -200,7 +212,7 @@ export function Hero() {
                     <span className="h-2.5 w-2.5 rounded-full bg-white/20" />
                     <span
                       className="ml-1 text-[11px] sm:text-xs text-slate-300"
-                      style={{ fontFamily: "Manrope, sans-serif", fontWeight: 700 }}
+                      style={{ fontFamily: "var(--font-sans)", fontWeight: 700 }}
                     >
                       FunPay Cloud · Platform Dashboard
                     </span>
@@ -221,7 +233,7 @@ export function Hero() {
                   >
                     <div className="mb-4 hidden sm:flex items-center gap-2">
                       <span className="h-8 w-8 rounded-xl bg-blue-500/25 border border-blue-300/30" />
-                      <span className="text-sm text-slate-200 font-semibold" style={{ fontFamily: "Manrope, sans-serif" }}>
+                      <span className="text-sm text-slate-200 font-semibold" style={{ fontFamily: "var(--font-sans)" }}>
                         Операционный центр
                       </span>
                     </div>
@@ -244,7 +256,7 @@ export function Hero() {
                             />
                             <span
                               className="hidden sm:block text-xs text-slate-300 truncate"
-                              style={{ fontFamily: "Manrope, sans-serif", fontWeight: 600 }}
+                              style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
                             >
                               {item.label}
                             </span>
@@ -253,7 +265,7 @@ export function Hero() {
                       ))}
                     </div>
                     <div className="hidden sm:block mt-6 p-3 rounded-xl border border-blue-200/20 bg-blue-500/10">
-                      <div className="text-[11px] text-blue-200 font-semibold" style={{ fontFamily: "Manrope, sans-serif" }}>
+                      <div className="text-[11px] text-blue-200 font-semibold" style={{ fontFamily: "var(--font-sans)" }}>
                         Статус системы
                       </div>
                       <div className="mt-1 text-xs text-slate-300">Все сервисы работают стабильно</div>
@@ -293,13 +305,13 @@ export function Hero() {
                         >
                           <div
                             className="text-[10px] sm:text-xs text-slate-400"
-                            style={{ fontFamily: "Manrope, sans-serif", fontWeight: 600 }}
+                            style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
                           >
                             {card.label}
                           </div>
                           <div
                             className="mt-1.5 text-white text-sm sm:text-base lg:text-lg"
-                            style={{ fontFamily: "Manrope, sans-serif", fontWeight: 800 }}
+                            style={{ fontFamily: "var(--font-sans)", fontWeight: 800 }}
                           >
                             {card.value}
                           </div>

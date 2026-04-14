@@ -33,7 +33,7 @@ export function DashboardMockup() {
         <div className="flex-1 flex justify-center">
           <div className="bg-white/[0.06] rounded-md px-3 py-1 flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[10px] text-[#A8A8B3]" style={{ fontFamily: "Manrope, sans-serif" }}>
+            <span className="text-[10px] text-[#A8A8B3]" style={{ fontFamily: "var(--font-sans)" }}>
               funpaycloud.io/dashboard
             </span>
           </div>
@@ -49,7 +49,7 @@ export function DashboardMockup() {
       <div className="flex h-[380px]">
         {/* Sidebar */}
         <div className="w-[140px] border-r border-white/[0.05] flex flex-col gap-1 p-3 shrink-0">
-          <div className="text-[9px] text-[#525266] uppercase tracking-widest mb-2 px-2" style={{ fontFamily: "Manrope, sans-serif", fontWeight: 600 }}>Главное</div>
+          <div className="text-[9px] text-[#525266] uppercase tracking-widest mb-2 px-2" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Главное</div>
           {[
             { icon: "▣", label: "Дашборд", active: true },
             { icon: "◈", label: "Заказы" },
@@ -66,7 +66,7 @@ export function DashboardMockup() {
               }`}
             >
               <span className="text-[11px]">{item.icon}</span>
-              <span className="text-[11px] font-medium" style={{ fontFamily: "Manrope, sans-serif" }}>
+              <span className="text-[11px] font-medium" style={{ fontFamily: "var(--font-sans)" }}>
                 {item.label}
               </span>
               {item.active && (
@@ -78,10 +78,10 @@ export function DashboardMockup() {
           <div className="mt-4 mx-2 p-2.5 rounded-xl" style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}>
             <div className="flex items-center gap-1.5 mb-1">
               <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-emerald-400 text-[9px] font-bold" style={{ fontFamily: "Manrope, sans-serif" }}>БОТ АКТИВЕН</span>
+              <span className="text-emerald-400 text-[9px] font-bold" style={{ fontFamily: "var(--font-sans)" }}>БОТ АКТИВЕН</span>
             </div>
-            <div className="text-[#A8A8B3] text-[8px]" style={{ fontFamily: "Manrope, sans-serif" }}>Аптайм: 99.9%</div>
-            <div className="text-[#A8A8B3] text-[8px]" style={{ fontFamily: "Manrope, sans-serif" }}>IP: 185.xx.xx.xx</div>
+            <div className="text-[#A8A8B3] text-[8px]" style={{ fontFamily: "var(--font-sans)" }}>Аптайм: 99.9%</div>
+            <div className="text-[#A8A8B3] text-[8px]" style={{ fontFamily: "var(--font-sans)" }}>IP: 185.xx.xx.xx</div>
           </div>
         </div>
 
@@ -89,12 +89,12 @@ export function DashboardMockup() {
         <div className="flex-1 p-4 flex flex-col gap-3 overflow-hidden">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-white text-sm font-bold" style={{ fontFamily: "Manrope, sans-serif" }}>Добро пожаловать 👋</div>
-              <div className="text-[#525266] text-[10px]" style={{ fontFamily: "Manrope, sans-serif" }}>Сегодня ваш магазин уже заработал</div>
+              <div className="text-white text-sm font-bold" style={{ fontFamily: "var(--font-sans)" }}>Добро пожаловать 👋</div>
+              <div className="text-[#525266] text-[10px]" style={{ fontFamily: "var(--font-sans)" }}>Сегодня ваш магазин уже заработал</div>
             </div>
             <div className="text-right">
-              <div className="text-emerald-400 font-bold text-sm" style={{ fontFamily: "Manrope, sans-serif" }}>+₽14 820</div>
-              <div className="text-[#525266] text-[10px]" style={{ fontFamily: "Manrope, sans-serif" }}>за последние 24 часа</div>
+              <div className="text-emerald-400 font-bold text-sm" style={{ fontFamily: "var(--font-sans)" }}>+₽14 820</div>
+              <div className="text-[#525266] text-[10px]" style={{ fontFamily: "var(--font-sans)" }}>за последние 24 часа</div>
             </div>
           </div>
 
@@ -112,10 +112,10 @@ export function DashboardMockup() {
               >
                 <div className="flex items-center gap-1.5 mb-2">
                   <stat.icon size={12} className={stat.color} />
-                  <span className="text-[#A8A8B3] text-[9px] font-medium" style={{ fontFamily: "Manrope, sans-serif" }}>{stat.label}</span>
+                  <span className="text-[#A8A8B3] text-[9px] font-medium" style={{ fontFamily: "var(--font-sans)" }}>{stat.label}</span>
                 </div>
-                <div className={`text-base font-bold ${stat.color}`} style={{ fontFamily: "Manrope, sans-serif" }}>{stat.value}</div>
-                <div className="text-[#525266] text-[9px]" style={{ fontFamily: "Manrope, sans-serif" }}>{stat.delta}</div>
+                <div className={`text-base font-bold ${stat.color}`} style={{ fontFamily: "var(--font-sans)" }}>{stat.value}</div>
+                <div className="text-[#525266] text-[9px]" style={{ fontFamily: "var(--font-sans)" }}>{stat.delta}</div>
               </div>
             ))}
           </div>
@@ -123,8 +123,8 @@ export function DashboardMockup() {
           {/* Chart */}
           <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-white text-[10px] font-semibold" style={{ fontFamily: "Manrope, sans-serif" }}>Выручка за неделю</span>
-              <span className="text-emerald-400 text-[9px]" style={{ fontFamily: "Manrope, sans-serif" }}>↑ Неделя</span>
+              <span className="text-white text-[10px] font-semibold" style={{ fontFamily: "var(--font-sans)" }}>Выручка за неделю</span>
+              <span className="text-emerald-400 text-[9px]" style={{ fontFamily: "var(--font-sans)" }}>↑ Неделя</span>
             </div>
             <div className="h-[70px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -156,16 +156,16 @@ export function DashboardMockup() {
           {/* Recent orders */}
           <div className="rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
             <div className="px-3 py-2 border-b border-white/[0.05] flex items-center justify-between">
-              <span className="text-white text-[10px] font-semibold" style={{ fontFamily: "Manrope, sans-serif" }}>Последние заказы</span>
-              <span className="text-blue-400 text-[9px]" style={{ fontFamily: "Manrope, sans-serif" }}>Все →</span>
+              <span className="text-white text-[10px] font-semibold" style={{ fontFamily: "var(--font-sans)" }}>Последние заказы</span>
+              <span className="text-blue-400 text-[9px]" style={{ fontFamily: "var(--font-sans)" }}>Все →</span>
             </div>
             {orders.map((o) => (
               <div key={o.id} className="flex items-center px-3 py-2 border-b border-white/[0.04] last:border-0">
                 <div className="w-1 h-1 rounded-full bg-emerald-400 mr-2 shrink-0" />
-                <span className="text-[#525266] text-[9px] w-10 shrink-0" style={{ fontFamily: "Manrope, sans-serif" }}>{o.id}</span>
-                <span className="text-[#A8A8B3] text-[9px] flex-1 truncate" style={{ fontFamily: "Manrope, sans-serif" }}>{o.item}</span>
-                <span className={`text-[9px] px-1.5 py-0.5 rounded-md mr-2 shrink-0 ${o.status === "Выдан" ? "text-emerald-400 bg-emerald-400/10" : "text-blue-300 bg-slate-500/20"}`} style={{ fontFamily: "Manrope, sans-serif" }}>{o.status}</span>
-                <span className="text-white text-[9px] font-semibold shrink-0" style={{ fontFamily: "Manrope, sans-serif" }}>{o.amt}</span>
+                <span className="text-[#525266] text-[9px] w-10 shrink-0" style={{ fontFamily: "var(--font-sans)" }}>{o.id}</span>
+                <span className="text-[#A8A8B3] text-[9px] flex-1 truncate" style={{ fontFamily: "var(--font-sans)" }}>{o.item}</span>
+                <span className={`text-[9px] px-1.5 py-0.5 rounded-md mr-2 shrink-0 ${o.status === "Выдан" ? "text-emerald-400 bg-emerald-400/10" : "text-blue-300 bg-slate-500/20"}`} style={{ fontFamily: "var(--font-sans)" }}>{o.status}</span>
+                <span className="text-white text-[9px] font-semibold shrink-0" style={{ fontFamily: "var(--font-sans)" }}>{o.amt}</span>
               </div>
             ))}
           </div>
@@ -173,7 +173,7 @@ export function DashboardMockup() {
 
         {/* Right panel - lot statuses */}
         <div className="w-[130px] border-l border-white/[0.05] p-3 flex flex-col gap-2 shrink-0 overflow-hidden">
-          <div className="text-[9px] text-[#525266] uppercase tracking-widest mb-1" style={{ fontFamily: "Manrope, sans-serif", fontWeight: 600 }}>Лоты</div>
+          <div className="text-[9px] text-[#525266] uppercase tracking-widest mb-1" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>Лоты</div>
           {[
             { name: "Steam 500₽", status: "↑", raised: "3 мин назад", color: "text-emerald-400" },
             { name: "Win 11 Pro", status: "↑", raised: "8 мин назад", color: "text-emerald-400" },
@@ -186,24 +186,24 @@ export function DashboardMockup() {
               style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
             >
               <div className="flex items-center justify-between mb-0.5">
-                <span className="text-white text-[9px] font-semibold truncate" style={{ fontFamily: "Manrope, sans-serif" }}>{lot.name}</span>
+                <span className="text-white text-[9px] font-semibold truncate" style={{ fontFamily: "var(--font-sans)" }}>{lot.name}</span>
                 <span className={`text-[10px] ${lot.color}`}>{lot.status}</span>
               </div>
-              <div className="text-[#525266] text-[8px]" style={{ fontFamily: "Manrope, sans-serif" }}>{lot.raised}</div>
+              <div className="text-[#525266] text-[8px]" style={{ fontFamily: "var(--font-sans)" }}>{lot.raised}</div>
             </div>
           ))}
           <div className="mt-2 p-2 rounded-lg" style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.15)" }}>
             <div className="flex items-center gap-1 mb-1">
               <CheckCircle size={9} className="text-blue-400" />
-              <span className="text-blue-400 text-[8px] font-semibold" style={{ fontFamily: "Manrope, sans-serif" }}>Автоответчик</span>
+              <span className="text-blue-400 text-[8px] font-semibold" style={{ fontFamily: "var(--font-sans)" }}>Автоответчик</span>
             </div>
-            <div className="text-[#525266] text-[8px]" style={{ fontFamily: "Manrope, sans-serif" }}>Отвечено: 12</div>
-            <div className="text-[#525266] text-[8px]" style={{ fontFamily: "Manrope, sans-serif" }}>Ср. время: 0.3с</div>
+            <div className="text-[#525266] text-[8px]" style={{ fontFamily: "var(--font-sans)" }}>Отвечено: 12</div>
+            <div className="text-[#525266] text-[8px]" style={{ fontFamily: "var(--font-sans)" }}>Ср. время: 0.3с</div>
           </div>
           <div className="p-2 rounded-lg" style={{ background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.15)" }}>
-            <div className="text-blue-300 text-[8px] font-semibold mb-0.5" style={{ fontFamily: "Manrope, sans-serif" }}>Telegram</div>
-            <div className="text-[#525266] text-[8px]" style={{ fontFamily: "Manrope, sans-serif" }}>Уведомлений: 5</div>
-            <div className="text-[#525266] text-[8px]" style={{ fontFamily: "Manrope, sans-serif" }}>Команд: 3</div>
+            <div className="text-blue-300 text-[8px] font-semibold mb-0.5" style={{ fontFamily: "var(--font-sans)" }}>Telegram</div>
+            <div className="text-[#525266] text-[8px]" style={{ fontFamily: "var(--font-sans)" }}>Уведомлений: 5</div>
+            <div className="text-[#525266] text-[8px]" style={{ fontFamily: "var(--font-sans)" }}>Команд: 3</div>
           </div>
         </div>
       </div>
@@ -217,13 +217,13 @@ export function DashboardMockup() {
           { label: "Плагины", value: "7 активных", color: "text-blue-300" },
         ].map((s) => (
           <div key={s.label} className="flex items-center gap-1.5">
-            <span className="text-[#525266] text-[9px]" style={{ fontFamily: "Manrope, sans-serif" }}>{s.label}:</span>
-            <span className={`text-[9px] font-semibold ${s.color}`} style={{ fontFamily: "Manrope, sans-serif" }}>{s.value}</span>
+            <span className="text-[#525266] text-[9px]" style={{ fontFamily: "var(--font-sans)" }}>{s.label}:</span>
+            <span className={`text-[9px] font-semibold ${s.color}`} style={{ fontFamily: "var(--font-sans)" }}>{s.value}</span>
           </div>
         ))}
         <div className="ml-auto flex items-center gap-1.5">
           <Clock size={9} className="text-[#525266]" />
-          <span className="text-[#525266] text-[9px]" style={{ fontFamily: "Manrope, sans-serif" }}>Работает 847 часов подряд</span>
+          <span className="text-[#525266] text-[9px]" style={{ fontFamily: "var(--font-sans)" }}>Работает 847 часов подряд</span>
         </div>
       </div>
     </div>

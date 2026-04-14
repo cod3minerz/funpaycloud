@@ -58,14 +58,14 @@ export function WhyUs() {
         <div className="text-center mb-16">
           <div
             className="inline-block mb-4 text-sm font-semibold text-blue-300 uppercase tracking-widest"
-            style={{ fontFamily: "Manrope, sans-serif" }}
+            style={{ fontFamily: "var(--font-sans)" }}
           >
             Почему FunPay Cloud
           </div>
           <h2
             className="text-white mb-4"
             style={{
-              fontFamily: "Manrope, sans-serif",
+              fontFamily: "var(--font-sans)",
               fontWeight: 800,
               fontSize: "clamp(30px, 5vw, 52px)",
               letterSpacing: "-1.5px",
@@ -87,7 +87,7 @@ export function WhyUs() {
           <p
             className="max-w-[560px] mx-auto"
             style={{
-              fontFamily: "Manrope, sans-serif",
+              fontFamily: "var(--font-sans)",
               fontSize: "17px",
               color: "#A8A8B3",
               lineHeight: 1.7,
@@ -110,7 +110,7 @@ export function WhyUs() {
             <div className="px-6 py-4">
               <span
                 className="text-[#525266] text-sm font-semibold uppercase tracking-wider"
-                style={{ fontFamily: "Manrope, sans-serif" }}
+                style={{ fontFamily: "var(--font-sans)" }}
               >
                 Критерий
               </span>
@@ -120,7 +120,7 @@ export function WhyUs() {
                 <div className="w-2 h-2 rounded-full bg-red-500/60" />
                 <span
                   className="text-[#A8A8B3] text-sm font-semibold"
-                  style={{ fontFamily: "Manrope, sans-serif" }}
+                  style={{ fontFamily: "var(--font-sans)" }}
                 >
                   Обычные боты
                 </span>
@@ -135,7 +135,7 @@ export function WhyUs() {
                 <span
                   className="font-bold text-sm"
                   style={{
-                    fontFamily: "Manrope, sans-serif",
+                    fontFamily: "var(--font-sans)",
                     background: "linear-gradient(135deg, #60A5FA, #3B82F6)",
                     WebkitBackgroundClip: "text",
                     WebkitTextFillColor: "transparent",
@@ -161,7 +161,7 @@ export function WhyUs() {
               <div className="px-6 py-4">
                 <span
                   className="text-white text-sm font-medium"
-                  style={{ fontFamily: "Manrope, sans-serif" }}
+                  style={{ fontFamily: "var(--font-sans)" }}
                 >
                   {row.feature}
                 </span>
@@ -170,7 +170,7 @@ export function WhyUs() {
                 <X size={14} className="text-red-400 shrink-0 mt-0.5" />
                 <span
                   className="text-[#A8A8B3] text-sm"
-                  style={{ fontFamily: "Manrope, sans-serif" }}
+                  style={{ fontFamily: "var(--font-sans)" }}
                 >
                   {row.old}
                 </span>
@@ -182,7 +182,7 @@ export function WhyUs() {
                 <Check size={14} className="text-emerald-400 shrink-0 mt-0.5" />
                 <span
                   className="text-[#D1D5DB] text-sm"
-                  style={{ fontFamily: "Manrope, sans-serif" }}
+                  style={{ fontFamily: "var(--font-sans)" }}
                 >
                   {row.new}
                 </span>
@@ -197,7 +197,7 @@ export function WhyUs() {
             <div className="absolute inset-0 bg-gradient-to-r from-blue-400/40 to-blue-500/40 rounded-xl blur-[2px] group-hover:blur-[3px] transition-all" />
             <span
               className="relative inline-block bg-gradient-to-r from-blue-400 to-blue-500 text-[#050608] font-bold px-8 py-3.5 rounded-xl text-sm"
-              style={{ fontFamily: "Manrope, sans-serif" }}
+              style={{ fontFamily: "var(--font-sans)" }}
             >
               Попробовать FunPay Cloud бесплатно →
             </span>

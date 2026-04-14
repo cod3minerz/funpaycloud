@@ -2,6 +2,12 @@ import type { NextConfig } from 'next';
 import path from 'path';
 
 const config: NextConfig = {
+  experimental: {
+    optimizePackageImports: ["lucide-react", "recharts"],
+  },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production",
+  },
   async redirects() {
     return [
       {

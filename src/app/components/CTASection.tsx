@@ -40,7 +40,7 @@ export function CTASection() {
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span
                 className="text-sm font-semibold text-[#A8A8B3]"
-                style={{ fontFamily: "Manrope, sans-serif" }}
+                style={{ fontFamily: "var(--font-sans)" }}
               >
                 7 дней бесплатно, карта не нужна
               </span>
@@ -49,7 +49,7 @@ export function CTASection() {
             <h2
               className="text-white mb-5"
               style={{
-                fontFamily: "Manrope, sans-serif",
+                fontFamily: "var(--font-sans)",
                 fontWeight: 900,
                 fontSize: "clamp(32px, 6vw, 64px)",
                 letterSpacing: "-2px",
@@ -73,7 +73,7 @@ export function CTASection() {
             <p
               className="max-w-[520px] mx-auto mb-10"
               style={{
-                fontFamily: "Manrope, sans-serif",
+                fontFamily: "var(--font-sans)",
                 fontSize: "18px",
                 color: "#A8A8B3",
                 lineHeight: 1.7,
@@ -86,7 +86,7 @@ export function CTASection() {
               <a href="/auth/register" className="relative group">
                 <span
                   className="relative bg-gradient-to-r from-blue-500 to-blue-700 text-white font-bold px-8 py-4 rounded-2xl block text-base hover:opacity-95 transition-opacity border border-blue-200/20"
-                  style={{ fontFamily: "Manrope, sans-serif" }}
+                  style={{ fontFamily: "var(--font-sans)" }}
                 >
                   ⚡ Создать аккаунт бесплатно
                 </span>
@@ -95,7 +95,7 @@ export function CTASection() {
                 href="#howitworks"
                 className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-bold text-base text-white hover:bg-white/[0.07] transition-all border"
                 style={{
-                  fontFamily: "Manrope, sans-serif",
+                  fontFamily: "var(--font-sans)",
                   background: "rgba(15,23,42,0.8)",
                   borderColor: "rgba(148,163,184,0.22)",
                 }}
@@ -106,7 +106,7 @@ export function CTASection() {
 
             <p
               className="mt-6 text-[#525266] text-sm"
-              style={{ fontFamily: "Manrope, sans-serif" }}
+              style={{ fontFamily: "var(--font-sans)" }}
             >
               Без технических знаний · Без карты · Настройка 10 минут
             </p>
