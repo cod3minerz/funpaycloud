@@ -1,11 +1,10 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePathname } from 'next/navigation';
-import { Bell, ChevronLeft, ChevronRight, LogOut, Menu, Settings, Wallet } from 'lucide-react';
-import { accounts } from '@/platform/data/demoData';
-import { SupportTeamMark, TelegramMark, VkMark } from '@/platform/components/SocialMarks';
+import { Bell, ChevronDown, LifeBuoy, LogOut, PanelLeft, Settings } from 'lucide-react';
+import { settingsApi, type ProfileData } from '@/lib/api';
+import { logout } from '@/lib/auth';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,27 +14,18 @@ import {
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
 
-const PATH_LABELS: Record<string, string> = {
-  platform: 'Платформа',
-  dashboard: 'Дашборд',
-  chats: 'Чаты',
-  orders: 'Заказы',
-  lots: 'Лоты',
-  warehouse: 'Склад',
-  analytics: 'Аналитика',
-  automation: 'Автоматизация',
-  plugins: 'Плагины',
-  finances: 'Финансы',
-  settings: 'Настройки',
-  accounts: 'Аккаунты',
-  'proxy-market': 'Прокси-маркет',
-  referrals: 'Реферальная система',
-};
-
 type PlatformTopBarProps = {
   onOpenMobileSidebar: () => void;
   sidebarCollapsed: boolean;
   onToggleSidebarCollapse: () => void;
+};
+
+type NotificationItem = {
+  id: string;
+  title: string;
+  text: string;
+  unread: boolean;
+  time: string;
 };
 
 export default function PlatformTopBar({
@@ -44,144 +34,176 @@ export default function PlatformTopBar({
   onToggleSidebarCollapse,
 }: PlatformTopBarProps) {
   const router = useRouter();
-  const pathname = usePathname();
-  const profile = accounts[0];
-  const initials = profile?.username?.slice(0, 2).toUpperCase() ?? 'FC';
-  const balance = profile?.balance ?? 0;
+  const [profile, setProfile] = useState<ProfileData | null>(null);
 
-  const breadcrumbs = useMemo(() => {
-    return pathname
-      .split('/')
-      .filter(Boolean)
-      .map(part => ({ raw: part, label: PATH_LABELS[part] ?? part }));
-  }, [pathname]);
+  const notifications = useMemo<NotificationItem[]>(() => [], []);
+  const unreadCount = useMemo(() => notifications.filter(item => item.unread).length, [notifications]);
 
-  const notifications = useMemo(
-    () => [
-      { id: 'nf-1', title: 'Новый заказ', text: 'Поступил заказ ORD-1012 на 390 ₽', time: '2 мин назад', unread: true },
-      { id: 'nf-2', title: 'Реферальное начисление', text: 'Начислено 897 ₽ по RF-3888', time: '11 мин назад', unread: true },
-      { id: 'nf-3', title: 'Системное', text: 'Плановое обновление модулей завершено', time: 'Сегодня, 10:20', unread: false },
-    ],
-    [],
-  );
-  const unreadCount = notifications.filter(item => item.unread).length;
+  useEffect(() => {
+    let cancelled = false;
 
-  const topLinks = [
-    { label: 'Телеграм канал', href: '#', icon: <TelegramMark size={15} /> },
-    { label: 'Группа ВКонтакте', href: '#', icon: <VkMark size={15} /> },
-    { label: 'Поддержка', href: '#', icon: <SupportTeamMark size={15} /> },
-  ] as const;
+    settingsApi
+      .getProfile()
+      .then(data => {
+        if (cancelled) return;
+        setProfile(data);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setProfile(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const login = String(profile?.login ?? '').trim();
+  const email = String(profile?.email ?? '').trim();
+
+  const displayName = useMemo(() => {
+    return login || (email ? `${email.split('@')[0].slice(0, 5)}...` : '??');
+  }, [email, login]);
+
+  const avatarText = useMemo(() => {
+    if (login) return login.slice(0, 1).toUpperCase();
+    if (email) {
+      const localPart = email.split('@')[0] ?? '';
+      return (localPart.slice(0, 2) || '??').toUpperCase();
+    }
+    return '??';
+  }, [email, login]);
+
+  const handleSidebarToggle = () => {
+    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
+      onToggleSidebarCollapse();
+      return;
+    }
+    onOpenMobileSidebar();
+  };
 
   return (
-    <header className="platform-topbar">
-      <div className="platform-breadcrumbs min-w-0">
+    <header className="h-14 border-b border-[var(--border)] bg-[var(--bg-secondary)] px-3 sm:px-4 lg:px-6">
+      <div className="flex h-full items-center justify-between gap-3">
         <button
           type="button"
-          className="platform-topbar-btn platform-mobile-only"
-          onClick={onOpenMobileSidebar}
-          aria-label="Открыть меню"
-        >
-          <Menu size={18} />
-        </button>
-
-        <button
-          type="button"
-          className="platform-topbar-btn platform-sidebar-toggle platform-sidebar-toggle-btn"
-          onClick={onToggleSidebarCollapse}
-          aria-label={sidebarCollapsed ? 'Развернуть меню' : 'Свернуть меню'}
+          onClick={handleSidebarToggle}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-card)] text-[var(--pf-text)] transition-colors hover:border-[var(--pf-accent)] hover:text-[var(--pf-accent)]"
+          aria-label={sidebarCollapsed ? 'Развернуть боковое меню' : 'Свернуть боковое меню'}
           aria-pressed={sidebarCollapsed}
         >
-          {sidebarCollapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+          <PanelLeft size={18} />
         </button>
 
-        <div className="platform-breadcrumbs-list hidden md:flex items-center gap-2 min-w-0">
-          {breadcrumbs.map((item, idx) => (
-            <div key={`${item.raw}-${idx}`} className="flex items-center gap-2 min-w-0">
-              {idx > 0 && <span className="platform-breadcrumb-item">/</span>}
-              <span className={`platform-breadcrumb-item ${idx === breadcrumbs.length - 1 ? 'active' : ''}`}>
-                {item.label}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Уведомления"
+                className="relative inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-card)] text-[var(--pf-text)] transition-colors hover:border-[var(--pf-accent)] hover:text-[var(--pf-accent)]"
+              >
+                <Bell size={17} />
+                {unreadCount > 0 ? (
+                  <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                ) : null}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              sideOffset={10}
+              className="w-[320px] border-[var(--border)] bg-[var(--bg-card)] p-0 text-[var(--pf-text)]"
+              onCloseAutoFocus={event => event.preventDefault()}
+            >
+              <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
+                <strong className="text-sm">Уведомления</strong>
+                <span className="text-xs text-[var(--pf-text-muted)]">{unreadCount > 0 ? `${unreadCount} новых` : '0 новых'}</span>
+              </div>
 
-      <nav className="platform-topbar-links" aria-label="Быстрые ссылки">
-        {topLinks.map(item => {
-          return (
-            <a key={item.label} href={item.href} className="platform-topbar-link">
-              <span className="platform-topbar-link-icon">{item.icon}</span>
-              <span>{item.label}</span>
-            </a>
-          );
-        })}
-      </nav>
-
-      <div className="platform-topbar-right">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button type="button" className="platform-topbar-plain-btn platform-notify-trigger" aria-label="Уведомления">
-              <Bell size={15} />
-              {unreadCount > 0 && <span className="platform-notify-badge">{Math.min(unreadCount, 9)}</span>}
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            sideOffset={10}
-            className="platform-topbar-dropdown w-[320px] p-0"
-            onCloseAutoFocus={event => event.preventDefault()}
-          >
-            <div className="platform-topbar-dropdown-head">
-              <strong>Уведомления</strong>
-              <span>{unreadCount > 0 ? `${unreadCount} новых` : 'Все прочитаны'}</span>
-            </div>
-            <div className="platform-topbar-dropdown-scroll">
-              {notifications.map(item => (
-                <div key={item.id} className={`platform-notify-item${item.unread ? ' unread' : ''}`}>
-                  <div className="platform-notify-item-head">
-                    <strong>{item.title}</strong>
-                    <span>{item.time}</span>
-                  </div>
-                  <p>{item.text}</p>
+              {notifications.length === 0 ? (
+                <div className="px-4 py-6 text-center text-sm text-[var(--pf-text-muted)]">Нет новых уведомлений</div>
+              ) : (
+                <div className="max-h-[320px] overflow-auto py-1">
+                  {notifications.map(item => (
+                    <div key={item.id} className="border-b border-[var(--border)] px-4 py-3 last:border-0">
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <strong className="text-xs text-[var(--pf-text)]">{item.title}</strong>
+                        <span className="text-[11px] text-[var(--pf-text-muted)]">{item.time}</span>
+                      </div>
+                      <p className="text-xs text-[var(--pf-text-muted)]">{item.text}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button type="button" className="platform-profile-plain" aria-label="Профиль пользователя">
-              <span className="platform-avatar">{initials}</span>
-              <strong className="hidden sm:block text-[13px] font-semibold">{profile?.username ?? 'user'}</strong>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            sideOffset={10}
-            className="platform-topbar-dropdown w-[246px]"
-            onCloseAutoFocus={event => event.preventDefault()}
-          >
-            <DropdownMenuLabel className="platform-account-dropdown-head">
-              <span className="platform-account-name">{profile?.username ?? 'user'}</span>
-              <span className="platform-account-meta">Баланс: {balance.toLocaleString('ru-RU')} ₽</span>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator className="platform-account-dropdown-sep" />
-            <DropdownMenuItem className="platform-account-dropdown-item" onSelect={() => router.push('/platform/finances')}>
-              <Wallet size={14} />
-              Баланс и выплаты
-            </DropdownMenuItem>
-            <DropdownMenuItem className="platform-account-dropdown-item" onSelect={() => router.push('/platform/settings')}>
-              <Settings size={14} />
-              Настройки профиля
-            </DropdownMenuItem>
-            <DropdownMenuSeparator className="platform-account-dropdown-sep" />
-            <DropdownMenuItem className="platform-account-dropdown-item danger" onSelect={() => router.push('/')}>
-              <LogOut size={14} />
-              Выйти
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Профиль пользователя"
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-2.5 text-[var(--pf-text)] transition-colors hover:border-[var(--pf-accent)]"
+              >
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--pf-accent)] text-xs font-semibold text-white">
+                  {avatarText}
+                </span>
+                <span className="hidden max-w-[120px] truncate text-sm font-medium sm:block">{displayName}</span>
+                <ChevronDown size={14} className="hidden text-[var(--pf-text-muted)] sm:block" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              sideOffset={10}
+              className="w-[260px] border-[var(--border)] bg-[var(--bg-card)] text-[var(--pf-text)]"
+              onCloseAutoFocus={event => event.preventDefault()}
+            >
+              <DropdownMenuLabel className="px-3 py-2">
+                <div className="text-sm font-semibold text-[var(--pf-text)]">{displayName}</div>
+                <div className="mt-0.5 truncate text-xs text-[var(--pf-text-muted)]">{email || 'email не указан'}</div>
+              </DropdownMenuLabel>
+
+              <DropdownMenuSeparator className="bg-[var(--border)]" />
+
+              <DropdownMenuItem
+                className="cursor-pointer text-[var(--pf-text)] focus:bg-white/5"
+                onSelect={event => {
+                  event.preventDefault();
+                  router.push('/platform/settings');
+                }}
+              >
+                <Settings size={14} className="mr-2" />
+                Настройки
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                className="cursor-pointer text-[var(--pf-text)] focus:bg-white/5"
+                onSelect={event => {
+                  event.preventDefault();
+                  window.open('https://t.me/funpaycloud_support', '_blank', 'noopener,noreferrer');
+                }}
+              >
+                <LifeBuoy size={14} className="mr-2" />
+                Поддержка
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator className="bg-[var(--border)]" />
+
+              <DropdownMenuItem
+                className="cursor-pointer text-red-400 focus:bg-red-500/10 focus:text-red-300"
+                onSelect={event => {
+                  event.preventDefault();
+                  logout();
+                }}
+              >
+                <LogOut size={14} className="mr-2" />
+                Выйти
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </header>
   );
