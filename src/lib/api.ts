@@ -480,7 +480,27 @@ export type ProfileData = {
   login?: string;
   email?: string;
   telegram?: string;
+  telegram_username?: string;
   timezone?: string;
+};
+
+export type SubscriptionData = {
+  plan?: string;
+  expires_at?: string | null;
+};
+
+export type NotificationSettings = {
+  enabled: boolean;
+  new_order: boolean;
+  new_message: boolean;
+  login: boolean;
+  weekly_report: boolean;
+  subscription: boolean;
+};
+
+export type TelegramLinkData = {
+  code: string;
+  link: string;
 };
 
 export const settingsApi = {
@@ -495,7 +515,14 @@ export const settingsApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
-  getSubscription: () => apiRequest<Record<string, unknown>>('/api/settings/subscription'),
+  getSubscription: () => apiRequest<SubscriptionData>('/api/settings/subscription'),
+  getNotifications: () => apiRequest<NotificationSettings>('/api/settings/notifications'),
+  updateNotifications: (data: NotificationSettings) =>
+    apiRequest('/api/settings/notifications', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  getTelegramLink: () => apiRequest<TelegramLinkData>('/api/settings/telegram/link'),
   getReferral: () =>
     apiRequest<{ referral_code: string; referrals: Array<Record<string, unknown>>; total_earned: number }>(
       '/api/settings/referral',

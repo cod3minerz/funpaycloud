@@ -16,7 +16,6 @@ import {
   Zap,
   Puzzle,
   Wallet,
-  Settings,
   Users,
   Server,
   X,
@@ -57,7 +56,6 @@ const navGroups = [
       { icon: Puzzle, label: 'Плагины', path: '/platform/plugins' },
       { icon: Wallet, label: 'Финансы', path: '/platform/finances' },
       { icon: CircleDollarSign, label: 'Реферальная система', path: '/platform/referrals' },
-      { icon: Settings, label: 'Настройки', path: '/platform/settings' },
     ],
   },
   {
