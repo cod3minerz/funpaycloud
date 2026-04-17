@@ -11,9 +11,29 @@ async function proxyToAdmin(request: NextRequest, params: { path?: string[] }) {
     return NextResponse.json({ success: false, error: 'ADMIN_SECRET_KEY is not configured' }, { status: 503 });
   }
 
-  const headers = new Headers(request.headers);
+  // Forward only a minimal safe header set to avoid oversized headers and accidental duplication.
+  const headers = new Headers();
+  const contentType = request.headers.get('content-type');
+  const accept = request.headers.get('accept');
+  const auth = request.headers.get('authorization');
+  const userAgent = request.headers.get('user-agent');
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  const forwardedProto = request.headers.get('x-forwarded-proto');
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  const realIP = request.headers.get('x-real-ip');
+
+  if (contentType) headers.set('Content-Type', contentType);
+  if (accept) headers.set('Accept', accept);
+  if (auth) headers.set('Authorization', auth);
+  if (userAgent) headers.set('User-Agent', userAgent);
+  if (forwardedFor) headers.set('X-Forwarded-For', forwardedFor);
+  if (forwardedProto) headers.set('X-Forwarded-Proto', forwardedProto);
+  if (forwardedHost) headers.set('X-Forwarded-Host', forwardedHost);
+  if (realIP) headers.set('X-Real-IP', realIP);
+
+  // Ensure exactly one admin key header from server env.
+  headers.delete('X-Admin-Key');
   headers.set('X-Admin-Key', adminKey);
-  headers.delete('host');
 
   const init: RequestInit = {
     method: request.method,

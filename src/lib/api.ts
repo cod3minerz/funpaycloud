@@ -110,7 +110,8 @@ export async function adminApiRequest<T = unknown>(
       ...options,
       headers,
       signal: controller.signal,
-      credentials: 'same-origin',
+      // Admin auth is header-based; do not send browser cookies to keep headers compact.
+      credentials: 'omit',
     });
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
@@ -745,7 +746,7 @@ export const adminApi = {
         const token = getAdminToken();
         return token ? { Authorization: `Bearer ${token}` } : {};
       })(),
-      credentials: 'same-origin',
+      credentials: 'omit',
     });
   },
   users: (params: { page?: number; limit?: number; search?: string }) => {
