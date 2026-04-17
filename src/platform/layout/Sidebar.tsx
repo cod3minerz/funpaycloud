@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   CircleDollarSign,
   Crown,
-  LayoutDashboard,
+  Home,
   LifeBuoy,
   MessageSquare,
   ShoppingCart,
@@ -41,7 +41,7 @@ const navGroups = [
   {
     title: 'Операции',
     items: [
-      { icon: LayoutDashboard, label: 'Дашборд', path: '/platform/dashboard' },
+      { icon: Home, label: 'Главная', path: '/platform/dashboard' },
       { icon: MessageSquare, label: 'Чаты', path: '/platform/chats' },
       { icon: ShoppingCart, label: 'Заказы', path: '/platform/orders' },
       { icon: Tag, label: 'Лоты', path: '/platform/lots' },
