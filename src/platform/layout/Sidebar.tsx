@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -73,14 +73,23 @@ const mobileTopLinks = [
 ] as const;
 
 function AISidebarIcon({ size = 16 }: { size?: number }) {
-  const iconSize = Math.max(10, size - 4);
+  const gradientID = `ai-gradient-${useId().replace(/:/g, '')}`;
   return (
-    <span
-      className="inline-flex items-center justify-center rounded bg-gradient-to-br from-indigo-400 to-violet-400"
-      style={{ width: size, height: size }}
-      aria-hidden
-    >
-      <Sparkles size={iconSize} className="text-white" />
+    <span className="inline-flex items-center justify-center" style={{ width: size, height: size }} aria-hidden>
+      <svg width="0" height="0" focusable="false" aria-hidden>
+        <defs>
+          <linearGradient id={gradientID} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#818cf8" />
+            <stop offset="100%" stopColor="#a78bfa" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <Sparkles
+        size={18}
+        style={{
+          stroke: `url(#${gradientID})`,
+        }}
+      />
     </span>
   );
 }
@@ -159,6 +168,7 @@ export default function Sidebar({
             {group.items.map(({ icon: Icon, label, path }) => {
               const isActive = pathname === path;
               const isReferral = path === '/platform/referrals';
+              const isAIItem = path === '/platform/ai-assistant';
               return (
                 <Link
                   key={path}
@@ -170,7 +180,30 @@ export default function Sidebar({
                 >
                   <Icon size={16} />
                   {!collapsed && (
-                    <span className={isReferral ? 'platform-referrals-nav-label' : undefined}>{label}</span>
+                    <span
+                      className={
+                        isReferral
+                          ? 'platform-referrals-nav-label'
+                          : !isAIItem
+                            ? undefined
+                            : isActive
+                              ? ''
+                              : 'text-slate-400'
+                      }
+                      style={
+                        isAIItem && isActive
+                          ? {
+                              background: 'linear-gradient(90deg, #818cf8, #a78bfa, #c084fc)',
+                              backgroundSize: '200% auto',
+                              WebkitBackgroundClip: 'text',
+                              WebkitTextFillColor: 'transparent',
+                              animation: 'shimmer 3s linear infinite',
+                            }
+                          : undefined
+                      }
+                    >
+                      {label}
+                    </span>
                   )}
                 </Link>
               );
