@@ -181,6 +181,12 @@ export const authApi = {
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export type DashboardData = {
+  runner_active?: boolean;
+  keeper_active?: boolean;
+  raiser_active?: boolean;
+  runner_active_count?: number;
+  keeper_active_count?: number;
+  raiser_active_count?: number;
   total_balance: number;
   accounts_count: number;
   orders_today: number;
