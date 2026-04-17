@@ -123,10 +123,15 @@ export async function adminApiRequest<T = unknown>(
   }
 
   let envelope: ApiEnvelope<T> = { success: false, error: 'Ошибка запроса' };
+  let rawBody = '';
   try {
     envelope = (await response.json()) as ApiEnvelope<T>;
   } catch {
-    // ignore
+    try {
+      rawBody = (await response.text()).trim();
+    } catch {
+      // ignore
+    }
   }
 
   if (response.status === 401 || response.status === 403) {
@@ -138,7 +143,10 @@ export async function adminApiRequest<T = unknown>(
   }
 
   if (!response.ok || !envelope.success) {
-    throw new ApiError(envelope.error || 'Ошибка admin-запроса', response.status);
+    const fallback = rawBody
+      ? `Ошибка admin-запроса (${response.status}): ${rawBody.slice(0, 180)}`
+      : `Ошибка admin-запроса (${response.status})`;
+    throw new ApiError(envelope.error || fallback, response.status);
   }
 
   return (envelope.data as T) ?? ({} as T);

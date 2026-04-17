@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export function middleware(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
   const adminSession = request.cookies.get('admin_auth')?.value || request.cookies.get('admin_token')?.value;
+  const legacyAdminToken = request.cookies.get('admin_token')?.value;
   const { pathname } = request.nextUrl;
 
   // Защита /platform/* — без токена редирект на /auth/login
@@ -17,7 +18,11 @@ export function middleware(request: NextRequest) {
       if (adminSession) {
         return NextResponse.redirect(new URL('/admin/dashboard', request.url));
       }
-      return NextResponse.next();
+      const response = NextResponse.next();
+      if (legacyAdminToken) {
+        response.cookies.set('admin_token', '', { path: '/', maxAge: 0 });
+      }
+      return response;
     }
     if (!adminSession) {
       return NextResponse.redirect(new URL('/admin/login', request.url));

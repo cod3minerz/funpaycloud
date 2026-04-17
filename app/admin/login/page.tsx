@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ShieldCheck } from 'lucide-react';
 import { adminApi } from '@/lib/api';
@@ -13,6 +13,11 @@ export default function AdminLoginPage() {
   const [totp, setTotp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Remove legacy oversized JWT cookie if it still exists from older builds.
+    document.cookie = 'admin_token=; path=/; max-age=0';
+  }, []);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
