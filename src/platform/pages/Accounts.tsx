@@ -108,14 +108,14 @@ function getNextRaiseCountdown(timeValue?: string, timezoneValue?: string): stri
   return `через ${hours}ч ${minutes}м`;
 }
 
-function getRecencyColorClass(value?: string | null): string {
-  if (!value) return 'text-slate-500';
+function getRecencyColor(value?: string | null): string {
+  if (!value) return 'var(--pf-text-soft)';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'text-slate-500';
+  if (Number.isNaN(date.getTime())) return 'var(--pf-text-soft)';
   const diffHours = (Date.now() - date.getTime()) / (1000 * 60 * 60);
-  if (diffHours < 1) return 'text-emerald-400';
-  if (diffHours < 6) return 'text-amber-400';
-  return 'text-rose-400';
+  if (diffHours < 1) return 'var(--pf-success)';
+  if (diffHours < 6) return 'var(--pf-warning)';
+  return 'var(--pf-danger)';
 }
 
 export default function Accounts() {
@@ -297,7 +297,7 @@ export default function Accounts() {
         <KpiGrid>
           <KpiCard>
             <div className="inline-flex items-center gap-2 text-[13px] font-semibold">
-              <ShieldCheck size={15} color="#4ade80" />
+              <ShieldCheck size={15} color="var(--pf-success)" />
               Аккаунтов
             </div>
             <strong className="text-[26px]">{list.length}</strong>
@@ -305,7 +305,7 @@ export default function Accounts() {
           </KpiCard>
           <KpiCard>
             <div className="inline-flex items-center gap-2 text-[13px] font-semibold">
-              <CircleCheck size={15} color="#60a5fa" />
+              <CircleCheck size={15} color="var(--pf-accent)" />
               Runner активен
             </div>
             <strong className="text-[26px]">{runnerActiveCount}</strong>
@@ -313,7 +313,7 @@ export default function Accounts() {
           </KpiCard>
           <KpiCard>
             <div className="inline-flex items-center gap-2 text-[13px] font-semibold">
-              <CircleCheck size={15} color="#4ade80" />
+              <CircleCheck size={15} color="var(--pf-success)" />
               Keeper онлайн
             </div>
             <strong className="text-[26px]">{onlineCount}</strong>
@@ -321,7 +321,7 @@ export default function Accounts() {
           </KpiCard>
           <KpiCard>
             <div className="inline-flex items-center gap-2 text-[13px] font-semibold">
-              <Play size={15} color="#60a5fa" />
+              <Play size={15} color="var(--pf-accent)" />
               Raiser запущен
             </div>
             <strong className="text-[26px]">{raisingCount}</strong>
@@ -404,15 +404,18 @@ export default function Accounts() {
                               <div className="inline-flex items-center gap-2">
                                 <span
                                   title={`Runner: ${acc.runner_active ? 'Активен' : 'Остановлен'}`}
-                                  className={`h-2.5 w-2.5 rounded-full ${acc.runner_active ? 'bg-blue-500' : 'bg-slate-600'}`}
+                                  className="h-2.5 w-2.5 rounded-full"
+                                  style={{ backgroundColor: acc.runner_active ? 'var(--pf-accent)' : 'var(--pf-text-soft)' }}
                                 />
                                 <span
                                   title={`Keeper: ${acc.keeper_active ? 'Онлайн' : 'Оффлайн'}`}
-                                  className={`h-2.5 w-2.5 rounded-full ${acc.keeper_active ? 'bg-emerald-500' : 'bg-slate-600'}`}
+                                  className="h-2.5 w-2.5 rounded-full"
+                                  style={{ backgroundColor: acc.keeper_active ? 'var(--pf-success)' : 'var(--pf-text-soft)' }}
                                 />
                                 <span
                                   title={`Raiser: ${acc.raiser_active ? 'Запущен' : 'Остановлен'}`}
-                                  className={`h-2.5 w-2.5 rounded-full ${acc.raiser_active ? 'bg-violet-500' : 'bg-slate-600'}`}
+                                  className="h-2.5 w-2.5 rounded-full"
+                                  style={{ backgroundColor: acc.raiser_active ? 'var(--pf-warning)' : 'var(--pf-text-soft)' }}
                                 />
                               </div>
                             </td>
@@ -420,7 +423,12 @@ export default function Accounts() {
                               <div className="inline-flex items-center gap-1">
                                 <button
                                   type="button"
-                                  className="inline-flex items-center gap-1 rounded-md border border-white/10 px-2.5 py-1.5 text-xs text-slate-200 hover:border-blue-500/40 hover:text-blue-300"
+                                  className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs hover:opacity-90"
+                                  style={{
+                                    borderColor: 'var(--pf-border)',
+                                    color: 'var(--pf-text-muted)',
+                                    background: 'var(--pf-surface-2)',
+                                  }}
                                   onClick={event => {
                                     event.stopPropagation();
                                     openAccountSheet(acc.id);
@@ -446,7 +454,8 @@ export default function Accounts() {
                   return (
                     <article
                       key={acc.id}
-                      className="platform-mobile-card cursor-pointer hover:border-blue-500/40"
+                      className="platform-mobile-card cursor-pointer"
+                      style={{ borderColor: 'var(--pf-border)' }}
                       onClick={() => openAccountSheet(acc.id)}
                     >
                       <div className="platform-mobile-card-head">
@@ -465,18 +474,21 @@ export default function Accounts() {
                         <div className="inline-flex items-center gap-2">
                           <span
                             title={`Runner: ${acc.runner_active ? 'Активен' : 'Остановлен'}`}
-                            className={`h-2.5 w-2.5 rounded-full ${acc.runner_active ? 'bg-blue-500' : 'bg-slate-600'}`}
+                            className="h-2.5 w-2.5 rounded-full"
+                            style={{ backgroundColor: acc.runner_active ? 'var(--pf-accent)' : 'var(--pf-text-soft)' }}
                           />
                           <span
                             title={`Keeper: ${acc.keeper_active ? 'Онлайн' : 'Оффлайн'}`}
-                            className={`h-2.5 w-2.5 rounded-full ${acc.keeper_active ? 'bg-emerald-500' : 'bg-slate-600'}`}
+                            className="h-2.5 w-2.5 rounded-full"
+                            style={{ backgroundColor: acc.keeper_active ? 'var(--pf-success)' : 'var(--pf-text-soft)' }}
                           />
                           <span
                             title={`Raiser: ${acc.raiser_active ? 'Запущен' : 'Остановлен'}`}
-                            className={`h-2.5 w-2.5 rounded-full ${acc.raiser_active ? 'bg-violet-500' : 'bg-slate-600'}`}
+                            className="h-2.5 w-2.5 rounded-full"
+                            style={{ backgroundColor: acc.raiser_active ? 'var(--pf-warning)' : 'var(--pf-text-soft)' }}
                           />
                         </div>
-                        <span className="inline-flex items-center gap-1 text-xs text-slate-400">
+                        <span className="inline-flex items-center gap-1 text-xs text-[var(--pf-text-dim)]">
                           Подробнее <ChevronRight size={14} />
                         </span>
                       </div>
@@ -501,12 +513,20 @@ export default function Accounts() {
       >
         <SheetContent
           side="right"
-          className="w-full border-l border-slate-800 bg-slate-950 p-0 text-slate-100 data-[state=open]:duration-200 data-[state=closed]:duration-200 sm:max-w-[380px]"
+          className="w-full p-0 data-[state=open]:duration-200 data-[state=closed]:duration-200 sm:max-w-[380px]"
+          style={{
+            borderLeftColor: 'var(--pf-border)',
+            background: 'var(--pf-bg)',
+            color: 'var(--pf-text)',
+          }}
         >
           {selectedAccount && (
-            <div className="h-full overflow-y-auto p-5">
+            <div className="h-full overflow-y-auto p-4 pb-6 sm:p-5 sm:pb-7">
               <div className="space-y-6">
-                <section className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                <section
+                  className="rounded-xl border p-3 sm:p-4"
+                  style={{ borderColor: 'var(--pf-border)', background: 'var(--pf-surface-2)' }}
+                >
                   <div className="flex items-center gap-3">
                     <span
                       className="inline-flex h-12 w-12 items-center justify-center rounded-full text-lg font-semibold text-white"
@@ -515,13 +535,21 @@ export default function Accounts() {
                       {displayName(selectedAccount)[0]?.toUpperCase() ?? 'U'}
                     </span>
                     <div className="min-w-0">
-                      <h3 className="truncate text-lg font-semibold text-slate-100">
+                      <h3 className="truncate text-lg font-semibold text-[var(--pf-text)]">
                         {displayName(selectedAccount)}
                       </h3>
-                      <p className="text-xs text-slate-400">FunPay ID: {selectedAccount.id}</p>
-                      <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-slate-300">
+                      <p className="text-xs text-[var(--pf-text-dim)]">
+                        FunPay ID: {selectedAccount.funpay_user_id || '—'}
+                      </p>
+                      <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-[var(--pf-text-muted)]">
                         <span
-                          className={`h-2 w-2 rounded-full ${selectedAccount.runner_active || selectedAccount.keeper_active || selectedAccount.raiser_active ? 'bg-emerald-500' : 'bg-slate-500'}`}
+                          className="h-2 w-2 rounded-full"
+                          style={{
+                            backgroundColor:
+                              selectedAccount.runner_active || selectedAccount.keeper_active || selectedAccount.raiser_active
+                                ? 'var(--pf-success)'
+                                : 'var(--pf-text-soft)',
+                          }}
                         />
                         {selectedAccount.runner_active || selectedAccount.keeper_active || selectedAccount.raiser_active ? 'Онлайн' : 'Оффлайн'}
                       </p>
@@ -530,46 +558,55 @@ export default function Accounts() {
                 </section>
 
                 <section className="space-y-3">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Воркеры</h4>
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--pf-text-dim)]">Воркеры</h4>
 
-                  <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                  <div
+                    className="rounded-xl border p-3"
+                    style={{ borderColor: 'var(--pf-border)', background: 'var(--pf-surface-2)' }}
+                  >
                     <div className="flex items-center justify-between text-sm font-medium">
                       <span>Runner</span>
-                      <span className={selectedAccount.runner_active ? 'text-emerald-400' : 'text-slate-400'}>
+                      <span style={{ color: selectedAccount.runner_active ? 'var(--pf-success)' : 'var(--pf-text-soft)' }}>
                         {selectedAccount.runner_active ? 'Активен' : 'Остановлен'}
                       </span>
                     </div>
-                    <div className="mt-2 space-y-1 text-xs text-slate-400">
+                    <div className="mt-2 space-y-1 text-xs text-[var(--pf-text-dim)]">
                       <p>Событий сегодня: {selectedAccount.runner_events_today ?? 0}</p>
                       <p>
                         Последнее событие:{' '}
-                        <span className={getRecencyColorClass(selectedAccount.runner_last_event_at)}>
+                        <span style={{ color: getRecencyColor(selectedAccount.runner_last_event_at) }}>
                           {formatRelativeTime(selectedAccount.runner_last_event_at)}
                         </span>
                       </p>
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                  <div
+                    className="rounded-xl border p-3"
+                    style={{ borderColor: 'var(--pf-border)', background: 'var(--pf-surface-2)' }}
+                  >
                     <div className="flex items-center justify-between text-sm font-medium">
                       <span>Keeper</span>
-                      <span className={selectedAccount.keeper_active ? 'text-emerald-400' : 'text-slate-400'}>
+                      <span style={{ color: selectedAccount.keeper_active ? 'var(--pf-success)' : 'var(--pf-text-soft)' }}>
                         {selectedAccount.keeper_active ? 'Онлайн' : 'Остановлен'}
                       </span>
                     </div>
-                    <p className="mt-2 text-xs text-slate-400">
+                    <p className="mt-2 text-xs text-[var(--pf-text-dim)]">
                       Сессия обновлена: {formatRelativeTime(selectedAccount.runner_last_event_at)}
                     </p>
                   </div>
 
-                  <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                  <div
+                    className="rounded-xl border p-3"
+                    style={{ borderColor: 'var(--pf-border)', background: 'var(--pf-surface-2)' }}
+                  >
                     <div className="flex items-center justify-between text-sm font-medium">
                       <span>Raiser</span>
-                      <span className={selectedAccount.raiser_active ? 'text-emerald-400' : 'text-slate-400'}>
+                      <span style={{ color: selectedAccount.raiser_active ? 'var(--pf-success)' : 'var(--pf-text-soft)' }}>
                         {selectedAccount.raiser_active ? 'Запущен' : 'Остановлен'}
                       </span>
                     </div>
-                    <p className="mt-2 text-xs text-slate-400">
+                    <p className="mt-2 text-xs text-[var(--pf-text-dim)]">
                       Следующее поднятие:{' '}
                       {getNextRaiseCountdown(
                         scheduleDrafts[String(selectedAccount.id)] || selectedAccount.raiser_time,
@@ -578,7 +615,12 @@ export default function Accounts() {
                     </p>
                     <button
                       type="button"
-                      className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md border border-white/10 bg-white/[0.03] text-sm text-slate-200 hover:border-blue-500/40 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="mt-3 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md border text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                      style={{
+                        borderColor: 'var(--pf-border)',
+                        background: 'var(--pf-surface-3)',
+                        color: 'var(--pf-text-muted)',
+                      }}
                       onClick={() => toggleRaiser(selectedAccount)}
                       disabled={raisingIds.has(selectedAccount.id)}
                     >
@@ -600,12 +642,20 @@ export default function Accounts() {
                 </section>
 
                 <section className="space-y-3">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Расписание</h4>
-                  <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--pf-text-dim)]">Расписание</h4>
+                  <div
+                    className="rounded-xl border p-3"
+                    style={{ borderColor: 'var(--pf-border)', background: 'var(--pf-surface-2)' }}
+                  >
                     <div className="flex items-center gap-2">
                       <input
                         type="time"
-                        className="h-10 flex-1 rounded-md border border-white/10 bg-slate-900 px-3 text-sm text-slate-200 outline-none focus:border-blue-500/50"
+                        className="h-11 flex-1 rounded-md border px-3 text-sm outline-none"
+                        style={{
+                          borderColor: 'var(--pf-border)',
+                          background: 'var(--pf-bg-soft)',
+                          color: 'var(--pf-text)',
+                        }}
                         value={scheduleDrafts[String(selectedAccount.id)] || '12:00'}
                         onChange={event =>
                           setScheduleDrafts(prev => ({ ...prev, [String(selectedAccount.id)]: event.target.value }))
@@ -613,7 +663,12 @@ export default function Accounts() {
                       />
                       <button
                         type="button"
-                        className="inline-flex h-10 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-3 text-sm text-slate-200 hover:border-blue-500/40 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="inline-flex h-11 items-center justify-center rounded-md border px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                        style={{
+                          borderColor: 'var(--pf-border)',
+                          background: 'var(--pf-surface-3)',
+                          color: 'var(--pf-text-muted)',
+                        }}
                         onClick={() => saveSchedule(selectedAccount)}
                         disabled={savingScheduleIds.has(selectedAccount.id)}
                       >
@@ -624,18 +679,23 @@ export default function Accounts() {
                         )}
                       </button>
                     </div>
-                    <p className="mt-2 text-xs text-slate-500">
+                    <p className="mt-2 text-xs text-[var(--pf-text-soft)]">
                       Часовой пояс: {selectedAccount.raiser_timezone || 'Europe/Moscow'}
                     </p>
                   </div>
                 </section>
 
                 <section className="space-y-3">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Действия</h4>
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--pf-text-dim)]">Действия</h4>
                   <button
                     type="button"
                     onClick={() => setShowDeleteConfirm(true)}
-                    className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md border border-rose-500/40 bg-rose-500/10 text-sm font-medium text-rose-300 hover:bg-rose-500/15"
+                    className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-md border text-sm font-medium"
+                    style={{
+                      borderColor: 'color-mix(in srgb, var(--pf-danger) 50%, transparent)',
+                      background: 'color-mix(in srgb, var(--pf-danger) 14%, transparent)',
+                      color: 'var(--pf-danger)',
+                    }}
                   >
                     <Trash2 size={14} />
                     Удалить аккаунт
@@ -648,11 +708,18 @@ export default function Accounts() {
       </Sheet>
 
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <DialogContent className="max-w-[420px] border-slate-700 bg-slate-900 text-slate-100">
+        <DialogContent
+          className="max-w-[420px]"
+          style={{
+            borderColor: 'var(--pf-border)',
+            background: 'var(--pf-surface)',
+            color: 'var(--pf-text)',
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Удалить аккаунт?</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-[var(--pf-text-muted)]">
             <strong>{selectedAccount ? displayName(selectedAccount) : 'Этот аккаунт'}</strong> будет удалён.
             <br />
             История чатов и заказов сохранится в базе данных.
@@ -660,7 +727,12 @@ export default function Accounts() {
           <div className="mt-2 flex justify-end gap-2">
             <button
               type="button"
-              className="inline-flex h-9 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-3 text-sm text-slate-300 hover:bg-white/[0.06]"
+              className="inline-flex h-10 items-center justify-center rounded-md border px-3 text-sm"
+              style={{
+                borderColor: 'var(--pf-border)',
+                background: 'var(--pf-surface-2)',
+                color: 'var(--pf-text-muted)',
+              }}
               onClick={() => setShowDeleteConfirm(false)}
               disabled={deletingAccount}
             >
@@ -668,7 +740,12 @@ export default function Accounts() {
             </button>
             <button
               type="button"
-              className="inline-flex h-9 items-center justify-center rounded-md border border-rose-500/40 bg-rose-500/15 px-3 text-sm font-medium text-rose-200 hover:bg-rose-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-10 items-center justify-center rounded-md border px-3 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+              style={{
+                borderColor: 'color-mix(in srgb, var(--pf-danger) 50%, transparent)',
+                background: 'color-mix(in srgb, var(--pf-danger) 18%, transparent)',
+                color: 'var(--pf-danger)',
+              }}
               onClick={() => selectedAccount && removeAccount(selectedAccount.id)}
               disabled={!selectedAccount || deletingAccount}
             >

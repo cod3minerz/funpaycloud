@@ -199,6 +199,7 @@ export const dashboardApi = {
 
 export type ApiAccount = {
   id: number;
+  funpay_user_id?: number;
   username?: string;
   runner_active?: boolean;
   runner_events_today?: number;
