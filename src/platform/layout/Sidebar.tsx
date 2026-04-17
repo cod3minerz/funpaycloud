@@ -22,11 +22,13 @@ import {
 } from 'lucide-react';
 import { BrandLogo } from '@/app/components/BrandLogo';
 import { TelegramMark, VkMark } from '@/platform/components/SocialMarks';
+import { settingsApi } from '@/lib/api';
 import {
   DEFAULT_PLAN_ID,
   PLAN_EVENT_NAME,
+  getPlanLabel,
+  normalizePlanId,
   readCurrentPlanId,
-  subscriptionPlans,
 } from '@/shared/subscriptions';
 
 type SidebarProps = {
@@ -77,27 +79,38 @@ export default function Sidebar({
   collapsed = false,
 }: SidebarProps) {
   const pathname = usePathname();
-  const [currentPlanId, setCurrentPlanId] = useState(DEFAULT_PLAN_ID);
+  const [currentPlanId, setCurrentPlanId] = useState(() => normalizePlanId(DEFAULT_PLAN_ID));
 
   useEffect(() => {
     if (mobile) return;
+    let cancelled = false;
+
     setCurrentPlanId(readCurrentPlanId());
+
+    settingsApi
+      .getSubscription()
+      .then(data => {
+        if (cancelled) return;
+        setCurrentPlanId(normalizePlanId(data.plan));
+      })
+      .catch(() => {
+        // fallback to local plan storage
+      });
 
     const onPlanChanged = (event: Event) => {
       const detail = (event as CustomEvent<string>).detail;
-      setCurrentPlanId((detail as typeof DEFAULT_PLAN_ID) ?? readCurrentPlanId());
+      setCurrentPlanId(normalizePlanId(detail ?? readCurrentPlanId()));
     };
 
     window.addEventListener(PLAN_EVENT_NAME, onPlanChanged as EventListener);
-    return () => window.removeEventListener(PLAN_EVENT_NAME, onPlanChanged as EventListener);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(PLAN_EVENT_NAME, onPlanChanged as EventListener);
+    };
   }, [mobile]);
 
-  const currentPlan = useMemo(
-    () => subscriptionPlans.find(plan => plan.id === currentPlanId) ?? subscriptionPlans[1],
-    [currentPlanId],
-  );
-  const proPlan = subscriptionPlans.find(plan => plan.id === 'pro') ?? subscriptionPlans[1];
-  const showUpsell = currentPlan.id !== 'pro';
+  const currentPlanName = useMemo(() => getPlanLabel(currentPlanId), [currentPlanId]);
+  const showUpsell = currentPlanId === 'trial' || currentPlanId === 'lite';
 
   const asideClass = mobile
     ? `platform-sidebar platform-mobile-sidebar ${open ? 'open' : ''}`
@@ -170,9 +183,9 @@ export default function Sidebar({
       <div className="platform-sidebar-footer">
         {collapsed ? (
           <Link
-            href="/platform/settings"
+            href="/platform/subscription"
             className="platform-nav-item"
-            title={showUpsell ? `Оформить ${proPlan.name}` : `Текущий план: ${currentPlan.name}`}
+            title={showUpsell ? 'Улучшить подписку' : `Текущий план: ${currentPlanName}`}
           >
             <Crown size={16} />
           </Link>
@@ -180,15 +193,15 @@ export default function Sidebar({
           <div className="platform-subscription-card">
             <div className="platform-subscription-head">
               <Crown size={14} />
-              <span>{showUpsell ? 'Cloud Pro' : `Тариф: ${currentPlan.name}`}</span>
+              <span>{showUpsell ? 'Подписка' : `Тариф: ${currentPlanName}`}</span>
             </div>
             <p className="platform-footer-note">
               {showUpsell
-                ? `Переход на ${proPlan.name} откроет AI-автоответчик, аналитику и приоритетные сценарии поддержки.`
-                : `Ваш тариф активен. Управляйте подпиской и доступными лимитами из настроек.`}
+                ? `Улучшите план до Pro или Ultra, чтобы открыть больше лимитов, AI и расширенную автоматизацию.`
+                : `Ваш тариф активен. Управляйте подпиской и доступными лимитами на отдельной странице.`}
             </p>
-            <Link href="/platform/settings" className={showUpsell ? 'platform-btn-primary' : 'platform-btn-secondary'}>
-              {showUpsell ? `Оформить ${proPlan.name}` : 'Управлять'}
+            <Link href="/platform/subscription" className={showUpsell ? 'platform-btn-primary' : 'platform-btn-secondary'}>
+              {showUpsell ? 'Выбрать тариф' : 'Управлять'}
             </Link>
           </div>
         )}

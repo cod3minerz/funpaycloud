@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, ChevronDown, LifeBuoy, LogOut, PanelLeft, Settings } from 'lucide-react';
+import { Bell, ChevronDown, CreditCard, LifeBuoy, LogOut, PanelLeft, Settings } from 'lucide-react';
 import { settingsApi, type ProfileData } from '@/lib/api';
 import { logout } from '@/lib/auth';
 import {
@@ -176,6 +176,17 @@ export default function PlatformTopBar({
               >
                 <Settings size={14} className="mr-2" />
                 Настройки
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                className="cursor-pointer text-[var(--pf-text)] focus:bg-white/5"
+                onSelect={event => {
+                  event.preventDefault();
+                  router.push('/platform/subscription');
+                }}
+              >
+                <CreditCard size={14} className="mr-2" />
+                Подписка
               </DropdownMenuItem>
 
               <DropdownMenuItem

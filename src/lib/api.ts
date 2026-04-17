@@ -487,6 +487,7 @@ export type ProfileData = {
 export type SubscriptionData = {
   plan?: string;
   expires_at?: string | null;
+  days_left?: number;
 };
 
 export type NotificationSettings = {

@@ -3,8 +3,12 @@ export type SubscriptionFeature = {
   available: boolean;
 };
 
+export type CanonicalPlanId = 'trial' | 'lite' | 'pro' | 'ultra';
+export type LegacyPlanId = 'free' | 'start' | 'team';
+export type PaidPlanId = 'lite' | 'pro' | 'ultra';
+
 export type SubscriptionPlan = {
-  id: 'start' | 'pro' | 'team';
+  id: PaidPlanId;
   name: string;
   tagline: string;
   priceMonthly: number;
@@ -19,103 +23,129 @@ export type SubscriptionPlan = {
   features: SubscriptionFeature[];
 };
 
+export const PLAN_LABELS: Record<CanonicalPlanId, string> = {
+  trial: 'Триал',
+  lite: 'Lite',
+  pro: 'Pro',
+  ultra: 'Ultra',
+};
+
+export function normalizePlanId(plan?: string | null): CanonicalPlanId {
+  const value = String(plan ?? '').trim().toLowerCase();
+
+  switch (value) {
+    case 'trial':
+      return 'trial';
+    case 'lite':
+      return 'lite';
+    case 'pro':
+      return 'pro';
+    case 'ultra':
+      return 'ultra';
+    case 'free':
+      return 'trial';
+    case 'start':
+      return 'lite';
+    case 'team':
+      return 'ultra';
+    default:
+      return 'pro';
+  }
+}
+
+export function getPlanLabel(plan?: string | null): string {
+  return PLAN_LABELS[normalizePlanId(plan)];
+}
+
 export const subscriptionPlans: SubscriptionPlan[] = [
   {
-    id: 'start',
-    name: 'Старт',
-    tagline: 'Для первого шага',
-    priceMonthly: 199,
-    priceYearly: 159,
-    color: 'text-blue-400',
-    border: 'rgba(59,130,246,0.2)',
-    bg: 'rgba(59,130,246,0.05)',
-    glow: 'rgba(59,130,246,0.1)',
+    id: 'lite',
+    name: 'Lite',
+    tagline: 'Для старта',
+    priceMonthly: 149,
+    priceYearly: 119,
+    color: 'text-blue-300',
+    border: 'rgba(110,139,255,0.22)',
+    bg: 'rgba(110,139,255,0.06)',
+    glow: 'rgba(110,139,255,0.1)',
     highlight: false,
-    cta: 'Начать бесплатно',
+    cta: 'Выбрать Lite',
     ctaStyle: 'border',
     features: [
       { text: '1 аккаунт FunPay', available: true },
-      { text: 'Автовыдача товаров', available: true },
       { text: 'Автоподнятие лотов', available: true },
-      { text: 'Базовые шаблоны ответов', available: true },
-      { text: 'Облако 24/7', available: true },
-      { text: 'IPv4 защита', available: true },
-      { text: 'Telegram-уведомления', available: true },
-      { text: 'AI-автоответчик', available: false },
-      { text: 'Аналитика и отчёты', available: false },
-      { text: 'Мультиаккаунт', available: false },
+      { text: 'Автовыдача товаров', available: true },
+      { text: 'Аналитика 7 дней', available: true },
+      { text: '2 правила автоматизации', available: true },
+      { text: 'Плагины', available: false },
+      { text: 'AI автоответы', available: false },
       { text: 'Приоритетная поддержка', available: false },
     ],
   },
   {
     id: 'pro',
-    name: 'Профи',
+    name: 'Pro',
     tagline: 'Лучший выбор',
-    priceMonthly: 349,
-    priceYearly: 279,
+    priceMonthly: 299,
+    priceYearly: 239,
     color: 'text-white',
-    border: 'rgba(96,165,250,0.4)',
+    border: 'rgba(110,139,255,0.36)',
     bg: 'transparent',
-    glow: 'rgba(96,165,250,0.2)',
+    glow: 'rgba(110,139,255,0.22)',
     highlight: true,
-    cta: 'Выбрать Профи',
+    cta: 'Перейти на Pro',
     ctaStyle: 'gradient',
     features: [
-      { text: '3 аккаунта FunPay', available: true },
+      { text: '5 аккаунтов FunPay', available: true },
+      { text: 'Автоподнятие лотов', available: true },
       { text: 'Автовыдача товаров', available: true },
-      { text: 'Умное автоподнятие', available: true },
-      { text: 'AI-автоответчик (GPT-4o)', available: true },
-      { text: 'Облако 24/7', available: true },
-      { text: 'IPv4 защита', available: true },
-      { text: 'Telegram-управление', available: true },
-      { text: 'Полная аналитика', available: true },
-      { text: 'Плагины (30+)', available: true },
-      { text: 'Экспорт отчётов', available: true },
-      { text: 'Приоритетная поддержка', available: false },
+      { text: 'Аналитика 30 дней + CSV', available: true },
+      { text: '10 правил автоматизации', available: true },
+      { text: 'Базовые плагины (20+)', available: true },
+      { text: 'AI ответы 500 msg/мес', available: true },
+      { text: 'Приоритетная поддержка', available: true },
     ],
   },
   {
-    id: 'team',
-    name: 'Командный',
+    id: 'ultra',
+    name: 'Ultra',
     tagline: 'Для масштаба',
-    priceMonthly: 499,
-    priceYearly: 399,
-    color: 'text-blue-300',
-    border: 'rgba(37,99,235,0.25)',
-    bg: 'rgba(37,99,235,0.05)',
-    glow: 'rgba(37,99,235,0.12)',
+    priceMonthly: 599,
+    priceYearly: 479,
+    color: 'text-purple-300',
+    border: 'rgba(167,139,250,0.3)',
+    bg: 'rgba(124,58,237,0.08)',
+    glow: 'rgba(124,58,237,0.14)',
     highlight: false,
-    cta: 'Масштабировать',
+    cta: 'Перейти на Ultra',
     ctaStyle: 'border-blue',
     features: [
-      { text: 'До 10 аккаунтов FunPay', available: true },
-      { text: 'Автовыдача товаров', available: true },
-      { text: 'Умное автоподнятие', available: true },
-      { text: 'AI-автоответчик (GPT-4o)', available: true },
-      { text: 'Облако 24/7', available: true },
-      { text: 'IPv4 защита', available: true },
-      { text: 'Telegram-управление', available: true },
-      { text: 'Расширенная аналитика', available: true },
-      { text: 'Все плагины + VIP', available: true },
-      { text: 'Мультиаккаунт-дашборд', available: true },
-      { text: 'Приоритетная поддержка 24/7', available: true },
+      { text: 'Безлимит аккаунтов', available: true },
+      { text: 'Всё из Pro', available: true },
+      { text: 'Аналитика без ограничений', available: true },
+      { text: 'Безлимит автоматизации', available: true },
+      { text: 'VIP плагины', available: true },
+      { text: 'AI ответы без лимита', available: true },
+      { text: 'Персональный менеджер', available: true },
+      { text: 'API доступ', available: true },
     ],
   },
 ];
 
-export const DEFAULT_PLAN_ID: SubscriptionPlan['id'] = 'pro';
+export const DEFAULT_PLAN_ID: PaidPlanId = 'pro';
 export const PLAN_STORAGE_KEY = 'pf-current-plan';
 export const PLAN_EVENT_NAME = 'pf-plan-changed';
 
-export function readCurrentPlanId() {
+export function readCurrentPlanId(): PaidPlanId {
   if (typeof window === 'undefined') return DEFAULT_PLAN_ID;
-  const saved = window.localStorage.getItem(PLAN_STORAGE_KEY) as SubscriptionPlan['id'] | null;
-  return saved ?? DEFAULT_PLAN_ID;
+  const saved = window.localStorage.getItem(PLAN_STORAGE_KEY);
+  const normalized = normalizePlanId(saved);
+  if (normalized === 'trial') return 'lite';
+  return normalized;
 }
 
-export function writeCurrentPlanId(planId: SubscriptionPlan['id']) {
+export function writeCurrentPlanId(planId: PaidPlanId) {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(PLAN_STORAGE_KEY, planId);
   window.dispatchEvent(new CustomEvent(PLAN_EVENT_NAME, { detail: planId }));
 }
-
