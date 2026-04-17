@@ -67,10 +67,10 @@ export function Pricing() {
             </span>
             <button
               onClick={() => setIsYearly(!isYearly)}
-              className={`relative w-12 h-6 rounded-full transition-all duration-200 ${isYearly ? "bg-gradient-to-r from-blue-400 to-blue-500" : "bg-white/10"}`}
+              className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 ${isYearly ? "bg-indigo-500" : "bg-white/10"}`}
             >
               <div
-                className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${isYearly ? "translate-x-7" : "translate-x-1"}`}
+                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${isYearly ? "translate-x-5" : "translate-x-0"}`}
               />
             </button>
             <div className="flex items-center gap-2">

@@ -453,15 +453,16 @@ export default function AIAssistant() {
                 <button
                   type="button"
                   onClick={() => setEnabled(prev => !prev)}
-                  className={`relative h-6 w-12 rounded-full transition-all duration-300 ${
+                  className={`relative flex-shrink-0 h-6 w-11 rounded-full transition-colors duration-200 ${
                     enabled
                       ? 'bg-gradient-to-r from-indigo-500 to-violet-500 shadow-lg shadow-violet-500/30'
                       : 'bg-white/10'
                   }`}
+                  aria-pressed={enabled}
                 >
                   <span
-                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-300 ${
-                      enabled ? 'translate-x-6' : 'translate-x-0.5'
+                    className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
+                      enabled ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </button>

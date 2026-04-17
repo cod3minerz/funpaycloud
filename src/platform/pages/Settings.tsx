@@ -78,30 +78,20 @@ function getPasswordStrength(password: string): number {
 }
 
 function Toggle({ checked, onChange, disabled, compact = false }: { checked: boolean; onChange: () => void; disabled?: boolean; compact?: boolean }) {
-  if (compact) {
-    return (
-      <button
-        type="button"
-        onClick={onChange}
-        disabled={disabled}
-        className={`relative h-[18px] w-8 rounded-full transition-colors ${checked ? 'bg-blue-600' : 'bg-white/10'} ${disabled ? 'cursor-not-allowed' : ''}`}
-      >
-        <span
-          className={`absolute top-[2px] h-[14px] w-[14px] rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-[14px]' : 'translate-x-[2px]'}`}
-        />
-      </button>
-    );
-  }
-
   return (
     <button
       type="button"
       onClick={onChange}
       disabled={disabled}
-      className={`relative h-[22px] w-10 rounded-full transition-colors ${checked ? 'bg-blue-600' : 'bg-white/10'} ${disabled ? 'cursor-not-allowed' : ''}`}
+      className={`relative flex-shrink-0 h-6 w-11 rounded-full transition-colors duration-200 ${
+        checked ? 'bg-indigo-500' : 'bg-white/10'
+      } ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
+      aria-pressed={checked}
     >
       <span
-        className={`absolute top-[2px] h-[18px] w-[18px] rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-[2px]'}`}
+        className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
+          checked ? 'translate-x-5' : 'translate-x-0'
+        }`}
       />
     </button>
   );
