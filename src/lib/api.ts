@@ -504,6 +504,37 @@ export type TelegramLinkData = {
   link: string;
 };
 
+export type AIConfig = {
+  account_id: number;
+  is_enabled: boolean;
+  tone: 'formal' | 'neutral' | 'friendly' | string;
+  system_prompt: string;
+  delay_seconds: number;
+  used_messages: number;
+  limit_messages: number;
+  remaining_messages: number;
+};
+
+export type AIFaqItem = {
+  id: number;
+  question: string;
+  answer: string;
+  created_at: string;
+};
+
+export type AITestHistoryItem = {
+  role: 'user' | 'assistant' | 'ai';
+  text: string;
+};
+
+export type AITestResponse = {
+  reply: string;
+  tokens_used: number;
+  remaining_limit: number;
+  used_messages?: number;
+  limit_messages?: number;
+};
+
 export const settingsApi = {
   getProfile: () => apiRequest<ProfileData>('/api/settings/profile'),
   updateProfile: (data: { login: string; timezone?: string; telegram?: string }) =>
@@ -528,6 +559,35 @@ export const settingsApi = {
     apiRequest<{ referral_code: string; referrals: Array<Record<string, unknown>>; total_earned: number }>(
       '/api/settings/referral',
     ),
+};
+
+export const aiApi = {
+  getConfig: (accountId: number | string) =>
+    apiRequest<AIConfig>(`/api/ai/config/${accountId}`),
+  saveConfig: (
+    accountId: number | string,
+    payload: { is_enabled: boolean; tone: string; system_prompt: string; delay_seconds: number },
+  ) =>
+    apiRequest<AIConfig>(`/api/ai/config/${accountId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  getFaq: (accountId: number | string) =>
+    apiRequest<AIFaqItem[]>(`/api/ai/faq/${accountId}`),
+  addFaq: (accountId: number | string, payload: { question: string; answer: string }) =>
+    apiRequest<AIFaqItem>(`/api/ai/faq/${accountId}`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  deleteFaq: (accountId: number | string, faqId: number | string) =>
+    apiRequest(`/api/ai/faq/${accountId}/${faqId}`, {
+      method: 'DELETE',
+    }),
+  test: (payload: { account_id: number; message: string; history: AITestHistoryItem[] }) =>
+    apiRequest<AITestResponse>('/api/ai/test', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 };
 
 // ── Proxies ───────────────────────────────────────────────────────────────────

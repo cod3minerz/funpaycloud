@@ -13,7 +13,7 @@ import {
   Tag,
   Package,
   BarChart2,
-  Zap,
+  Sparkles,
   Puzzle,
   Wallet,
   Users,
@@ -54,7 +54,7 @@ const navGroups = [
     items: [
       { icon: Users, label: 'Аккаунты', path: '/platform/accounts' },
       { icon: BarChart2, label: 'Аналитика', path: '/platform/analytics' },
-      { icon: Zap, label: 'Автоматизация', path: '/platform/automation' },
+      { icon: AISidebarIcon, label: 'AI-Ассистент', path: '/platform/ai-assistant' },
       { icon: Puzzle, label: 'Плагины', path: '/platform/plugins' },
       { icon: Wallet, label: 'Финансы', path: '/platform/finances' },
       { icon: CircleDollarSign, label: 'Реферальная система', path: '/platform/referrals' },
@@ -71,6 +71,19 @@ const mobileTopLinks = [
   { label: 'Группа ВКонтакте', href: '#', icon: <VkMark size={16} /> },
   { label: 'Поддержка', href: '#', icon: <LifeBuoy size={16} /> },
 ] as const;
+
+function AISidebarIcon({ size = 16 }: { size?: number }) {
+  const iconSize = Math.max(10, size - 4);
+  return (
+    <span
+      className="inline-flex items-center justify-center rounded bg-gradient-to-br from-indigo-400 to-violet-400"
+      style={{ width: size, height: size }}
+      aria-hidden
+    >
+      <Sparkles size={iconSize} className="text-white" />
+    </span>
+  );
+}
 
 export default function Sidebar({
   mobile = false,
