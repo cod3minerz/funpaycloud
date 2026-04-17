@@ -83,12 +83,12 @@ export default function PlatformTopBar({
   };
 
   return (
-    <header className="h-14 border-b border-[var(--border)] bg-[var(--bg-secondary)] px-3 sm:px-4 lg:px-6">
+    <header className="h-14 border-b border-[var(--pf-border)] bg-[var(--pf-bg-soft)] px-3 sm:px-4 lg:px-6">
       <div className="flex h-full items-center justify-between gap-3">
         <button
           type="button"
           onClick={handleSidebarToggle}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-card)] text-[var(--pf-text)] transition-colors hover:border-[var(--pf-accent)] hover:text-[var(--pf-accent)]"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--pf-border)] bg-[var(--pf-surface-2)] text-[var(--pf-text)] transition-colors hover:border-[var(--pf-accent)] hover:text-[var(--pf-accent)]"
           aria-label={sidebarCollapsed ? 'Развернуть боковое меню' : 'Свернуть боковое меню'}
           aria-pressed={sidebarCollapsed}
         >
@@ -101,7 +101,7 @@ export default function PlatformTopBar({
               <button
                 type="button"
                 aria-label="Уведомления"
-                className="relative inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-card)] text-[var(--pf-text)] transition-colors hover:border-[var(--pf-accent)] hover:text-[var(--pf-accent)]"
+                className="relative inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--pf-border)] bg-[var(--pf-surface-2)] text-[var(--pf-text)] transition-colors hover:border-[var(--pf-accent)] hover:text-[var(--pf-accent)]"
               >
                 <Bell size={17} />
                 {unreadCount > 0 ? (
@@ -114,10 +114,10 @@ export default function PlatformTopBar({
             <DropdownMenuContent
               align="end"
               sideOffset={10}
-              className="w-[320px] border-[var(--border)] bg-[var(--bg-card)] p-0 text-[var(--pf-text)]"
+              className="platform-topbar-dropdown w-[320px] border-[var(--pf-overlay-border)] bg-[var(--pf-surface-overlay)] p-0 text-[var(--pf-text)]"
               onCloseAutoFocus={event => event.preventDefault()}
             >
-              <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
+              <div className="flex items-center justify-between border-b border-[var(--pf-border)] px-4 py-3">
                 <strong className="text-sm">Уведомления</strong>
                 <span className="text-xs text-[var(--pf-text-muted)]">{unreadCount > 0 ? `${unreadCount} новых` : '0 новых'}</span>
               </div>
@@ -127,7 +127,7 @@ export default function PlatformTopBar({
               ) : (
                 <div className="max-h-[320px] overflow-auto py-1">
                   {notifications.map(item => (
-                    <div key={item.id} className="border-b border-[var(--border)] px-4 py-3 last:border-0">
+                    <div key={item.id} className="border-b border-[var(--pf-border)] px-4 py-3 last:border-0">
                       <div className="mb-1 flex items-center justify-between gap-2">
                         <strong className="text-xs text-[var(--pf-text)]">{item.title}</strong>
                         <span className="text-[11px] text-[var(--pf-text-muted)]">{item.time}</span>
@@ -145,7 +145,7 @@ export default function PlatformTopBar({
               <button
                 type="button"
                 aria-label="Профиль пользователя"
-                className="inline-flex h-10 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-2.5 text-[var(--pf-text)] transition-colors hover:border-[var(--pf-accent)]"
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-[var(--pf-border)] bg-[var(--pf-surface-2)] px-2.5 text-[var(--pf-text)] transition-colors hover:border-[var(--pf-accent)]"
               >
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--pf-accent)] text-xs font-semibold text-white">
                   {avatarText}
@@ -157,7 +157,7 @@ export default function PlatformTopBar({
             <DropdownMenuContent
               align="end"
               sideOffset={10}
-              className="w-[260px] border-[var(--border)] bg-[var(--bg-card)] text-[var(--pf-text)]"
+              className="platform-topbar-dropdown w-[260px] border-[var(--pf-overlay-border)] bg-[var(--pf-surface-overlay)] text-[var(--pf-text)]"
               onCloseAutoFocus={event => event.preventDefault()}
             >
               <DropdownMenuLabel className="px-3 py-2">
@@ -165,7 +165,7 @@ export default function PlatformTopBar({
                 <div className="mt-0.5 truncate text-xs text-[var(--pf-text-muted)]">{email || 'email не указан'}</div>
               </DropdownMenuLabel>
 
-              <DropdownMenuSeparator className="bg-[var(--border)]" />
+              <DropdownMenuSeparator className="bg-[var(--pf-border)]" />
 
               <DropdownMenuItem
                 className="cursor-pointer text-[var(--pf-text)] focus:bg-white/5"
@@ -189,7 +189,7 @@ export default function PlatformTopBar({
                 Поддержка
               </DropdownMenuItem>
 
-              <DropdownMenuSeparator className="bg-[var(--border)]" />
+              <DropdownMenuSeparator className="bg-[var(--pf-border)]" />
 
               <DropdownMenuItem
                 className="cursor-pointer text-red-400 focus:bg-red-500/10 focus:text-red-300"
