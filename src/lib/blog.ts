@@ -99,9 +99,15 @@ export function getPostsByCategory(category: string): BlogPostSummary[] {
 }
 
 export function getRelatedPosts(currentSlug: string, category: string, limit = 3): BlogPostSummary[] {
-  return getAllPostSummaries()
-    .filter(post => post.category === category && post.slug !== currentSlug)
-    .slice(0, limit);
+  const all = getAllPostSummaries().filter(post => post.slug !== currentSlug);
+  const sameCategory = all.filter(post => post.category === category);
+
+  if (sameCategory.length >= limit) {
+    return sameCategory.slice(0, limit);
+  }
+
+  const fallback = all.filter(post => post.category !== category);
+  return [...sameCategory, ...fallback].slice(0, limit);
 }
 
 export function extractHeadings(content: string): TocHeading[] {

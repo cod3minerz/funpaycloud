@@ -37,18 +37,26 @@ export function TableOfContents({ headings, mobile = false }: { headings: TocHea
   if (headings.length === 0) return null;
 
   return (
-    <nav aria-label="Содержание статьи" className={mobile ? 'space-y-1' : 'space-y-2'}>
-      {headings.map(heading => (
-        <Link
-          key={heading.id}
-          href={`#${heading.id}`}
-          className={`block rounded-md py-1.5 text-sm transition-colors ${
-            heading.level === 3 ? 'pl-4' : 'pl-2'
-          } ${activeId === heading.id ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-        >
-          {heading.text}
-        </Link>
-      ))}
+    <nav aria-label="Содержание статьи" className={mobile ? 'space-y-1' : 'space-y-1.5'}>
+      {headings.map(heading => {
+        const isActive = activeId === heading.id;
+
+        return (
+          <Link
+            key={heading.id}
+            href={`#${heading.id}`}
+            className={`group flex rounded-lg border-l-2 py-1.5 text-sm transition-colors ${
+              heading.level === 3 ? 'pl-4 pr-2' : 'pl-3 pr-2'
+            } ${
+              isActive
+                ? 'border-l-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
+                : 'border-l-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            <span className="line-clamp-2">{heading.text}</span>
+          </Link>
+        );
+      })}
     </nav>
   );
 }

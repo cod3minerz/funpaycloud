@@ -4,42 +4,21 @@
 @import '../src/styles/platform.css';
 
 .blog-scope {
-  --bg: #0a0f1a;
-  --bg-secondary: #0f172a;
-  --bg-card: #1e293b;
-  --border: #1e293b;
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #475569;
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
-
+  --bg: #fbfaf7;
+  --bg-secondary: #f3f1eb;
+  --bg-card: #ffffff;
+  --line: #e7e3da;
+  --line-2: #d9d4c6;
+  --border: #e7e3da;
+  --text-primary: #0e1116;
+  --text-secondary: #2a2f38;
+  --text-muted: #6b7280;
+  --accent: #3a2fe0;
+  --accent-hover: #2f25c2;
+  --accent-soft: #eeecfe;
   background: var(--bg);
   color: var(--text-primary);
-}
-
-html[data-blog-theme='light'] .blog-scope {
-  --bg: #ffffff;
-  --bg-secondary: #f8f9fa;
-  --bg-card: #f1f3f5;
-  --border: #e5e7eb;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
-  --accent: #2563eb;
-  --accent-hover: #1d4ed8;
-}
-
-html[data-blog-theme='dark'] .blog-scope {
-  --bg: #0a0f1a;
-  --bg-secondary: #0f172a;
-  --bg-card: #1e293b;
-  --border: #1e293b;
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #475569;
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .prose-blog {
@@ -89,6 +68,13 @@ html[data-blog-theme='dark'] .blog-scope {
   margin-bottom: 20px;
 }
 
+.prose-blog h4 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-top: 24px;
+  margin-bottom: 10px;
+}
+
 .prose-blog ul,
 .prose-blog ol {
   margin: 20px 0;
@@ -101,17 +87,17 @@ html[data-blog-theme='dark'] .blog-scope {
 
 .prose-blog code {
   font-size: 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  border: 1px solid var(--line-2);
   padding: 2px 6px;
   border-radius: 4px;
   font-family: 'JetBrains Mono', monospace;
 }
 
 .prose-blog pre {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
   padding: 20px;
   overflow-x: auto;
   margin: 24px 0;
@@ -125,10 +111,14 @@ html[data-blog-theme='dark'] .blog-scope {
 
 .prose-blog blockquote {
   border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  border-radius: 0 12px 12px 0;
   padding-left: 20px;
   margin: 24px 0;
   color: var(--text-secondary);
   font-style: italic;
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 
 .prose-blog a {
@@ -138,15 +128,15 @@ html[data-blog-theme='dark'] .blog-scope {
 }
 
 .prose-blog img {
-  border-radius: 8px;
-  border: 1px solid var(--border);
+  border-radius: 14px;
+  border: 1px solid var(--line-2);
   margin: 24px 0;
   width: 100%;
 }
 
 .prose-blog hr {
   border: none;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--line);
   margin: 40px 0;
 }
 

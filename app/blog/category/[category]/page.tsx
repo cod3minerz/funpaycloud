@@ -39,20 +39,34 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
   return (
     <div>
-      <div className="mb-8">
-        <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">Категория</p>
-        <h1 className="mt-3 text-2xl font-semibold text-[var(--text-primary)] sm:text-3xl">{category}</h1>
-        <p className="mt-2 text-sm text-[var(--text-secondary)]">{posts.length} статей в этой категории.</p>
-        <Link href="/blog" className="mt-4 inline-flex text-sm text-[var(--accent)] hover:text-[var(--accent-hover)]">
-          ← Все статьи
-        </Link>
-      </div>
+      <section className="rounded-3xl border border-[var(--line-2)] bg-[linear-gradient(165deg,var(--bg-card)_0%,var(--bg-secondary)_100%)] px-5 py-8 sm:px-8 sm:py-10">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">Категория</p>
+        <h1 className="mt-3 text-3xl font-semibold text-[var(--text-primary)] sm:text-4xl">{category}</h1>
+        <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">
+          {posts.length} статей в этой категории. Все материалы отсортированы от новых к более ранним.
+        </p>
 
-      <section className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {posts.map(post => (
-          <BlogCard key={post.slug} post={post} />
-        ))}
+        <div className="mt-6">
+          <Link
+            href="/blog"
+            className="inline-flex min-h-11 items-center rounded-xl border border-[var(--line-2)] px-4 text-sm font-semibold text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--text-primary)]"
+          >
+            ← Назад ко всем статьям
+          </Link>
+        </div>
       </section>
+
+      {posts.length === 0 ? (
+        <div className="mt-8 rounded-2xl border border-dashed border-[var(--line-2)] bg-[var(--bg-card)] px-6 py-10 text-center text-sm text-[var(--text-secondary)]">
+          В этой категории пока нет материалов.
+        </div>
+      ) : (
+        <section className="mt-8 grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {posts.map(post => (
+            <BlogCard key={post.slug} post={post} />
+          ))}
+        </section>
+      )}
     </div>
   );
 }

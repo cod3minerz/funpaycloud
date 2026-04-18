@@ -44,38 +44,43 @@ export function BlogFeedClient({ posts, categories }: BlogFeedClientProps) {
 
   return (
     <>
-      <section className="rounded-2xl border border-[var(--border)] bg-[var(--bg-secondary)] px-4 py-10 sm:px-8 sm:py-14">
-        <div className="mx-auto max-w-3xl">
-          <p className="mb-3 text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">FunPay Cloud</p>
-          <h1 className="text-2xl font-semibold text-[var(--text-primary)] sm:text-3xl lg:text-4xl">Блог FunPay Cloud</h1>
-          <p className="mt-3 text-sm text-[var(--text-secondary)] sm:text-base">
-            Руководства, советы и кейсы, которые помогают продавцам на FunPay работать стабильнее и продавать больше.
+      <section className="relative overflow-hidden rounded-3xl border border-[var(--line-2)] bg-[linear-gradient(165deg,var(--bg-card)_0%,var(--bg-secondary)_100%)] px-5 py-10 sm:px-9 sm:py-14">
+        <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-[var(--accent-soft)] blur-3xl" />
+        <div className="absolute -bottom-24 left-10 h-48 w-48 rounded-full bg-[#D9D4C6]/35 blur-3xl" />
+
+        <div className="relative mx-auto max-w-3xl">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Блог FunPay Cloud</p>
+          <h1 className="text-3xl font-semibold leading-tight text-[var(--text-primary)] sm:text-4xl lg:text-5xl">
+            Практические материалы для продавцов FunPay
+          </h1>
+          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-[var(--text-secondary)] sm:text-base">
+            Разбираем рабочие сценарии: от автоподнятия и выдачи до роста конверсии и стабильной операционки магазина.
           </p>
 
-          <label className="mt-7 flex min-h-11 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4">
+          <label className="mt-7 flex min-h-12 items-center gap-3 rounded-2xl border border-[var(--line-2)] bg-[var(--bg-card)] px-4 shadow-[0_10px_30px_-26px_rgba(14,17,22,0.35)]">
             <Search size={18} className="text-[var(--text-muted)]" />
             <input
               value={query}
               onChange={event => setQuery(event.target.value)}
               className="h-11 w-full bg-transparent text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
-              placeholder="Поиск по статьям..."
+              placeholder="Поиск по статьям, тегам и темам..."
               aria-label="Поиск по статьям"
             />
           </label>
         </div>
       </section>
 
-      <section className="mt-8" id="categories">
+      <section id="categories" className="mt-8">
         <div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1">
           {['Все', ...categories].map(category => (
             <button
               key={category}
               type="button"
               onClick={() => setActiveCategory(category)}
-              className={`min-h-11 whitespace-nowrap rounded-full border px-3 py-2 text-sm transition-colors ${
+              className={`inline-flex min-h-11 items-center whitespace-nowrap rounded-full border px-4 text-sm font-medium transition-colors ${
                 activeCategory === category
-                  ? 'border-[var(--accent)] bg-blue-500/10 text-[var(--accent)]'
-                  : 'border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                  ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
+                  : 'border-[var(--line-2)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--text-primary)]'
               }`}
             >
               {category}
@@ -85,10 +90,10 @@ export function BlogFeedClient({ posts, categories }: BlogFeedClientProps) {
       </section>
 
       {featured && (
-        <section className="mt-8">
-          <article className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-card)]">
+        <section className="mt-8" id="about">
+          <article className="overflow-hidden rounded-3xl border border-[var(--line-2)] bg-[var(--bg-card)] shadow-[0_20px_40px_-34px_rgba(14,17,22,0.45)]">
             {featured.cover && (
-              <div className="relative aspect-[1200/630] w-full overflow-hidden">
+              <Link href={`/blog/${featured.slug}`} className="relative block aspect-[1200/630] w-full overflow-hidden border-b border-[var(--line)]">
                 <Image
                   src={featured.cover}
                   alt={featured.title}
@@ -98,32 +103,34 @@ export function BlogFeedClient({ posts, categories }: BlogFeedClientProps) {
                   className="h-full w-full object-cover"
                   priority
                 />
-              </div>
+              </Link>
             )}
 
-            <div className="p-5 sm:p-7">
-              <div className="mb-4 flex items-center justify-between gap-2">
+            <div className="p-6 sm:p-8">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <Link
                   href={`/blog/category/${slugifyCategory(featured.category)}`}
-                  className="text-xs font-medium text-[var(--accent)]"
+                  className="inline-flex min-h-8 items-center rounded-full border border-[var(--line-2)] bg-[var(--accent-soft)] px-3 text-xs font-semibold text-[var(--accent)]"
                 >
                   {featured.category}
                 </Link>
                 <span className="text-xs text-[var(--text-muted)]">{featured.readingTime} мин чтения</span>
               </div>
 
-              <h2 className="text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">
-                <Link href={`/blog/${featured.slug}`}>{featured.title}</Link>
+              <h2 className="text-2xl font-semibold leading-tight text-[var(--text-primary)] sm:text-3xl">
+                <Link href={`/blog/${featured.slug}`} className="transition-colors hover:text-[var(--accent)]">
+                  {featured.title}
+                </Link>
               </h2>
-              <p className="mt-3 max-w-3xl text-sm text-[var(--text-secondary)] sm:text-base">{featured.description}</p>
+              <p className="mt-4 max-w-3xl text-sm leading-relaxed text-[var(--text-secondary)] sm:text-base">{featured.description}</p>
 
-              <div className="mt-6 flex items-center justify-between">
+              <div className="mt-7 flex items-center justify-between gap-2">
                 <time className="text-xs text-[var(--text-muted)]">{formatDate(featured.date)}</time>
                 <Link
                   href={`/blog/${featured.slug}`}
-                  className="text-sm font-medium text-[var(--accent)] transition-colors hover:text-[var(--accent-hover)]"
+                  className="inline-flex min-h-10 items-center justify-center rounded-xl bg-[var(--accent)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-hover)]"
                 >
-                  Читать →
+                  Читать статью →
                 </Link>
               </div>
             </div>
@@ -131,17 +138,37 @@ export function BlogFeedClient({ posts, categories }: BlogFeedClientProps) {
         </section>
       )}
 
-      <section className="mt-8 grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-3" id="about">
-        {filtered.map(post => (
-          <BlogCard key={post.slug} post={post} />
-        ))}
-      </section>
-
-      {filtered.length === 0 && (
-        <div className="mt-10 rounded-xl border border-dashed border-[var(--border)] px-6 py-12 text-center text-sm text-[var(--text-secondary)]">
-          По вашему запросу ничего не найдено. Попробуйте изменить фильтр категории или ключевые слова.
+      <section className="mt-10" id="latest">
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <h2 className="text-2xl font-semibold text-[var(--text-primary)]">Последние статьи</h2>
+          <p className="text-sm text-[var(--text-secondary)]">{filtered.length} материалов</p>
         </div>
-      )}
+
+        {filtered.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-[var(--line-2)] bg-[var(--bg-card)] px-6 py-12 text-center">
+            <p className="text-base font-medium text-[var(--text-primary)]">Ничего не найдено по текущему фильтру</p>
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">
+              Попробуйте другую категорию или измените поисковый запрос.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveCategory('Все');
+                setQuery('');
+              }}
+              className="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl border border-[var(--line-2)] px-4 text-sm font-semibold text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--text-primary)]"
+            >
+              Сбросить фильтры
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {filtered.map(post => (
+              <BlogCard key={post.slug} post={post} />
+            ))}
+          </div>
+        )}
+      </section>
     </>
   );
 }
