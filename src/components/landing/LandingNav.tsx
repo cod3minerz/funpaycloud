@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { Menu, X } from 'lucide-react';
 import type { MouseEvent } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Button from './Button';
 
 const links = [
@@ -17,8 +17,24 @@ const links = [
 export default function LandingNav() {
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const onAnchorClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+  useEffect(() => {
+    if (!menuOpen) {
+      document.body.style.overflow = '';
+      return;
+    }
+
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [menuOpen]);
+
+  const closeMenu = () => {
     setMenuOpen(false);
+  };
+
+  const onAnchorClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+    closeMenu();
 
     if (!href.startsWith('#')) {
       return;
@@ -80,26 +96,35 @@ export default function LandingNav() {
         </button>
       </div>
 
-      <div className={`wrap nav-mobile-panel ${menuOpen ? 'open' : ''}`}>
-        <div className="nav-mobile-links">
-          {links.map((link) => (
-            <a
-              key={`mobile-${link.href}`}
-              href={link.href}
-              onClick={(event) => onAnchorClick(event, link.href)}
-              className="nav-mobile-link"
-            >
-              {link.label}
+      <button
+        type="button"
+        aria-label="Закрыть мобильное меню"
+        className={`nav-mobile-overlay ${menuOpen ? 'open' : ''}`}
+        onClick={closeMenu}
+      />
+
+      <div className={`nav-mobile-panel ${menuOpen ? 'open' : ''}`}>
+        <div className="wrap nav-mobile-panel-inner">
+          <div className="nav-mobile-links">
+            {links.map((link) => (
+              <a
+                key={`mobile-${link.href}`}
+                href={link.href}
+                onClick={(event) => onAnchorClick(event, link.href)}
+                className="nav-mobile-link"
+              >
+                {link.label}
+              </a>
+            ))}
+          </div>
+          <div className="nav-mobile-cta">
+            <a href="/auth/login" className="btn btn-outline btn-lg" onClick={closeMenu}>
+              Войти
             </a>
-          ))}
-        </div>
-        <div className="nav-mobile-cta">
-          <a href="/auth/login" className="btn btn-ghost" onClick={() => setMenuOpen(false)}>
-            Войти
-          </a>
-          <a href="/auth/register" className="btn btn-primary" onClick={() => setMenuOpen(false)}>
-            Начать бесплатно
-          </a>
+            <a href="/auth/register" className="btn btn-primary btn-lg" onClick={closeMenu}>
+              Начать бесплатно
+            </a>
+          </div>
         </div>
       </div>
     </nav>
