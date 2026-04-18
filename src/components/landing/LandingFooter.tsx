@@ -52,6 +52,10 @@ export default function LandingFooter() {
           <div>© 2026 FunPay Cloud. Все права защищены.</div>
           <div className="mono">status: all systems operational ●</div>
         </div>
+
+        <div className="ft-disclaimer">
+          FunPay Cloud не аффилирован с FunPay и не является официальным инструментом или продуктом FunPay.
+        </div>
       </div>
     </footer>
   );
