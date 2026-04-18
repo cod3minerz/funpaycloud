@@ -23,18 +23,22 @@ type ApiEnvelope<T> = {
   error?: string;
 };
 
+type ApiRequestOptions = RequestInit & { timeoutMs?: number };
+
 export async function apiRequest<T = unknown>(
   path: string,
-  options: RequestInit = {},
+  options: ApiRequestOptions = {},
 ): Promise<T> {
   if (!path.startsWith('/api/')) {
     throw new ApiError(`Неверный путь API: ${path}`);
   }
 
+  const { timeoutMs = 15000, ...fetchOptions } = options;
+
   const token = getToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> | undefined),
+    ...(fetchOptions.headers as Record<string, string> | undefined),
   };
 
   if (token) {
@@ -43,10 +47,10 @@ export async function apiRequest<T = unknown>(
 
   let response: Response;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     response = await fetch(`${BASE_URL}${path}`, {
-      ...options,
+      ...fetchOptions,
       headers,
       signal: controller.signal,
       mode: 'cors',
@@ -587,6 +591,7 @@ export const aiApi = {
     apiRequest<AITestResponse>('/api/ai/test', {
       method: 'POST',
       body: JSON.stringify(payload),
+      timeoutMs: 30000,
     }),
 };
 
