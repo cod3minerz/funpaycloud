@@ -186,12 +186,10 @@ export default function Sidebar({
                           ? 'platform-referrals-nav-label'
                           : !isAIItem
                             ? undefined
-                            : isActive
-                              ? ''
-                              : 'text-slate-400'
+                            : ''
                       }
                       style={
-                        isAIItem && isActive
+                        isAIItem
                           ? {
                               background: 'linear-gradient(90deg, #818cf8, #a78bfa, #c084fc)',
                               backgroundSize: '200% auto',
