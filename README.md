@@ -16,4 +16,8 @@
 
   Run e2e reliability scenarios for chats:
   - `npm run test:e2e -- chat-reliability.spec.ts`
-  
+
+## Frontend Design System
+
+- Main guide: `docs/FRONTEND_DESIGN_SYSTEM.md`
+
