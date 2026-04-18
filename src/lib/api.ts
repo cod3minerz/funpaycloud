@@ -514,6 +514,7 @@ export type AIConfig = {
   tone: 'formal' | 'neutral' | 'friendly' | string;
   system_prompt: string;
   delay_seconds: number;
+  show_ai_signature: boolean;
   used_messages: number;
   limit_messages: number;
   remaining_messages: number;
@@ -570,7 +571,7 @@ export const aiApi = {
     apiRequest<AIConfig>(`/api/ai/config/${accountId}`),
   saveConfig: (
     accountId: number | string,
-    payload: { is_enabled: boolean; tone: string; system_prompt: string; delay_seconds: number },
+    payload: { is_enabled: boolean; tone: string; system_prompt: string; delay_seconds: number; show_ai_signature: boolean },
   ) =>
     apiRequest<AIConfig>(`/api/ai/config/${accountId}`, {
       method: 'PUT',

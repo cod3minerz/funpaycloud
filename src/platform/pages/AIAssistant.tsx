@@ -244,6 +244,7 @@ export default function AIAssistant() {
   const [tone, setTone] = useState<'formal' | 'neutral' | 'friendly'>('neutral');
   const [delay, setDelay] = useState(3);
   const [prompt, setPrompt] = useState('');
+  const [showAISignature, setShowAISignature] = useState(false);
   const [used, setUsed] = useState(0);
   const [limit, setLimit] = useState(0);
   const [faqItems, setFaqItems] = useState<FaqDraft[]>([]);
@@ -269,6 +270,7 @@ export default function AIAssistant() {
     );
     setDelay(typeof config.delay_seconds === 'number' ? config.delay_seconds : 3);
     setPrompt(config.system_prompt ?? '');
+    setShowAISignature(Boolean(config.show_ai_signature));
     setUsed(config.used_messages ?? 0);
     setLimit(config.limit_messages ?? 0);
     setFaqItems(faq.map(item => ({ id: item.id, question: item.question, answer: item.answer })));
@@ -350,6 +352,7 @@ export default function AIAssistant() {
         tone,
         system_prompt: prompt.trim(),
         delay_seconds: delay,
+        show_ai_signature: showAISignature,
       });
 
       const currentFaq = await aiApi.getFaq(selectedAccountID);
@@ -616,6 +619,34 @@ export default function AIAssistant() {
                   <span className="text-center text-slate-500">Имитация живого ответа</span>
                   <span>30 сек</span>
                 </div>
+              </div>
+            </div>
+
+            {/* Signature toggle */}
+            <div className="mb-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] group-disabled/fields:opacity-60">
+              <div className="flex items-center justify-between p-5">
+                <div>
+                  <p className="text-sm font-semibold text-white">Подпись ассистента</p>
+                  <p className="mt-0.5 text-[11px] text-slate-500">
+                    К каждому ответу добавляется строка <span className="text-slate-400">«— Ассистент FunPay Cloud»</span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAISignature(prev => !prev)}
+                  className={`relative flex-shrink-0 h-6 w-11 rounded-full transition-colors duration-200 ${
+                    showAISignature
+                      ? 'bg-gradient-to-r from-indigo-500 to-violet-500 shadow-lg shadow-violet-500/30'
+                      : 'bg-white/10'
+                  }`}
+                  aria-pressed={showAISignature}
+                >
+                  <span
+                    className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
+                      showAISignature ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
               </div>
             </div>
 
