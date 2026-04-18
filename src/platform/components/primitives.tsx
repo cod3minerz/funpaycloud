@@ -1,6 +1,47 @@
 import * as React from 'react';
 import { cn } from '@/app/components/ui/utils';
 
+export function StatCard({
+  label,
+  value,
+  icon,
+  color = 'accent',
+  className,
+}: {
+  label: string;
+  value: React.ReactNode;
+  icon?: React.ReactNode;
+  color?: 'accent' | 'success' | 'warning' | 'danger';
+  className?: string;
+}) {
+  const colorMap = {
+    accent: 'var(--pf-accent)',
+    success: 'var(--pf-success)',
+    warning: 'var(--pf-warning)',
+    danger: 'var(--pf-danger)',
+  };
+
+  return (
+    <article
+      className={cn('platform-card platform-kpi-card relative overflow-hidden', className)}
+      style={{ '--stat-color': colorMap[color] } as React.CSSProperties}
+    >
+      <div
+        className="absolute inset-x-0 top-0 h-[2px]"
+        style={{ background: `linear-gradient(90deg, ${colorMap[color]}, transparent)` }}
+        aria-hidden
+      />
+      {icon && (
+        <div className="inline-flex items-center gap-2 text-[13px] font-semibold" style={{ color: colorMap[color] }}>
+          {icon}
+        </div>
+      )}
+      <strong className="text-[28px] font-bold leading-none tracking-tight">{value}</strong>
+      <span className="text-[12px]" style={{ color: 'var(--pf-text-dim)' }}>{label}</span>
+    </article>
+  );
+}
+
 export function PageShell({ className, ...props }: React.ComponentProps<'section'>) {
   return <section className={cn('platform-page', className)} {...props} />;
 }

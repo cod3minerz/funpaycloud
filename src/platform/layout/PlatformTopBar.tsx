@@ -83,12 +83,12 @@ export default function PlatformTopBar({
   };
 
   return (
-    <header className="h-14 border-b border-[var(--pf-border)] bg-[var(--pf-bg-soft)] px-3 sm:px-4 lg:px-6">
-      <div className="flex h-full items-center justify-between gap-3">
+    <header className="platform-topbar-header">
+      <div className="flex h-full items-center justify-between gap-3 w-full">
         <button
           type="button"
           onClick={handleSidebarToggle}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--pf-border)] bg-[var(--pf-surface-2)] text-[var(--pf-text)] transition-colors hover:border-[var(--pf-accent)] hover:text-[var(--pf-accent)]"
+          className="h-9 w-9 inline-flex items-center justify-center rounded-[10px] border border-[var(--pf-border)] bg-[var(--pf-surface-2)] text-[var(--pf-text-dim)] transition-all hover:border-[var(--pf-accent)] hover:text-[var(--pf-accent)] hover:bg-[var(--pf-accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--pf-accent)]/40"
           aria-label={sidebarCollapsed ? 'Развернуть боковое меню' : 'Свернуть боковое меню'}
           aria-pressed={sidebarCollapsed}
         >
@@ -101,7 +101,7 @@ export default function PlatformTopBar({
               <button
                 type="button"
                 aria-label="Уведомления"
-                className="relative inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--pf-border)] bg-[var(--pf-surface-2)] text-[var(--pf-text)] transition-colors hover:border-[var(--pf-accent)] hover:text-[var(--pf-accent)]"
+                className="h-9 w-9 inline-flex items-center justify-center rounded-[10px] border border-[var(--pf-border)] bg-[var(--pf-surface-2)] text-[var(--pf-text-dim)] transition-all hover:border-[var(--pf-accent)] hover:text-[var(--pf-accent)] hover:bg-[var(--pf-accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--pf-accent)]/40 relative"
               >
                 <Bell size={17} />
                 {unreadCount > 0 ? (
@@ -145,9 +145,9 @@ export default function PlatformTopBar({
               <button
                 type="button"
                 aria-label="Профиль пользователя"
-                className="inline-flex h-10 items-center gap-2 rounded-lg border border-[var(--pf-border)] bg-[var(--pf-surface-2)] px-2.5 text-[var(--pf-text)] transition-colors hover:border-[var(--pf-accent)]"
+                className="inline-flex h-9 items-center gap-2 rounded-[12px] border border-[var(--pf-border)] bg-[var(--pf-surface-2)] px-2.5 text-[var(--pf-text)] transition-all hover:border-[var(--pf-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--pf-accent)]/40"
               >
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--pf-accent)] text-xs font-semibold text-white">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold text-white" style={{ background: 'linear-gradient(135deg, var(--pf-accent) 0%, var(--pf-accent-2) 100%)' }}>
                   {avatarText}
                 </span>
                 <span className="hidden max-w-[120px] truncate text-sm font-medium sm:block">{displayName}</span>

@@ -140,7 +140,7 @@ export default function Sidebar({
 
   return (
     <aside className={asideClass} aria-label="Навигация платформы">
-      <div className="platform-sidebar-logo">
+      <div className="platform-sidebar-logo" style={{ background: 'linear-gradient(180deg, rgba(85,118,255,0.04) 0%, transparent 100%)' }}>
         <div className="platform-sidebar-brand">
           <Link href="/" aria-label="FunPay Cloud" onClick={onClose}>
             {mobile ? (
@@ -236,8 +236,8 @@ export default function Sidebar({
         ) : (
           <div className="platform-subscription-card">
             <div className="platform-subscription-head">
-              <Crown size={14} />
-              <span>{showUpsell ? 'Подписка' : `Тариф: ${currentPlanName}`}</span>
+              <Crown size={14} style={{ color: 'var(--pf-accent)' }} />
+              <span style={{ color: 'var(--pf-accent)' }}>{showUpsell ? 'Подписка' : `Тариф: ${currentPlanName}`}</span>
             </div>
             <p className="platform-footer-note">
               {showUpsell
