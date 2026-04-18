@@ -1918,11 +1918,12 @@ html[data-blog-theme='dark'] .blog-scope {
   }
 
   .landing .nav-mobile-panel-inner {
-    margin-top: 12px;
-    margin-bottom: 14px;
+    margin-top: 0;
+    margin-bottom: 0;
     padding: 16px;
-    border-radius: 16px;
+    border-radius: 0 0 16px 16px;
     border: 1px solid var(--line);
+    border-top: 0;
     background: var(--card);
     box-shadow: 0 18px 30px -24px rgba(14, 17, 22, 0.35);
   }
@@ -2126,10 +2127,10 @@ html[data-blog-theme='dark'] .blog-scope {
   }
 
   .landing .nav-mobile-panel-inner {
-    margin-top: 10px;
-    margin-bottom: 12px;
+    margin-top: 0;
+    margin-bottom: 0;
     padding: 14px;
-    border-radius: 14px;
+    border-radius: 0 0 14px 14px;
   }
 
   .landing .nav-mobile-link {

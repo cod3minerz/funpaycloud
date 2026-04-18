@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { Menu, X } from 'lucide-react';
 import type { MouseEvent } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Button from './Button';
 
 const links = [
@@ -16,6 +16,7 @@ const links = [
 
 export default function LandingNav() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const navRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!menuOpen) {
@@ -23,9 +24,33 @@ export default function LandingNav() {
       return;
     }
 
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+
+      if (navRef.current?.contains(target)) {
+        return;
+      }
+
+      closeMenu();
+    };
+
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeMenu();
+      }
+    };
+
     document.body.style.overflow = 'hidden';
+    window.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('keydown', onEscape);
+
     return () => {
       document.body.style.overflow = '';
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('keydown', onEscape);
     };
   }, [menuOpen]);
 
@@ -51,7 +76,7 @@ export default function LandingNav() {
   };
 
   return (
-    <nav className="nav">
+    <nav className="nav" ref={navRef}>
       <div className="wrap nav-row">
         <a className="logo" href="/">
           <Image
