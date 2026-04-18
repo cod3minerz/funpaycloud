@@ -14,13 +14,6 @@ export default function LandingFooter() {
                 height={206}
                 className="landing-logo-full landing-logo-full-footer"
               />
-              <Image
-                src="/branding/logo_short_new.svg"
-                alt="FunPay Cloud"
-                width={245}
-                height={167}
-                className="landing-logo-short landing-logo-short-footer"
-              />
             </a>
             <p className="ft-about">Облачная платформа автоматизации продаж для профессиональных продавцов FunPay.</p>
           </div>

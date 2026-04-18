@@ -1,7 +1,9 @@
 'use client';
 
 import Image from 'next/image';
+import { Menu, X } from 'lucide-react';
 import type { MouseEvent } from 'react';
+import { useState } from 'react';
 import Button from './Button';
 
 const links = [
@@ -13,7 +15,11 @@ const links = [
 ];
 
 export default function LandingNav() {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const onAnchorClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+    setMenuOpen(false);
+
     if (!href.startsWith('#')) {
       return;
     }
@@ -40,14 +46,6 @@ export default function LandingNav() {
             priority
             className="landing-logo-full"
           />
-          <Image
-            src="/branding/logo_short_new.svg"
-            alt="FunPay Cloud"
-            width={245}
-            height={167}
-            priority
-            className="landing-logo-short"
-          />
         </a>
 
         <div className="nav-links">
@@ -69,6 +67,39 @@ export default function LandingNav() {
           <Button variant="primary" href="/auth/register">
             Начать бесплатно
           </Button>
+        </div>
+
+        <button
+          type="button"
+          className="nav-burger"
+          onClick={() => setMenuOpen((prev) => !prev)}
+          aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
+          aria-expanded={menuOpen}
+        >
+          {menuOpen ? <X size={18} /> : <Menu size={18} />}
+        </button>
+      </div>
+
+      <div className={`wrap nav-mobile-panel ${menuOpen ? 'open' : ''}`}>
+        <div className="nav-mobile-links">
+          {links.map((link) => (
+            <a
+              key={`mobile-${link.href}`}
+              href={link.href}
+              onClick={(event) => onAnchorClick(event, link.href)}
+              className="nav-mobile-link"
+            >
+              {link.label}
+            </a>
+          ))}
+        </div>
+        <div className="nav-mobile-cta">
+          <a href="/auth/login" className="btn btn-ghost" onClick={() => setMenuOpen(false)}>
+            Войти
+          </a>
+          <a href="/auth/register" className="btn btn-primary" onClick={() => setMenuOpen(false)}>
+            Начать бесплатно
+          </a>
         </div>
       </div>
     </nav>

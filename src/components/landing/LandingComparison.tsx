@@ -19,25 +19,27 @@ export default function LandingComparison() {
         <h2 className="sec-title">Продавцы перерастают обычных ботов</h2>
         <p className="sec-sub">Когда магазин растёт, старые решения становятся тормозом. FunPay Cloud — это следующий уровень.</p>
 
-        <div className="ctable">
-          <table>
-            <thead>
-              <tr>
-                <th>Критерий</th>
-                <th>Обычные боты</th>
-                <th className="cloud">FunPay Cloud</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(([crit, plain, cloud]) => (
-                <tr key={crit}>
-                  <td className="crit">{crit}</td>
-                  <td className="plain">{plain}</td>
-                  <td className="cloud">{cloud}</td>
+        <div className="ctable-wrap">
+          <div className="ctable">
+            <table>
+              <thead>
+                <tr>
+                  <th>Критерий</th>
+                  <th>Обычные боты</th>
+                  <th className="cloud">FunPay Cloud</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rows.map(([crit, plain, cloud]) => (
+                  <tr key={crit}>
+                    <td className="crit">{crit}</td>
+                    <td className="plain">{plain}</td>
+                    <td className="cloud">{cloud}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div className="ctable-cta">
