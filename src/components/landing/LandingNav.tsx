@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import type { MouseEvent } from 'react';
 import Button from './Button';
 
@@ -31,11 +32,22 @@ export default function LandingNav() {
     <nav className="nav">
       <div className="wrap nav-row">
         <a className="logo" href="/">
-          <span className="logo-mark" aria-hidden>
-            <span className="logo-mark-bar logo-mark-bar-1" />
-            <span className="logo-mark-bar logo-mark-bar-2" />
-          </span>
-          <span>FunPay Cloud</span>
+          <Image
+            src="/branding/logo_full_new.svg"
+            alt="FunPay Cloud"
+            width={1223}
+            height={206}
+            priority
+            className="landing-logo-full"
+          />
+          <Image
+            src="/branding/logo_short_new.svg"
+            alt="FunPay Cloud"
+            width={245}
+            height={167}
+            priority
+            className="landing-logo-short"
+          />
         </a>
 
         <div className="nav-links">

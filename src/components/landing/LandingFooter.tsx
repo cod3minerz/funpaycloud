@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 export default function LandingFooter() {
   return (
     <footer>
@@ -5,11 +7,20 @@ export default function LandingFooter() {
         <div className="ft-grid">
           <div>
             <a className="logo" href="/">
-              <span className="logo-mark" aria-hidden>
-                <span className="logo-mark-bar logo-mark-bar-1" />
-                <span className="logo-mark-bar logo-mark-bar-2" />
-              </span>
-              <span>FunPay Cloud</span>
+              <Image
+                src="/branding/logo_full_new.svg"
+                alt="FunPay Cloud"
+                width={1223}
+                height={206}
+                className="landing-logo-full landing-logo-full-footer"
+              />
+              <Image
+                src="/branding/logo_short_new.svg"
+                alt="FunPay Cloud"
+                width={245}
+                height={167}
+                className="landing-logo-short landing-logo-short-footer"
+              />
             </a>
             <p className="ft-about">Облачная платформа автоматизации продаж для профессиональных продавцов FunPay.</p>
           </div>
