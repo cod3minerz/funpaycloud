@@ -2007,7 +2007,12 @@ html[data-blog-theme='dark'] .blog-scope {
     font-size: 12.5px;
   }
 
-  .landing .nav-cta .btn-ghost {
-    display: none;
+  .landing .nav-cta {
+    gap: 8px;
+  }
+
+  .landing .nav-cta .btn {
+    padding: 8px 10px;
+    font-size: 12.5px;
   }
 }
