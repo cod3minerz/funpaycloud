@@ -11,7 +11,7 @@ export function BrandLogo({ className = "", compact = false, iconOnly = false, d
   if (iconOnly) {
     return (
       <Image
-        src="/branding/logo_short_new.svg"
+        src={darkText ? "/branding/logo_short_new_dark.svg" : "/branding/logo_short_new.svg"}
         alt="FunPay Cloud"
         width={32}
         height={22}

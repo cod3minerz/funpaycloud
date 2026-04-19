@@ -49,6 +49,8 @@ export default function LandingFooter() {
               <li><a href="/legal/privacy-policy">Политика конфиденциальности</a></li>
               <li><a href="/legal/terms-of-service">Условия использования</a></li>
               <li><a href="/legal/disclaimer">Отказ от ответственности</a></li>
+              <li><a href="/legal/personal-data-consent">Согласие на обработку данных</a></li>
+              <li><a href="/legal/cookie-policy">Политика cookie</a></li>
             </ul>
           </div>
         </div>

@@ -22,6 +22,16 @@ const documents = [
     title: 'Отказ от ответственности',
     description: 'Ограничения ответственности и важные юридические оговорки.',
   },
+  {
+    href: '/legal/personal-data-consent',
+    title: 'Согласие на обработку данных',
+    description: 'Условия и объём согласия на обработку персональных данных (152-ФЗ).',
+  },
+  {
+    href: '/legal/cookie-policy',
+    title: 'Политика cookie',
+    description: 'Какие файлы cookie используются на сайте и как ими управлять.',
+  },
 ];
 
 export default function LegalIndexPage() {
