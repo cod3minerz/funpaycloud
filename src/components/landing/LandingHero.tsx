@@ -1,3 +1,4 @@
+import { Zap } from 'lucide-react';
 import Button from './Button';
 
 export default function LandingHero() {
@@ -5,7 +6,7 @@ export default function LandingHero() {
     <header className="hero">
       <div className="wrap">
         <span className="eyebrow">
-          <span className="dot" /> Облачная платформа FunPay Cloud
+          <span className="eyebrow-icon"><Zap size={11} /></span> Первые внедрили нейросеть в чаты FunPay
         </span>
 
         <h1 className="hero-title">
