@@ -1,23 +1,21 @@
+# Analyze file and execute
 
-  # Analyze file and execute
+## Running the code
 
-  This is a code bundle for Analyze file and execute. The original project is available at https://www.figma.com/design/Wr5XkOs6y8BkCpUVbRiZ99/Analyze-file-and-execute.
+Run `npm i` to install the dependencies.
 
-  ## Running the code
+Run `npm run dev` to start the development server.
 
-  Run `npm i` to install the dependencies.
+## Reliability tests (Chats)
 
-  Run `npm run dev` to start the development server.
+Run production build check:
 
-  ## Reliability tests (Chats)
+- `npm run build`
 
-  Run production build check:
-  - `npm run build`
+Run e2e reliability scenarios for chats:
 
-  Run e2e reliability scenarios for chats:
-  - `npm run test:e2e -- chat-reliability.spec.ts`
+- `npm run test:e2e -- chat-reliability.spec.ts`
 
 ## Frontend Design System
 
 - Main guide: `docs/FRONTEND_DESIGN_SYSTEM.md`
-
