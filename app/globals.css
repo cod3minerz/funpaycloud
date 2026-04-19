@@ -1575,7 +1575,8 @@ body:has(.landing) {
 .landing .price-old {
   margin-top: 10px;
   margin-bottom: 2px;
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: 600;
   color: var(--muted);
   text-decoration: line-through;
   text-decoration-thickness: 1.5px;
