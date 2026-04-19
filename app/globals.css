@@ -178,13 +178,26 @@
   --good: #0e8a57;
   --warn: #b86e00;
   --bad: #b23a3a;
+  --bg-pattern-dot: rgba(14, 17, 22, 0.09);
+  --bg-pattern-dot-soft: rgba(14, 17, 22, 0.04);
   min-height: 100vh;
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(circle at 1px 1px, var(--bg-pattern-dot) 1.1px, transparent 0),
+    radial-gradient(circle at 1px 1px, var(--bg-pattern-dot-soft) 1px, transparent 0);
+  background-size: 18px 18px, 18px 18px;
+  background-position: 0 0, 9px 9px;
   color: var(--ink);
   font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 16px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+}
+
+html:has(.landing),
+body:has(.landing) {
+  background-color: #fbfaf7 !important;
+  color: #0e1116;
 }
 
 .landing * {
@@ -2309,6 +2322,11 @@
 }
 
 @media (max-width: 640px) {
+  .landing {
+    --bg-pattern-dot: rgba(14, 17, 22, 0.075);
+    --bg-pattern-dot-soft: rgba(14, 17, 22, 0.028);
+  }
+
   .landing .legal-main {
     padding-top: 24px;
   }
