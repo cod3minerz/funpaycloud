@@ -84,24 +84,24 @@ function TestChatPanel({
 }) {
   return (
     <div
-      className="flex h-full flex-col overflow-hidden rounded-2xl border border-indigo-500/20 bg-[#0a0f1acc] backdrop-blur-md"
-      style={{ boxShadow: '0 0 28px rgba(99,102,241,0.1)' }}
+      className="flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-surface)]"
+      style={{ boxShadow: 'var(--pf-shadow-card)' }}
     >
       <div
-        className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-3.5"
-        style={{ background: 'linear-gradient(90deg, rgba(99,102,241,0.08), rgba(139,92,246,0.05))' }}
+        className="flex items-center gap-3 border-b border-[var(--pf-border)] px-4 py-3.5"
+        style={{ background: 'linear-gradient(90deg, rgba(58,47,224,0.05), rgba(91,33,182,0.03))' }}
       >
         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500">
           <Bot size={16} className="text-white" />
         </div>
         <div className="flex-1">
-          <div className="flex items-center gap-2 text-sm font-semibold text-white">
+          <div className="flex items-center gap-2 text-sm font-semibold text-[var(--pf-text)]">
             Тестовый режим
-            <span className="rounded bg-violet-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-300">
+            <span className="rounded bg-violet-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-700">
               Beta
             </span>
           </div>
-          <div className="text-[10px] text-slate-500">Пишите как покупатель — AI ответит как настроено</div>
+          <div className="text-[10px] text-[var(--pf-text-dim)]">Пишите как покупатель — AI ответит как настроено</div>
         </div>
         {!limitExhausted && (
           <div className="flex items-center gap-1 text-[10px] text-amber-500/80">
@@ -117,8 +117,8 @@ function TestChatPanel({
             <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10">
               <AlertCircle size={18} className="text-red-400" />
             </div>
-            <p className="mb-1 text-sm text-slate-400">Лимит сообщений исчерпан</p>
-            <p className="text-xs text-slate-600">Обновится 1-го следующего месяца</p>
+            <p className="mb-1 text-sm text-[var(--pf-text-muted)]">Лимит сообщений исчерпан</p>
+            <p className="text-xs text-[var(--pf-text-dim)]">Обновится 1-го следующего месяца</p>
           </div>
         ) : messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center px-4 text-center">
@@ -128,8 +128,8 @@ function TestChatPanel({
             >
               <Sparkles size={20} className="text-indigo-400" />
             </div>
-            <p className="mb-2 text-sm font-medium text-slate-300">Протестируйте AI-ассистента</p>
-            <p className="mb-4 text-xs leading-relaxed text-slate-500">
+            <p className="mb-2 text-sm font-medium text-[var(--pf-text)]">Протестируйте AI-ассистента</p>
+            <p className="mb-4 text-xs leading-relaxed text-[var(--pf-text-dim)]">
               Напишите вопрос от лица покупателя и проверьте, как AI ответит с текущими настройками
             </p>
             <div className="flex w-full flex-col gap-2">
@@ -138,7 +138,7 @@ function TestChatPanel({
                   key={question}
                   type="button"
                   onClick={() => onQuickSend(question)}
-                  className="rounded-lg border border-white/[0.06] px-3 py-2 text-left text-xs text-slate-500 transition-all hover:border-indigo-500/20 hover:bg-indigo-500/5 hover:text-slate-200"
+                  className="rounded-lg border border-[var(--pf-border)] px-3 py-2 text-left text-xs text-[var(--pf-text-dim)] transition-all hover:border-[var(--pf-accent-soft-strong)] hover:bg-[var(--pf-accent-soft)] hover:text-[var(--pf-accent)]"
                 >
                   &quot;{question}&quot;
                 </button>
@@ -164,7 +164,7 @@ function TestChatPanel({
                   </div>
                   <div className="max-w-[85%]">
                     {message.loading ? (
-                      <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm border border-white/[0.06] bg-white/[0.04] px-3.5 py-3">
+                      <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm border border-[var(--pf-border)] bg-[var(--pf-surface-2)] px-3.5 py-3">
                         {[0, 1, 2].map(i => (
                           <span
                             key={i}
@@ -178,7 +178,7 @@ function TestChatPanel({
                         className={`rounded-2xl rounded-bl-sm border px-3.5 py-2.5 text-sm leading-relaxed ${
                           message.text.startsWith('Ошибка:')
                             ? 'border-red-500/20 bg-red-500/5 text-red-400'
-                            : 'border-white/[0.06] bg-white/[0.04] text-slate-200'
+                            : 'border-[var(--pf-border)] bg-[var(--pf-surface-2)] text-[var(--pf-text)]'
                         }`}
                       >
                         {message.text}
@@ -192,7 +192,7 @@ function TestChatPanel({
         )}
       </div>
 
-      <div className="border-t border-white/[0.06] p-3">
+      <div className="border-t border-[var(--pf-border)] p-3">
         <div className="flex gap-2">
           <input
             value={input}
@@ -205,7 +205,7 @@ function TestChatPanel({
             }}
             disabled={limitExhausted || testing}
             placeholder={limitExhausted ? 'Лимит исчерпан' : 'Напишите как покупатель...'}
-            className="flex-1 rounded-xl border border-white/[0.06] bg-white/[0.04] px-4 py-2.5 text-sm text-white placeholder-slate-600 transition-colors focus:border-indigo-500/40 focus:outline-none disabled:opacity-40"
+            className="flex-1 rounded-xl border border-[var(--pf-border-strong)] bg-white px-4 py-2.5 text-sm text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] transition-colors focus:border-[rgba(58,47,224,0.55)] focus:outline-none disabled:opacity-40"
           />
           <button
             type="button"
@@ -222,7 +222,7 @@ function TestChatPanel({
           <button
             type="button"
             onClick={onClear}
-            className="mt-2 flex items-center gap-1 text-[10px] text-slate-600 transition-colors hover:text-slate-400"
+            className="mt-2 flex items-center gap-1 text-[10px] text-[var(--pf-text-soft)] transition-colors hover:text-[var(--pf-text-dim)]"
           >
             <RotateCcw size={9} />
             Очистить тест
@@ -459,11 +459,11 @@ export default function AIAssistant() {
           <div
             className="relative mb-6 overflow-hidden rounded-2xl border p-6"
             style={{
-              borderColor: enabled ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.06)',
+              borderColor: enabled ? 'rgba(58,47,224,0.25)' : 'var(--pf-border)',
               background: enabled
-                ? 'linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(139,92,246,0.10) 50%, rgba(17,24,39,0.8) 100%)'
-                : 'rgba(255,255,255,0.02)',
-              boxShadow: enabled ? '0 0 40px rgba(99,102,241,0.08)' : 'none',
+                ? 'linear-gradient(135deg, rgba(58,47,224,0.08) 0%, rgba(91,33,182,0.05) 50%, var(--pf-surface) 100%)'
+                : 'var(--pf-surface)',
+              boxShadow: enabled ? '0 0 40px rgba(58,47,224,0.06)' : 'none',
             }}
           >
             {enabled && (
@@ -477,14 +477,14 @@ export default function AIAssistant() {
               <div>
                 <div className="mb-3 flex items-center gap-2">
                   <span
-                    className={`h-1.5 w-1.5 rounded-full ${enabled ? 'animate-pulse bg-emerald-400' : 'bg-slate-600'}`}
+                    className={`h-1.5 w-1.5 rounded-full ${enabled ? 'animate-pulse bg-emerald-500' : 'bg-[var(--pf-surface-3)]'}`}
                   />
-                  <span className={`text-xs font-medium ${enabled ? 'text-emerald-400' : 'text-slate-500'}`}>
+                  <span className={`text-xs font-medium ${enabled ? 'text-emerald-700' : 'text-[var(--pf-text-dim)]'}`}>
                     {loading ? 'Загрузка...' : enabled ? 'AI активен' : 'AI выключен'}
                   </span>
                 </div>
-                <h2 className="mb-1 text-xl font-bold text-white">AI-Ассистент</h2>
-                <p className="text-xs text-slate-400">
+                <h2 className="mb-1 text-xl font-bold text-[var(--pf-text)]">AI-Ассистент</h2>
+                <p className="text-xs text-[var(--pf-text-dim)]">
                   {enabled
                     ? 'Отвечает покупателям автоматически от вашего имени'
                     : 'Включите, чтобы бот отвечал покупателям автоматически'}
@@ -499,7 +499,7 @@ export default function AIAssistant() {
                   className={`relative flex-shrink-0 h-6 w-11 rounded-full transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${
                     enabled
                       ? 'bg-gradient-to-r from-indigo-500 to-violet-500 shadow-lg shadow-violet-500/30'
-                      : 'bg-white/10'
+                      : 'bg-[var(--pf-surface-3)]'
                   }`}
                   aria-pressed={enabled}
                 >
@@ -509,7 +509,7 @@ export default function AIAssistant() {
                     }`}
                   />
                 </button>
-                <span className="text-[10px] text-slate-500">{enabled ? 'Включён' : 'Выключен'}</span>
+                <span className="text-[10px] text-[var(--pf-text-dim)]">{enabled ? 'Включён' : 'Выключен'}</span>
               </div>
             </div>
 
@@ -517,21 +517,21 @@ export default function AIAssistant() {
               <div className="relative mt-5 flex items-start gap-2.5 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
                 <Info size={14} className="mt-0.5 flex-shrink-0 text-amber-400" />
                 <div>
-                  <p className="text-xs font-medium text-amber-300">AI недоступен на вашем тарифе</p>
-                  <p className="mt-0.5 text-[11px] text-slate-500">
+                  <p className="text-xs font-medium text-amber-700">AI недоступен на вашем тарифе</p>
+                  <p className="mt-0.5 text-[11px] text-[var(--pf-text-dim)]">
                     Обновитесь до тарифа Pro или Ultra, чтобы использовать AI-ассистента
                   </p>
                 </div>
               </div>
             ) : (
-              <div className="relative mt-5 border-t border-white/[0.06] pt-5">
+              <div className="relative mt-5 border-t border-[var(--pf-border)] pt-5">
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs text-slate-400">Использовано в этом месяце</span>
-                  <span className="text-xs font-semibold text-white">
+                  <span className="text-xs text-[var(--pf-text-dim)]">Использовано в этом месяце</span>
+                  <span className="text-xs font-semibold text-[var(--pf-text)]">
                     {used} / {limit} сообщений
                   </span>
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                <div className="h-1.5 overflow-hidden rounded-full bg-[var(--pf-surface-3)]">
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{
@@ -544,8 +544,8 @@ export default function AIAssistant() {
                   />
                 </div>
                 <div className="mt-1.5 flex justify-between">
-                  <span className="text-[10px] text-slate-600">Обновится 1 {nextMonth}</span>
-                  <span className="text-[10px] text-slate-500">Аккаунт: {selectedAccountName}</span>
+                  <span className="text-[10px] text-[var(--pf-text-soft)]">Обновится 1 {nextMonth}</span>
+                  <span className="text-[10px] text-[var(--pf-text-dim)]">Аккаунт: {selectedAccountName}</span>
                 </div>
               </div>
             )}
@@ -553,27 +553,27 @@ export default function AIAssistant() {
 
           {/* Settings */}
           <fieldset disabled={formDisabled || noAiOnPlan} className="group/fields">
-            <div className="mb-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] group-disabled/fields:opacity-60">
-              <div className="border-b border-white/[0.04] p-5">
-                <label className="mb-3 block text-xs font-semibold uppercase tracking-widest text-slate-400">
+            <div className="mb-6 overflow-hidden rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-surface)] group-disabled/fields:opacity-60">
+              <div className="border-b border-[var(--pf-border)] p-5">
+                <label className="mb-3 block text-xs font-semibold uppercase tracking-widest text-[var(--pf-text-dim)]">
                   Аккаунт FunPay
                 </label>
                 <select
                   value={selectedAccountID ?? ''}
                   onChange={event => handleAccountChange(Number(event.target.value))}
-                  className="w-full appearance-none rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-sm text-white transition-colors focus:border-indigo-500/50 focus:outline-none disabled:cursor-not-allowed"
+                  className="platform-select"
                 >
                   {accounts.map(account => (
-                    <option key={account.id} value={account.id} className="bg-slate-900">
+                    <option key={account.id} value={account.id}>
                       {account.username || `Аккаунт #${account.id}`}
                     </option>
                   ))}
                 </select>
-                <p className="mt-2 text-[11px] text-slate-600">AI будет отвечать от имени выбранного аккаунта</p>
+                <p className="mt-2 text-[11px] text-[var(--pf-text-dim)]">AI будет отвечать от имени выбранного аккаунта</p>
               </div>
 
-              <div className="border-b border-white/[0.04] p-5">
-                <label className="mb-3 block text-xs font-semibold uppercase tracking-widest text-slate-400">
+              <div className="border-b border-[var(--pf-border)] p-5">
+                <label className="mb-3 block text-xs font-semibold uppercase tracking-widest text-[var(--pf-text-dim)]">
                   Тон общения
                 </label>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -588,14 +588,14 @@ export default function AIAssistant() {
                       onClick={() => setTone(item.key as 'formal' | 'neutral' | 'friendly')}
                       className={`rounded-xl border p-3 text-left transition-all ${
                         tone === item.key
-                          ? 'border-indigo-500/50 bg-indigo-500/10 shadow-sm shadow-indigo-500/10'
-                          : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12]'
+                          ? 'border-[rgba(58,47,224,0.40)] bg-[var(--pf-accent-soft)]'
+                          : 'border-[var(--pf-border)] bg-[var(--pf-surface-2)] hover:border-[var(--pf-border-strong)]'
                       }`}
                     >
-                      <div className={`mb-1 text-xs font-semibold ${tone === item.key ? 'text-indigo-300' : 'text-white'}`}>
+                      <div className={`mb-1 text-xs font-semibold ${tone === item.key ? 'text-[var(--pf-accent)]' : 'text-[var(--pf-text)]'}`}>
                         {item.label}
                       </div>
-                      <div className="text-[10px] leading-tight text-slate-600">{item.desc}</div>
+                      <div className="text-[10px] leading-tight text-[var(--pf-text-dim)]">{item.desc}</div>
                     </button>
                   ))}
                 </div>
@@ -603,8 +603,8 @@ export default function AIAssistant() {
 
               <div className="p-5">
                 <div className="mb-3 flex items-center justify-between">
-                  <label className="text-xs font-semibold uppercase tracking-widest text-slate-400">Задержка ответа</label>
-                  <span className="text-xs font-medium text-white">{delay} сек</span>
+                  <label className="text-xs font-semibold uppercase tracking-widest text-[var(--pf-text-dim)]">Задержка ответа</label>
+                  <span className="text-xs font-medium text-[var(--pf-text)]">{delay} сек</span>
                 </div>
                 <input
                   type="range"
@@ -614,21 +614,21 @@ export default function AIAssistant() {
                   onChange={event => setDelay(Number(event.target.value))}
                   className="w-full accent-indigo-500"
                 />
-                <div className="mt-1 flex justify-between text-[10px] text-slate-600">
+                <div className="mt-1 flex justify-between text-[10px] text-[var(--pf-text-dim)]">
                   <span>Мгновенно</span>
-                  <span className="text-center text-slate-500">Имитация живого ответа</span>
+                  <span className="text-center text-[var(--pf-text-soft)]">Имитация живого ответа</span>
                   <span>30 сек</span>
                 </div>
               </div>
             </div>
 
             {/* Signature toggle */}
-            <div className="mb-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] group-disabled/fields:opacity-60">
+            <div className="mb-6 overflow-hidden rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-surface)] group-disabled/fields:opacity-60">
               <div className="flex items-center justify-between p-5">
                 <div>
-                  <p className="text-sm font-semibold text-white">Подпись ассистента</p>
-                  <p className="mt-0.5 text-[11px] text-slate-500">
-                    К каждому ответу добавляется строка <span className="text-slate-400">«— Ассистент FunPay Cloud»</span>
+                  <p className="text-sm font-semibold text-[var(--pf-text)]">Подпись ассистента</p>
+                  <p className="mt-0.5 text-[11px] text-[var(--pf-text-dim)]">
+                    К каждому ответу добавляется строка <span className="text-[var(--pf-text-muted)]">«— Ассистент FunPay Cloud»</span>
                   </p>
                 </div>
                 <button
@@ -637,7 +637,7 @@ export default function AIAssistant() {
                   className={`relative flex-shrink-0 h-6 w-11 rounded-full transition-colors duration-200 ${
                     showAISignature
                       ? 'bg-gradient-to-r from-indigo-500 to-violet-500 shadow-lg shadow-violet-500/30'
-                      : 'bg-white/10'
+                      : 'bg-[var(--pf-surface-3)]'
                   }`}
                   aria-pressed={showAISignature}
                 >
@@ -651,14 +651,14 @@ export default function AIAssistant() {
             </div>
 
             {/* Prompt */}
-            <div className="mb-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] group-disabled/fields:opacity-60">
+            <div className="mb-6 overflow-hidden rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-surface)] group-disabled/fields:opacity-60">
               <div className="p-5">
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <div>
-                    <label className="mb-0.5 block text-xs font-semibold uppercase tracking-widest text-slate-400">
+                    <label className="mb-0.5 block text-xs font-semibold uppercase tracking-widest text-[var(--pf-text-dim)]">
                       Инструкция для AI
                     </label>
-                    <p className="text-[11px] text-slate-600">
+                    <p className="text-[11px] text-[var(--pf-text-dim)]">
                       Опишите своими словами, как должен вести себя ассистент
                     </p>
                   </div>
@@ -681,21 +681,21 @@ export default function AIAssistant() {
                   rows={5}
                   maxLength={MAX_PROMPT_LENGTH}
                   placeholder="Например: Я продаю игровые ключи..."
-                  className={`w-full resize-none rounded-xl border bg-white/[0.03] px-4 py-3 text-sm leading-relaxed text-slate-200 placeholder-slate-600 transition-colors focus:outline-none ${
+                  className={`w-full resize-none rounded-xl border bg-white px-4 py-3 text-sm leading-relaxed text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] transition-colors focus:outline-none ${
                     prompt.length > MAX_PROMPT_LENGTH * 0.9
-                      ? 'border-amber-500/30 focus:border-amber-500/50'
-                      : 'border-white/[0.06] focus:border-indigo-500/40'
+                      ? 'border-amber-500/40 focus:border-amber-500/60'
+                      : 'border-[var(--pf-border-strong)] focus:border-[rgba(58,47,224,0.55)]'
                   }`}
                 />
                 <div className="mt-2 flex justify-between">
-                  <span className="text-[10px] text-slate-600">Лоты из вашего аккаунта добавляются автоматически</span>
+                  <span className="text-[10px] text-[var(--pf-text-dim)]">Лоты из вашего аккаунта добавляются автоматически</span>
                   <span
                     className={`text-[10px] ${
                       prompt.length > MAX_PROMPT_LENGTH
-                        ? 'font-semibold text-red-400'
+                        ? 'font-semibold text-red-500'
                         : prompt.length > MAX_PROMPT_LENGTH * 0.9
-                          ? 'text-amber-400'
-                          : 'text-slate-600'
+                          ? 'text-amber-600'
+                          : 'text-[var(--pf-text-dim)]'
                     }`}
                   >
                     {prompt.length} / {MAX_PROMPT_LENGTH}
@@ -704,7 +704,7 @@ export default function AIAssistant() {
               </div>
 
               <div className="px-5 pb-5">
-                <p className="mb-2 text-[10px] text-slate-600">Быстрые фразы:</p>
+                <p className="mb-2 text-[10px] text-[var(--pf-text-dim)]">Быстрые фразы:</p>
                 <div className="flex flex-wrap gap-1.5">
                   {QUICK_TAGS.map(tag => (
                     <button
@@ -721,11 +721,11 @@ export default function AIAssistant() {
             </div>
 
             {/* FAQ */}
-            <div className="mb-6 overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] group-disabled/fields:opacity-60">
-              <div className="flex items-center justify-between border-b border-white/[0.04] p-5">
+            <div className="mb-6 overflow-hidden rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-surface)] group-disabled/fields:opacity-60">
+              <div className="flex items-center justify-between border-b border-[var(--pf-border)] p-5">
                 <div>
-                  <h3 className="text-sm font-semibold text-white">База знаний</h3>
-                  <p className="mt-0.5 text-[11px] text-slate-600">Частые вопросы — AI использует эти ответы в диалоге</p>
+                  <h3 className="text-sm font-semibold text-[var(--pf-text)]">База знаний</h3>
+                  <p className="mt-0.5 text-[11px] text-[var(--pf-text-dim)]">Частые вопросы — AI использует эти ответы в диалоге</p>
                 </div>
                 <button
                   type="button"
@@ -737,37 +737,37 @@ export default function AIAssistant() {
                 </button>
               </div>
 
-              <div className="divide-y divide-white/[0.04]">
+              <div className="divide-y divide-[var(--pf-border)]">
                 {faqItems.length === 0 ? (
                   <div className="p-8 text-center">
-                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10">
-                      <HelpCircle size={18} className="text-indigo-400" />
+                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--pf-accent-soft)]">
+                      <HelpCircle size={18} className="text-[var(--pf-accent)]" />
                     </div>
-                    <p className="mb-1 text-sm text-slate-500">База знаний пуста</p>
-                    <p className="text-xs text-slate-600">Добавьте частые вопросы и ответы</p>
+                    <p className="mb-1 text-sm text-[var(--pf-text-muted)]">База знаний пуста</p>
+                    <p className="text-xs text-[var(--pf-text-dim)]">Добавьте частые вопросы и ответы</p>
                   </div>
                 ) : (
                   faqItems.map((item, index) => (
-                    <div key={item.id} className="group p-4 transition-colors hover:bg-white/[0.02]">
+                    <div key={item.id} className="group p-4 transition-colors hover:bg-[var(--pf-surface-2)]">
                       <div className="flex gap-3">
                         <div className="flex-1 space-y-2">
                           <input
                             value={item.question}
                             onChange={event => updateFaq(index, 'question', event.target.value)}
                             placeholder="Вопрос покупателя..."
-                            className="w-full border-b border-transparent bg-transparent pb-0.5 text-sm text-slate-300 placeholder-slate-600 transition-colors focus:border-white/[0.08] focus:outline-none"
+                            className="w-full border-b border-transparent bg-transparent pb-0.5 text-sm text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] transition-colors focus:border-[var(--pf-border-strong)] focus:outline-none"
                           />
                           <input
                             value={item.answer}
                             onChange={event => updateFaq(index, 'answer', event.target.value)}
                             placeholder="Ответ AI..."
-                            className="w-full border-b border-transparent bg-transparent pb-0.5 text-xs text-slate-500 placeholder-slate-700 transition-colors focus:border-white/[0.08] focus:outline-none"
+                            className="w-full border-b border-transparent bg-transparent pb-0.5 text-xs text-[var(--pf-text-dim)] placeholder-[var(--pf-text-soft)] transition-colors focus:border-[var(--pf-border-strong)] focus:outline-none"
                           />
                         </div>
                         <button
                           type="button"
                           onClick={() => removeFaq(index)}
-                          className="self-center text-slate-700 opacity-0 transition-all hover:text-red-400 group-hover:opacity-100"
+                          className="self-center text-[var(--pf-text-soft)] opacity-0 transition-all hover:text-red-500 group-hover:opacity-100"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -814,10 +814,10 @@ export default function AIAssistant() {
         <button
           type="button"
           onClick={() => setMobileChatOpen(prev => !prev)}
-          className="flex w-full items-center justify-between rounded-xl border border-indigo-500/20 bg-white/[0.02] px-4 py-3 text-left"
+          className="flex w-full items-center justify-between rounded-xl border border-[var(--pf-border)] bg-[var(--pf-surface)] px-4 py-3 text-left"
         >
-          <span className="text-sm font-semibold text-white">Тестировать AI</span>
-          <span className="text-xs text-indigo-300">{mobileChatOpen ? '▲' : '▼'}</span>
+          <span className="text-sm font-semibold text-[var(--pf-text)]">Тестировать AI</span>
+          <span className="text-xs text-[var(--pf-accent)]">{mobileChatOpen ? '▲' : '▼'}</span>
         </button>
         {mobileChatOpen ? (
           <div className="mt-3 h-96">

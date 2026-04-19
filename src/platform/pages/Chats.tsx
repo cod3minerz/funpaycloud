@@ -783,7 +783,7 @@ export default function Chats() {
                     <p className="platform-chat-preview">{chat.last_message || ''}</p>
                     {chat.unread_count > 0 && chat.id !== selectedChatID && (
                       <div className="platform-chat-meta">
-                        <span className="inline-flex min-w-5 h-5 px-1.5 items-center justify-center rounded-full bg-blue-500 text-white text-[10px] font-semibold">
+                        <span className="inline-flex min-w-5 h-5 px-1.5 items-center justify-center rounded-full bg-[var(--pf-accent)] text-white text-[10px] font-semibold">
                           {chat.unread_count > 9 ? '9+' : chat.unread_count}
                         </span>
                       </div>
@@ -833,9 +833,9 @@ export default function Chats() {
                           if (item.type === 'separator') {
                             return (
                               <div key={item.key} className="flex items-center gap-3 px-4 py-3">
-                                <div className="flex-1 h-px bg-white/[0.06]" />
-                                <span className="text-xs text-slate-500 flex-shrink-0">{item.label}</span>
-                                <div className="flex-1 h-px bg-white/[0.06]" />
+                                <div className="flex-1 h-px bg-[var(--pf-border)]" />
+                                <span className="text-xs text-[var(--pf-text-dim)] flex-shrink-0">{item.label}</span>
+                                <div className="flex-1 h-px bg-[var(--pf-border)]" />
                               </div>
                             );
                           }
@@ -850,8 +850,8 @@ export default function Chats() {
                               key={item.key}
                               className={
                                 isOutgoing
-                                  ? 'flex gap-2.5 px-4 py-1 rounded border-l-2 border-blue-500 pl-[14px] bg-blue-500/[0.05] hover:bg-blue-500/[0.08] group'
-                                  : 'flex gap-2.5 px-4 py-1 rounded hover:bg-white/[0.03] group'
+                                  ? 'flex gap-2.5 px-4 py-1 rounded border-l-2 border-[var(--pf-accent)] pl-[14px] bg-[var(--pf-accent-soft)] hover:bg-[rgba(58,47,224,0.08)] group'
+                                  : 'flex gap-2.5 px-4 py-1 rounded hover:bg-[var(--pf-surface-2)] group'
                               }
                             >
                               {item.grouped ? (
@@ -859,7 +859,7 @@ export default function Chats() {
                               ) : (
                                 <div
                                   className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white flex-shrink-0 mt-0.5"
-                                  style={{ backgroundColor: isOutgoing ? '#2563eb' : getAvatarColor(authorName) }}
+                                  style={{ backgroundColor: isOutgoing ? 'var(--pf-accent)' : getAvatarColor(authorName) }}
                                   aria-hidden="true"
                                 >
                                   {getAvatarLabel(authorName)}
@@ -869,7 +869,7 @@ export default function Chats() {
                               <div className="flex-1 min-w-0">
                                 {item.grouped ? (
                                   <div className="h-4 flex items-center gap-1.5">
-                                    <span className="text-[11px] text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <span className="text-[11px] text-[var(--pf-text-dim)] opacity-0 group-hover:opacity-100 transition-opacity">
                                       {formattedTime}
                                     </span>
                                     {isOutgoing && (
@@ -878,29 +878,29 @@ export default function Chats() {
                                         aria-label={message.status === 'delivered' ? 'Доставлено' : 'Отправлено'}
                                       >
                                         {message.status === 'delivered' ? (
-                                          <CheckCheck size={11} className="text-blue-400" />
+                                          <CheckCheck size={11} className="text-[var(--pf-accent)]" />
                                         ) : (
-                                          <Check size={11} className="text-slate-500" />
+                                          <Check size={11} className="text-[var(--pf-text-dim)]" />
                                         )}
                                       </span>
                                     )}
                                   </div>
                                 ) : (
                                   <div className="flex items-baseline gap-2">
-                                    <span className={`text-sm font-semibold ${isOutgoing ? 'text-blue-300' : 'text-slate-200'}`}>{authorName}</span>
-                                    <span className="text-[11px] text-slate-500">{formattedTime}</span>
+                                    <span className={`text-sm font-semibold ${isOutgoing ? 'text-[var(--pf-accent)]' : 'text-[var(--pf-text)]'}`}>{authorName}</span>
+                                    <span className="text-[11px] text-[var(--pf-text-dim)]">{formattedTime}</span>
                                     {isOutgoing && (
                                       <span aria-label={message.status === 'delivered' ? 'Доставлено' : 'Отправлено'}>
                                         {message.status === 'delivered' ? (
-                                          <CheckCheck size={11} className="text-blue-400 ml-1" />
+                                          <CheckCheck size={11} className="text-[var(--pf-accent)] ml-1" />
                                         ) : (
-                                          <Check size={11} className="text-slate-500 ml-1" />
+                                          <Check size={11} className="text-[var(--pf-text-dim)] ml-1" />
                                         )}
                                       </span>
                                     )}
                                   </div>
                                 )}
-                                <p className="text-sm text-slate-300 leading-relaxed mt-0.5 break-words whitespace-pre-wrap">{message.text}</p>
+                                <p className="text-sm text-[var(--pf-text)] leading-relaxed mt-0.5 break-words whitespace-pre-wrap">{message.text}</p>
                               </div>
                             </div>
                           );
@@ -913,7 +913,7 @@ export default function Chats() {
                     <div className="platform-composer-row">
                       <textarea
                         ref={composerRef}
-                        className="w-full bg-white/[0.05] border border-white/[0.08] rounded-lg px-4 py-3 text-sm text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-blue-500/50 focus:bg-white/[0.07] transition-colors"
+                        className="w-full bg-white border border-[var(--pf-border-strong)] rounded-lg px-4 py-3 text-sm text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] resize-none focus:outline-none focus:border-[rgba(58,47,224,0.55)] transition-colors"
                         placeholder="Введите сообщение..."
                         value={inputValue}
                         onChange={event => setInputValue(event.target.value)}

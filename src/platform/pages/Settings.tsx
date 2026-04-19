@@ -84,7 +84,7 @@ function Toggle({ checked, onChange, disabled, compact = false }: { checked: boo
       onClick={onChange}
       disabled={disabled}
       className={`relative flex-shrink-0 h-6 w-11 rounded-full transition-colors duration-200 ${
-        checked ? 'bg-indigo-500' : 'bg-white/10'
+        checked ? 'bg-indigo-500' : 'bg-[var(--pf-surface-3)]'
       } ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
       aria-pressed={checked}
     >
@@ -209,8 +209,8 @@ export default function Settings() {
   const strengthView = useMemo(() => {
     if (passwordStrength <= 1) return { label: 'Слабый пароль', color: 'bg-red-500', textColor: 'text-red-400' };
     if (passwordStrength === 2) return { label: 'Средний пароль', color: 'bg-amber-500', textColor: 'text-amber-400' };
-    if (passwordStrength === 3) return { label: 'Хороший пароль', color: 'bg-blue-500', textColor: 'text-blue-400' };
-    return { label: 'Надёжный пароль', color: 'bg-emerald-500', textColor: 'text-emerald-400' };
+    if (passwordStrength === 3) return { label: 'Хороший пароль', color: 'bg-blue-500', textColor: 'text-blue-600' };
+    return { label: 'Надёжный пароль', color: 'bg-emerald-500', textColor: 'text-emerald-600' };
   }, [passwordStrength]);
 
   const planId = String(subscription?.plan || 'pro').toLowerCase();
@@ -283,7 +283,7 @@ export default function Settings() {
         <PageHeader>
           <PageTitle title="Настройки" subtitle="Управляйте безопасностью, подпиской и уведомлениями" />
         </PageHeader>
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+        <div className="rounded-xl border border-[var(--pf-border)] bg-[var(--pf-surface)] p-4">
           <RequestErrorState
             message={profileError}
             onRetry={() => window.location.reload()}
@@ -309,19 +309,19 @@ export default function Settings() {
               <Shield size={16} className="text-red-400" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-white">Безопасность</h2>
-              <p className="text-xs text-slate-500">Управление паролем аккаунта</p>
+              <h2 className="text-sm font-semibold text-[var(--pf-text)]">Безопасность</h2>
+              <p className="text-xs text-[var(--pf-text-dim)]">Управление паролем аккаунта</p>
             </div>
           </div>
 
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6">
+          <div className="rounded-xl border border-[var(--pf-border)] bg-[var(--pf-surface)] p-6">
             <div className="max-w-sm space-y-4">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-400">Текущий пароль</label>
+                <label className="mb-1.5 block text-xs font-medium text-[var(--pf-text-dim)]">Текущий пароль</label>
                 <div className="relative">
                   <input
                     type={showOld ? 'text' : 'password'}
-                    className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 pr-10 text-sm text-white placeholder-slate-600 focus:border-blue-500/50 focus:outline-none transition-colors"
+                    className="w-full rounded-lg border border-[var(--pf-border-strong)] bg-white px-4 py-2.5 pr-10 text-sm text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] focus:border-[rgba(58,47,224,0.55)] focus:outline-none transition-colors"
                     placeholder="••••••••"
                     value={oldPassword}
                     onChange={e => setOldPassword(e.target.value)}
@@ -329,7 +329,7 @@ export default function Settings() {
                   <button
                     type="button"
                     onClick={() => setShowOld(prev => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-400"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--pf-text-dim)] hover:text-[var(--pf-text)]"
                     aria-label="Показать или скрыть текущий пароль"
                   >
                     {showOld ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -338,11 +338,11 @@ export default function Settings() {
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-400">Новый пароль</label>
+                <label className="mb-1.5 block text-xs font-medium text-[var(--pf-text-dim)]">Новый пароль</label>
                 <div className="relative">
                   <input
                     type={showNew ? 'text' : 'password'}
-                    className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 pr-10 text-sm text-white placeholder-slate-600 focus:border-blue-500/50 focus:outline-none transition-colors"
+                    className="w-full rounded-lg border border-[var(--pf-border-strong)] bg-white px-4 py-2.5 pr-10 text-sm text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] focus:border-[rgba(58,47,224,0.55)] focus:outline-none transition-colors"
                     placeholder="Введите новый пароль"
                     value={newPassword}
                     onChange={e => setNewPassword(e.target.value)}
@@ -350,7 +350,7 @@ export default function Settings() {
                   <button
                     type="button"
                     onClick={() => setShowNew(prev => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-400"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--pf-text-dim)] hover:text-[var(--pf-text)]"
                     aria-label="Показать или скрыть новый пароль"
                   >
                     {showNew ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -360,21 +360,21 @@ export default function Settings() {
                   {[1, 2, 3, 4].map(i => (
                     <div
                       key={i}
-                      className={`h-0.5 flex-1 rounded-full transition-colors ${passwordStrength >= i ? strengthView.color : 'bg-white/10'}`}
+                      className={`h-0.5 flex-1 rounded-full transition-colors ${passwordStrength >= i ? strengthView.color : 'bg-[var(--pf-surface-3)]'}`}
                     />
                   ))}
                 </div>
-                <p className={`mt-1 text-[10px] ${newPassword ? strengthView.textColor : 'text-slate-600'}`}>
+                <p className={`mt-1 text-[10px] ${newPassword ? strengthView.textColor : 'text-[var(--pf-text-dim)]'}`}>
                   {newPassword ? strengthView.label : 'Минимум 8 символов'}
                 </p>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-400">Повторите новый пароль</label>
+                <label className="mb-1.5 block text-xs font-medium text-[var(--pf-text-dim)]">Повторите новый пароль</label>
                 <div className="relative">
                   <input
                     type={showConfirm ? 'text' : 'password'}
-                    className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 pr-10 text-sm text-white placeholder-slate-600 focus:border-blue-500/50 focus:outline-none transition-colors"
+                    className="w-full rounded-lg border border-[var(--pf-border-strong)] bg-white px-4 py-2.5 pr-10 text-sm text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] focus:border-[rgba(58,47,224,0.55)] focus:outline-none transition-colors"
                     placeholder="Повторите пароль"
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
@@ -382,20 +382,20 @@ export default function Settings() {
                   <button
                     type="button"
                     onClick={() => setShowConfirm(prev => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-400"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--pf-text-dim)] hover:text-[var(--pf-text)]"
                     aria-label="Показать или скрыть подтверждение"
                   >
                     {showConfirm ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                 </div>
-                {mismatch ? <p className="mt-1 text-[10px] text-red-400">Пароли не совпадают</p> : null}
+                {mismatch ? <p className="mt-1 text-[10px] text-red-500">Пароли не совпадают</p> : null}
               </div>
 
               <button
                 type="button"
                 onClick={handleChangePassword}
                 disabled={savingPassword || !canChangePassword}
-                className="mt-2 w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+                className="mt-2 w-full rounded-lg bg-[var(--pf-accent)] py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--pf-accent-hover)] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {savingPassword ? (
                   <span className="inline-flex items-center gap-2">
@@ -411,39 +411,39 @@ export default function Settings() {
         </section>
 
         <div className="my-8 flex items-center gap-4">
-          <div className="h-px flex-1 bg-white/[0.04]" />
+          <div className="h-px flex-1 bg-[var(--pf-border)]" />
         </div>
 
         <section>
           <div className="mb-6 flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
-              <CreditCard size={16} className="text-amber-400" />
+              <CreditCard size={16} className="text-amber-600" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-white">Подписка</h2>
-              <p className="text-xs text-slate-500">Тариф и управление оплатой</p>
+              <h2 className="text-sm font-semibold text-[var(--pf-text)]">Подписка</h2>
+              <p className="text-xs text-[var(--pf-text-dim)]">Тариф и управление оплатой</p>
             </div>
           </div>
 
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6">
+          <div className="rounded-xl border border-[var(--pf-border)] bg-[var(--pf-surface)] p-6">
             <div className="flex flex-col items-start justify-between gap-5 lg:flex-row lg:items-start">
               <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/10">
-                  <Zap size={20} className="text-blue-400" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--pf-accent-soft)]">
+                  <Zap size={20} className="text-[var(--pf-accent)]" />
                 </div>
                 <div>
                   <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <span className="text-base font-bold text-white">{planMeta.title}</span>
-                    <span className="rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
+                    <span className="text-base font-bold text-[var(--pf-text)]">{planMeta.title}</span>
+                    <span className="rounded-full bg-[var(--pf-accent-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--pf-accent)]">
                       АКТИВНА
                     </span>
                   </div>
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-[var(--pf-text-dim)]">
                     {subscriptionLoading ? 'Проверяем подписку...' : (
-                      <>Действует до <span className="text-slate-400">{formatDate(expiresAt)}</span></>
+                      <>Действует до <span className="text-[var(--pf-text-muted)]">{formatDate(expiresAt)}</span></>
                     )}
                   </div>
-                  <div className="mt-0.5 text-xs text-slate-600">{planMeta.limits}</div>
+                  <div className="mt-0.5 text-xs text-[var(--pf-text-dim)]">{planMeta.limits}</div>
                 </div>
               </div>
 
@@ -451,28 +451,28 @@ export default function Settings() {
                 <button
                   type="button"
                   onClick={() => toast.info('Продление будет доступно в ближайшем обновлении')}
-                  className="w-full rounded-lg border border-white/[0.08] px-3 py-2 text-xs font-medium text-slate-400 transition-colors hover:border-white/[0.15] sm:w-auto"
+                  className="platform-btn-secondary w-full sm:w-auto"
                 >
                   Продлить
                 </button>
                 <button
                   type="button"
                   onClick={() => toast.info('Апгрейд тарифа скоро будет доступен')}
-                  className="w-full rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-3 py-2 text-xs font-medium text-white transition-all hover:from-purple-500 hover:to-blue-500 sm:w-auto"
+                  className="platform-btn-primary w-full sm:w-auto"
                 >
                   ↑ Ultra
                 </button>
               </div>
             </div>
 
-            <div className="mt-5 border-t border-white/[0.04] pt-5">
-              <div className="mb-1.5 flex justify-between text-[10px] text-slate-600">
+            <div className="mt-5 border-t border-[var(--pf-border)] pt-5">
+              <div className="mb-1.5 flex justify-between text-[10px] text-[var(--pf-text-dim)]">
                 <span>{leftDays === null ? 'Без ограничения по времени' : `Осталось ${leftDays} дн.`}</span>
                 <span>{leftDays === null ? '∞' : 'из 30'}</span>
               </div>
-              <div className="h-1 overflow-hidden rounded-full bg-white/[0.06]">
+              <div className="h-1 overflow-hidden rounded-full bg-[var(--pf-surface-3)]">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-400"
+                  className="h-full rounded-full bg-[var(--pf-accent)]"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
@@ -481,36 +481,36 @@ export default function Settings() {
         </section>
 
         <div className="my-8 flex items-center gap-4">
-          <div className="h-px flex-1 bg-white/[0.04]" />
+          <div className="h-px flex-1 bg-[var(--pf-border)]" />
         </div>
 
         <section>
           <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
-              <Send size={16} className="text-blue-400" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--pf-accent-soft)]">
+              <Send size={16} className="text-[var(--pf-accent)]" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-white">Telegram уведомления</h2>
-              <p className="text-xs text-slate-500">Получайте важные события в Telegram</p>
+              <h2 className="text-sm font-semibold text-[var(--pf-text)]">Telegram уведомления</h2>
+              <p className="text-xs text-[var(--pf-text-dim)]">Получайте важные события в Telegram</p>
             </div>
             {(telegramUnavailable || notificationsUnavailable) ? (
-              <span className="ml-auto rounded-full border border-white/[0.12] bg-white/[0.04] px-2 py-0.5 text-[10px] text-slate-400">
+              <span className="ml-auto rounded-full border border-[var(--pf-border)] bg-[var(--pf-surface-2)] px-2 py-0.5 text-[10px] text-[var(--pf-text-dim)]">
                 Скоро
               </span>
             ) : null}
           </div>
 
-          <div className="mb-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-6">
+          <div className="mb-4 rounded-xl border border-[var(--pf-border)] bg-[var(--pf-surface)] p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-blue-500/10">
-                <Bot size={18} className="text-blue-400" />
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--pf-accent-soft)]">
+                <Bot size={18} className="text-[var(--pf-accent)]" />
               </div>
 
               <div className="flex-1">
-                <div className="mb-0.5 text-sm font-medium text-white">
+                <div className="mb-0.5 text-sm font-medium text-[var(--pf-text)]">
                   {telegramLinked ? 'Telegram аккаунт уже привязан' : 'Привяжите Telegram аккаунт'}
                 </div>
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-[var(--pf-text-dim)]">
                   {telegramUnavailable
                     ? 'Интеграция Telegram в процессе запуска. Скоро станет доступна.'
                     : 'Нажмите кнопку и напишите боту /start с вашим кодом'}
@@ -521,7 +521,7 @@ export default function Settings() {
                 <button
                   type="button"
                   disabled
-                  className="flex-shrink-0 rounded-lg border border-white/[0.08] px-4 py-2 text-xs font-medium text-slate-500 opacity-70"
+                  className="platform-btn-secondary flex-shrink-0 opacity-70"
                 >
                   Скоро
                 </button>
@@ -530,7 +530,7 @@ export default function Settings() {
                   href={telegramLink?.link || 'https://t.me/funpaycloud_bot'}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex flex-shrink-0 items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-blue-500"
+                  className="platform-btn-primary flex flex-shrink-0 items-center gap-2"
                 >
                   <Send size={12} />
                   Открыть бота
@@ -539,15 +539,15 @@ export default function Settings() {
             </div>
 
             {telegramLinked ? (
-              <div className="mt-3 flex items-center gap-2 border-t border-white/[0.04] pt-3">
-                <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                <span className="text-xs text-slate-400">
-                  Привязан: <span className="text-white">{telegramUsername}</span>
+              <div className="mt-3 flex items-center gap-2 border-t border-[var(--pf-border)] pt-3">
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span className="text-xs text-[var(--pf-text-dim)]">
+                  Привязан: <span className="text-[var(--pf-text)] font-medium">{telegramUsername}</span>
                 </span>
                 <button
                   type="button"
                   onClick={() => toast.info('Отвязка Telegram скоро появится')}
-                  className="ml-auto text-[10px] text-red-400 transition-colors hover:text-red-300"
+                  className="ml-auto text-[10px] text-red-500 transition-colors hover:text-red-700"
                 >
                   Отвязать
                 </button>
@@ -555,11 +555,11 @@ export default function Settings() {
             ) : null}
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02]">
-            <div className="flex items-center justify-between border-b border-white/[0.04] p-4">
+          <div className="overflow-hidden rounded-xl border border-[var(--pf-border)] bg-[var(--pf-surface)]">
+            <div className="flex items-center justify-between border-b border-[var(--pf-border)] p-4">
               <div>
-                <div className="text-sm font-medium text-white">Уведомления в Telegram</div>
-                <div className="mt-0.5 text-xs text-slate-500">Включить или выключить все</div>
+                <div className="text-sm font-medium text-[var(--pf-text)]">Уведомления в Telegram</div>
+                <div className="mt-0.5 text-xs text-[var(--pf-text-dim)]">Включить или выключить все</div>
               </div>
               <Toggle
                 checked={notifications.enabled}
@@ -577,16 +577,16 @@ export default function Settings() {
               return (
                 <div
                   key={item.key}
-                  className={`flex items-center gap-4 px-4 py-3.5 ${index < NOTIFICATION_ITEMS.length - 1 ? 'border-b border-white/[0.04]' : ''} ${
+                  className={`flex items-center gap-4 px-4 py-3.5 ${index < NOTIFICATION_ITEMS.length - 1 ? 'border-b border-[var(--pf-border)]' : ''} ${
                     disabledByMaster ? 'pointer-events-none opacity-40' : ''
                   }`}
                 >
-                  <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-white/[0.04]">
-                    <Icon size={13} className="text-slate-400" />
+                  <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--pf-surface-2)]">
+                    <Icon size={13} className="text-[var(--pf-text-dim)]" />
                   </div>
                   <div className="flex-1">
-                    <div className="text-sm text-white">{item.label}</div>
-                    <div className="text-xs text-slate-500">{item.desc}</div>
+                    <div className="text-sm text-[var(--pf-text)]">{item.label}</div>
+                    <div className="text-xs text-[var(--pf-text-dim)]">{item.desc}</div>
                   </div>
                   <Toggle
                     compact

@@ -380,7 +380,7 @@ export default function Accounts() {
                         return (
                           <tr
                             key={acc.id}
-                            className="cursor-pointer hover:bg-white/[0.03]"
+                            className="cursor-pointer hover:bg-[var(--pf-surface-2)]"
                             onClick={() => openAccountSheet(acc.id)}
                           >
                             <td>

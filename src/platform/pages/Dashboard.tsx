@@ -129,7 +129,7 @@ function WorkerDot({ active, color }: { active: boolean; color: 'emerald' | 'blu
     amber: 'bg-amber-400',
   } as const;
 
-  const inactiveClass = 'bg-slate-600';
+  const inactiveClass = 'bg-[var(--pf-surface-3)]';
 
   return (
     <span className="relative inline-flex h-2 w-2">
@@ -258,43 +258,43 @@ export default function Dashboard() {
           <Loader2 size={28} className="animate-spin text-[var(--pf-accent)]" />
         </div>
       ) : loadError ? (
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+        <div className="rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-surface)] p-4">
           <RequestErrorState message={loadError} onRetry={() => setReloadKey(prev => prev + 1)} />
         </div>
       ) : (
         <div className="space-y-4 sm:space-y-5 lg:space-y-6">
-          <section className="mb-2 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 backdrop-blur-sm sm:px-5">
+          <section className="mb-2 rounded-xl border border-[var(--pf-border)] bg-[var(--pf-surface-2)] px-4 py-3 backdrop-blur-sm sm:px-5">
             <div className="flex flex-wrap items-center gap-3 sm:gap-4 lg:gap-6">
               <div className="inline-flex items-center gap-2">
                 <WorkerDot active={status.runner.active} color="emerald" />
-                <span className="text-xs text-slate-400">Runner</span>
+                <span className="text-xs text-[var(--pf-text-dim)]">Runner</span>
                 <span className="text-xs font-medium text-emerald-400">
                   {status.runner.active ? `активен (${status.runner.count}/${status.total})` : 'остановлен'}
                 </span>
               </div>
 
-              <div className="hidden h-3 w-px bg-white/10 sm:block" />
+              <div className="hidden h-3 w-px bg-[var(--pf-surface-3)] sm:block" />
 
               <div className="inline-flex items-center gap-2">
                 <WorkerDot active={status.keeper.active} color="blue" />
-                <span className="text-xs text-slate-400">Keeper</span>
+                <span className="text-xs text-[var(--pf-text-dim)]">Keeper</span>
                 <span className="text-xs font-medium text-blue-400">
                   {status.keeper.active ? `онлайн (${status.keeper.count}/${status.total})` : 'оффлайн'}
                 </span>
               </div>
 
-              <div className="hidden h-3 w-px bg-white/10 sm:block" />
+              <div className="hidden h-3 w-px bg-[var(--pf-surface-3)] sm:block" />
 
               <div className="inline-flex items-center gap-2">
                 <WorkerDot active={status.raiser.active} color="amber" />
-                <span className="text-xs text-slate-400">Raiser</span>
+                <span className="text-xs text-[var(--pf-text-dim)]">Raiser</span>
                 <span className="text-xs font-medium text-amber-400">
                   {status.raiser.active ? `запущен (${status.raiser.count}/${status.total})` : 'пауза'}
                 </span>
               </div>
 
-              <div className="text-xs text-slate-500 sm:ml-auto">
-                Последнее событие: <span className="text-slate-400">{formatAgo(status.lastEvent, nowMs)}</span>
+              <div className="text-xs text-[var(--pf-text-soft)] sm:ml-auto">
+                Последнее событие: <span className="text-[var(--pf-text-dim)]">{formatAgo(status.lastEvent, nowMs)}</span>
               </div>
             </div>
           </section>
@@ -337,7 +337,7 @@ export default function Dashboard() {
                   onClick={() => setActiveSlide(idx)}
                   aria-label={`Показать баннер ${idx + 1}`}
                   className={`h-0.5 rounded-full transition-all duration-300 ${
-                    idx === activeSlide ? 'w-6 bg-blue-400' : 'w-2 bg-white/20'
+                    idx === activeSlide ? 'w-6 bg-[var(--pf-accent)]' : 'w-2 bg-[rgba(14,17,22,0.15)]'
                   }`}
                 />
               ))}
@@ -345,20 +345,20 @@ export default function Dashboard() {
           </section>
 
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <article className="group relative overflow-hidden rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-950/50 to-blue-900/20 p-5 transition-all hover:border-blue-500/40">
+            <article className="group relative overflow-hidden rounded-xl border border-[rgba(58,47,224,0.15)] bg-gradient-to-br from-[var(--pf-accent-soft)] to-transparent p-5 transition-all hover:border-blue-500/40">
               <div className="absolute -right-4 -top-4 h-20 w-20 rounded-full bg-blue-500/10" />
 
               <div className="mb-3 flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/20">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--pf-accent-soft)]">
                   <Send size={18} className="text-blue-400" />
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-white">Telegram канал</div>
-                  <div className="mt-0.5 text-xs text-slate-400">2 400 подписчиков</div>
+                  <div className="text-sm font-semibold text-[var(--pf-text)]">Telegram канал</div>
+                  <div className="mt-0.5 text-xs text-[var(--pf-text-dim)]">2 400 подписчиков</div>
                 </div>
               </div>
 
-              <p className="mb-4 text-xs text-slate-400">Новости платформы, обновления и эксклюзивные советы</p>
+              <p className="mb-4 text-xs text-[var(--pf-text-dim)]">Новости платформы, обновления и эксклюзивные советы</p>
               <a
                 href="https://t.me/funpaycloud"
                 target="_blank"
@@ -376,12 +376,12 @@ export default function Dashboard() {
                   VK
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-white">Группа ВКонтакте</div>
-                  <div className="mt-0.5 text-xs text-slate-400">Кейсы и обсуждения продавцов</div>
+                  <div className="text-sm font-semibold text-[var(--pf-text)]">Группа ВКонтакте</div>
+                  <div className="mt-0.5 text-xs text-[var(--pf-text-dim)]">Кейсы и обсуждения продавцов</div>
                 </div>
               </div>
 
-              <p className="mb-4 text-xs text-slate-400">Разборы ниш, связки и реальные результаты участников сообщества</p>
+              <p className="mb-4 text-xs text-[var(--pf-text-dim)]">Разборы ниш, связки и реальные результаты участников сообщества</p>
               <a
                 href="https://vk.com/funpaycloud"
                 target="_blank"
@@ -393,28 +393,28 @@ export default function Dashboard() {
               </a>
             </article>
 
-            <article className="group rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-950/30 to-transparent p-5 transition-colors hover:border-emerald-500/45 sm:col-span-2 xl:col-span-1">
+            <article className="group rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-transparent p-5 transition-colors hover:border-emerald-500/35 sm:col-span-2 xl:col-span-1">
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20">
-                    <MessageCircle size={18} className="text-emerald-400" />
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15">
+                    <MessageCircle size={18} className="text-emerald-600" />
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-white">Поддержка</div>
-                    <div className="mt-0.5 text-xs text-slate-400">Поможем с настройкой и ошибками</div>
+                    <div className="text-sm font-semibold text-[var(--pf-text)]">Поддержка</div>
+                    <div className="mt-0.5 text-xs text-[var(--pf-text-dim)]">Поможем с настройкой и ошибками</div>
                   </div>
                 </div>
-                <span className="inline-flex items-center rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
+                <span className="inline-flex items-center rounded-full border border-emerald-600/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
                   ~ 30 мин
                 </span>
               </div>
 
-              <p className="mb-4 text-xs text-slate-400">Если что-то сломалось — команда на связи и помогает восстановить поток продаж.</p>
+              <p className="mb-4 text-xs text-[var(--pf-text-dim)]">Если что-то сломалось — команда на связи и помогает восстановить поток продаж.</p>
               <a
                 href="https://t.me/funpaycloud_support"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-300 transition-colors group-hover:text-emerald-200"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 transition-colors group-hover:text-emerald-800"
               >
                 Написать
                 <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
@@ -422,49 +422,49 @@ export default function Dashboard() {
             </article>
           </section>
 
-          <section className="overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02]">
-            <div className="grid grid-cols-1 divide-y divide-white/[0.06] sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+          <section className="overflow-hidden rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-surface)]">
+            <div className="grid grid-cols-1 divide-y divide-[var(--pf-border)] sm:grid-cols-2 sm:divide-x sm:divide-y-0">
               <Link
                 href="/docs"
-                className="group flex items-center gap-4 p-5 transition-colors hover:bg-white/[0.03] sm:p-6"
+                className="group flex items-center gap-4 p-5 transition-colors hover:bg-[var(--pf-surface-2)] sm:p-6"
               >
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10">
-                  <BookOpen size={20} className="text-amber-400" />
+                  <BookOpen size={20} className="text-amber-600" />
                 </div>
                 <div className="flex-1">
-                  <div className="mb-1 text-sm font-semibold text-white">Документация</div>
-                  <div className="text-xs text-slate-500">Подробные инструкции по всем функциям</div>
+                  <div className="mb-1 text-sm font-semibold text-[var(--pf-text)]">Документация</div>
+                  <div className="text-xs text-[var(--pf-text-dim)]">Подробные инструкции по всем функциям</div>
                 </div>
-                <ArrowRight size={16} className="text-slate-600 transition-all group-hover:translate-x-0.5 group-hover:text-slate-400" />
+                <ArrowRight size={16} className="text-[var(--pf-text-soft)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--pf-text-dim)]" />
               </Link>
 
               <Link
                 href="/blog"
-                className="group flex items-center gap-4 p-5 transition-colors hover:bg-white/[0.03] sm:p-6"
+                className="group flex items-center gap-4 p-5 transition-colors hover:bg-[var(--pf-surface-2)] sm:p-6"
               >
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/10">
-                  <FileText size={20} className="text-purple-400" />
+                  <FileText size={20} className="text-purple-600" />
                 </div>
                 <div className="flex-1">
-                  <div className="mb-1 text-sm font-semibold text-white">Блог</div>
-                  <div className="text-xs text-slate-500">Кейсы и советы для продавцов</div>
+                  <div className="mb-1 text-sm font-semibold text-[var(--pf-text)]">Блог</div>
+                  <div className="text-xs text-[var(--pf-text-dim)]">Кейсы и советы для продавцов</div>
                 </div>
-                <ArrowRight size={16} className="text-slate-600 transition-all group-hover:translate-x-0.5 group-hover:text-slate-400" />
+                <ArrowRight size={16} className="text-[var(--pf-text-soft)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--pf-text-dim)]" />
               </Link>
             </div>
           </section>
 
-          <section className="rounded-2xl border border-white/[0.06] p-5 sm:p-6">
-            <div className="mb-5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Возможности платформы</div>
+          <section className="rounded-2xl border border-[var(--pf-border)] p-5 sm:p-6">
+            <div className="mb-5 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--pf-text-dim)]">Возможности платформы</div>
 
-            <div className="grid grid-cols-1 gap-px overflow-hidden rounded-xl bg-white/[0.04] sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-px overflow-hidden rounded-xl bg-[var(--pf-surface-3)] sm:grid-cols-2 xl:grid-cols-3">
               {FEATURES.map((feature, idx) => (
-                <article key={feature.title} className="group bg-[var(--bg)] p-5 transition-colors hover:bg-white/[0.02]">
-                  <div className="mb-3 text-2xl font-bold text-white/10 transition-colors group-hover:text-white/20">
+                <article key={feature.title} className="group bg-[var(--pf-surface)] p-5 transition-colors hover:bg-[var(--pf-surface-2)]">
+                  <div className="mb-3 text-2xl font-bold text-[rgba(14,17,22,0.12)] transition-colors group-hover:text-[rgba(14,17,22,0.22)]">
                     {`0${idx + 1}`}
                   </div>
-                  <h3 className="mb-1 text-sm font-medium text-white">{feature.title}</h3>
-                  <p className="text-xs text-slate-500">{feature.desc}</p>
+                  <h3 className="mb-1 text-sm font-medium text-[var(--pf-text)]">{feature.title}</h3>
+                  <p className="text-xs text-[var(--pf-text-dim)]">{feature.desc}</p>
                 </article>
               ))}
             </div>
