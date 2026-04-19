@@ -1,25 +1,27 @@
 :root {
   /* Light theme — aligned with landing palette */
-  --pf-bg: #FAF8F3;
-  --pf-bg-soft: #F2EEE6;
+  --pf-bg: #FBFAF7;
+  --pf-bg-soft: #EDF2FA;
   --pf-surface: #FFFFFF;
-  --pf-surface-2: #F3EFE7;
-  --pf-surface-3: #E8E1D6;
+  --pf-surface-2: #E5ECF8;
+  --pf-surface-3: #C2CFE8;
   --pf-elevated: #FFFFFF;
+  --pf-bg-translucent: rgba(251, 250, 247, 0.97);
+  --pf-bg-translucent-strong: rgba(251, 250, 247, 0.98);
 
-  --pf-border: rgba(14, 17, 22, 0.14);
-  --pf-border-strong: rgba(14, 17, 22, 0.24);
+  --pf-border: rgba(14, 17, 22, 0.18);
+  --pf-border-strong: rgba(14, 17, 22, 0.28);
 
   --pf-text: #0E1116;
-  --pf-text-muted: #1F2530;
-  --pf-text-dim: #4D5665;
-  --pf-text-soft: #6E7684;
+  --pf-text-muted: #1D2431;
+  --pf-text-dim: #3F495C;
+  --pf-text-soft: #5B667A;
 
   --pf-accent: #3A2FE0;
   --pf-accent-2: #2F25C8;
   --pf-accent-hover: #4B3FF5;
-  --pf-accent-soft: #E7E4FF;
-  --pf-accent-soft-strong: rgba(58, 47, 224, 0.22);
+  --pf-accent-soft: #E8E7FF;
+  --pf-accent-soft-strong: rgba(58, 47, 224, 0.26);
 
   --pf-success: #0E8A57;
   --pf-warning: #B86E00;
@@ -32,14 +34,14 @@
 
   --pf-control-h: 38px;
 
-  --pf-shadow-soft: 0 1px 2px rgba(14, 17, 22, 0.07), 0 4px 12px rgba(14, 17, 22, 0.08);
-  --pf-shadow-card: 0 1px 3px rgba(14, 17, 22, 0.08), 0 8px 20px rgba(14, 17, 22, 0.08);
-  --pf-shadow-elevated: 0 2px 8px rgba(14, 17, 22, 0.10), 0 14px 36px rgba(14, 17, 22, 0.14);
+  --pf-shadow-soft: 0 1px 2px rgba(14, 17, 22, 0.08), 0 6px 14px rgba(14, 17, 22, 0.10);
+  --pf-shadow-card: 0 1px 3px rgba(14, 17, 22, 0.10), 0 10px 24px rgba(14, 17, 22, 0.11);
+  --pf-shadow-elevated: 0 2px 8px rgba(14, 17, 22, 0.12), 0 16px 38px rgba(14, 17, 22, 0.18);
 
   --pf-overlay-bg: rgba(14, 17, 22, 0.48);
   --pf-overlay-blur: 8px;
-  --pf-overlay-border: rgba(14, 17, 22, 0.20);
-  --pf-surface-overlay: rgba(255, 255, 255, 0.995);
+  --pf-overlay-border: rgba(14, 17, 22, 0.28);
+  --pf-surface-overlay: rgba(255, 255, 255, 0.985);
 
   --pf-sidebar-width: 256px;
   --pf-z-overlay: 60;
@@ -142,7 +144,7 @@
   border-bottom: 1px solid var(--pf-border);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  background: rgba(250, 248, 243, 0.97);
+  background: var(--pf-bg-translucent);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -165,7 +167,7 @@
 .platform-topbar-header {
   height: 60px;
   border-bottom: 1px solid var(--pf-border);
-  background: rgba(250, 248, 243, 0.98);
+  background: var(--pf-bg-translucent-strong);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   padding: 0 16px;
@@ -1863,7 +1865,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  background: rgba(251, 250, 247, 0.96);
+  background: var(--pf-bg-translucent);
 }
 
 .platform-thread-messages {
@@ -1987,7 +1989,7 @@
   padding: 10px 12px 12px;
   display: grid;
   gap: 8px;
-  background: rgba(251, 250, 247, 0.96);
+  background: var(--pf-bg-translucent);
 }
 
 .platform-composer-row {

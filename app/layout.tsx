@@ -74,7 +74,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Toaster
           position="bottom-right"
           richColors
-          toastOptions={{ style: { background: 'var(--pf-surface-2)', border: '1px solid var(--pf-border)', color: '#fff' } }}
+          toastOptions={{
+            style: {
+              background: 'var(--pf-surface-overlay)',
+              border: '1px solid var(--pf-border-strong)',
+              color: 'var(--pf-text)',
+            },
+          }}
         />
       </body>
     </html>
