@@ -570,7 +570,7 @@
   background: var(--pf-bg-soft);
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow-y: hidden;
   overflow-x: hidden;
   scrollbar-gutter: stable both-edges;
 }
@@ -599,6 +599,7 @@
   padding: 12px 10px;
   border-bottom: 1px solid var(--pf-border);
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .platform-sidebar-brand {
@@ -618,6 +619,9 @@
 
 .platform-nav-wrap {
   padding: 10px 8px 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .platform-mobile-links {
@@ -758,6 +762,7 @@
   margin-top: auto;
   padding: 12px;
   border-top: 1px solid var(--pf-border);
+  flex-shrink: 0;
 }
 
 .platform-subscription-card {
