@@ -439,6 +439,10 @@ body:has(.landing) {
   padding: clamp(52px, 7vw, 72px) 0 clamp(24px, 4.4vw, 40px);
   position: relative;
   overflow: hidden;
+  background-image:
+    radial-gradient(ellipse 80% 65% at 8% 100%,  rgba(39, 36, 213, 0.14) 0%, transparent 68%),
+    radial-gradient(ellipse 65% 55% at 92% 98%,  rgba(79, 52, 230, 0.11) 0%, transparent 62%),
+    radial-gradient(ellipse 60% 45% at 50% 115%,  rgba(55, 38, 215, 0.09) 0%, transparent 55%);
 }
 
 .landing .eyebrow {
@@ -1806,7 +1810,10 @@ body:has(.landing) {
 }
 
 .landing footer {
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 70% 90% at 6% 0%,  rgba(39, 36, 213, 0.09) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 75% at 94% 0%,  rgba(79, 52, 230, 0.07) 0%, transparent 55%);
   padding: 56px 0 40px;
   border-top: 1px solid var(--line);
 }
@@ -2137,6 +2144,15 @@ body:has(.landing) {
 
   .landing .hero {
     padding-top: 44px;
+    background-image:
+      radial-gradient(ellipse 90% 55% at 8% 100%,  rgba(39, 36, 213, 0.10) 0%, transparent 65%),
+      radial-gradient(ellipse 75% 45% at 92% 98%,  rgba(79, 52, 230, 0.08) 0%, transparent 60%);
+  }
+
+  .landing footer {
+    background-image:
+      radial-gradient(ellipse 85% 75% at 6% 0%,  rgba(39, 36, 213, 0.07) 0%, transparent 58%),
+      radial-gradient(ellipse 70% 60% at 94% 0%,  rgba(79, 52, 230, 0.05) 0%, transparent 52%);
   }
 
   .landing .landing-logo-full-footer {
