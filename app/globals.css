@@ -178,8 +178,8 @@
   --good: #0e8a57;
   --warn: #b86e00;
   --bad: #b23a3a;
-  --bg-pattern-dot: rgba(14, 17, 22, 0.13);
-  --bg-pattern-dot-soft: rgba(14, 17, 22, 0.065);
+  --bg-pattern-dot: rgba(14, 17, 22, 0.11);
+  --bg-pattern-dot-soft: rgba(14, 17, 22, 0.055);
   min-height: 100vh;
   background-color: var(--bg);
   background-image:
