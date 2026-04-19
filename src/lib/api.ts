@@ -465,6 +465,34 @@ export type ApiPlugin = {
   installed: boolean;
 };
 
+export type ApiConfigField = {
+  key: string;
+  label: string;
+  type: string;
+  required: boolean;
+  default: string;
+  options: string[] | null;
+};
+
+export type ApiStatField = {
+  key: string;
+  label: string;
+  icon: string;
+};
+
+export type ApiPluginSchema = {
+  config_schema: ApiConfigField[];
+  stats_schema: ApiStatField[];
+};
+
+export type ApiPluginLog = {
+  id: number;
+  level: 'info' | 'error' | 'debug';
+  event: string;
+  payload: Record<string, unknown>;
+  created_at: string;
+};
+
 export const pluginsApi = {
   list: (account_id?: number | string) => {
     const query = account_id !== undefined ? `?account_id=${account_id}` : '';
@@ -476,6 +504,19 @@ export const pluginsApi = {
     apiRequest(`/api/plugins/${slug}/install?account_id=${account_id}`, { method: 'POST' }),
   uninstall: (slug: string, account_id: number | string) =>
     apiRequest(`/api/plugins/${slug}?account_id=${account_id}`, { method: 'DELETE' }),
+  schema: (slug: string, account_id: number | string) =>
+    apiRequest<ApiPluginSchema>(`/api/plugins/${slug}/schema?account_id=${account_id}`),
+  getConfig: (slug: string, account_id: number | string) =>
+    apiRequest<Record<string, string>>(`/api/plugins/${slug}/config?account_id=${account_id}`),
+  saveConfig: (slug: string, account_id: number | string, config: Record<string, string>) =>
+    apiRequest(`/api/plugins/${slug}/config?account_id=${account_id}`, {
+      method: 'PUT',
+      body: JSON.stringify(config),
+    }),
+  logs: (slug: string, account_id: number | string, limit = 50) =>
+    apiRequest<ApiPluginLog[]>(`/api/plugins/${slug}/logs?account_id=${account_id}&limit=${limit}`),
+  stats: (slug: string, account_id: number | string, days = 7) =>
+    apiRequest<Record<string, number>>(`/api/plugins/${slug}/stats?account_id=${account_id}&days=${days}`),
 };
 
 // ── Settings ──────────────────────────────────────────────────────────────────

@@ -2,7 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { Loader2, Search } from 'lucide-react';
+import { Loader2, Search, Settings2 } from 'lucide-react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import { accountsApi, ApiAccount, ApiPlugin, pluginsApi } from '@/lib/api';
 import { DataTableWrap, EmptyState, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard, ToolbarRow } from '@/platform/components/primitives';
@@ -149,9 +150,16 @@ export default function Plugins() {
                             </span>
                           </td>
                           <td style={{ textAlign: 'right' }}>
-                            <button className={plugin.installed ? 'platform-btn-secondary' : 'platform-btn-primary'} onClick={() => toggle(plugin)} disabled={togglingIDs.has(plugin.id)}>
-                              {togglingIDs.has(plugin.id) ? <Loader2 size={14} className="animate-spin" /> : plugin.installed ? 'Удалить' : 'Установить'}
-                            </button>
+                            <div className="flex items-center justify-end gap-2">
+                              {plugin.installed && (
+                                <Link href={`/platform/plugins/${plugin.slug}`} className="platform-btn-secondary flex items-center gap-1.5">
+                                  <Settings2 size={13} /> Настроить
+                                </Link>
+                              )}
+                              <button className={plugin.installed ? 'platform-btn-secondary' : 'platform-btn-primary'} onClick={() => toggle(plugin)} disabled={togglingIDs.has(plugin.id)}>
+                                {togglingIDs.has(plugin.id) ? <Loader2 size={14} className="animate-spin" /> : plugin.installed ? 'Удалить' : 'Установить'}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
