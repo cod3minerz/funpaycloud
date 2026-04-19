@@ -1,26 +1,26 @@
 :root {
   /* Light theme — aligned with landing palette */
   --pf-bg: #FBFAF7;
-  --pf-bg-soft: #EDF2FA;
+  --pf-bg-soft: #FBFAF7;
   --pf-surface: #FFFFFF;
-  --pf-surface-2: #E5ECF8;
-  --pf-surface-3: #C2CFE8;
+  --pf-surface-2: #F3F1EB;
+  --pf-surface-3: #E7E3DA;
   --pf-elevated: #FFFFFF;
   --pf-bg-translucent: rgba(251, 250, 247, 0.97);
   --pf-bg-translucent-strong: rgba(251, 250, 247, 0.98);
 
-  --pf-border: rgba(14, 17, 22, 0.18);
-  --pf-border-strong: rgba(14, 17, 22, 0.28);
+  --pf-border: #E7E3DA;
+  --pf-border-strong: #D9D4C6;
 
   --pf-text: #0E1116;
-  --pf-text-muted: #1D2431;
-  --pf-text-dim: #3F495C;
-  --pf-text-soft: #5B667A;
+  --pf-text-muted: #2A2F38;
+  --pf-text-dim: #556173;
+  --pf-text-soft: #6B7280;
 
   --pf-accent: #3A2FE0;
   --pf-accent-2: #2F25C8;
   --pf-accent-hover: #4B3FF5;
-  --pf-accent-soft: #E8E7FF;
+  --pf-accent-soft: #EEECFE;
   --pf-accent-soft-strong: rgba(58, 47, 224, 0.26);
 
   --pf-success: #0E8A57;
@@ -40,8 +40,8 @@
 
   --pf-overlay-bg: rgba(14, 17, 22, 0.48);
   --pf-overlay-blur: 8px;
-  --pf-overlay-border: rgba(14, 17, 22, 0.28);
-  --pf-surface-overlay: rgba(255, 255, 255, 0.985);
+  --pf-overlay-border: #D9D4C6;
+  --pf-surface-overlay: rgba(255, 255, 255, 0.98);
 
   --pf-sidebar-width: 256px;
   --pf-z-overlay: 60;
