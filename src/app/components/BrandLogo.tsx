@@ -15,7 +15,7 @@ export function BrandLogo({ className = "", compact = false, iconOnly = false }:
         width={32}
         height={22}
         unoptimized
-        className={`block h-auto w-auto object-contain ${className}`.trim()}
+        className={`block h-[22px] w-auto max-w-none object-contain ${className}`.trim()}
         priority
       />
     );
@@ -28,7 +28,7 @@ export function BrandLogo({ className = "", compact = false, iconOnly = false }:
       width={compact ? 168 : 190}
       height={compact ? 27 : 30}
       unoptimized
-      className={`block h-auto w-auto object-contain ${className}`.trim()}
+      className={`block ${compact ? 'h-[27px]' : 'h-[30px]'} w-auto max-w-none object-contain ${className}`.trim()}
       priority
     />
   );
