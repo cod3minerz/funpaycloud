@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, ChevronDown, CreditCard, LifeBuoy, LogOut, PanelLeft, Settings } from 'lucide-react';
+import { Bell, ChevronDown, CreditCard, LifeBuoy, LogOut, Moon, PanelLeft, Settings, Sun } from 'lucide-react';
 import { settingsApi, type ProfileData } from '@/lib/api';
 import { logout } from '@/lib/auth';
 import {
@@ -18,6 +18,8 @@ type PlatformTopBarProps = {
   onOpenMobileSidebar: () => void;
   sidebarCollapsed: boolean;
   onToggleSidebarCollapse: () => void;
+  theme: 'light' | 'dark';
+  onToggleTheme: () => void;
 };
 
 type NotificationItem = {
@@ -32,6 +34,8 @@ export default function PlatformTopBar({
   onOpenMobileSidebar,
   sidebarCollapsed,
   onToggleSidebarCollapse,
+  theme,
+  onToggleTheme,
 }: PlatformTopBarProps) {
   const router = useRouter();
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -96,6 +100,15 @@ export default function PlatformTopBar({
         </button>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            aria-label={theme === 'dark' ? 'Переключить на светлую тему' : 'Переключить на тёмную тему'}
+            className="h-9 w-9 inline-flex items-center justify-center rounded-[10px] border border-[var(--pf-border-strong)] bg-[var(--pf-surface)] text-[var(--pf-text-muted)] transition-all hover:border-[var(--pf-accent)] hover:text-[var(--pf-accent-2)] hover:bg-[var(--pf-accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--pf-accent)]/40"
+            onClick={onToggleTheme}
+          >
+            {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+          </button>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
