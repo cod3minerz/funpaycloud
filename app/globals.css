@@ -1970,6 +1970,10 @@ body:has(.landing) {
 }
 
 @media (max-width: 768px) {
+  .landing section {
+    padding: 62px 0;
+  }
+
   .landing .wrap {
     padding: 0 16px;
   }
@@ -1992,6 +1996,15 @@ body:has(.landing) {
 
   .landing .hero-note {
     gap: 10px 14px;
+  }
+
+  .landing .feat-grid,
+  .landing .cases,
+  .landing .steps,
+  .landing .testis,
+  .landing .plans,
+  .landing .faq-list {
+    gap: 14px;
   }
 
   .landing .mock-frame {
@@ -2103,7 +2116,7 @@ body:has(.landing) {
   }
 
   .landing section {
-    padding: 54px 0;
+    padding: 66px 0;
   }
 
   .landing .hero {
