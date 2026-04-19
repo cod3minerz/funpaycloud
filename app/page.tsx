@@ -12,6 +12,7 @@ import LandingPricing from '@/components/landing/LandingPricing';
 import LandingProblem from '@/components/landing/LandingProblem';
 import LandingSocial from '@/components/landing/LandingSocial';
 import LandingUseCases from '@/components/landing/LandingUseCases';
+import SmoothScroll from '@/components/landing/SmoothScroll';
 
 export const metadata: Metadata = {
   title: 'FunPay Cloud — Облачная платформа автоматизации продаж на FunPay',
@@ -60,6 +61,7 @@ export default function HomePage() {
 
   return (
     <div className="landing">
+      <SmoothScroll />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}
