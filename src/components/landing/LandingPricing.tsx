@@ -6,6 +6,7 @@ import Button from './Button';
 type Plan = {
   eyebrow: string;
   title: string;
+  oldMonthly: number;
   monthly: number;
   yearly: number;
   items: Array<{ text: string; off?: boolean }>;
@@ -17,6 +18,7 @@ const plans: Plan[] = [
   {
     eyebrow: 'Для старта',
     title: 'Lite',
+    oldMonthly: 299,
     monthly: 149,
     yearly: 119,
     items: [
@@ -35,6 +37,7 @@ const plans: Plan[] = [
   {
     eyebrow: 'Популярный',
     title: 'Pro',
+    oldMonthly: 599,
     monthly: 299,
     yearly: 239,
     items: [
@@ -53,6 +56,7 @@ const plans: Plan[] = [
   {
     eyebrow: 'Для масштаба',
     title: 'Ultra',
+    oldMonthly: 1499,
     monthly: 599,
     yearly: 479,
     items: [
@@ -92,32 +96,44 @@ export default function LandingPricing() {
         <div className="plans">
           {plans.map((plan) => (
             <div key={plan.title} className={`plan ${plan.variant === 'pro' ? 'pro' : ''}`}>
-              {plan.variant === 'pro' ? <div className="badge-best">Лучший выбор</div> : null}
-              <div>
-                <span className="plan-eyebrow">{plan.eyebrow}</span>
-                <h3 className="plan-title">{plan.title}</h3>
-              </div>
+              {(() => {
+                const oldPrice = mode === 'm' ? plan.oldMonthly : Math.round(plan.oldMonthly * 0.8);
+                const currentPrice = mode === 'm' ? plan.monthly : plan.yearly;
 
-              <div className="price-val">
-                <span className="amt">{mode === 'm' ? plan.monthly : plan.yearly}</span>₽ <span className="per">/ мес</span>
-              </div>
+                return (
+                  <>
+                    {plan.variant === 'pro' ? <div className="badge-best">Лучший выбор</div> : null}
+                    <div>
+                      <span className="plan-eyebrow">{plan.eyebrow}</span>
+                      <h3 className="plan-title">{plan.title}</h3>
+                    </div>
 
-              <ul>
-                {plan.items.map((item) => (
-                  <li key={item.text} className={item.off ? 'off' : ''}>
-                    {item.text}
-                  </li>
-                ))}
-              </ul>
+                    <div className="price-old">
+                      {oldPrice.toLocaleString('ru-RU')}₽
+                    </div>
+                    <div className="price-val">
+                      <span className="amt">{currentPrice.toLocaleString('ru-RU')}</span>₽ <span className="per">/ мес</span>
+                    </div>
 
-              <Button
-                variant={plan.variant === 'pro' ? 'accent' : 'outline'}
-                size="lg"
-                href="/auth/register"
-                className="plan-cta"
-              >
-                {plan.cta}
-              </Button>
+                    <ul>
+                      {plan.items.map((item) => (
+                        <li key={item.text} className={item.off ? 'off' : ''}>
+                          {item.text}
+                        </li>
+                      ))}
+                    </ul>
+
+                    <Button
+                      variant={plan.variant === 'pro' ? 'accent' : 'outline'}
+                      size="lg"
+                      href="/auth/register"
+                      className="plan-cta"
+                    >
+                      {plan.cta}
+                    </Button>
+                  </>
+                );
+              })()}
             </div>
           ))}
         </div>
