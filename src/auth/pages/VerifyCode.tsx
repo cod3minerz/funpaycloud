@@ -126,8 +126,8 @@ export default function VerifyCodePage({ email: rawEmail, mode: rawMode }: Verif
       subtitle="Введите 6-значный код, отправленный на вашу почту."
     >
       <form onSubmit={handleSubmit} onPaste={handlePaste} className="space-y-5">
-        <div className="rounded-xl border border-slate-200/12 bg-[rgba(15,23,42,0.65)] p-3 text-center text-[13px] text-slate-300">
-          Код отправлен на <span className="font-semibold text-slate-100">{maskEmail(email)}</span>
+        <div className="rounded-xl border border-[var(--line-2)] bg-[var(--bg-2)] p-3 text-center text-[13px] text-[var(--ink-2)]">
+          Код отправлен на <span className="font-semibold text-[var(--ink)]">{maskEmail(email)}</span>
         </div>
 
         <div className="space-y-2">
@@ -143,7 +143,7 @@ export default function VerifyCodePage({ email: rawEmail, mode: rawMode }: Verif
                 onKeyDown={(event) => handleKeyDown(index, event)}
                 maxLength={1}
                 inputMode="numeric"
-                className="h-12 rounded-xl border border-slate-200/12 bg-[rgba(15,23,42,0.78)] text-center text-[20px] font-bold text-white outline-none transition focus:border-blue-300/45 focus:ring-2 focus:ring-blue-400/25"
+                className="h-12 rounded-xl border border-[var(--line-2)] bg-[var(--bg)] text-center text-[20px] font-bold text-[var(--ink)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
               />
             ))}
           </div>
@@ -152,7 +152,7 @@ export default function VerifyCodePage({ email: rawEmail, mode: rawMode }: Verif
         <button
           type="submit"
           disabled={loading}
-          className="platform-btn-primary h-12 w-full rounded-xl text-[14px] font-bold disabled:opacity-60"
+          className="btn btn-primary h-12 w-full justify-center rounded-xl text-[14px] font-bold disabled:opacity-60"
         >
           {loading ? (
             <Loader2 size={15} className="animate-spin" />
@@ -164,7 +164,7 @@ export default function VerifyCodePage({ email: rawEmail, mode: rawMode }: Verif
         <div className="flex flex-col items-center gap-2 text-[13px]">
           <button
             type="button"
-            className="text-slate-300 transition hover:text-white disabled:opacity-50"
+            className="text-[var(--ink-2)] transition hover:text-[var(--ink)] disabled:opacity-50"
             onClick={handleResend}
             disabled={seconds > 0 || resendLoading}
           >
@@ -175,7 +175,7 @@ export default function VerifyCodePage({ email: rawEmail, mode: rawMode }: Verif
           </button>
           <Link
             href={mode === "login" ? "/auth/login" : "/auth/register"}
-            className="inline-flex items-center gap-1.5 text-slate-400 transition hover:text-slate-200"
+            className="inline-flex items-center gap-1.5 text-[var(--muted)] transition hover:text-[var(--ink-2)]"
           >
             <ArrowLeft size={13} />
             Изменить email

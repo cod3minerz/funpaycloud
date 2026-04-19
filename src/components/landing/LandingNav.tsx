@@ -14,7 +14,11 @@ const links = [
   { href: '/blog', label: 'Блог' },
 ];
 
-export default function LandingNav() {
+type LandingNavProps = {
+  homeAnchors?: boolean;
+};
+
+export default function LandingNav({ homeAnchors = false }: LandingNavProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const navRef = useRef<HTMLElement | null>(null);
 
@@ -61,7 +65,7 @@ export default function LandingNav() {
   const onAnchorClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
     closeMenu();
 
-    if (!href.startsWith('#')) {
+    if (!href.startsWith('#') || homeAnchors) {
       return;
     }
 
@@ -93,7 +97,7 @@ export default function LandingNav() {
           {links.map((link) => (
             <a
               key={link.href}
-              href={link.href}
+              href={homeAnchors && link.href.startsWith('#') ? `/${link.href}` : link.href}
               onClick={(event) => onAnchorClick(event, link.href)}
             >
               {link.label}
@@ -134,7 +138,7 @@ export default function LandingNav() {
             {links.map((link) => (
               <a
                 key={`mobile-${link.href}`}
-                href={link.href}
+                href={homeAnchors && link.href.startsWith('#') ? `/${link.href}` : link.href}
                 onClick={(event) => onAnchorClick(event, link.href)}
                 className="nav-mobile-link"
               >

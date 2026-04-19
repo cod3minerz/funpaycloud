@@ -11,7 +11,7 @@ import { setToken } from "@/lib/auth";
 import { sanitizeInput, validateEmail, validatePassword } from "@/lib/sanitize";
 
 const fieldClass =
-  "h-12 w-full rounded-xl border border-slate-200/12 bg-[rgba(15,23,42,0.72)] px-4 text-[14px] text-white placeholder:text-slate-500 outline-none transition focus:border-blue-300/45 focus:ring-2 focus:ring-blue-400/25";
+  "h-12 w-full rounded-xl border border-[var(--line-2)] bg-[var(--bg)] px-4 text-[14px] text-[var(--ink)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]";
 
 function GoogleMark() {
   return (
@@ -78,7 +78,7 @@ export default function LoginPage() {
     >
       <form onSubmit={handleLogin} className="space-y-4">
         <div className="space-y-1.5">
-          <label className="text-[13px] font-semibold text-slate-300">Email</label>
+          <label className="text-[13px] font-semibold text-[var(--ink-2)]">Email</label>
           <input
             className={fieldClass}
             type="email"
@@ -87,14 +87,14 @@ export default function LoginPage() {
             onChange={(event) => setEmail(event.target.value)}
           />
           {fieldErrors.email && (
-            <p className="text-[12px] text-red-400">{fieldErrors.email}</p>
+            <p className="text-[12px] text-[var(--bad)]">{fieldErrors.email}</p>
           )}
         </div>
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-3">
-            <label className="text-[13px] font-semibold text-slate-300">Пароль</label>
-            <a href="#" className="text-[12px] text-blue-300 hover:text-blue-200">
+            <label className="text-[13px] font-semibold text-[var(--ink-2)]">Пароль</label>
+            <a href="#" className="text-[12px] text-[var(--accent)] hover:opacity-90">
               Забыли пароль?
             </a>
           </div>
@@ -106,29 +106,29 @@ export default function LoginPage() {
             onChange={(event) => setPassword(event.target.value)}
           />
           {fieldErrors.password && (
-            <p className="text-[12px] text-red-400">{fieldErrors.password}</p>
+            <p className="text-[12px] text-[var(--bad)]">{fieldErrors.password}</p>
           )}
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          className="platform-btn-primary h-12 w-full rounded-xl text-[14px] font-bold disabled:opacity-60"
+          className="btn btn-primary h-12 w-full justify-center rounded-xl text-[14px] font-bold disabled:opacity-60"
         >
           {loading ? <Loader2 size={15} className="animate-spin" /> : <>Войти <ArrowRight size={15} /></>}
         </button>
 
         <button
           type="button"
-          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200/16 bg-[rgba(15,23,42,0.72)] text-[14px] font-semibold text-slate-200 transition hover:bg-slate-700/30"
+          className="btn btn-outline h-12 w-full justify-center rounded-xl text-[14px] font-semibold"
         >
           <GoogleMark />
           Войти через Google
         </button>
 
-        <p className="pt-1 text-center text-[13px] text-slate-400">
+        <p className="pt-1 text-center text-[13px] text-[var(--muted)]">
           Нет аккаунта?{" "}
-          <Link href="/auth/register" className="font-semibold text-blue-300 hover:text-blue-200">
+          <Link href="/auth/register" className="font-semibold text-[var(--accent)] hover:opacity-90">
             Зарегистрироваться
           </Link>
         </p>

@@ -10,7 +10,7 @@ import { authApi } from "@/lib/api";
 import { sanitizeInput, validateEmail, validatePassword } from "@/lib/sanitize";
 
 const fieldClass =
-  "h-12 w-full rounded-xl border border-slate-200/12 bg-[rgba(15,23,42,0.72)] px-4 text-[14px] text-white placeholder:text-slate-500 outline-none transition focus:border-blue-300/45 focus:ring-2 focus:ring-blue-400/25";
+  "h-12 w-full rounded-xl border border-[var(--line-2)] bg-[var(--bg)] px-4 text-[14px] text-[var(--ink)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]";
 
 function strengthScore(password: string) {
   let score = 0;
@@ -95,7 +95,7 @@ export default function RegisterPage() {
     >
       <form onSubmit={handleRegister} className="space-y-4">
         <div className="space-y-1.5">
-          <label className="text-[13px] font-semibold text-slate-300">Email</label>
+          <label className="text-[13px] font-semibold text-[var(--ink-2)]">Email</label>
           <input
             type="email"
             className={fieldClass}
@@ -104,12 +104,12 @@ export default function RegisterPage() {
             onChange={(event) => setEmail(event.target.value)}
           />
           {fieldErrors.email && (
-            <p className="text-[12px] text-red-400">{fieldErrors.email}</p>
+            <p className="text-[12px] text-[var(--bad)]">{fieldErrors.email}</p>
           )}
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-[13px] font-semibold text-slate-300">Пароль</label>
+          <label className="text-[13px] font-semibold text-[var(--ink-2)]">Пароль</label>
           <input
             type="password"
             className={fieldClass}
@@ -118,14 +118,14 @@ export default function RegisterPage() {
             onChange={(event) => setPassword(event.target.value)}
           />
           {fieldErrors.password ? (
-            <p className="text-[12px] text-red-400">{fieldErrors.password}</p>
+            <p className="text-[12px] text-[var(--bad)]">{fieldErrors.password}</p>
           ) : (
-            <div className="flex flex-wrap items-center gap-2 text-[12px] text-slate-400">
+            <div className="flex flex-wrap items-center gap-2 text-[12px] text-[var(--muted)]">
               <span>Минимум 8 символов</span>
-              <span className="text-slate-600">•</span>
+              <span className="text-[var(--line-2)]">•</span>
               <span>Буквы и цифры</span>
-              <span className="text-slate-600">•</span>
-              <span className="text-slate-300">
+              <span className="text-[var(--line-2)]">•</span>
+              <span className="text-[var(--ink-2)]">
                 {score === 0 ? "Слабый" : score === 1 ? "Базовый" : score === 2 ? "Хороший" : "Надежный"}
               </span>
             </div>
@@ -133,7 +133,7 @@ export default function RegisterPage() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-[13px] font-semibold text-slate-300">Подтверждение пароля</label>
+          <label className="text-[13px] font-semibold text-[var(--ink-2)]">Подтверждение пароля</label>
           <input
             type="password"
             className={fieldClass}
@@ -142,14 +142,14 @@ export default function RegisterPage() {
             onChange={(event) => setConfirmPassword(event.target.value)}
           />
           {fieldErrors.confirm && (
-            <p className="text-[12px] text-red-400">{fieldErrors.confirm}</p>
+            <p className="text-[12px] text-[var(--bad)]">{fieldErrors.confirm}</p>
           )}
         </div>
 
-        <div className="rounded-xl border border-slate-200/12 bg-[rgba(15,23,42,0.58)] p-3">
+        <div className="rounded-xl border border-[var(--line-2)] bg-[var(--bg-2)] p-3">
           <button
             type="button"
-            className="inline-flex items-center gap-2 text-[13px] font-semibold text-slate-200 hover:text-white"
+            className="inline-flex items-center gap-2 text-[13px] font-semibold text-[var(--ink-2)] hover:text-[var(--ink)]"
             onClick={() => setHasPromo((prev) => !prev)}
           >
             <Ticket size={14} />
@@ -168,7 +168,7 @@ export default function RegisterPage() {
         <button
           type="submit"
           disabled={loading}
-          className="platform-btn-primary h-12 w-full rounded-xl text-[14px] font-bold disabled:opacity-60"
+          className="btn btn-primary h-12 w-full justify-center rounded-xl text-[14px] font-bold disabled:opacity-60"
         >
           {loading ? (
             <Loader2 size={15} className="animate-spin" />
@@ -179,15 +179,15 @@ export default function RegisterPage() {
 
         <button
           type="button"
-          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200/16 bg-[rgba(15,23,42,0.72)] text-[14px] font-semibold text-slate-200 transition hover:bg-slate-700/30"
+          className="btn btn-outline h-12 w-full justify-center rounded-xl text-[14px] font-semibold"
         >
           <GoogleMark />
           Зарегистрироваться с Google
         </button>
 
-        <p className="pt-1 text-center text-[13px] text-slate-400">
+        <p className="pt-1 text-center text-[13px] text-[var(--muted)]">
           Уже есть аккаунт?{" "}
-          <Link href="/auth/login" className="font-semibold text-blue-300 hover:text-blue-200">
+          <Link href="/auth/login" className="font-semibold text-[var(--accent)] hover:opacity-90">
             Войти
           </Link>
         </p>

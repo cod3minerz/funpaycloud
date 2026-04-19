@@ -43,11 +43,12 @@ export default function LandingFooter() {
           <div className="ft-col">
             <h5>Компания</h5>
             <ul>
-              <li><a href="/blog">О нас</a></li>
+              <li><a href="/#features">О нас</a></li>
               <li><a href="/blog">Блог</a></li>
-              <li><a href="/blog">Партнёрство</a></li>
-              <li><a href="/blog">Политика конфиденциальности</a></li>
-              <li><a href="/blog">Условия использования</a></li>
+              <li><a href="mailto:partners@funpay.cloud">Партнёрство</a></li>
+              <li><a href="/legal/privacy-policy">Политика конфиденциальности</a></li>
+              <li><a href="/legal/terms-of-service">Условия использования</a></li>
+              <li><a href="/legal/disclaimer">Отказ от ответственности</a></li>
             </ul>
           </div>
         </div>
