@@ -4,9 +4,10 @@ type BrandLogoProps = {
   className?: string;
   compact?: boolean;
   iconOnly?: boolean;
+  darkText?: boolean;
 };
 
-export function BrandLogo({ className = "", compact = false, iconOnly = false }: BrandLogoProps) {
+export function BrandLogo({ className = "", compact = false, iconOnly = false, darkText = false }: BrandLogoProps) {
   if (iconOnly) {
     return (
       <Image
@@ -23,7 +24,7 @@ export function BrandLogo({ className = "", compact = false, iconOnly = false }:
 
   return (
     <Image
-      src="/branding/logo_full_new.svg"
+      src={darkText ? "/branding/logo_full_new_dark.svg" : "/branding/logo_full_new.svg"}
       alt="FunPay Cloud"
       width={compact ? 168 : 190}
       height={compact ? 27 : 30}

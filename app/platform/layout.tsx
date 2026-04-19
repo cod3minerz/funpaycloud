@@ -54,7 +54,7 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
       data-theme={theme}
       style={{ ['--pf-sidebar-width' as string]: `${sidebarCollapsed ? 84 : 252}px` }}
     >
-      <Sidebar collapsed={sidebarCollapsed} />
+      <Sidebar collapsed={sidebarCollapsed} theme={theme} />
 
       {mobileSidebarOpen && (
         <button
@@ -65,7 +65,7 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
         />
       )}
 
-      <Sidebar mobile open={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
+      <Sidebar mobile open={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} theme={theme} />
 
       <div className="platform-main">
         <PlatformTopBar

@@ -36,6 +36,7 @@ type SidebarProps = {
   open?: boolean;
   onClose?: () => void;
   collapsed?: boolean;
+  theme?: 'light' | 'dark';
 };
 
 const navGroups = [
@@ -99,6 +100,7 @@ export default function Sidebar({
   open = false,
   onClose,
   collapsed = false,
+  theme = 'light',
 }: SidebarProps) {
   const pathname = usePathname();
   const [currentPlanId, setCurrentPlanId] = useState(() => normalizePlanId(DEFAULT_PLAN_ID));
@@ -144,9 +146,9 @@ export default function Sidebar({
         <div className="platform-sidebar-brand">
           <Link href="/" aria-label="FunPay Cloud" onClick={onClose}>
             {mobile ? (
-              <BrandLogo compact />
+              <BrandLogo compact darkText={theme === 'dark'} />
             ) : (
-              <BrandLogo compact={collapsed} iconOnly={collapsed} />
+              <BrandLogo compact={collapsed} iconOnly={collapsed} darkText={theme === 'dark'} />
             )}
           </Link>
           {mobile && (

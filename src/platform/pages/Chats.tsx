@@ -913,7 +913,7 @@ export default function Chats() {
                     <div className="platform-composer-row">
                       <textarea
                         ref={composerRef}
-                        className="w-full bg-white border border-[var(--pf-border-strong)] rounded-lg px-4 py-3 text-sm text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] resize-none focus:outline-none focus:border-[rgba(58,47,224,0.55)] transition-colors"
+                        className="w-full bg-[var(--pf-elevated)] border border-[var(--pf-border-strong)] rounded-lg px-4 py-3 text-sm text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] resize-none focus:outline-none focus:border-[rgba(58,47,224,0.55)] transition-colors"
                         placeholder="Введите сообщение..."
                         value={inputValue}
                         onChange={event => setInputValue(event.target.value)}

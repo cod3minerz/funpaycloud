@@ -205,7 +205,7 @@ function TestChatPanel({
             }}
             disabled={limitExhausted || testing}
             placeholder={limitExhausted ? 'Лимит исчерпан' : 'Напишите как покупатель...'}
-            className="flex-1 rounded-xl border border-[var(--pf-border-strong)] bg-white px-4 py-2.5 text-sm text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] transition-colors focus:border-[rgba(58,47,224,0.55)] focus:outline-none disabled:opacity-40"
+            className="flex-1 rounded-xl border border-[var(--pf-border-strong)] bg-[var(--pf-elevated)] px-4 py-2.5 text-sm text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] transition-colors focus:border-[rgba(58,47,224,0.55)] focus:outline-none disabled:opacity-40"
           />
           <button
             type="button"
@@ -681,7 +681,7 @@ export default function AIAssistant() {
                   rows={5}
                   maxLength={MAX_PROMPT_LENGTH}
                   placeholder="Например: Я продаю игровые ключи..."
-                  className={`w-full resize-none rounded-xl border bg-white px-4 py-3 text-sm leading-relaxed text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] transition-colors focus:outline-none ${
+                  className={`w-full resize-none rounded-xl border bg-[var(--pf-elevated)] px-4 py-3 text-sm leading-relaxed text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] transition-colors focus:outline-none ${
                     prompt.length > MAX_PROMPT_LENGTH * 0.9
                       ? 'border-amber-500/40 focus:border-amber-500/60'
                       : 'border-[var(--pf-border-strong)] focus:border-[rgba(58,47,224,0.55)]'
