@@ -7,16 +7,15 @@ type BrandLogoProps = {
 };
 
 export function BrandLogo({ className = "", compact = false, iconOnly = false }: BrandLogoProps) {
-  const sizeClass = compact ? "h-[27px] max-w-[172px]" : "h-[30px] max-w-[190px]";
-
   if (iconOnly) {
     return (
       <Image
         src="/branding/logo_short_new.svg"
         alt="FunPay Cloud"
-        width={245}
-        height={167}
-        className={`h-[22px] max-w-[32px] w-auto object-contain ${className}`.trim()}
+        width={32}
+        height={22}
+        unoptimized
+        className={`block h-auto w-auto object-contain ${className}`.trim()}
         priority
       />
     );
@@ -26,9 +25,10 @@ export function BrandLogo({ className = "", compact = false, iconOnly = false }:
     <Image
       src="/branding/logo_full_new.svg"
       alt="FunPay Cloud"
-      width={1223}
-      height={206}
-      className={`${sizeClass} w-auto object-contain ${className}`.trim()}
+      width={compact ? 168 : 190}
+      height={compact ? 27 : 30}
+      unoptimized
+      className={`block h-auto w-auto object-contain ${className}`.trim()}
       priority
     />
   );
