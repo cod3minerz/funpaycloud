@@ -21,11 +21,11 @@ export default function LandingFooter() {
           <div className="ft-col">
             <h5>Продукт</h5>
             <ul>
-              <li><a href="#features">Возможности</a></li>
-              <li><a href="#pricing">Тарифы</a></li>
-              <li><a href="/platform/plugins">Плагины</a></li>
+              <li><a href="/funpay-automation">Автоматизация FunPay</a></li>
+              <li><a href="/funpay-bot">Облачный бот FunPay</a></li>
+              <li><a href="/funpay-plugins">Плагины</a></li>
               <li><a href="/blog">Обновления</a></li>
-              <li><a href="/platform/dashboard">Статус системы</a></li>
+              <li><a href="/status">Статус системы</a></li>
             </ul>
           </div>
 

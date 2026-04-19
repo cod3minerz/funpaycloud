@@ -1,0 +1,67 @@
+cluster,query,freq_band,intent,target_url,page_type,priority,title_draft,h1_draft
+A,бот funpay,high,buy,/funpay-bot,money,P0,Бот FunPay в облаке — автоподнятие и автовыдача,Облачный бот FunPay для продавцов
+A,funpay бот,high,buy,/funpay-bot,money,P0,FunPay бот без VPS и серверов,FunPay бот без технической рутины
+A,боты для funpay,high,buy,/funpay-bot,money,P0,Боты для FunPay: сравнение подходов,Боты для FunPay: какой подход выбрать
+A,автоматизация funpay,high,buy,/funpay-automation,money,P0,Автоматизация FunPay для продавцов,Автоматизация FunPay без ручной рутины
+A,автоматизация фанпей,high,buy,/funpay-automation,money,P0,Автоматизация Фанпей в облаке,Автоматизация Фанпей 24/7
+A,облачный бот funpay,mid,buy,/cloud-funpay-bot,money,P0,Облачный бот FunPay без VPS,Облачный бот FunPay без серверной настройки
+A,funpay cloud bot,low,buy,/cloud-funpay-bot,money,P1,Cloud bot for FunPay sellers,Cloud bot for FunPay sellers
+A,автоподнятие funpay,high,buy,/auto-raise-lots-funpay,money,P0,Автоподнятие FunPay по расписанию,Автоподнятие лотов FunPay без ручных кликов
+A,автоподнятие лотов funpay,high,buy,/auto-raise-lots-funpay,money,P0,Автоподнятие лотов FunPay 24/7,Автоподнятие лотов на FunPay
+A,поднятие лотов funpay автоматически,mid,buy,/auto-raise-lots-funpay,money,P0,Автоматическое поднятие лотов FunPay,Автоматическое поднятие лотов FunPay
+A,автовыдача funpay,high,buy,/auto-delivery-funpay,money,P0,Автовыдача FunPay после оплаты,Автовыдача FunPay мгновенно после оплаты
+A,автоматическая выдача товаров funpay,high,buy,/auto-delivery-funpay,money,P0,Автоматическая выдача товаров на FunPay,Автоматическая выдача товаров на FunPay
+A,выдача ключей funpay автоматически,mid,buy,/auto-delivery-funpay,money,P1,Автоматическая выдача ключей FunPay,Выдача ключей FunPay автоматически
+A,автоответы funpay,high,buy,/funpay-auto-reply,money,P0,Автоответы FunPay с AI,Автоответы FunPay для продавцов
+A,автоответчик funpay,high,buy,/funpay-auto-reply,money,P0,Автоответчик для FunPay продавца,Автоответчик FunPay с базой FAQ
+A,ai ответы funpay,mid,buy,/funpay-auto-reply,money,P1,AI ответы в чатах FunPay,AI ответы в чатах FunPay
+A,плагины funpay,mid,buy,/funpay-plugins,money,P1,Плагины FunPay для автоматизации,Плагины FunPay для роста магазина
+A,плагин фанпей,mid,buy,/funpay-plugins,money,P1,Плагин Фанпей: как выбрать,Плагин Фанпей для продавца
+A,сервис для продавцов funpay,mid,buy,/for-sellers,money,P1,Сервис для продавцов FunPay,Сервис для продавцов FunPay
+A,управление магазином funpay,mid,buy,/for-sellers,money,P1,Управление магазином FunPay в одном сервисе,Управление магазином FunPay без хаоса
+B,инструмент для продавцов funpay,mid,eval,/for-sellers,feature,P1,Инструмент для продавцов FunPay,Инструмент для продавцов FunPay
+B,программа для funpay продавца,mid,eval,/for-sellers,feature,P1,Программа для продавца FunPay,Программа для продавца FunPay
+B,funpay seller automation,low,eval,/funpay-automation,feature,P1,FunPay seller automation platform,FunPay seller automation platform
+B,funpay automation service,low,eval,/funpay-automation,feature,P1,FunPay automation service in cloud,FunPay automation service in cloud
+B,облачная автоматизация funpay,mid,eval,/cloud-funpay-bot,feature,P1,Облачная автоматизация FunPay,Облачная автоматизация FunPay
+B,бот funpay без сервера,mid,eval,/cloud-funpay-bot,feature,P1,Бот FunPay без сервера и VPS,Бот FunPay без сервера
+B,бот funpay без vps,high,eval,/cloud-funpay-bot,feature,P1,Бот FunPay без VPS: как работает,Бот FunPay без VPS
+B,funpay cloud automation,low,eval,/cloud-funpay-bot,feature,P1,FunPay cloud automation,FunPay cloud automation
+D,cardinal funpay аналог,mid,compare,/funpay-cardinal-alternative,comparison,P0,Аналог Cardinal для FunPay,Чем заменить Cardinal для FunPay
+D,чем заменить cardinal,mid,compare,/funpay-cardinal-alternative,comparison,P0,Чем заменить Cardinal в 2026,Чем заменить Cardinal
+D,funpay cardinal alternative,low,compare,/funpay-cardinal-alternative,comparison,P1,FunPay Cardinal alternative,FunPay Cardinal alternative
+D,cardinal vs cloud funpay,low,compare,/funpay-cardinal-alternative,comparison,P1,Cardinal vs cloud for FunPay sellers,Cardinal vs cloud for FunPay sellers
+D,облако vs vps funpay,low,compare,/cloud-funpay-bot,comparison,P1,Облако vs VPS для FunPay,Облако vs VPS для FunPay
+F,funpay без прокси,mid,pain,/cloud-funpay-bot,pain,P1,Как работать на FunPay без прокси,FunPay без прокси: облачный подход
+F,funpay 24/7 без компьютера,mid,pain,/cloud-funpay-bot,pain,P1,FunPay 24/7 без включенного ПК,FunPay 24/7 без включенного ПК
+F,как не терять заказы на funpay ночью,low,pain,/funpay-automation,pain,P1,Как не терять заказы ночью на FunPay,Как не терять заказы ночью на FunPay
+F,как автоматизировать заказы funpay,mid,pain,/funpay-automation,pain,P1,Автоматизация заказов FunPay,Автоматизация заказов FunPay
+F,как ускорить ответы funpay,low,pain,/funpay-auto-reply,pain,P1,Как ускорить ответы на FunPay,Как ускорить ответы на FunPay
+F,как выдавать товары funpay автоматически,mid,pain,/auto-delivery-funpay,pain,P1,Как выдавать товары автоматически на FunPay,Как выдавать товары автоматически на FunPay
+F,как поднимать лоты funpay без рутины,mid,pain,/auto-raise-lots-funpay,pain,P1,Поднятие лотов без рутины,Поднятие лотов без рутины
+C,как автоматизировать funpay,mid,info,/blog/kak-avtomatizirovat-funpay,article,P0,Как автоматизировать FunPay,Как автоматизировать FunPay
+C,как работает автоподнятие на funpay,mid,info,/blog/kak-rabotaet-avtopodnyatie-na-funpay,article,P1,Как работает автоподнятие на FunPay,Как работает автоподнятие на FunPay
+C,как настроить автовыдачу на funpay,mid,info,/blog/avtovydacha-na-funpay-bez-vps,article,P1,Как настроить автовыдачу на FunPay,Как настроить автовыдачу на FunPay
+C,как настроить автоответы на funpay,mid,info,/blog/ai-avtootvety-dlya-funpay,article,P1,Как настроить автоответы на FunPay,Как настроить автоответы на FunPay
+C,как использовать golden key funpay,mid,info,/blog/chto-takoe-golden-key-funpay,article,P1,Что такое Golden Key на FunPay,Что такое Golden Key на FunPay
+C,облачная vs desktop автоматизация funpay,mid,info,/blog/oblachnaya-vs-desktop,article,P1,Облачная vs desktop автоматизация FunPay,Облачная vs desktop автоматизация FunPay
+C,как увеличить продажи funpay,mid,info,/blog/kak-uvelichit-prodazhi-funpay,article,P1,Как увеличить продажи на FunPay,Как увеличить продажи на FunPay
+C,funpay seller bot setup,low,info,/docs,support,P2,FunPay seller bot setup guide,FunPay seller bot setup guide
+C,funpay ai assistant setup,low,info,/docs,support,P2,Настройка AI ассистента FunPay,Настройка AI ассистента FunPay
+E,funpay cloud,high,nav,/,brand,P0,FunPay Cloud — автоматизация продаж на FunPay,FunPay Cloud
+E,funpay cloud блог,low,nav,/blog,hub,P1,Блог FunPay Cloud,Блог FunPay Cloud
+E,funpay cloud тарифы,low,nav,/pricing,support,P1,Тарифы FunPay Cloud,Тарифы FunPay Cloud
+E,funpay cloud статус,low,nav,/status,support,P2,Статус FunPay Cloud,Статус системы FunPay Cloud
+E,funpay cloud legal,low,nav,/legal,legal,P2,Юридические документы FunPay Cloud,Юридическая информация FunPay Cloud
+G,автовыдача funpay без vps,mid,high-conversion,/auto-delivery-funpay,money,P0,Автовыдача FunPay без VPS,Автовыдача FunPay без VPS
+G,автоподнятие funpay без компьютера,mid,high-conversion,/auto-raise-lots-funpay,money,P0,Автоподнятие FunPay без компьютера,Автоподнятие FunPay без компьютера
+G,ai автоответы funpay для продавца,mid,high-conversion,/funpay-auto-reply,money,P0,AI автоответы FunPay для продавца,AI автоответы FunPay для продавца
+G,облачный сервис для funpay продавцов,mid,high-conversion,/for-sellers,money,P0,Облачный сервис для продавцов FunPay,Облачный сервис для продавцов FunPay
+G,funpay bot subscription,low,high-conversion,/pricing,money,P1,Подписка на FunPay bot сервис,Подписка на FunPay bot сервис
+G,автоматизация funpay под ключ,mid,high-conversion,/funpay-automation,money,P1,Автоматизация FunPay под ключ,Автоматизация FunPay под ключ
+H,вps для funpay бота,mid,entity,/cloud-funpay-bot,comparison,P1,VPS для бота FunPay: нужен ли?,VPS для бота FunPay: нужен ли
+H,прокси для funpay бота,mid,entity,/cloud-funpay-bot,comparison,P1,Прокси для бота FunPay: когда требуется,Прокси для бота FunPay
+H,склад товаров funpay,mid,entity,/auto-delivery-funpay,feature,P1,Склад товаров FunPay для автовыдачи,Склад товаров FunPay для автовыдачи
+H,лимиты ai funpay,low,entity,/funpay-auto-reply,feature,P2,Лимиты AI автоответов на FunPay,Лимиты AI автоответов на FunPay
+H,funpay lot raise schedule,low,entity,/auto-raise-lots-funpay,feature,P2,Расписание поднятия лотов FunPay,Расписание поднятия лотов FunPay
+H,funpay order automation,low,entity,/funpay-automation,feature,P2,Автоматизация заказов FunPay,Автоматизация заказов FunPay

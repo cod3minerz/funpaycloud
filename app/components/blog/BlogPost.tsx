@@ -3,6 +3,10 @@ import Image from 'next/image';
 import { evaluate } from '@mdx-js/mdx';
 import * as runtime from 'react/jsx-runtime';
 import { slugifyHeading } from '@/lib/blog-types';
+import { BlogInlineCTA } from './BlogInlineCTA';
+import { BlogChecklistCallout } from './BlogChecklistCallout';
+import { BlogComparisonCallout } from './BlogComparisonCallout';
+import type { BlogCtaTopic } from '@/lib/blog-cta';
 
 function extractText(node: ReactNode): string {
   if (typeof node === 'string' || typeof node === 'number') {
@@ -20,7 +24,7 @@ function extractText(node: ReactNode): string {
   return '';
 }
 
-export async function BlogPost({ content }: { content: string }) {
+export async function BlogPost({ content, slug, topic }: { content: string; slug: string; topic: BlogCtaTopic }) {
   const headingMap = new Map<string, number>();
 
   const nextHeadingId = (children: ReactNode) => {
@@ -54,6 +58,27 @@ export async function BlogPost({ content }: { content: string }) {
         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 680px"
         className="h-auto w-full rounded-lg border border-[var(--border)]"
       />
+    ),
+    InlineCTA: ({ topic: localTopic }: { topic?: BlogCtaTopic }) => (
+      <BlogInlineCTA topic={localTopic ?? topic} slug={slug} />
+    ),
+    ChecklistCallout: ({ title, children }: { title?: string; children: ReactNode }) => (
+      <BlogChecklistCallout title={title}>{children}</BlogChecklistCallout>
+    ),
+    ComparisonCallout: ({
+      title,
+      leftTitle,
+      rightTitle,
+      left,
+      right,
+    }: {
+      title?: string;
+      leftTitle?: string;
+      rightTitle?: string;
+      left: ReactNode;
+      right: ReactNode;
+    }) => (
+      <BlogComparisonCallout title={title} leftTitle={leftTitle} rightTitle={rightTitle} left={left} right={right} />
     ),
   };
 

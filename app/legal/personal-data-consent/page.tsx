@@ -4,6 +4,9 @@ import LegalArticle from '@/components/legal/LegalArticle';
 export const metadata: Metadata = {
   title: 'Согласие на обработку персональных данных | FunPay Cloud',
   description: 'Форма и текст согласия на обработку персональных данных в соответствии с 152-ФЗ.',
+  alternates: {
+    canonical: 'https://funpay.cloud/legal/personal-data-consent',
+  },
 };
 
 export default function PersonalDataConsentPage() {

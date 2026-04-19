@@ -4,6 +4,9 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Юридические документы | FunPay Cloud',
   description: 'Юридическая информация FunPay Cloud: политика конфиденциальности, условия использования и отказ от ответственности.',
+  alternates: {
+    canonical: 'https://funpay.cloud/legal',
+  },
 };
 
 const documents = [
@@ -54,4 +57,3 @@ export default function LegalIndexPage() {
     </section>
   );
 }
-

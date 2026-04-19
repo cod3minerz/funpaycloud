@@ -4,6 +4,9 @@ import LegalArticle from '@/components/legal/LegalArticle';
 export const metadata: Metadata = {
   title: 'Политика использования файлов cookie | FunPay Cloud',
   description: 'Информация о том, какие файлы cookie использует FunPay Cloud и как ими управлять.',
+  alternates: {
+    canonical: 'https://funpay.cloud/legal/cookie-policy',
+  },
 };
 
 export default function CookiePolicyPage() {

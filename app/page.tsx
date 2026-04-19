@@ -18,17 +18,56 @@ export const metadata: Metadata = {
   description:
     'Автоматизируй магазин на FunPay без компьютера. Автоподнятие лотов, AI-ответы, автовыдача товаров. Попробуй бесплатно 14 дней.',
   keywords: ['funpay автоматизация', 'автоподнятие лотов funpay', 'бот funpay облако'],
+  alternates: {
+    canonical: 'https://funpay.cloud',
+  },
   openGraph: {
     title: 'FunPay Cloud',
     description: 'Облачная автоматизация для продавцов FunPay',
     url: 'https://funpay.cloud',
     type: 'website',
   },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'FunPay Cloud',
+    description: 'Облачная автоматизация для продавцов FunPay',
+    images: ['https://funpay.cloud/og-image.png'],
+  },
 };
 
 export default function HomePage() {
+  const orgSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'FunPay Cloud',
+    url: 'https://funpay.cloud',
+    logo: 'https://funpay.cloud/android-chrome-512x512.png',
+    email: 'legal@funpay.cloud',
+  };
+
+  const siteSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'FunPay Cloud',
+    url: 'https://funpay.cloud',
+    inLanguage: 'ru-RU',
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: 'https://funpay.cloud/blog?query={search_term_string}',
+      'query-input': 'required name=search_term_string',
+    },
+  };
+
   return (
     <div className="landing">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(siteSchema) }}
+      />
       <LandingNav />
       <LandingHero />
       <LandingMockup />

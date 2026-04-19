@@ -4,6 +4,9 @@ import LegalArticle from '@/components/legal/LegalArticle';
 export const metadata: Metadata = {
   title: 'Отказ от ответственности | FunPay Cloud',
   description: 'Юридические ограничения ответственности и статус сервиса FunPay Cloud.',
+  alternates: {
+    canonical: 'https://funpay.cloud/legal/disclaimer',
+  },
 };
 
 export default function DisclaimerPage() {
@@ -64,4 +67,3 @@ export default function DisclaimerPage() {
     </LegalArticle>
   );
 }
-

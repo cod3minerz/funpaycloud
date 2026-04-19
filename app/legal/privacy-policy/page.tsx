@@ -4,6 +4,9 @@ import LegalArticle from '@/components/legal/LegalArticle';
 export const metadata: Metadata = {
   title: 'Политика конфиденциальности | FunPay Cloud',
   description: 'Политика обработки и защиты персональных данных пользователей FunPay Cloud.',
+  alternates: {
+    canonical: 'https://funpay.cloud/legal/privacy-policy',
+  },
 };
 
 export default function PrivacyPolicyPage() {
@@ -98,4 +101,3 @@ export default function PrivacyPolicyPage() {
     </LegalArticle>
   );
 }
-

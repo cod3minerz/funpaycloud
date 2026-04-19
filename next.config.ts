@@ -26,6 +26,21 @@ const config: NextConfig = {
         destination: '/platform/:path*',
         permanent: true,
       },
+      {
+        source: '/blog/kak-ne-teryat-zakazy-nochyu-na-funpay',
+        destination: '/blog/kak-sokratit-vremya-otveta-v-chatah-funpay',
+        permanent: true,
+      },
+      {
+        source: '/blog/kak-uvelichit-prodazhi-funpay',
+        destination: '/blog/kak-uvelichit-vyruchku-bez-rosta-vremeni-v-operacionke',
+        permanent: true,
+      },
+      {
+        source: '/blog/bezopasnaya-avtomatizaciya-funpay-checklist',
+        destination: '/blog/bezopasnaya-nastrojka-vydachi-cifrovyh-tovarov-funpay',
+        permanent: true,
+      },
     ];
   },
   turbopack: {

@@ -4,6 +4,9 @@ import LegalArticle from '@/components/legal/LegalArticle';
 export const metadata: Metadata = {
   title: 'Условия использования | FunPay Cloud',
   description: 'Пользовательское соглашение и условия использования сервиса FunPay Cloud.',
+  alternates: {
+    canonical: 'https://funpay.cloud/legal/terms-of-service',
+  },
 };
 
 export default function TermsPage() {
@@ -93,4 +96,3 @@ export default function TermsPage() {
     </LegalArticle>
   );
 }
-

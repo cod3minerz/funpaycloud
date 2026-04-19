@@ -6,6 +6,8 @@ import { BlogPost } from '../../components/blog/BlogPost';
 import { BlogCard } from '../../components/blog/BlogCard';
 import { ReadingProgress } from '../../components/blog/ReadingProgress';
 import { TableOfContents } from '../../components/blog/TableOfContents';
+import { BlogFinalCTA } from '../../components/blog/BlogFinalCTA';
+import { BlogStickyCTA } from '../../components/blog/BlogStickyCTA';
 import {
   extractHeadings,
   formatDate,
@@ -14,6 +16,8 @@ import {
   getRelatedPosts,
   slugifyCategory,
 } from '@/lib/blog';
+import { getCommercialLinksForPost } from '@/lib/blog-commercial-links';
+import { getCtaConfigForPost, getTopicForPost } from '@/lib/blog-cta';
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -67,6 +71,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   const headings = extractHeadings(post.content);
   const relatedPosts = getRelatedPosts(post.slug, post.category, 3);
+  const commercialLinks = getCommercialLinksForPost(post, 3);
+  const ctaTopic = getTopicForPost(post);
+  const ctaConfig = getCtaConfigForPost(post);
 
   const articleSchema = {
     '@context': 'https://schema.org',
@@ -85,7 +92,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       name: 'FunPay Cloud',
       logo: {
         '@type': 'ImageObject',
-        url: 'https://funpay.cloud/logo.png',
+        url: 'https://funpay.cloud/android-chrome-512x512.png',
       },
     },
     image: post.cover,
@@ -168,21 +175,33 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           </div>
 
           <div className="mt-8 rounded-3xl border border-[var(--line-2)] bg-[var(--bg-card)] px-5 py-7 sm:px-8 sm:py-8">
-            <BlogPost content={post.content} />
+            <BlogPost content={post.content} slug={post.slug} topic={ctaTopic} />
           </div>
 
-          <div className="my-12 rounded-3xl border border-[var(--line-2)] bg-[linear-gradient(145deg,var(--accent-soft)_0%,var(--bg-card)_100%)] p-6 sm:p-7">
-            <h3 className="mb-2 text-xl font-semibold text-[var(--text-primary)]">Попробуйте FunPay Cloud бесплатно</h3>
-            <p className="mb-5 text-sm text-[var(--text-secondary)]">
-              14 дней бесплатно. Все Pro функции. Без привязки карты. Подходит для реальной ежедневной работы.
-            </p>
-            <Link
-              href="/auth/register"
-              className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--accent)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-hover)] sm:w-auto"
-            >
-              Начать бесплатно →
-            </Link>
-          </div>
+          <BlogFinalCTA slug={post.slug} config={ctaConfig} />
+
+          {commercialLinks.length > 0 && (
+            <section className="mb-12 rounded-3xl border border-[var(--line-2)] bg-[var(--bg-card)] p-6 sm:p-7">
+              <h2 className="mb-2 text-2xl font-semibold text-[var(--text-primary)]">Следующий шаг по теме</h2>
+              <p className="mb-5 text-sm text-[var(--text-secondary)]">
+                Если хотите внедрить это на практике, начните с одного из релевантных разделов платформы.
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {commercialLinks.map(link => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="group rounded-2xl border border-[var(--line-2)] bg-[var(--bg-secondary)]/75 p-4 transition-all hover:-translate-y-0.5 hover:border-[var(--accent)]"
+                  >
+                    <p className="text-sm font-semibold text-[var(--text-primary)] transition-colors group-hover:text-[var(--accent)]">
+                      {link.label}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">{link.description}</p>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
 
           {relatedPosts.length > 0 && (
             <section>
@@ -214,6 +233,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           </div>
         </aside>
       </div>
+      <BlogStickyCTA slug={post.slug} config={ctaConfig} />
     </>
   );
 }

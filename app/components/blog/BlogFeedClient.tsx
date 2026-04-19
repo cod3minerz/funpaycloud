@@ -13,6 +13,15 @@ interface BlogFeedClientProps {
   categories: string[];
 }
 
+const commercialQuickLinks = [
+  { href: '/funpay-bot', label: 'Облачный бот FunPay' },
+  { href: '/funpay-automation', label: 'Автоматизация FunPay' },
+  { href: '/auto-raise-lots-funpay', label: 'Автоподнятие' },
+  { href: '/auto-delivery-funpay', label: 'Автовыдача' },
+  { href: '/funpay-auto-reply', label: 'AI-автоответы' },
+  { href: '/funpay-cardinal-alternative', label: 'Альтернатива Cardinal' },
+];
+
 export function BlogFeedClient({ posts, categories }: BlogFeedClientProps) {
   const [activeCategory, setActiveCategory] = useState<string>('Все');
   const [query, setQuery] = useState('');
@@ -71,6 +80,21 @@ export function BlogFeedClient({ posts, categories }: BlogFeedClientProps) {
       </section>
 
       <section id="categories" className="mt-8">
+        <div className="mb-4 rounded-2xl border border-[var(--line-2)] bg-[var(--bg-card)] p-4">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">Быстрый старт</p>
+          <div className="flex flex-wrap gap-2">
+            {commercialQuickLinks.map(link => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="inline-flex min-h-9 items-center rounded-full border border-[var(--line-2)] bg-[var(--bg-secondary)] px-3 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--text-primary)]"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+
         <div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1">
           {['Все', ...categories].map(category => (
             <button
