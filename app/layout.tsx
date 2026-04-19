@@ -1,16 +1,9 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, JetBrains_Mono, Manrope, Syne } from 'next/font/google';
+import { Inter, JetBrains_Mono, Syne } from 'next/font/google';
 import { Suspense } from 'react';
 import { Toaster } from 'sonner';
 import { YandexMetrika } from './components/analytics/YandexMetrika';
 import './globals.css';
-
-const manrope = Manrope({
-  subsets: ['latin', 'cyrillic'],
-  weight: ['400', '500', '600', '700', '800'],
-  display: 'swap',
-  variable: '--font-manrope',
-});
 
 const syne = Syne({
   subsets: ['latin'],
@@ -21,7 +14,7 @@ const syne = Syne({
 
 const inter = Inter({
   subsets: ['latin', 'cyrillic'],
-  weight: ['400', '500', '600', '700', '800'],
+  weight: ['400', '500', '600', '700', '800', '900'],
   display: 'swap',
   variable: '--font-inter',
 });
@@ -63,7 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="ru"
-      className={`dark ${manrope.variable} ${syne.variable} ${inter.variable} ${jetbrainsMono.variable}`}
+      className={`dark ${syne.variable} ${inter.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
       <body className="antialiased">

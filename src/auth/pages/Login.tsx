@@ -76,8 +76,8 @@ export default function LoginPage() {
       title="Вход"
       subtitle="Войдите в аккаунт, чтобы продолжить работу в FunPay Cloud."
     >
-      <form onSubmit={handleLogin} className="space-y-4">
-        <div className="space-y-1.5">
+      <form onSubmit={handleLogin} className="space-y-5 sm:space-y-6">
+        <div className="space-y-2">
           <label className="text-[13px] font-semibold text-[var(--ink-2)]">Email</label>
           <input
             className={fieldClass}
@@ -91,7 +91,7 @@ export default function LoginPage() {
           )}
         </div>
 
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <div className="flex items-center justify-between gap-3">
             <label className="text-[13px] font-semibold text-[var(--ink-2)]">Пароль</label>
             <a href="#" className="text-[12px] text-[var(--accent)] hover:opacity-90">
@@ -110,23 +110,25 @@ export default function LoginPage() {
           )}
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="btn btn-primary h-12 w-full justify-center rounded-xl text-[14px] font-bold disabled:opacity-60"
-        >
-          {loading ? <Loader2 size={15} className="animate-spin" /> : <>Войти <ArrowRight size={15} /></>}
-        </button>
+        <div className="space-y-3 pt-1">
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn btn-primary h-12 w-full justify-center rounded-xl text-[14px] font-bold disabled:opacity-60"
+          >
+            {loading ? <Loader2 size={15} className="animate-spin" /> : <>Войти <ArrowRight size={15} /></>}
+          </button>
 
-        <button
-          type="button"
-          className="btn btn-outline h-12 w-full justify-center rounded-xl text-[14px] font-semibold"
-        >
-          <GoogleMark />
-          Войти через Google
-        </button>
+          <button
+            type="button"
+            className="btn btn-outline h-12 w-full justify-center rounded-xl text-[14px] font-semibold"
+          >
+            <GoogleMark />
+            Войти через Google
+          </button>
+        </div>
 
-        <p className="pt-1 text-center text-[13px] text-[var(--muted)]">
+        <p className="pt-1 text-center text-[13px] leading-6 text-[var(--muted)]">
           Нет аккаунта?{" "}
           <Link href="/auth/register" className="font-semibold text-[var(--accent)] hover:opacity-90">
             Зарегистрироваться
