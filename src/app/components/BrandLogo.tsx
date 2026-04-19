@@ -1,6 +1,4 @@
 import Image from "next/image";
-import logoCloud from "../../assets/logoCloud.svg";
-import logoSmall from "../../assets/logoSmall.svg";
 
 type BrandLogoProps = {
   className?: string;
@@ -14,10 +12,10 @@ export function BrandLogo({ className = "", compact = false, iconOnly = false }:
   if (iconOnly) {
     return (
       <Image
-        src={logoSmall}
+        src="/branding/logo_short_new.svg"
         alt="FunPay Cloud"
-        width={logoSmall.width}
-        height={logoSmall.height}
+        width={245}
+        height={167}
         className={`h-[22px] max-w-[32px] w-auto object-contain ${className}`.trim()}
         priority
       />
@@ -26,10 +24,10 @@ export function BrandLogo({ className = "", compact = false, iconOnly = false }:
 
   return (
     <Image
-      src={logoCloud}
+      src="/branding/logo_full_new.svg"
       alt="FunPay Cloud"
-      width={logoCloud.width}
-      height={logoCloud.height}
+      width={1223}
+      height={206}
       className={`${sizeClass} w-auto object-contain ${className}`.trim()}
       priority
     />

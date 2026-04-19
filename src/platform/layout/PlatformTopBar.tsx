@@ -88,7 +88,7 @@ export default function PlatformTopBar({
         <button
           type="button"
           onClick={handleSidebarToggle}
-          className="h-9 w-9 inline-flex items-center justify-center rounded-[10px] border border-[var(--pf-border)] bg-[var(--pf-surface-2)] text-[var(--pf-text-dim)] transition-all hover:border-[var(--pf-accent)] hover:text-[var(--pf-accent)] hover:bg-[var(--pf-accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--pf-accent)]/40"
+          className="h-9 w-9 inline-flex items-center justify-center rounded-[10px] border border-[var(--pf-border-strong)] bg-[var(--pf-surface)] text-[var(--pf-text-muted)] transition-all hover:border-[var(--pf-accent)] hover:text-[var(--pf-accent-2)] hover:bg-[var(--pf-accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--pf-accent)]/40"
           aria-label={sidebarCollapsed ? 'Развернуть боковое меню' : 'Свернуть боковое меню'}
           aria-pressed={sidebarCollapsed}
         >
@@ -101,7 +101,7 @@ export default function PlatformTopBar({
               <button
                 type="button"
                 aria-label="Уведомления"
-                className="h-9 w-9 inline-flex items-center justify-center rounded-[10px] border border-[var(--pf-border)] bg-[var(--pf-surface-2)] text-[var(--pf-text-dim)] transition-all hover:border-[var(--pf-accent)] hover:text-[var(--pf-accent)] hover:bg-[var(--pf-accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--pf-accent)]/40 relative"
+                className="h-9 w-9 inline-flex items-center justify-center rounded-[10px] border border-[var(--pf-border-strong)] bg-[var(--pf-surface)] text-[var(--pf-text-muted)] transition-all hover:border-[var(--pf-accent)] hover:text-[var(--pf-accent-2)] hover:bg-[var(--pf-accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--pf-accent)]/40 relative"
               >
                 <Bell size={17} />
                 {unreadCount > 0 ? (
@@ -123,16 +123,16 @@ export default function PlatformTopBar({
               </div>
 
               {notifications.length === 0 ? (
-                <div className="px-4 py-6 text-center text-sm text-[var(--pf-text-muted)]">Нет новых уведомлений</div>
+                <div className="px-4 py-6 text-center text-sm text-[var(--pf-text-dim)]">Нет новых уведомлений</div>
               ) : (
                 <div className="max-h-[320px] overflow-auto py-1">
                   {notifications.map(item => (
                     <div key={item.id} className="border-b border-[var(--pf-border)] px-4 py-3 last:border-0">
                       <div className="mb-1 flex items-center justify-between gap-2">
                         <strong className="text-xs text-[var(--pf-text)]">{item.title}</strong>
-                        <span className="text-[11px] text-[var(--pf-text-muted)]">{item.time}</span>
+                        <span className="text-[11px] text-[var(--pf-text-dim)]">{item.time}</span>
                       </div>
-                      <p className="text-xs text-[var(--pf-text-muted)]">{item.text}</p>
+                      <p className="text-xs text-[var(--pf-text-dim)]">{item.text}</p>
                     </div>
                   ))}
                 </div>
@@ -145,13 +145,13 @@ export default function PlatformTopBar({
               <button
                 type="button"
                 aria-label="Профиль пользователя"
-                className="inline-flex h-9 items-center gap-2 rounded-[12px] border border-[var(--pf-border)] bg-[var(--pf-surface-2)] px-2.5 text-[var(--pf-text)] transition-all hover:border-[var(--pf-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--pf-accent)]/40"
+                className="inline-flex h-9 items-center gap-2 rounded-[12px] border border-[var(--pf-border-strong)] bg-[var(--pf-surface)] px-2.5 text-[var(--pf-text)] transition-all hover:border-[var(--pf-accent)] hover:bg-[var(--pf-accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--pf-accent)]/40"
               >
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold text-white" style={{ background: 'linear-gradient(135deg, var(--pf-accent) 0%, var(--pf-accent-2) 100%)' }}>
                   {avatarText}
                 </span>
                 <span className="hidden max-w-[120px] truncate text-sm font-medium sm:block">{displayName}</span>
-                <ChevronDown size={14} className="hidden text-[var(--pf-text-muted)] sm:block" />
+                <ChevronDown size={14} className="hidden text-[var(--pf-text-dim)] sm:block" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -168,7 +168,7 @@ export default function PlatformTopBar({
               <DropdownMenuSeparator className="bg-[var(--pf-border)]" />
 
               <DropdownMenuItem
-                className="cursor-pointer text-[var(--pf-text)] focus:bg-white/5"
+                className="cursor-pointer text-[var(--pf-text)] focus:bg-[var(--pf-accent-soft)] focus:text-[var(--pf-text)]"
                 onSelect={event => {
                   event.preventDefault();
                   router.push('/platform/settings');
@@ -179,7 +179,7 @@ export default function PlatformTopBar({
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                className="cursor-pointer text-[var(--pf-text)] focus:bg-white/5"
+                className="cursor-pointer text-[var(--pf-text)] focus:bg-[var(--pf-accent-soft)] focus:text-[var(--pf-text)]"
                 onSelect={event => {
                   event.preventDefault();
                   router.push('/platform/subscription');
@@ -190,7 +190,7 @@ export default function PlatformTopBar({
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                className="cursor-pointer text-[var(--pf-text)] focus:bg-white/5"
+                className="cursor-pointer text-[var(--pf-text)] focus:bg-[var(--pf-accent-soft)] focus:text-[var(--pf-text)]"
                 onSelect={event => {
                   event.preventDefault();
                   window.open('https://t.me/funpaycloud_support', '_blank', 'noopener,noreferrer');
@@ -203,7 +203,7 @@ export default function PlatformTopBar({
               <DropdownMenuSeparator className="bg-[var(--pf-border)]" />
 
               <DropdownMenuItem
-                className="cursor-pointer text-red-400 focus:bg-red-500/10 focus:text-red-300"
+                className="cursor-pointer text-red-700 focus:bg-red-500/10 focus:text-red-800"
                 onSelect={event => {
                   event.preventDefault();
                   logout();

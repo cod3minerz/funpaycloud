@@ -263,38 +263,38 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="space-y-4 sm:space-y-5 lg:space-y-6">
-          <section className="mb-2 rounded-xl border border-[var(--pf-border)] bg-[var(--pf-surface-2)] px-4 py-3 backdrop-blur-sm sm:px-5">
+          <section className="mb-2 rounded-xl border border-[var(--pf-border-strong)] bg-[var(--pf-surface)] px-4 py-3 shadow-[var(--pf-shadow-soft)] sm:px-5">
             <div className="flex flex-wrap items-center gap-3 sm:gap-4 lg:gap-6">
               <div className="inline-flex items-center gap-2">
                 <WorkerDot active={status.runner.active} color="emerald" />
                 <span className="text-xs text-[var(--pf-text-dim)]">Runner</span>
-                <span className="text-xs font-medium text-emerald-400">
+                <span className="text-xs font-semibold text-emerald-700">
                   {status.runner.active ? `активен (${status.runner.count}/${status.total})` : 'остановлен'}
                 </span>
               </div>
 
-              <div className="hidden h-3 w-px bg-[var(--pf-surface-3)] sm:block" />
+              <div className="hidden h-3 w-px bg-[var(--pf-border)] sm:block" />
 
               <div className="inline-flex items-center gap-2">
                 <WorkerDot active={status.keeper.active} color="blue" />
                 <span className="text-xs text-[var(--pf-text-dim)]">Keeper</span>
-                <span className="text-xs font-medium text-blue-400">
+                <span className="text-xs font-semibold text-blue-700">
                   {status.keeper.active ? `онлайн (${status.keeper.count}/${status.total})` : 'оффлайн'}
                 </span>
               </div>
 
-              <div className="hidden h-3 w-px bg-[var(--pf-surface-3)] sm:block" />
+              <div className="hidden h-3 w-px bg-[var(--pf-border)] sm:block" />
 
               <div className="inline-flex items-center gap-2">
                 <WorkerDot active={status.raiser.active} color="amber" />
                 <span className="text-xs text-[var(--pf-text-dim)]">Raiser</span>
-                <span className="text-xs font-medium text-amber-400">
+                <span className="text-xs font-semibold text-amber-700">
                   {status.raiser.active ? `запущен (${status.raiser.count}/${status.total})` : 'пауза'}
                 </span>
               </div>
 
-              <div className="text-xs text-[var(--pf-text-soft)] sm:ml-auto">
-                Последнее событие: <span className="text-[var(--pf-text-dim)]">{formatAgo(status.lastEvent, nowMs)}</span>
+              <div className="text-xs text-[var(--pf-text-dim)] sm:ml-auto">
+                Последнее событие: <span className="font-medium text-[var(--pf-text-muted)]">{formatAgo(status.lastEvent, nowMs)}</span>
               </div>
             </div>
           </section>
@@ -337,7 +337,7 @@ export default function Dashboard() {
                   onClick={() => setActiveSlide(idx)}
                   aria-label={`Показать баннер ${idx + 1}`}
                   className={`h-0.5 rounded-full transition-all duration-300 ${
-                    idx === activeSlide ? 'w-6 bg-[var(--pf-accent)]' : 'w-2 bg-[rgba(14,17,22,0.15)]'
+                    idx === activeSlide ? 'w-6 bg-[var(--pf-accent)]' : 'w-2 bg-[rgba(14,17,22,0.30)]'
                   }`}
                 />
               ))}
@@ -345,16 +345,16 @@ export default function Dashboard() {
           </section>
 
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <article className="group relative overflow-hidden rounded-xl border border-[rgba(58,47,224,0.15)] bg-gradient-to-br from-[var(--pf-accent-soft)] to-transparent p-5 transition-all hover:border-blue-500/40">
+            <article className="group relative overflow-hidden rounded-xl border border-[rgba(58,47,224,0.22)] bg-gradient-to-br from-[var(--pf-accent-soft)] to-transparent p-5 transition-all hover:border-[rgba(58,47,224,0.44)]">
               <div className="absolute -right-4 -top-4 h-20 w-20 rounded-full bg-blue-500/10" />
 
               <div className="mb-3 flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--pf-accent-soft)]">
-                  <Send size={18} className="text-blue-400" />
+                  <Send size={18} className="text-blue-700" />
                 </div>
                 <div>
                   <div className="text-sm font-semibold text-[var(--pf-text)]">Telegram канал</div>
-                  <div className="mt-0.5 text-xs text-[var(--pf-text-dim)]">2 400 подписчиков</div>
+                  <div className="mt-0.5 text-xs text-[var(--pf-text-muted)]">2 400 подписчиков</div>
                 </div>
               </div>
 
@@ -363,21 +363,21 @@ export default function Dashboard() {
                 href="https://t.me/funpaycloud"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-400 transition-colors group-hover:text-blue-300"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 transition-colors group-hover:text-blue-800"
               >
                 Подписаться
                 <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
               </a>
             </article>
 
-            <article className="group rounded-xl border border-[#4C75A3]/20 bg-gradient-to-br from-[#4C75A3]/10 to-transparent p-5 transition-colors hover:border-[#4C75A3]/45">
+            <article className="group rounded-xl border border-[#4C75A3]/26 bg-gradient-to-br from-[#4C75A3]/12 to-transparent p-5 transition-colors hover:border-[#4C75A3]/52">
               <div className="mb-3 flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#4C75A3]/20 text-sm font-bold text-[#8fb4de]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#4C75A3]/20 text-sm font-bold text-[#325b88]">
                   VK
                 </div>
                 <div>
                   <div className="text-sm font-semibold text-[var(--pf-text)]">Группа ВКонтакте</div>
-                  <div className="mt-0.5 text-xs text-[var(--pf-text-dim)]">Кейсы и обсуждения продавцов</div>
+                  <div className="mt-0.5 text-xs text-[var(--pf-text-muted)]">Кейсы и обсуждения продавцов</div>
                 </div>
               </div>
 
@@ -386,22 +386,22 @@ export default function Dashboard() {
                 href="https://vk.com/funpaycloud"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-[#8fb4de] transition-colors group-hover:text-[#b3d2f4]"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#325b88] transition-colors group-hover:text-[#24476c]"
               >
                 Вступить
                 <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
               </a>
             </article>
 
-            <article className="group rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-transparent p-5 transition-colors hover:border-emerald-500/35 sm:col-span-2 xl:col-span-1">
+            <article className="group rounded-xl border border-emerald-500/26 bg-gradient-to-br from-emerald-500/12 to-transparent p-5 transition-colors hover:border-emerald-500/42 sm:col-span-2 xl:col-span-1">
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15">
-                    <MessageCircle size={18} className="text-emerald-600" />
+                    <MessageCircle size={18} className="text-emerald-700" />
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-[var(--pf-text)]">Поддержка</div>
-                    <div className="mt-0.5 text-xs text-[var(--pf-text-dim)]">Поможем с настройкой и ошибками</div>
+                    <div className="mt-0.5 text-xs text-[var(--pf-text-muted)]">Поможем с настройкой и ошибками</div>
                   </div>
                 </div>
                 <span className="inline-flex items-center rounded-full border border-emerald-600/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
@@ -414,7 +414,7 @@ export default function Dashboard() {
                 href="https://t.me/funpaycloud_support"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 transition-colors group-hover:text-emerald-800"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 transition-colors group-hover:text-emerald-800"
               >
                 Написать
                 <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
@@ -433,9 +433,9 @@ export default function Dashboard() {
                 </div>
                 <div className="flex-1">
                   <div className="mb-1 text-sm font-semibold text-[var(--pf-text)]">Документация</div>
-                  <div className="text-xs text-[var(--pf-text-dim)]">Подробные инструкции по всем функциям</div>
+                  <div className="text-xs text-[var(--pf-text-muted)]">Подробные инструкции по всем функциям</div>
                 </div>
-                <ArrowRight size={16} className="text-[var(--pf-text-soft)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--pf-text-dim)]" />
+                <ArrowRight size={16} className="text-[var(--pf-text-dim)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--pf-text-muted)]" />
               </Link>
 
               <Link
@@ -447,9 +447,9 @@ export default function Dashboard() {
                 </div>
                 <div className="flex-1">
                   <div className="mb-1 text-sm font-semibold text-[var(--pf-text)]">Блог</div>
-                  <div className="text-xs text-[var(--pf-text-dim)]">Кейсы и советы для продавцов</div>
+                  <div className="text-xs text-[var(--pf-text-muted)]">Кейсы и советы для продавцов</div>
                 </div>
-                <ArrowRight size={16} className="text-[var(--pf-text-soft)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--pf-text-dim)]" />
+                <ArrowRight size={16} className="text-[var(--pf-text-dim)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--pf-text-muted)]" />
               </Link>
             </div>
           </section>
@@ -460,7 +460,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 gap-px overflow-hidden rounded-xl bg-[var(--pf-surface-3)] sm:grid-cols-2 xl:grid-cols-3">
               {FEATURES.map((feature, idx) => (
                 <article key={feature.title} className="group bg-[var(--pf-surface)] p-5 transition-colors hover:bg-[var(--pf-surface-2)]">
-                  <div className="mb-3 text-2xl font-bold text-[rgba(14,17,22,0.12)] transition-colors group-hover:text-[rgba(14,17,22,0.22)]">
+                  <div className="mb-3 text-2xl font-bold text-[rgba(14,17,22,0.18)] transition-colors group-hover:text-[rgba(14,17,22,0.30)]">
                     {`0${idx + 1}`}
                   </div>
                   <h3 className="mb-1 text-sm font-medium text-[var(--pf-text)]">{feature.title}</h3>
