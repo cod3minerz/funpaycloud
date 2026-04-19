@@ -178,15 +178,15 @@
   --good: #0e8a57;
   --warn: #b86e00;
   --bad: #b23a3a;
-  --bg-pattern-dot: rgba(14, 17, 22, 0.2);
-  --bg-pattern-dot-soft: rgba(14, 17, 22, 0.1);
+  --bg-pattern-dot: rgba(14, 17, 22, 0.13);
+  --bg-pattern-dot-soft: rgba(14, 17, 22, 0.065);
   min-height: 100vh;
   background-color: var(--bg);
   background-image:
-    radial-gradient(circle at 1px 1px, var(--bg-pattern-dot) 2.4px, transparent 0),
-    radial-gradient(circle at 1px 1px, var(--bg-pattern-dot-soft) 1.75px, transparent 0);
-  background-size: 28px 28px, 28px 28px;
-  background-position: 0 0, 14px 14px;
+    radial-gradient(circle at 1px 1px, var(--bg-pattern-dot) 1.9px, transparent 0),
+    radial-gradient(circle at 1px 1px, var(--bg-pattern-dot-soft) 1.4px, transparent 0);
+  background-size: 30px 30px, 30px 30px;
+  background-position: 0 0, 15px 15px;
   color: var(--ink);
   font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 16px;
@@ -2323,8 +2323,8 @@ body:has(.landing) {
 
 @media (max-width: 640px) {
   .landing {
-    --bg-pattern-dot: rgba(14, 17, 22, 0.13);
-    --bg-pattern-dot-soft: rgba(14, 17, 22, 0.065);
+    --bg-pattern-dot: rgba(14, 17, 22, 0.09);
+    --bg-pattern-dot-soft: rgba(14, 17, 22, 0.045);
   }
 
   .landing .legal-main {
