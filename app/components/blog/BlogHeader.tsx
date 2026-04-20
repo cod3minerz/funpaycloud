@@ -59,7 +59,7 @@ export function BlogHeader() {
       className="sticky top-0 z-50 border-b border-[var(--border)] bg-[color:color-mix(in_srgb,var(--bg)_88%,transparent)] backdrop-blur-md"
     >
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="inline-flex min-h-11 items-center">
+        <Link href="/" className="inline-flex min-h-11 items-center gap-2.5">
           <Image
             src="/branding/logo_full_new.svg"
             alt="FunPay Cloud"
@@ -68,6 +68,9 @@ export function BlogHeader() {
             priority
             className="h-8 w-auto"
           />
+          <span className="inline-flex h-6 items-center rounded-md bg-[#0E1116] px-2.5 text-[10px] font-bold tracking-[0.12em] text-white">
+            BLOG
+          </span>
         </Link>
 
         <nav className="hidden items-center gap-7 lg:flex">

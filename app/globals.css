@@ -491,7 +491,7 @@ body:has(.landing) {
 
 .landing .hero-title em {
   font-style: normal;
-  color: var(--accent);
+  color: var(--ink);
 }
 
 .landing .hero-ai-script {
