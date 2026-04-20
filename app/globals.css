@@ -494,6 +494,21 @@ body:has(.landing) {
   color: var(--accent);
 }
 
+.landing .hero-ai-script {
+  display: inline-block;
+  margin-left: 10px;
+  font-family: var(--font-caveat), 'Comic Sans MS', cursive;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 0.95;
+  font-size: clamp(42px, 6.2vw, 76px);
+  background: linear-gradient(90deg, #e9307a 0%, #d148ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  vertical-align: baseline;
+}
+
 .landing .hero-sub {
   font-size: clamp(16px, 2.2vw, 18.5px);
   color: var(--ink-2);
@@ -2151,6 +2166,14 @@ body:has(.landing) {
     padding-top: 44px;
   }
 
+  .landing .hero-ai-script {
+    display: block;
+    margin-left: 0;
+    margin-top: 6px;
+    font-size: clamp(40px, 12vw, 54px);
+    line-height: 0.92;
+  }
+
   .landing .landing-logo-full-footer {
     height: 26px;
   }
@@ -2193,15 +2216,7 @@ body:has(.landing) {
 }
 
 .landing.auth-scope {
-  background-size: 26px 26px, 26px 26px;
-  background-position: 0 0, 13px 13px;
-}
-
-@media (max-width: 640px) {
-  .landing.auth-scope {
-    background-size: 22px 22px, 22px 22px;
-    background-position: 0 0, 11px 11px;
-  }
+  background-image: none;
 }
 
 .landing.legal-scope {

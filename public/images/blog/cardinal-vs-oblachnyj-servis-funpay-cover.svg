@@ -10,8 +10,8 @@
   <circle cx="980" cy="520" r="120" fill="#38BDF8" fill-opacity="0.11"/>
   <rect x="80" y="90" width="1040" height="450" rx="24" fill="#0B1220" fill-opacity="0.72" stroke="#38BDF8" stroke-opacity="0.5"/>
   <text x="140" y="242" fill="#7DD3FC" font-family="Inter, Manrope, Arial" font-size="28">Сравнения</text>
-  <text x="140" y="305" fill="#F8FAFC" font-family="Inter, Manrope, Arial" font-size="56" font-weight="800">Облачный бот FunPay vs локальный:</text>
-  <text x="140" y="367" fill="#F8FAFC" font-family="Inter, Manrope, Arial" font-size="56" font-weight="800">финальный...</text>
-  <text x="140" y="453" fill="#BFDBFE" font-family="Inter, Manrope, Arial" font-size="30">Подробное сравнение облачного и локального подхода</text>
-  <text x="140" y="491" fill="#BFDBFE" font-family="Inter, Manrope, Arial" font-size="30">для...</text>
+  <text x="140" y="305" fill="#F8FAFC" font-family="Inter, Manrope, Arial" font-size="56" font-weight="800">Что выбрать: SaaS или self-hosted</text>
+  <text x="140" y="367" fill="#F8FAFC" font-family="Inter, Manrope, Arial" font-size="56" font-weight="800">для...</text>
+  <text x="140" y="453" fill="#BFDBFE" font-family="Inter, Manrope, Arial" font-size="30">Честное сравнение SaaS и self-hosted подхода для</text>
+  <text x="140" y="491" fill="#BFDBFE" font-family="Inter, Manrope, Arial" font-size="30">автоматизации...</text>
 </svg>

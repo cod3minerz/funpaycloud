@@ -12,7 +12,8 @@ export default function LandingHero() {
         <h1 className="hero-title">
           Облачная платформа для
           <br />
-          автоматизации продаж на <em>FunPay</em>
+          автоматизации продаж на <em>FunPay</em>{' '}
+          <span className="hero-ai-script">с ИИ-Ассистентом</span>
         </h1>
 
         <p className="hero-sub">

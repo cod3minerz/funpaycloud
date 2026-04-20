@@ -2346,7 +2346,7 @@ function Container71() {
     <div className="content-stretch flex gap-[12px] items-start relative shrink-0 w-full" data-name="Container">
       <SvgMargin13 />
       <div className="flex flex-col font-['Inter:Regular',sans-serif] font-normal justify-center leading-[0] not-italic relative shrink-0 text-[#d1d5db] text-[14px] whitespace-nowrap">
-        <p className="leading-[20px]">{`GPT Консультант & ИИ-Отзывы`}</p>
+        <p className="leading-[20px]">{`ИИ-консультант и автоответы`}</p>
       </div>
     </div>
   );

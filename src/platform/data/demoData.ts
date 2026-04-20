@@ -153,7 +153,7 @@ export const orders: Order[] = [
   { id: 'ORD-1002', accountId: 'acc2', buyer: 'anna_shop', buyerAvatar: 'A', lot: '1000 подписчиков Instagram', category: 'SMM', amount: 890, status: 'paid', createdAt: '2026-04-02T09:15:00', description: 'Накрутка подписчиков Instagram' },
   { id: 'ORD-1003', accountId: 'acc1', buyer: 'maxim_99', buyerAvatar: 'M', lot: 'Steam Wallet 500₽', category: 'Игры', amount: 520, status: 'completed', createdAt: '2026-04-02T08:44:00', description: 'Пополнение Steam кошелька' },
   { id: 'ORD-1004', accountId: 'acc2', buyer: 'olga_v', buyerAvatar: 'O', lot: 'Spotify Premium 1 месяц', category: 'Музыка', amount: 199, status: 'refund', createdAt: '2026-04-01T22:30:00', description: 'Подписка Spotify Premium' },
-  { id: 'ORD-1005', accountId: 'acc2', buyer: 'sergei_m', buyerAvatar: 'S', lot: 'ChatGPT Plus аккаунт', category: 'AI', amount: 1200, status: 'dispute', createdAt: '2026-04-01T20:10:00', description: 'Аккаунт ChatGPT Plus' },
+  { id: 'ORD-1005', accountId: 'acc2', buyer: 'sergei_m', buyerAvatar: 'S', lot: 'Премиум AI аккаунт', category: 'AI', amount: 1200, status: 'dispute', createdAt: '2026-04-01T20:10:00', description: 'Премиум AI аккаунт' },
   { id: 'ORD-1006', accountId: 'acc1', buyer: 'ivan_pro', buyerAvatar: 'I', lot: 'Roblox 1000 Robux', category: 'Игры', amount: 350, status: 'completed', createdAt: '2026-04-01T18:05:00', description: 'Робаксы Roblox' },
   { id: 'ORD-1007', accountId: 'acc2', buyer: 'kate_seller', buyerAvatar: 'K', lot: '500 лайков ВКонтакте', category: 'SMM', amount: 150, status: 'completed', createdAt: '2026-04-01T16:22:00', description: 'Лайки ВКонтакте' },
   { id: 'ORD-1008', accountId: 'acc1', buyer: 'peter_gamer', buyerAvatar: 'P', lot: 'CS2 Prime аккаунт', category: 'Игры', amount: 780, status: 'paid', createdAt: '2026-04-01T14:55:00', description: 'Аккаунт CS2 с Prime статусом' },
@@ -247,7 +247,7 @@ export const lots: Lot[] = [
   { id: 'lot6', accountId: 'acc2', title: '500 лайков ВКонтакте', category: 'SMM', categoryIcon: 'smm', price: 150, status: 'active', salesMonth: 67, description: '500 лайков на пост ВКонтакте', autoDelivery: '' },
   { id: 'lot7', accountId: 'acc2', title: 'Spotify Premium 1 месяц', category: 'Музыка', categoryIcon: 'music', price: 199, status: 'active', salesMonth: 89, description: 'Месяц Spotify Premium', autoDelivery: 'login:password' },
   { id: 'lot8', accountId: 'acc2', title: 'Netflix Premium 1 месяц', category: 'Стриминг', categoryIcon: 'stream', price: 599, status: 'active', salesMonth: 34, description: 'Месяц Netflix Premium', autoDelivery: 'login:password' },
-  { id: 'lot9', accountId: 'acc2', title: 'ChatGPT Plus аккаунт', category: 'AI', categoryIcon: 'ai', price: 1200, status: 'active', salesMonth: 12, description: 'Аккаунт ChatGPT Plus', autoDelivery: '' },
+  { id: 'lot9', accountId: 'acc2', title: 'Премиум AI аккаунт', category: 'AI', categoryIcon: 'ai', price: 1200, status: 'active', salesMonth: 12, description: 'Премиум AI аккаунт', autoDelivery: '' },
   { id: 'lot10', accountId: 'acc2', title: 'Яндекс Плюс 3 месяца', category: 'Сервисы', categoryIcon: 'service', price: 449, status: 'active', salesMonth: 28, description: '3 месяца Яндекс Плюс подписки', autoDelivery: '' },
   { id: 'lot11', accountId: 'acc2', title: 'GTA V ключ Steam', category: 'Игры', categoryIcon: 'game', price: 650, status: 'active', salesMonth: 19, description: 'Ключ GTA V для Steam', autoDelivery: '' },
   { id: 'lot12', accountId: 'acc2', title: 'Warframe платина 1000', category: 'Игры', categoryIcon: 'game', price: 390, status: 'inactive', salesMonth: 8, description: '1000 платины в Warframe', autoDelivery: '' },
@@ -334,7 +334,7 @@ export const transactions: Transaction[] = [
   { id: 'tx12', accountId: 'acc1', date: '2026-03-31T20:05:00', type: 'fee', description: 'Комиссия FunPay', amount: -65 },
   { id: 'tx13', accountId: 'acc2', date: '2026-03-30T15:00:00', type: 'withdrawal', description: 'Вывод на карту **** 4521', amount: -3000 },
   { id: 'tx14', accountId: 'acc1', date: '2026-03-30T12:00:00', type: 'sale', description: 'Продажа: CS2 Prime аккаунт', amount: 780 },
-  { id: 'tx15', accountId: 'acc2', date: '2026-03-29T18:00:00', type: 'sale', description: 'Продажа: ChatGPT Plus аккаунт', amount: 1200 },
+  { id: 'tx15', accountId: 'acc2', date: '2026-03-29T18:00:00', type: 'sale', description: 'Продажа: Премиум AI аккаунт', amount: 1200 },
 ];
 
 export const automationRules: AutomationRule[] = [

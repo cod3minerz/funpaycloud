@@ -1,0 +1,17 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1C1917"/>
+      <stop offset="1" stop-color="#57534E"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g)"/>
+  <circle cx="1040" cy="120" r="220" fill="#A8A29E" fill-opacity="0.16"/>
+  <circle cx="980" cy="520" r="120" fill="#A8A29E" fill-opacity="0.11"/>
+  <rect x="80" y="90" width="1040" height="450" rx="24" fill="#0B1220" fill-opacity="0.72" stroke="#A8A29E" stroke-opacity="0.5"/>
+  <text x="140" y="242" fill="#D6D3D1" font-family="Inter, Manrope, Arial" font-size="28">Масштабирование</text>
+  <text x="140" y="305" fill="#F8FAFC" font-family="Inter, Manrope, Arial" font-size="56" font-weight="800">Как масштабировать магазин на</text>
+  <text x="140" y="367" fill="#F8FAFC" font-family="Inter, Manrope, Arial" font-size="56" font-weight="800">FunPay</text>
+  <text x="140" y="453" fill="#F5F5F4" font-family="Inter, Manrope, Arial" font-size="30">План масштабирования магазина на FunPay: от 1</text>
+  <text x="140" y="491" fill="#F5F5F4" font-family="Inter, Manrope, Arial" font-size="30">аккаунта...</text>
+</svg>

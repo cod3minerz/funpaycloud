@@ -10,7 +10,7 @@ import { authApi } from "@/lib/api";
 import { sanitizeInput, validateEmail, validatePassword } from "@/lib/sanitize";
 
 const fieldClass =
-  "h-12 w-full rounded-xl border border-[var(--line-2)] bg-[var(--bg)] px-4 text-[14px] text-[var(--ink)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]";
+  "h-11 w-full rounded-xl border border-[var(--line-2)] bg-[var(--bg)] px-4 text-[14px] text-[var(--ink)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)] sm:h-12";
 
 function strengthScore(password: string) {
   let score = 0;
@@ -93,7 +93,7 @@ export default function RegisterPage() {
       title="Регистрация"
       subtitle="Создайте аккаунт и запустите рабочее пространство FunPay Cloud."
     >
-      <form onSubmit={handleRegister} className="space-y-5 sm:space-y-6">
+      <form onSubmit={handleRegister} className="space-y-4 sm:space-y-5">
         <div className="space-y-2">
           <label className="text-[13px] font-semibold text-[var(--ink-2)]">Email</label>
           <input
@@ -146,7 +146,7 @@ export default function RegisterPage() {
           )}
         </div>
 
-        <div className="rounded-xl border border-[var(--line-2)] bg-[var(--bg-2)] p-3.5">
+        <div className="rounded-xl border border-[var(--line-2)] bg-[var(--bg-2)] p-3">
           <button
             type="button"
             className="inline-flex items-center gap-2 text-[13px] font-semibold text-[var(--ink-2)] hover:text-[var(--ink)]"
@@ -165,7 +165,7 @@ export default function RegisterPage() {
           )}
         </div>
 
-        <div className="space-y-3 pt-1">
+        <div className="space-y-2.5 pt-0.5">
           <button
             type="submit"
             disabled={loading}
@@ -187,7 +187,7 @@ export default function RegisterPage() {
           </button>
         </div>
 
-        <p className="pt-1 text-center text-[13px] leading-6 text-[var(--muted)]">
+        <p className="text-center text-[13px] leading-6 text-[var(--muted)]">
           Уже есть аккаунт?{" "}
           <Link href="/auth/login" className="font-semibold text-[var(--accent)] hover:opacity-90">
             Войти

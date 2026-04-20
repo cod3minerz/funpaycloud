@@ -1,0 +1,17 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3F1D2E"/>
+      <stop offset="1" stop-color="#BE185D"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g)"/>
+  <circle cx="1040" cy="120" r="220" fill="#F472B6" fill-opacity="0.16"/>
+  <circle cx="980" cy="520" r="120" fill="#F472B6" fill-opacity="0.11"/>
+  <rect x="80" y="90" width="1040" height="450" rx="24" fill="#0B1220" fill-opacity="0.72" stroke="#F472B6" stroke-opacity="0.5"/>
+  <text x="140" y="242" fill="#F9A8D4" font-family="Inter, Manrope, Arial" font-size="28">Продажи</text>
+  <text x="140" y="305" fill="#F8FAFC" font-family="Inter, Manrope, Arial" font-size="56" font-weight="800">Как не терять клиентов в ночные</text>
+  <text x="140" y="367" fill="#F8FAFC" font-family="Inter, Manrope, Arial" font-size="56" font-weight="800">часы</text>
+  <text x="140" y="453" fill="#FCE7F3" font-family="Inter, Manrope, Arial" font-size="30">Разбор ночной воронки на FunPay: почему клиенты</text>
+  <text x="140" y="491" fill="#FCE7F3" font-family="Inter, Manrope, Arial" font-size="30">уходят...</text>
+</svg>

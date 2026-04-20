@@ -1,13 +1,17 @@
 <svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="g3" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#1F2937"/>
-      <stop offset="1" stop-color="#7C3AED"/>
+    <linearGradient id="g" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#1E3A8A"/>
     </linearGradient>
   </defs>
-  <rect width="1200" height="630" fill="url(#g3)"/>
-  <rect x="75" y="80" width="1050" height="470" rx="28" fill="#111827" fill-opacity="0.72" stroke="#A78BFA" stroke-opacity="0.45"/>
-  <text x="135" y="250" fill="#C4B5FD" font-family="Manrope, Arial" font-size="28">Автоматизация</text>
-  <text x="135" y="320" fill="#F8FAFC" font-family="Manrope, Arial" font-size="56" font-weight="700">Автоответы на FunPay</text>
-  <text x="135" y="390" fill="#DDD6FE" font-family="Manrope, Arial" font-size="30">Сценарии, шаблоны и защита от спама</text>
+  <rect width="1200" height="630" fill="url(#g)"/>
+  <circle cx="1040" cy="120" r="220" fill="#60A5FA" fill-opacity="0.16"/>
+  <circle cx="980" cy="520" r="120" fill="#60A5FA" fill-opacity="0.11"/>
+  <rect x="80" y="90" width="1040" height="450" rx="24" fill="#0B1220" fill-opacity="0.72" stroke="#60A5FA" stroke-opacity="0.5"/>
+  <text x="140" y="242" fill="#93C5FD" font-family="Inter, Manrope, Arial" font-size="28">Руководства</text>
+  <text x="140" y="305" fill="#F8FAFC" font-family="Inter, Manrope, Arial" font-size="56" font-weight="800">Автоответы на FunPay — полная</text>
+  <text x="140" y="367" fill="#F8FAFC" font-family="Inter, Manrope, Arial" font-size="56" font-weight="800">настройка</text>
+  <text x="140" y="453" fill="#CBD5E1" font-family="Inter, Manrope, Arial" font-size="30">Подробный гайд по автоответам на FunPay: сценарии,</text>
+  <text x="140" y="491" fill="#CBD5E1" font-family="Inter, Manrope, Arial" font-size="30">шаблоны...</text>
 </svg>
