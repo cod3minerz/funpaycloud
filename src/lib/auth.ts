@@ -1,30 +1,46 @@
 'use client';
 
-const USER_TOKEN_KEY = 'token';
 const ADMIN_TOKEN_KEY = 'admin_token';
 const ADMIN_AUTH_COOKIE = 'admin_auth';
 
 export function getToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(USER_TOKEN_KEY);
+  return null;
 }
 
-export function setToken(token: string): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(USER_TOKEN_KEY, token);
-  // Также сохраняем в cookie для middleware
-  document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+export function setToken(_token: string): void {
+  // cookie-first auth: user access token хранится только в HttpOnly cookie от backend.
 }
 
 export function isAuthenticated(): boolean {
-  return !!getToken();
+  if (typeof document === 'undefined') return false;
+  return document.cookie.split(';').some(part => part.trim().startsWith('fp_access='));
+}
+
+function getCookie(name: string): string {
+  if (typeof document === 'undefined') return '';
+  const row = document.cookie
+    .split(';')
+    .map(part => part.trim())
+    .find(part => part.startsWith(`${name}=`));
+  return row ? decodeURIComponent(row.split('=').slice(1).join('=')) : '';
 }
 
 export function logout(): void {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(USER_TOKEN_KEY);
-  document.cookie = 'token=; path=/; max-age=0';
-  window.location.href = '/login';
+  if (typeof window === 'undefined') {
+    return;
+  }
+  const csrf = getCookie('fp_csrf');
+  void fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://api.funpay.cloud'}/api/auth/logout`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: csrf ? { 'X-CSRF-Token': csrf } : undefined,
+  }).finally(() => {
+    document.cookie = 'fp_access=; path=/; max-age=0';
+    document.cookie = 'fp_refresh=; path=/; max-age=0';
+    document.cookie = 'fp_csrf=; path=/; max-age=0';
+    document.cookie = 'token=; path=/; max-age=0';
+    window.location.href = '/auth/login';
+  });
 }
 
 export function getAdminToken(): string | null {

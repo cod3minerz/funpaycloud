@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const token = request.cookies.get('token')?.value;
+  const token = request.cookies.get('fp_access')?.value || request.cookies.get('token')?.value;
   const adminSession = request.cookies.get('admin_auth')?.value || request.cookies.get('admin_token')?.value;
   const legacyAdminToken = request.cookies.get('admin_token')?.value;
   const { pathname } = request.nextUrl;

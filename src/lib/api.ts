@@ -1,4 +1,4 @@
-import { clearAdminToken, getAdminToken, getToken, logout } from './auth';
+import { clearAdminToken, getAdminToken, logout } from './auth';
 
 const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://api.funpay.cloud').replace(/\/+$/, '');
 
@@ -6,6 +6,8 @@ const PUBLIC_AUTH_PATHS = new Set([
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/verify',
+  '/api/auth/refresh',
+  '/api/auth/csrf',
 ]);
 
 export class ApiError extends Error {
@@ -23,7 +25,38 @@ type ApiEnvelope<T> = {
   error?: string;
 };
 
-type ApiRequestOptions = RequestInit & { timeoutMs?: number };
+type ApiRequestOptions = RequestInit & { timeoutMs?: number; _retryAttempted?: boolean };
+
+function getCookie(name: string): string {
+  if (typeof document === 'undefined') return '';
+  const row = document.cookie
+    .split(';')
+    .map(part => part.trim())
+    .find(part => part.startsWith(`${name}=`));
+  return row ? decodeURIComponent(row.split('=').slice(1).join('=')) : '';
+}
+
+function isStateChangingMethod(method?: string): boolean {
+  const normalized = (method || 'GET').toUpperCase();
+  return normalized !== 'GET' && normalized !== 'HEAD' && normalized !== 'OPTIONS';
+}
+
+async function refreshSession(): Promise<boolean> {
+  const csrf = getCookie('fp_csrf');
+  try {
+    const response = await fetch(`${BASE_URL}/api/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
+      },
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
 
 export async function apiRequest<T = unknown>(
   path: string,
@@ -33,16 +66,20 @@ export async function apiRequest<T = unknown>(
     throw new ApiError(`Неверный путь API: ${path}`);
   }
 
-  const { timeoutMs = 15000, ...fetchOptions } = options;
+  const { timeoutMs = 15000, _retryAttempted = false, ...fetchOptions } = options;
+  const method = (fetchOptions.method || 'GET').toUpperCase();
 
-  const token = getToken();
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...(fetchOptions.headers as Record<string, string> | undefined),
   };
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  if (fetchOptions.body && !(fetchOptions.body instanceof FormData) && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+  if (isStateChangingMethod(method)) {
+    const csrf = getCookie('fp_csrf');
+    if (csrf) {
+      headers['X-CSRF-Token'] = csrf;
+    }
   }
 
   let response: Response;
@@ -54,6 +91,7 @@ export async function apiRequest<T = unknown>(
       headers,
       signal: controller.signal,
       mode: 'cors',
+      credentials: 'include',
     });
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
@@ -75,7 +113,11 @@ export async function apiRequest<T = unknown>(
 
   if (response.status === 401) {
     const isPublic = PUBLIC_AUTH_PATHS.has(path);
-    if (!isPublic && token) {
+    if (!isPublic && path !== '/api/auth/refresh' && !_retryAttempted) {
+      const refreshed = await refreshSession();
+      if (refreshed) {
+        return apiRequest<T>(path, { ...options, _retryAttempted: true });
+      }
       logout();
     }
     throw new ApiError(envelope.error || 'Сессия истекла. Войдите снова.', 401);
@@ -158,7 +200,7 @@ export async function adminApiRequest<T = unknown>(
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
-export type AuthResult = { token: string; user?: Record<string, unknown> };
+export type AuthResult = { token?: string; user?: Record<string, unknown> };
 
 export const authApi = {
   register: (email: string, password: string, referral_code?: string) =>
@@ -768,13 +810,15 @@ const WS_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://api.funpay.cloud').
   'ws',
 );
 
-export function createAccountWebSocket(
+export async function createAccountWebSocket(
   accountId: number | string,
   onMessage: (event: { type: string; data: Record<string, unknown> }) => void,
-): WebSocket {
-  const token = getToken();
-  const query = token ? `?token=${encodeURIComponent(token)}` : '';
-  const ws = new WebSocket(`${WS_BASE}/ws/${accountId}${query}`);
+): Promise<WebSocket> {
+  const ticketResponse = await apiRequest<{ ticket: string }>('/api/ws/token', {
+    method: 'POST',
+    body: JSON.stringify({ account_id: Number(accountId) }),
+  });
+  const ws = new WebSocket(`${WS_BASE}/ws/${accountId}?ticket=${encodeURIComponent(ticketResponse.ticket)}`);
 
   ws.addEventListener('message', e => {
     try {

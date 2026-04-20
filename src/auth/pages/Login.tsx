@@ -7,7 +7,6 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { AuthShell } from "@/auth/components/AuthShell";
 import { authApi } from "@/lib/api";
-import { setToken } from "@/lib/auth";
 import { sanitizeInput, validateEmail, validatePassword } from "@/lib/sanitize";
 
 const fieldClass =
@@ -58,11 +57,10 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const result = await authApi.login(
+      await authApi.login(
         sanitizeInput(email),
         sanitizeInput(password),
       );
-      setToken(result.token);
       router.push("/platform/dashboard");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Ошибка входа");

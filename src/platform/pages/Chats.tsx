@@ -396,120 +396,135 @@ export default function Chats() {
       }, 120);
     };
 
-    const connect = (accountID: number, attempt = 0) => {
+    const connect = async (accountID: number, attempt = 0) => {
       if (cancelled) return;
 
-      const ws = createAccountWebSocket(accountID, event => {
-        const eventAccountID = Number(event.data.account_id ?? accountID);
+      let ws: WebSocket;
+      try {
+        ws = await createAccountWebSocket(accountID, event => {
+          const eventAccountID = Number(event.data.account_id ?? accountID);
 
-        if (event.type === 'pong') {
-          return;
-        }
-
-        if (event.type === 'message_confirmed') {
-          const tempID = Number(event.data.temp_id ?? 0);
-          const realID = Number(event.data.real_funpay_message_id ?? 0);
-          if (!tempID) return;
-
-          setMessages(prev =>
-            prev.map(message => {
-              const selectedAccountID = selectedChatRef.current?.funpay_account_id ?? 0;
-              if (selectedAccountID !== eventAccountID) return message;
-
-              const msgTempID = Number(message.temp_id ?? message.id);
-              if (msgTempID !== tempID) return message;
-              return {
-                ...message,
-                id: realID || message.id,
-                temp_id: tempID,
-                funpay_message_id: realID || message.funpay_message_id,
-                status: 'delivered',
-              };
-            }),
-          );
-          return;
-        }
-
-        if (event.type !== 'new_message' && event.type !== 'message_sent') return;
-
-        const nodeID = String(event.data.node_id ?? event.data.chat_node_id ?? '');
-        if (!nodeID) return;
-
-        const text = String(event.data.text ?? '');
-        const authorName = String(event.data.author_name ?? event.data.with_user ?? '');
-        const withUser = String(event.data.with_user ?? '');
-        const createdAt = String(event.data.created_at ?? new Date().toISOString());
-        const tempID = Number(event.data.temp_id ?? 0);
-        const isMyMsg = Boolean(event.data.is_my_msg);
-        const status = String(event.data.status ?? (isMyMsg ? 'pending' : 'delivered'));
-
-        let found = false;
-        let isOpened = false;
-        let targetChatID = 0;
-
-        setChats(prev => {
-          const updated = prev.map(chat => {
-            const chatAccountID = chat.funpay_account_id ?? 0;
-            if (chat.node_id !== nodeID || chatAccountID !== eventAccountID) return chat;
-
-            found = true;
-            targetChatID = chat.id;
-            isOpened =
-              selectedChatRef.current?.node_id === nodeID &&
-              (selectedChatRef.current?.funpay_account_id ?? 0) === eventAccountID;
-
-            const unread = isOpened ? false : !isMyMsg;
-            return {
-              ...chat,
-              with_user: withUser || chat.with_user,
-              last_message: text,
-              updated_at: createdAt,
-              unread,
-              unread_count: unread ? chat.unread_count + 1 : 0,
-            };
-          });
-
-          if (!found) {
-            void loadChatsRef.current(accountScope, true);
-            return prev;
+          if (event.type === 'pong') {
+            return;
           }
-          return moveChatToTop(updated, nodeID, eventAccountID);
-        });
 
-        if (!found || !isOpened || targetChatID === 0) return;
+          if (event.type === 'message_confirmed') {
+            const tempID = Number(event.data.temp_id ?? 0);
+            const realID = Number(event.data.real_funpay_message_id ?? 0);
+            if (!tempID) return;
 
-        const parsedCreatedAt = new Date(createdAt).getTime();
-        setMessages(prev => {
-          const duplicate = prev.some(message => {
-            if (message.is_my_msg !== isMyMsg || message.text !== text) return false;
-            if (message.created_at === createdAt) return true;
+            setMessages(prev =>
+              prev.map(message => {
+                const selectedAccountID = selectedChatRef.current?.funpay_account_id ?? 0;
+                if (selectedAccountID !== eventAccountID) return message;
 
-            const currentTime = new Date(message.created_at).getTime();
-            if (!Number.isNaN(parsedCreatedAt) && !Number.isNaN(currentTime)) {
-              return Math.abs(currentTime - parsedCreatedAt) <= 5000;
+                const msgTempID = Number(message.temp_id ?? message.id);
+                if (msgTempID !== tempID) return message;
+                return {
+                  ...message,
+                  id: realID || message.id,
+                  temp_id: tempID,
+                  funpay_message_id: realID || message.funpay_message_id,
+                  status: 'delivered',
+                };
+              }),
+            );
+            return;
+          }
+
+          if (event.type !== 'new_message' && event.type !== 'message_sent') return;
+
+          const nodeID = String(event.data.node_id ?? event.data.chat_node_id ?? '');
+          if (!nodeID) return;
+
+          const text = String(event.data.text ?? '');
+          const authorName = String(event.data.author_name ?? event.data.with_user ?? '');
+          const withUser = String(event.data.with_user ?? '');
+          const createdAt = String(event.data.created_at ?? new Date().toISOString());
+          const tempID = Number(event.data.temp_id ?? 0);
+          const isMyMsg = Boolean(event.data.is_my_msg);
+          const status = String(event.data.status ?? (isMyMsg ? 'pending' : 'delivered'));
+
+          let found = false;
+          let isOpened = false;
+          let targetChatID = 0;
+
+          setChats(prev => {
+            const updated = prev.map(chat => {
+              const chatAccountID = chat.funpay_account_id ?? 0;
+              if (chat.node_id !== nodeID || chatAccountID !== eventAccountID) return chat;
+
+              found = true;
+              targetChatID = chat.id;
+              isOpened =
+                selectedChatRef.current?.node_id === nodeID &&
+                (selectedChatRef.current?.funpay_account_id ?? 0) === eventAccountID;
+
+              const unread = isOpened ? false : !isMyMsg;
+              return {
+                ...chat,
+                with_user: withUser || chat.with_user,
+                last_message: text,
+                updated_at: createdAt,
+                unread,
+                unread_count: unread ? chat.unread_count + 1 : 0,
+              };
+            });
+
+            if (!found) {
+              void loadChatsRef.current(accountScope, true);
+              return prev;
             }
-            return false;
+            return moveChatToTop(updated, nodeID, eventAccountID);
           });
-          if (duplicate) return prev;
 
-          const nextMessage: ThreadMessage = {
-            id: Number(event.data.id ?? (tempID || Date.now())),
-            temp_id: tempID || undefined,
-            funpay_message_id:
-              Number(event.data.real_funpay_message_id ?? event.data.funpay_message_id ?? 0) || undefined,
-            chat_id: targetChatID,
-            author_id: Number(event.data.author_id ?? 0),
-            author_name: authorName,
-            text,
-            is_my_msg: isMyMsg,
-            created_at: createdAt,
-            status: isMyMsg ? (status as ThreadMessage['status']) : 'delivered',
-          };
-          return [...prev, nextMessage];
+          if (!found || !isOpened || targetChatID === 0) return;
+
+          const parsedCreatedAt = new Date(createdAt).getTime();
+          setMessages(prev => {
+            const duplicate = prev.some(message => {
+              if (message.is_my_msg !== isMyMsg || message.text !== text) return false;
+              if (message.created_at === createdAt) return true;
+
+              const currentTime = new Date(message.created_at).getTime();
+              if (!Number.isNaN(parsedCreatedAt) && !Number.isNaN(currentTime)) {
+                return Math.abs(currentTime - parsedCreatedAt) <= 5000;
+              }
+              return false;
+            });
+            if (duplicate) return prev;
+
+            const nextMessage: ThreadMessage = {
+              id: Number(event.data.id ?? (tempID || Date.now())),
+              temp_id: tempID || undefined,
+              funpay_message_id:
+                Number(event.data.real_funpay_message_id ?? event.data.funpay_message_id ?? 0) || undefined,
+              chat_id: targetChatID,
+              author_id: Number(event.data.author_id ?? 0),
+              author_name: authorName,
+              text,
+              is_my_msg: isMyMsg,
+              created_at: createdAt,
+              status: isMyMsg ? (status as ThreadMessage['status']) : 'delivered',
+            };
+            return [...prev, nextMessage];
+          });
+
+          requestAnimationFrame(scrollThreadToBottom);
         });
+      } catch {
+        if (cancelled) return;
+        const backoff = Math.min(15000, 3000 * Math.pow(2, attempt));
+        const jitter = Math.floor(Math.random() * 400);
+        const timer = setTimeout(() => void connect(accountID, attempt + 1), backoff + jitter);
+        reconnectTimersRef.current.set(accountID, timer);
+        return;
+      }
 
-        requestAnimationFrame(scrollThreadToBottom);
-      });
+      if (cancelled) {
+        ws.close();
+        return;
+      }
 
       ws.onopen = () => {
         const previousHeartbeat = heartbeatTimersRef.current.get(accountID);
@@ -539,7 +554,7 @@ export default function Chats() {
 
         const backoff = Math.min(15000, 3000 * Math.pow(2, attempt));
         const jitter = Math.floor(Math.random() * 400);
-        const timer = setTimeout(() => connect(accountID, attempt + 1), backoff + jitter);
+        const timer = setTimeout(() => void connect(accountID, attempt + 1), backoff + jitter);
         reconnectTimersRef.current.set(accountID, timer);
       };
 
@@ -553,7 +568,7 @@ export default function Chats() {
     socketsRef.current.forEach(socket => socket.close());
     socketsRef.current.clear();
 
-    targetAccountIDs.forEach(accountID => connect(accountID));
+    targetAccountIDs.forEach(accountID => void connect(accountID));
 
     return () => {
       cancelled = true;

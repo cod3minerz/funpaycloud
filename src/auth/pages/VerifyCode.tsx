@@ -7,7 +7,6 @@ import { ArrowLeft, ArrowRight, Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { AuthShell } from "@/auth/components/AuthShell";
 import { authApi } from "@/lib/api";
-import { setToken } from "@/lib/auth";
 
 function maskEmail(email: string) {
   const normalized = email.trim() || "user@funpay.cloud";
@@ -94,8 +93,7 @@ export default function VerifyCodePage({ email: rawEmail, mode: rawMode }: Verif
 
     setLoading(true);
     try {
-      const result = await authApi.verify(email, code);
-      setToken(result.token);
+      await authApi.verify(email, code);
       router.push("/platform/dashboard");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Неверный код подтверждения");
