@@ -47,6 +47,10 @@
   --pf-z-overlay: 60;
   --pf-z-mobile-nav: 70;
   --pf-z-topbar: 35;
+
+  /* Ultrawide: max shell width and auto-centering gutter */
+  --pf-shell-max-width: 1920px;
+  --pf-ultrawide-gutter: max(0px, calc((100vw - var(--pf-shell-max-width)) / 2));
 }
 
 .platform-scope[data-theme='dark'],
@@ -129,9 +133,17 @@ body[data-platform-theme='dark'] {
   background: rgba(14, 17, 22, 0.34);
 }
 
+/* Fill platform bg across the entire viewport on ultrawide */
+body[data-platform-theme] {
+  background: var(--pf-bg);
+}
+
 .platform-shell {
   min-height: 100vh;
   width: 100%;
+  max-width: var(--pf-shell-max-width);
+  margin-left: auto;
+  margin-right: auto;
   display: flex;
   overflow-x: clip;
 }
@@ -617,7 +629,7 @@ body[data-platform-theme='dark'] {
 
 .platform-desktop-sidebar {
   position: fixed;
-  left: 0;
+  left: var(--pf-ultrawide-gutter);
   top: 0;
   bottom: 0;
   z-index: 40;
