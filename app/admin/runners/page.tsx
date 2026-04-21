@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { RotateCcw, Square, SquareStack } from 'lucide-react';
+import { Play, Square, SquareStack } from 'lucide-react';
 import { adminApi, AdminRunner } from '@/lib/api';
 
 function StateBadge({ active }: { active: boolean }) {
@@ -17,6 +17,7 @@ export default function AdminRunnersPage() {
   const [items, setItems] = useState<AdminRunner[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -39,10 +40,25 @@ export default function AdminRunnersPage() {
 
   const stopAll = async () => {
     try {
+      setBulkActionLoading(true);
       await adminApi.stopAllRunners();
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка остановки воркеров');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const startAll = async () => {
+    try {
+      setBulkActionLoading(true);
+      await adminApi.startAllRunners();
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка запуска воркеров');
+    } finally {
+      setBulkActionLoading(false);
     }
   };
 
@@ -55,14 +71,16 @@ export default function AdminRunnersPage() {
     }
   };
 
-  const restart = async (accountID: number) => {
+  const start = async (accountID: number) => {
     try {
       await adminApi.restartRunner(accountID);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка перезапуска воркера');
+      setError(err instanceof Error ? err.message : 'Ошибка запуска воркера');
     }
   };
+
+  const hasAnyActive = items.some(item => item.runner_active || item.keeper_active || item.raiser_active);
 
   return (
     <div className="space-y-4">
@@ -73,11 +91,16 @@ export default function AdminRunnersPage() {
         </div>
         <button
           type="button"
-          onClick={stopAll}
-          className="inline-flex h-10 items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 text-sm text-red-200 hover:bg-red-500/20"
+          onClick={hasAnyActive ? stopAll : startAll}
+          disabled={bulkActionLoading}
+          className={`inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm transition-colors disabled:opacity-60 ${
+            hasAnyActive
+              ? 'border-red-500/40 bg-red-500/10 text-red-200 hover:bg-red-500/20'
+              : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20'
+          }`}
         >
-          <SquareStack size={16} />
-          Остановить всё
+          {hasAnyActive ? <SquareStack size={16} /> : <Play size={16} />}
+          {hasAnyActive ? 'Остановить всё' : 'Запустить всё'}
         </button>
       </div>
 
@@ -106,35 +129,41 @@ export default function AdminRunnersPage() {
               </tr>
             )}
 
-            {items.map(item => (
-              <tr key={item.account_id} className="align-top text-slate-200">
-                <td className="px-3 py-2">#{item.account_id} · {item.username || '—'}</td>
-                <td className="px-3 py-2 text-slate-300">{item.user_id}</td>
-                <td className="px-3 py-2"><StateBadge active={item.runner_active} /></td>
-                <td className="px-3 py-2"><StateBadge active={item.keeper_active} /></td>
-                <td className="px-3 py-2"><StateBadge active={item.raiser_active} /></td>
-                <td className="px-3 py-2 text-xs text-slate-400">{item.started_at ? new Date(item.started_at).toLocaleString('ru-RU') : '—'}</td>
-                <td className="px-3 py-2 text-xs text-slate-400">{item.last_event_at ? new Date(item.last_event_at).toLocaleString('ru-RU') : '—'}</td>
-                <td className="px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => stop(item.account_id)}
-                      className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-700 px-2 text-xs text-slate-200 hover:border-red-500/40 hover:text-red-300"
-                    >
-                      <Square size={12} /> Стоп
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => restart(item.account_id)}
-                      className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-700 px-2 text-xs text-slate-200 hover:border-blue-500/40 hover:text-blue-300"
-                    >
-                      <RotateCcw size={12} /> Рестарт
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {items.map(item => {
+              const isActive = item.runner_active || item.keeper_active || item.raiser_active;
+              return (
+                <tr key={item.account_id} className="align-top text-slate-200">
+                  <td className="px-3 py-2">#{item.account_id} · {item.username || '—'}</td>
+                  <td className="px-3 py-2 text-slate-300">{item.user_id}</td>
+                  <td className="px-3 py-2"><StateBadge active={item.runner_active} /></td>
+                  <td className="px-3 py-2"><StateBadge active={item.keeper_active} /></td>
+                  <td className="px-3 py-2"><StateBadge active={item.raiser_active} /></td>
+                  <td className="px-3 py-2 text-xs text-slate-400">{item.started_at ? new Date(item.started_at).toLocaleString('ru-RU') : '—'}</td>
+                  <td className="px-3 py-2 text-xs text-slate-400">{item.last_event_at ? new Date(item.last_event_at).toLocaleString('ru-RU') : '—'}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      {isActive ? (
+                        <button
+                          type="button"
+                          onClick={() => stop(item.account_id)}
+                          className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-700 px-2 text-xs text-slate-200 hover:border-red-500/40 hover:text-red-300"
+                        >
+                          <Square size={12} /> Выключить
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => start(item.account_id)}
+                          className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-700 px-2 text-xs text-emerald-200 hover:border-emerald-500/40 hover:text-emerald-300"
+                        >
+                          <Play size={12} /> Включить
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

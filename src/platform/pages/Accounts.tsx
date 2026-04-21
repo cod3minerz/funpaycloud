@@ -127,6 +127,10 @@ function proxyDotColor(acc: ApiAccount): string {
   return 'var(--pf-warning)';
 }
 
+function isAccountRuntimeActive(acc: ApiAccount): boolean {
+  return Boolean(acc.runner_active || acc.keeper_active || acc.raiser_active);
+}
+
 export default function Accounts() {
   const [list, setList] = useState<ApiAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -136,9 +140,10 @@ export default function Accounts() {
   const [showCreate, setShowCreate] = useState(false);
   const [goldenKey, setGoldenKey] = useState('');
   const [creating, setCreating] = useState(false);
-  const [stoppingAll, setStoppingAll] = useState(false);
+  const [bulkRuntimeLoading, setBulkRuntimeLoading] = useState(false);
   // Map of accountId → loading state for raiser toggle
   const [raisingIds, setRaisingIds] = useState<Set<string | number>>(new Set());
+  const [runtimeLoadingIds, setRuntimeLoadingIds] = useState<Set<string | number>>(new Set());
   const [savingScheduleIds, setSavingScheduleIds] = useState<Set<string | number>>(new Set());
   const [scheduleDrafts, setScheduleDrafts] = useState<Record<string, string>>({});
   const [selectedAccountID, setSelectedAccountID] = useState<number | null>(null);
@@ -248,17 +253,54 @@ export default function Accounts() {
     }
   }
 
-  async function stopAll() {
-    if (list.length === 0) return;
-    setStoppingAll(true);
+  async function toggleAccountRuntime(acc: ApiAccount) {
+    setRuntimeLoadingIds(prev => new Set(prev).add(acc.id));
     try {
-      await Promise.allSettled(list.map(acc => accountsApi.stopRaiser(acc.id)));
-      setList(prev => prev.map(a => ({ ...a, raiser_active: false })));
-      toast.success('Все воркеры остановлены');
-    } catch {
-      toast.error('Ошибка при остановке воркеров');
+      if (isAccountRuntimeActive(acc)) {
+        await accountsApi.stopRuntime(acc.id);
+        setList(prev => prev.map(a => (a.id === acc.id ? { ...a, runner_active: false, keeper_active: false, raiser_active: false } : a)));
+        toast.success(`Аккаунт выключен (${displayName(acc)})`);
+      } else {
+        await accountsApi.startRuntime(acc.id);
+        setList(prev => prev.map(a => (a.id === acc.id ? { ...a, runner_active: true, keeper_active: true, raiser_active: true } : a)));
+        toast.success(`Аккаунт включен (${displayName(acc)})`);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка управления аккаунтом');
     } finally {
-      setStoppingAll(false);
+      setRuntimeLoadingIds(prev => {
+        const next = new Set(prev);
+        next.delete(acc.id);
+        return next;
+      });
+    }
+  }
+
+  async function toggleAllRuntime() {
+    if (list.length === 0) return;
+    const hasAnyActive = list.some(isAccountRuntimeActive);
+    setBulkRuntimeLoading(true);
+    try {
+      if (hasAnyActive) {
+        await accountsApi.stopAllRuntime();
+        setList(prev => prev.map(a => ({ ...a, runner_active: false, keeper_active: false, raiser_active: false })));
+        toast.success('Все аккаунты выключены');
+      } else {
+        const result = await accountsApi.startAllRuntime();
+        const failedIDs = new Set(Object.keys(result.failed || {}).map(Number));
+        setList(prev =>
+          prev.map(a => (failedIDs.has(Number(a.id)) ? a : { ...a, runner_active: true, keeper_active: true, raiser_active: true })),
+        );
+        if (failedIDs.size > 0) {
+          toast.warning(`Запущено: ${result.started}. Не удалось запустить: ${failedIDs.size}. Проверьте прокси.`);
+        } else {
+          toast.success('Все аккаунты запущены');
+        }
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка управления воркерами');
+    } finally {
+      setBulkRuntimeLoading(false);
     }
   }
 
@@ -283,6 +325,7 @@ export default function Accounts() {
   const runnerActiveCount = list.filter(a => a.runner_active).length;
   const onlineCount = list.filter(a => a.keeper_active).length;
   const raisingCount = list.filter(a => a.raiser_active).length;
+  const hasAnyRuntimeActive = list.some(isAccountRuntimeActive);
 
   const openAccountSheet = (accountId: number) => {
     setSelectedAccountID(accountId);
@@ -330,12 +373,18 @@ export default function Accounts() {
           />
           <div className="inline-flex items-center gap-2 flex-wrap">
             <button
-              className="platform-btn-secondary"
-              onClick={stopAll}
-              disabled={stoppingAll || list.length === 0}
+              className={hasAnyRuntimeActive ? 'platform-btn-secondary' : 'platform-btn-primary'}
+              onClick={toggleAllRuntime}
+              disabled={bulkRuntimeLoading || list.length === 0}
             >
-              {stoppingAll ? <Loader2 size={14} className="animate-spin" /> : <Square size={14} />}
-              Остановить всё
+              {bulkRuntimeLoading ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : hasAnyRuntimeActive ? (
+                <Square size={14} />
+              ) : (
+                <Play size={14} />
+              )}
+              {hasAnyRuntimeActive ? 'Остановить всё' : 'Запустить всё'}
             </button>
             <button className="platform-btn-primary" onClick={() => setShowCreate(true)}>
               <Plus size={15} /> Добавить аккаунт
@@ -414,11 +463,12 @@ export default function Accounts() {
             <>
               <div className="platform-desktop-table">
                 <DataTableWrap>
-                  <table className="platform-table" style={{ minWidth: 640 }}>
+                  <table className="platform-table" style={{ minWidth: 760 }}>
                     <thead>
                       <tr>
                         <th style={{ width: 320 }}>Аккаунт</th>
                         <th>Статусы</th>
+                        <th>Прокси</th>
                         <th style={{ textAlign: 'right' }}>Действия</th>
                       </tr>
                     </thead>
@@ -446,13 +496,6 @@ export default function Accounts() {
                                     />
                                     {isOnline ? 'Онлайн' : 'Оффлайн'}
                                   </div>
-                                  <div className="mt-1 text-[12px] text-[var(--pf-text-dim)] inline-flex items-center gap-1.5">
-                                    <span
-                                      className="inline-block w-2 h-2 rounded-full"
-                                      style={{ backgroundColor: proxyDotColor(acc) }}
-                                    />
-                                    {acc.proxy_label || 'Прокси не подключен'}
-                                  </div>
                                 </div>
                               </div>
                             </td>
@@ -473,6 +516,15 @@ export default function Accounts() {
                                   className="h-2.5 w-2.5 rounded-full"
                                   style={{ backgroundColor: acc.raiser_active ? 'var(--pf-warning)' : 'var(--pf-text-soft)' }}
                                 />
+                              </div>
+                            </td>
+                            <td>
+                              <div className="inline-flex items-center gap-1.5 text-xs text-[var(--pf-text-muted)]">
+                                <span
+                                  className="inline-block w-2 h-2 rounded-full"
+                                  style={{ backgroundColor: proxyDotColor(acc) }}
+                                />
+                                {acc.proxy_label || 'Прокси не подключен'}
                               </div>
                             </td>
                             <td style={{ textAlign: 'right' }}>
@@ -566,6 +618,7 @@ export default function Accounts() {
                       </div>
                       <div className="mt-2 flex items-center justify-between gap-2">
                         <span className="inline-flex items-center gap-1.5 text-xs text-[var(--pf-text-dim)]">
+                          <span className="text-[var(--pf-text-soft)]">Прокси:</span>
                           <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: proxyDotColor(acc) }} />
                           {acc.proxy_label || 'Прокси не подключен'}
                         </span>
@@ -812,6 +865,35 @@ export default function Accounts() {
 
                 <section className="space-y-3">
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--pf-text-dim)]">Действия</h4>
+                  <button
+                    type="button"
+                    onClick={() => toggleAccountRuntime(selectedAccount)}
+                    className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-md border text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+                    style={{
+                      borderColor: isAccountRuntimeActive(selectedAccount)
+                        ? 'color-mix(in srgb, var(--pf-danger) 48%, transparent)'
+                        : 'color-mix(in srgb, var(--pf-success) 52%, transparent)',
+                      background: isAccountRuntimeActive(selectedAccount)
+                        ? 'color-mix(in srgb, var(--pf-danger) 14%, transparent)'
+                        : 'color-mix(in srgb, var(--pf-success) 14%, transparent)',
+                      color: isAccountRuntimeActive(selectedAccount) ? 'var(--pf-danger)' : 'var(--pf-success)',
+                    }}
+                    disabled={runtimeLoadingIds.has(selectedAccount.id)}
+                  >
+                    {runtimeLoadingIds.has(selectedAccount.id) ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : isAccountRuntimeActive(selectedAccount) ? (
+                      <>
+                        <Square size={14} />
+                        Выключить аккаунт
+                      </>
+                    ) : (
+                      <>
+                        <Play size={14} />
+                        Включить аккаунт
+                      </>
+                    )}
+                  </button>
                   <button
                     type="button"
                     onClick={() => setShowDeleteConfirm(true)}

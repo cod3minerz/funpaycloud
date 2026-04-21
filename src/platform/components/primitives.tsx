@@ -52,7 +52,6 @@ export function PageHeader({ className, ...props }: React.ComponentProps<'header
 
 export function PageTitle({
   title,
-  subtitle,
   className,
 }: {
   title: string;
@@ -62,7 +61,6 @@ export function PageTitle({
   return (
     <div className={className}>
       <h1 className="platform-page-title">{title}</h1>
-      {subtitle && <p className="platform-page-subtitle">{subtitle}</p>}
     </div>
   );
 }

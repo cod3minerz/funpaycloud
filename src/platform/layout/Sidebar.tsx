@@ -165,13 +165,12 @@ export default function Sidebar({
             {!collapsed && <div className="platform-nav-section">{group.title}</div>}
             {group.items.map(({ icon: Icon, label, path }) => {
               const isActive = pathname === path;
-              const isReferral = path === '/platform/referrals';
               const isAIItem = path === '/platform/ai-assistant';
               return (
                 <Link
                   key={path}
                   href={path}
-                  className={`platform-nav-item${isActive ? ' active' : ''}${isReferral ? ' platform-nav-item-referrals' : ''}`}
+                  className={`platform-nav-item${isActive ? ' active' : ''}`}
                   onClick={onClose}
                   title={collapsed ? label : undefined}
                   aria-current={isActive ? 'page' : undefined}
@@ -179,21 +178,21 @@ export default function Sidebar({
                   <Icon size={16} />
                   {!collapsed && (
                     <span
-                      className={
-                        isReferral
-                          ? 'platform-referrals-nav-label'
-                          : !isAIItem
-                            ? undefined
-                            : ''
-                      }
+                      className={!isAIItem ? undefined : ''}
                       style={
                         isAIItem
                           ? {
-                              background: 'linear-gradient(90deg, #818cf8, #a78bfa, #c084fc)',
-                              backgroundSize: '200% auto',
-                              WebkitBackgroundClip: 'text',
-                              WebkitTextFillColor: 'transparent',
-                              animation: 'shimmer 3s linear infinite',
+                              ...(isActive
+                                ? {
+                                    color: '#ffffff',
+                                  }
+                                : {
+                                    background: 'linear-gradient(90deg, #818cf8, #a78bfa, #c084fc)',
+                                    backgroundSize: '200% auto',
+                                    WebkitBackgroundClip: 'text',
+                                    WebkitTextFillColor: 'transparent',
+                                    animation: 'shimmer 3s linear infinite',
+                                  }),
                             }
                           : undefined
                       }

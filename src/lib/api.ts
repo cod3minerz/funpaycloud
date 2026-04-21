@@ -235,11 +235,31 @@ export async function adminApiRequest<T = unknown>(
 
 export type AuthResult = { token?: string; user?: Record<string, unknown> };
 
+export type AuthMeData = {
+  id: number;
+  email: string;
+  plan: string;
+  trial_expires_at?: string | null;
+  trial_expired?: boolean;
+  ai_bonus_messages?: number;
+  plan_limits?: Record<string, unknown>;
+  referral_code?: string;
+};
+
 export const authApi = {
-  register: (email: string, password: string, referral_code?: string) =>
+  register: (
+    email: string,
+    password: string,
+    payload?: { referral_code?: string; promo_code?: string },
+  ) =>
     apiRequest('/api/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, ...(referral_code ? { referral_code } : {}) }),
+      body: JSON.stringify({
+        email,
+        password,
+        ...(payload?.referral_code ? { referral_code: payload.referral_code } : {}),
+        ...(payload?.promo_code ? { promo_code: payload.promo_code } : {}),
+      }),
     }),
 
   verify: (email: string, code: string) =>
@@ -254,7 +274,7 @@ export const authApi = {
       body: JSON.stringify({ email, password }),
     }),
 
-  me: () => apiRequest<Record<string, unknown>>('/api/auth/me'),
+  me: () => apiRequest<AuthMeData>('/api/auth/me'),
 };
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
@@ -320,6 +340,22 @@ export const accountsApi = {
     apiRequest(`/api/accounts/${id}/raiser/schedule`, {
       method: 'PUT',
       body: JSON.stringify({ time, timezone }),
+    }),
+  stopRuntime: (id: number | string) =>
+    apiRequest<{ message?: string }>(`/api/accounts/${id}/runtime/stop`, {
+      method: 'POST',
+    }),
+  startRuntime: (id: number | string) =>
+    apiRequest<{ message?: string }>(`/api/accounts/${id}/runtime/start`, {
+      method: 'POST',
+    }),
+  stopAllRuntime: () =>
+    apiRequest<{ affected: number }>('/api/accounts/runtime/stop-all', {
+      method: 'POST',
+    }),
+  startAllRuntime: () =>
+    apiRequest<{ started: number; failed: Record<string, string> }>('/api/accounts/runtime/start-all', {
+      method: 'POST',
     }),
   connectProxy: (id: number | string, mode: 'free' | 'individual') =>
     apiRequest<{
@@ -644,6 +680,24 @@ export type TelegramLinkData = {
   link: string;
 };
 
+export type PromoRedemptionItem = {
+  id: number;
+  code: string;
+  reward_type: 'plan' | 'ai_messages' | string;
+  reward_plan?: string | null;
+  reward_ai_messages: number;
+  duration_days: number;
+  redeemed_at: string;
+};
+
+export type PromoRedeemResult = {
+  code: string;
+  reward_type: 'plan' | 'ai_messages' | string;
+  reward_plan?: string;
+  reward_ai_messages?: number;
+  duration_days?: number;
+};
+
 export type AIConfig = {
   account_id: number;
   is_enabled: boolean;
@@ -700,6 +754,22 @@ export const settingsApi = {
     apiRequest<{ referral_code: string; referrals: Array<Record<string, unknown>>; total_earned: number }>(
       '/api/settings/referral',
     ),
+};
+
+export const promoApi = {
+  my: () =>
+    apiRequest<{
+      items: PromoRedemptionItem[];
+      ai: { used: number; limit: number; remaining: number };
+    }>('/api/promo/my'),
+  redeem: (code: string) =>
+    apiRequest<{
+      result: PromoRedeemResult;
+      meta?: { ai_used?: number; ai_limit?: number; ai_remaining?: number };
+    }>('/api/promo/redeem', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    }),
 };
 
 export const aiApi = {
@@ -967,6 +1037,23 @@ export type AdminSharedProxy = {
   expires_at?: string | null;
 };
 
+export type AdminPromoCode = {
+  id: number;
+  code: string;
+  reward_type: 'plan' | 'ai_messages' | string;
+  reward_plan?: string | null;
+  reward_ai_messages: number;
+  duration_days: number;
+  is_active: boolean;
+  created_at: string;
+  expires_at?: string | null;
+  deactivated_at?: string | null;
+  redeemed_by_user_id?: number | null;
+  redeemed_by_email?: string | null;
+  redeemed_at?: string | null;
+  status: 'active' | 'deactivated' | 'expired' | 'used' | string;
+};
+
 export const adminApi = {
   login: (email: string, password: string, totp: string) =>
     adminApiRequest<{ token: string; user: { id: number; email: string } }>('/admin-api/auth/login', {
@@ -1039,6 +1126,8 @@ export const adminApi = {
     adminApiRequest(`/admin-api/runners/${accountId}/restart`, { method: 'POST' }),
   stopAllRunners: () =>
     adminApiRequest<{ stopped: number }>('/admin-api/runners/stop-all', { method: 'POST' }),
+  startAllRunners: () =>
+    adminApiRequest<{ started: number; failed: Record<string, string> }>('/admin-api/runners/start-all', { method: 'POST' }),
   sharedProxies: () =>
     adminApiRequest<{ items: AdminSharedProxy[]; total: number }>('/admin-api/proxies/shared'),
   addSharedProxy: (payload: {
@@ -1052,6 +1141,26 @@ export const adminApi = {
     adminApiRequest<AdminSharedProxy>('/admin-api/proxies/shared', {
       method: 'POST',
       body: JSON.stringify(payload),
+    }),
+  promoCodes: () =>
+    adminApiRequest<{ items: AdminPromoCode[]; total: number }>('/admin-api/promo-codes'),
+  createPromoCode: (payload: {
+    code?: string;
+    generate?: boolean;
+    reward_type: 'plan' | 'ai_messages';
+    reward_plan?: 'lite' | 'pro' | 'ultra';
+    reward_ai_messages?: number;
+    duration_days?: number;
+    validity_preset?: 'day' | 'week' | 'month' | 'custom';
+    expires_at?: string;
+  }) =>
+    adminApiRequest<AdminPromoCode>('/admin-api/promo-codes', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  deactivatePromoCode: (id: number | string) =>
+    adminApiRequest(`/admin-api/promo-codes/${id}/deactivate`, {
+      method: 'POST',
     }),
   bans: (params: { page?: number; limit?: number }) => {
     const query = new URLSearchParams();

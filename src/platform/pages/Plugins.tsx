@@ -1,12 +1,78 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { motion } from 'motion/react';
-import { Loader2, Search, Settings2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { 
+  Bot,
+  ChartNoAxesCombined,
+  Gift,
+  Loader2,
+  MessageSquareCode,
+  Search,
+  Settings2,
+  Shield,
+  Sparkles,
+  Tag,
+  Wrench,
+  Zap,
+  type LucideIcon,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { accountsApi, ApiAccount, ApiPlugin, pluginsApi } from '@/lib/api';
-import { DataTableWrap, EmptyState, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard, ToolbarRow } from '@/platform/components/primitives';
+import {
+  EmptyState,
+  PageHeader,
+  PageShell,
+  PageTitle,
+  RequestErrorState,
+  SectionCard,
+  ToolbarRow,
+} from '@/platform/components/primitives';
+
+const fallbackIcons: LucideIcon[] = [
+  Sparkles,
+  Zap,
+  Shield,
+  Bot,
+  MessageSquareCode,
+  ChartNoAxesCombined,
+  Gift,
+  Wrench,
+  Tag,
+];
+
+function iconByPlugin(plugin: ApiPlugin): LucideIcon {
+  const source = `${plugin.slug} ${plugin.category} ${plugin.name}`.toLowerCase();
+  if (source.includes('ai') || source.includes('chat') || source.includes('ответ')) return Bot;
+  if (source.includes('security') || source.includes('safe') || source.includes('защит')) return Shield;
+  if (source.includes('analytics') || source.includes('аналит')) return ChartNoAxesCombined;
+  if (source.includes('discount') || source.includes('promo') || source.includes('скидк')) return Gift;
+  if (source.includes('speed') || source.includes('boost') || source.includes('raise')) return Zap;
+
+  let hash = 0;
+  const token = plugin.slug || plugin.name || String(plugin.id);
+  for (let i = 0; i < token.length; i += 1) {
+    hash = (hash * 31 + token.charCodeAt(i)) >>> 0;
+  }
+  return fallbackIcons[hash % fallbackIcons.length];
+}
+
+function iconTone(plugin: ApiPlugin): { bg: string; fg: string } {
+  const source = `${plugin.slug} ${plugin.category}`.toLowerCase();
+  if (source.includes('ai') || source.includes('chat')) {
+    return { bg: 'rgba(58, 47, 224, 0.12)', fg: 'var(--pf-accent)' };
+  }
+  if (source.includes('security') || source.includes('safe')) {
+    return { bg: 'rgba(14, 138, 87, 0.12)', fg: 'var(--pf-success)' };
+  }
+  if (source.includes('analytics')) {
+    return { bg: 'rgba(14, 111, 255, 0.12)', fg: '#0E6FFF' };
+  }
+  if (source.includes('promo') || source.includes('discount')) {
+    return { bg: 'rgba(184, 110, 0, 0.12)', fg: 'var(--pf-warning)' };
+  }
+  return { bg: 'var(--pf-surface-3)', fg: 'var(--pf-text-muted)' };
+}
 
 export default function Plugins() {
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
@@ -26,7 +92,7 @@ export default function Plugins() {
         const safe = Array.isArray(rows) ? rows : [];
         setAccounts(safe);
         if (safe.length > 0) {
-          setSelectedAccountID(safe[0].id);
+          setSelectedAccountID(prev => prev ?? safe[0].id);
         } else {
           setSelectedAccountID(null);
           setLoading(false);
@@ -48,6 +114,7 @@ export default function Plugins() {
     }
     setLoading(true);
     setLoadError(null);
+
     Promise.all([pluginsApi.list(selectedAccountID), pluginsApi.installed(selectedAccountID)])
       .then(([catalogRows, installedRows]) => {
         const catalog = Array.isArray(catalogRows) ? catalogRows : [];
@@ -64,9 +131,9 @@ export default function Plugins() {
   }, [selectedAccountID, reloadKey]);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return plugins;
-    return plugins.filter(plugin => `${plugin.name} ${plugin.description} ${plugin.category}`.toLowerCase().includes(q));
+    const query = search.trim().toLowerCase();
+    if (!query) return plugins;
+    return plugins.filter(plugin => `${plugin.name} ${plugin.description} ${plugin.category}`.toLowerCase().includes(query));
   }, [plugins, search]);
 
   async function toggle(plugin: ApiPlugin) {
@@ -92,86 +159,99 @@ export default function Plugins() {
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
-      <PageShell>
-        <PageHeader>
-          <PageTitle title="Плагины" subtitle="Каталог и установка плагинов для выбранного аккаунта." />
-        </PageHeader>
+    <PageShell>
+      <PageHeader>
+        <PageTitle title="Плагины" />
+      </PageHeader>
 
-        <SectionCard>
-          <ToolbarRow>
-            <select className="platform-select" value={selectedAccountID ?? ''} onChange={event => setSelectedAccountID(Number(event.target.value))}>
-              {accounts.map(acc => (
-                <option key={acc.id} value={acc.id}>{acc.username || `ID ${acc.id}`}</option>
-              ))}
-            </select>
-            <label className="platform-search platform-toolbar-grow max-w-none">
-              <Search size={14} color="var(--pf-text-dim)" />
-              <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Поиск по плагинам" />
-            </label>
-          </ToolbarRow>
-        </SectionCard>
+      <SectionCard>
+        <ToolbarRow>
+          <label className="platform-search platform-toolbar-grow max-w-none">
+            <Search size={14} color="var(--pf-text-dim)" />
+            <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Поиск по плагинам" />
+          </label>
 
-        <SectionCard className="p-0">
-          {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 size={28} className="animate-spin text-[var(--pf-accent)]" />
-            </div>
-          ) : loadError ? (
-            <RequestErrorState message={loadError} onRetry={() => setReloadKey(prev => prev + 1)} />
-          ) : (
-            <>
-              <div className="platform-desktop-table">
-                <DataTableWrap>
-                  <table className="platform-table" style={{ minWidth: 980 }}>
-                    <thead>
-                      <tr>
-                        <th>Плагин</th>
-                        <th>Категория</th>
-                        <th style={{ textAlign: 'right' }}>Цена/мес</th>
-                        <th style={{ textAlign: 'right' }}>Рейтинг</th>
-                        <th>Статус</th>
-                        <th style={{ textAlign: 'right' }}>Действие</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filtered.map(plugin => (
-                        <tr key={plugin.id}>
-                          <td>
-                            <div className="font-semibold">{plugin.name}</div>
-                            <div className="text-[12px] text-[var(--pf-text-muted)]">{plugin.description}</div>
-                          </td>
-                          <td>{plugin.category}</td>
-                          <td style={{ textAlign: 'right' }}>{plugin.price_month > 0 ? `${plugin.price_month} ₽` : 'Бесплатно'}</td>
-                          <td style={{ textAlign: 'right' }}>{Number(plugin.rating || 0)} ({plugin.reviews_count || 0})</td>
-                          <td>
-                            <span className={plugin.installed ? 'badge-active' : 'badge-inactive'}>
-                              {plugin.installed ? 'Установлен' : 'Не установлен'}
-                            </span>
-                          </td>
-                          <td style={{ textAlign: 'right' }}>
-                            <div className="flex items-center justify-end gap-2">
-                              {plugin.installed && (
-                                <Link href={`/platform/plugins/${plugin.slug}`} className="platform-btn-secondary flex items-center gap-1.5">
-                                  <Settings2 size={13} /> Настроить
-                                </Link>
-                              )}
-                              <button className={plugin.installed ? 'platform-btn-secondary' : 'platform-btn-primary'} onClick={() => toggle(plugin)} disabled={togglingIDs.has(plugin.id)}>
-                                {togglingIDs.has(plugin.id) ? <Loader2 size={14} className="animate-spin" /> : plugin.installed ? 'Удалить' : 'Установить'}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </DataTableWrap>
-              </div>
-              {filtered.length === 0 && <EmptyState>Плагины не найдены.</EmptyState>}
-            </>
-          )}
-        </SectionCard>
-      </PageShell>
-    </motion.div>
+          <select
+            className="platform-select"
+            value={selectedAccountID ?? ''}
+            onChange={event => setSelectedAccountID(Number(event.target.value))}
+          >
+            {accounts.map(acc => (
+              <option key={acc.id} value={acc.id}>{acc.username || `ID ${acc.id}`}</option>
+            ))}
+          </select>
+        </ToolbarRow>
+      </SectionCard>
+
+      <SectionCard>
+        {loading ? (
+          <div className="flex items-center justify-center py-14">
+            <Loader2 size={26} className="animate-spin text-[var(--pf-accent)]" />
+          </div>
+        ) : loadError ? (
+          <RequestErrorState message={loadError} onRetry={() => setReloadKey(prev => prev + 1)} />
+        ) : filtered.length === 0 ? (
+          <EmptyState>Плагины не найдены.</EmptyState>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {filtered.map(plugin => {
+              const Icon = iconByPlugin(plugin);
+              const tone = iconTone(plugin);
+              const busy = togglingIDs.has(plugin.id);
+              return (
+                <article
+                  key={plugin.id}
+                  className="rounded-xl border border-[var(--pf-border)] bg-[var(--pf-surface)] p-4 transition-all hover:-translate-y-0.5 hover:border-[var(--pf-border-strong)] hover:shadow-[var(--pf-shadow-soft)]"
+                >
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: tone.bg, color: tone.fg }}>
+                      <Icon size={16} />
+                    </div>
+                    <span className={plugin.installed ? 'badge-active' : 'badge-inactive'}>
+                      {plugin.installed ? 'Установлен' : 'Не установлен'}
+                    </span>
+                  </div>
+
+                  <div className="mb-2 text-base font-semibold text-[var(--pf-text)]">{plugin.name}</div>
+                  <div className="mb-3 line-clamp-2 min-h-[40px] text-xs leading-5 text-[var(--pf-text-muted)]">
+                    {plugin.description}
+                  </div>
+
+                  <div className="mb-4 flex items-center justify-between gap-2">
+                    <span className="inline-flex rounded-full border border-[var(--pf-border)] bg-[var(--pf-surface-2)] px-2.5 py-1 text-[11px] font-semibold text-[var(--pf-text-muted)]">
+                      {plugin.category || 'Общее'}
+                    </span>
+                    <span className="text-sm font-bold text-[var(--pf-text)]">
+                      {plugin.price_month > 0 ? `${plugin.price_month} ₽/мес` : 'Бесплатно'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {plugin.installed ? (
+                      <Link href={`/platform/plugins/${plugin.slug}`} className="platform-btn-secondary justify-center">
+                        <Settings2 size={13} /> Настроить
+                      </Link>
+                    ) : (
+                      <span className="platform-btn-secondary justify-center opacity-60">
+                        <Settings2 size={13} /> Настройки
+                      </span>
+                    )}
+
+                    <button
+                      type="button"
+                      className={plugin.installed ? 'platform-btn-secondary justify-center' : 'platform-btn-primary justify-center'}
+                      onClick={() => toggle(plugin)}
+                      disabled={busy}
+                    >
+                      {busy ? <Loader2 size={14} className="animate-spin" /> : plugin.installed ? 'Удалить' : 'Установить'}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </SectionCard>
+    </PageShell>
   );
 }

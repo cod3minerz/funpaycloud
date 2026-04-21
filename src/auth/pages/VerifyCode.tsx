@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { AuthShell } from "@/auth/components/AuthShell";
 import { authApi } from "@/lib/api";
+import { clearStoredReferralCode } from "@/lib/referral";
 
 function maskEmail(email: string) {
   const normalized = email.trim() || "user@funpay.cloud";
@@ -94,6 +95,7 @@ export default function VerifyCodePage({ email: rawEmail, mode: rawMode }: Verif
     setLoading(true);
     try {
       await authApi.verify(email, code);
+      clearStoredReferralCode();
       router.push("/platform/dashboard");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Неверный код подтверждения");
@@ -179,6 +181,10 @@ export default function VerifyCodePage({ email: rawEmail, mode: rawMode }: Verif
             Изменить email
           </Link>
         </div>
+
+        <p className="text-center text-[12px] leading-5 text-[var(--muted)]">
+          Если не видите письмо, проверьте папку <span className="font-semibold text-[var(--ink-2)]">Спам</span>.
+        </p>
       </form>
     </AuthShell>
   );

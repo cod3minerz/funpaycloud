@@ -1,12 +1,13 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Loader2, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { AuthShell } from "@/auth/components/AuthShell";
 import { authApi } from "@/lib/api";
+import { readStoredReferralCode, storeReferralCode } from "@/lib/referral";
 import { sanitizeInput, validateEmail, validatePassword } from "@/lib/sanitize";
 
 const fieldClass =
@@ -45,11 +46,13 @@ function GoogleMark() {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [hasPromo, setHasPromo] = useState(false);
   const [promoCode, setPromoCode] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{
     email?: string;
@@ -58,6 +61,12 @@ export default function RegisterPage() {
   }>({});
 
   const score = useMemo(() => strengthScore(password), [password]);
+
+  useEffect(() => {
+    const fromUrl = (searchParams.get('ref') || '').trim();
+    const stored = fromUrl ? storeReferralCode(fromUrl) : readStoredReferralCode();
+    setReferralCode(stored);
+  }, [searchParams]);
 
   function validate(): boolean {
     const errors: { email?: string; password?: string; confirm?: string } = {};
@@ -78,7 +87,10 @@ export default function RegisterPage() {
       await authApi.register(
         sanitizeInput(email),
         sanitizeInput(password),
-        promoCode ? sanitizeInput(promoCode) : undefined,
+        {
+          referral_code: referralCode || undefined,
+          promo_code: promoCode ? sanitizeInput(promoCode) : undefined,
+        },
       );
       router.push(`/auth/verify?mode=register&email=${encodeURIComponent(email.trim())}`);
     } catch (err) {

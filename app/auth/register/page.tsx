@@ -1,2 +1,11 @@
 'use client';
-export { default } from '@/auth/pages/Register';
+import { Suspense } from 'react';
+import RegisterPage from '@/auth/pages/Register';
+
+export default function RegisterRoute() {
+  return (
+    <Suspense>
+      <RegisterPage />
+    </Suspense>
+  );
+}
