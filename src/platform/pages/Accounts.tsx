@@ -18,7 +18,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { Sheet, SheetContent } from '@/app/components/ui/sheet';
 import { accountsApi, ApiAccount } from '@/lib/api';
 import { sanitizeInput, validateGoldenKey } from '@/lib/sanitize';
@@ -843,6 +843,9 @@ export default function Accounts() {
         >
           <DialogHeader>
             <DialogTitle>Удалить аккаунт?</DialogTitle>
+            <DialogDescription className="sr-only">
+              Подтверждение удаления выбранного аккаунта FunPay.
+            </DialogDescription>
           </DialogHeader>
           <p className="text-sm text-[var(--pf-text-muted)]">
             <strong>{selectedAccount ? displayName(selectedAccount) : 'Этот аккаунт'}</strong> будет удалён.
@@ -893,6 +896,9 @@ export default function Accounts() {
         <DialogContent className="platform-dialog-content" style={{ maxWidth: 480 }}>
           <DialogHeader>
             <DialogTitle>Выберите прокси</DialogTitle>
+            <DialogDescription className="sr-only">
+              Подключение бесплатного shared прокси или выбор индивидуального тарифа.
+            </DialogDescription>
           </DialogHeader>
           <p className="text-sm text-[var(--pf-text-muted)]">
             Аккаунт: <strong>{proxyTargetAccount ? displayName(proxyTargetAccount) : '—'}</strong>
@@ -959,6 +965,9 @@ export default function Accounts() {
         <DialogContent className="platform-dialog-content" style={{ maxWidth: 460 }}>
           <DialogHeader>
             <DialogTitle>Новый аккаунт</DialogTitle>
+            <DialogDescription className="sr-only">
+              Форма добавления аккаунта FunPay по Golden Key.
+            </DialogDescription>
           </DialogHeader>
           <p className="text-[14px] text-[var(--pf-text-muted)]">
             Введите Golden Key от аккаунта FunPay для подключения к ферме.
