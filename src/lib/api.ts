@@ -261,6 +261,13 @@ export type ApiAccount = {
   raiser_time?: string;
   raiser_timezone?: string;
   active_lots_count?: number;
+  proxy_connected?: boolean;
+  proxy_healthy?: boolean;
+  proxy_type?: 'none' | 'free_shared' | 'individual' | string;
+  proxy_label?: string;
+  proxy_shared_number?: number | null;
+  proxy_used_accounts?: number;
+  proxy_max_accounts?: number;
 };
 
 export const accountsApi = {
@@ -280,6 +287,19 @@ export const accountsApi = {
     apiRequest(`/api/accounts/${id}/raiser/schedule`, {
       method: 'PUT',
       body: JSON.stringify({ time, timezone }),
+    }),
+  connectProxy: (id: number | string, mode: 'free' | 'individual') =>
+    apiRequest<{
+      proxy_id: number;
+      shared_number?: number;
+      label: string;
+      used_accounts?: number;
+      max_accounts?: number;
+      support_url?: string;
+      is_shared_free?: boolean;
+    }>(`/api/accounts/${id}/proxy/connect`, {
+      method: 'POST',
+      body: JSON.stringify({ mode }),
     }),
 };
 
@@ -901,6 +921,19 @@ export type AdminStats = {
   active_goroutines: number;
 };
 
+export type AdminSharedProxy = {
+  id: number;
+  shared_number: number;
+  host: string;
+  port: number;
+  protocol: string;
+  is_active: boolean;
+  max_accounts: number;
+  used_accounts: number;
+  created_at: string;
+  expires_at?: string | null;
+};
+
 export const adminApi = {
   login: (email: string, password: string, totp: string) =>
     adminApiRequest<{ token: string; user: { id: number; email: string } }>('/admin-api/auth/login', {
@@ -973,6 +1006,20 @@ export const adminApi = {
     adminApiRequest(`/admin-api/runners/${accountId}/restart`, { method: 'POST' }),
   stopAllRunners: () =>
     adminApiRequest<{ stopped: number }>('/admin-api/runners/stop-all', { method: 'POST' }),
+  sharedProxies: () =>
+    adminApiRequest<{ items: AdminSharedProxy[]; total: number }>('/admin-api/proxies/shared'),
+  addSharedProxy: (payload: {
+    host: string;
+    port: number;
+    username?: string;
+    password?: string;
+    protocol?: 'HTTP' | 'HTTPS' | 'SOCKS5';
+    max_accounts?: number;
+  }) =>
+    adminApiRequest<AdminSharedProxy>('/admin-api/proxies/shared', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   bans: (params: { page?: number; limit?: number }) => {
     const query = new URLSearchParams();
     if (params.page !== undefined) query.set('page', String(params.page));

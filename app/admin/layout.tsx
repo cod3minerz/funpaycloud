@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Activity, Ban, LayoutDashboard, LogOut, Logs, PlayCircle, Users } from 'lucide-react';
+import { Activity, Ban, LayoutDashboard, LogOut, Logs, PlayCircle, Users, Network } from 'lucide-react';
 import { clearAdminToken } from '@/lib/auth';
 
 const navItems = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/logs', label: 'Логи', icon: Logs },
   { href: '/admin/runners', label: 'Воркеры', icon: PlayCircle },
+  { href: '/admin/proxies', label: 'Прокси', icon: Network },
   { href: '/admin/users', label: 'Пользователи', icon: Users },
   { href: '/admin/bans', label: 'Баны', icon: Ban },
 ];

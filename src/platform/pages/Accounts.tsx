@@ -3,9 +3,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import {
+  BadgeDollarSign,
   ChevronRight,
   CircleCheck,
   Loader2,
+  LifeBuoy,
+  Network,
   Pause,
   Play,
   Plus,
@@ -118,6 +121,12 @@ function getRecencyColor(value?: string | null): string {
   return 'var(--pf-danger)';
 }
 
+function proxyDotColor(acc: ApiAccount): string {
+  if (!acc.proxy_connected) return 'var(--pf-text-soft)';
+  if (acc.proxy_healthy) return 'var(--pf-success)';
+  return 'var(--pf-warning)';
+}
+
 export default function Accounts() {
   const [list, setList] = useState<ApiAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,6 +144,11 @@ export default function Accounts() {
   const [selectedAccountID, setSelectedAccountID] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [showProxyDialog, setShowProxyDialog] = useState(false);
+  const [proxyAccountID, setProxyAccountID] = useState<number | null>(null);
+  const [proxyConnecting, setProxyConnecting] = useState(false);
+  const [proxyConnectError, setProxyConnectError] = useState<string | null>(null);
+  const [proxySupportURL, setProxySupportURL] = useState('https://t.me/funpaycloud_support');
   const [, setMinuteTick] = useState(Date.now());
 
   async function loadAccounts() {
@@ -174,6 +188,10 @@ export default function Accounts() {
     () => list.find(acc => acc.id === selectedAccountID) ?? null,
     [list, selectedAccountID],
   );
+  const proxyTargetAccount = useMemo(
+    () => list.find(acc => acc.id === proxyAccountID) ?? null,
+    [list, proxyAccountID],
+  );
 
   async function createAccount() {
     const key = sanitizeInput(goldenKey);
@@ -187,7 +205,7 @@ export default function Accounts() {
       await accountsApi.add(key);
       setGoldenKey('');
       setShowCreate(false);
-      toast.success('Аккаунт успешно добавлен');
+      toast.success('Аккаунт добавлен. Подключите прокси, чтобы запустить воркеры.');
       await loadAccounts();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Ошибка добавления аккаунта');
@@ -270,6 +288,37 @@ export default function Accounts() {
     setSelectedAccountID(accountId);
     setShowDeleteConfirm(false);
   };
+
+  const openProxyConnectDialog = (accountID: number) => {
+    setProxyAccountID(accountID);
+    setProxyConnectError(null);
+    setShowProxyDialog(true);
+  };
+
+  async function connectFreeProxy() {
+    if (!proxyTargetAccount) return;
+    setProxyConnecting(true);
+    setProxyConnectError(null);
+    try {
+      const result = await accountsApi.connectProxy(proxyTargetAccount.id, 'free');
+      if (result?.support_url) {
+        setProxySupportURL(result.support_url);
+      }
+      toast.success(result?.label || 'Бесплатный прокси подключен');
+      await loadAccounts();
+      setShowProxyDialog(false);
+      setProxyAccountID(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Не удалось подключить прокси';
+      setProxyConnectError(message);
+      toast.error(message);
+      if (message.toLowerCase().includes('заняты')) {
+        setProxySupportURL('https://t.me/funpaycloud_support');
+      }
+    } finally {
+      setProxyConnecting(false);
+    }
+  }
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
@@ -397,6 +446,13 @@ export default function Accounts() {
                                     />
                                     {isOnline ? 'Онлайн' : 'Оффлайн'}
                                   </div>
+                                  <div className="mt-1 text-[12px] text-[var(--pf-text-dim)] inline-flex items-center gap-1.5">
+                                    <span
+                                      className="inline-block w-2 h-2 rounded-full"
+                                      style={{ backgroundColor: proxyDotColor(acc) }}
+                                    />
+                                    {acc.proxy_label || 'Прокси не подключен'}
+                                  </div>
                                 </div>
                               </div>
                             </td>
@@ -436,6 +492,22 @@ export default function Accounts() {
                                 >
                                   Открыть
                                   <ChevronRight size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs hover:opacity-90"
+                                  style={{
+                                    borderColor: 'var(--pf-border)',
+                                    color: 'var(--pf-text-muted)',
+                                    background: 'var(--pf-surface-2)',
+                                  }}
+                                  onClick={event => {
+                                    event.stopPropagation();
+                                    openProxyConnectDialog(acc.id);
+                                  }}
+                                >
+                                  <Network size={14} />
+                                  {acc.proxy_connected ? 'Сменить прокси' : 'Подключить прокси'}
                                 </button>
                               </div>
                             </td>
@@ -491,6 +563,28 @@ export default function Accounts() {
                         <span className="inline-flex items-center gap-1 text-xs text-[var(--pf-text-dim)]">
                           Подробнее <ChevronRight size={14} />
                         </span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <span className="inline-flex items-center gap-1.5 text-xs text-[var(--pf-text-dim)]">
+                          <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: proxyDotColor(acc) }} />
+                          {acc.proxy_label || 'Прокси не подключен'}
+                        </span>
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs"
+                          style={{
+                            borderColor: 'var(--pf-border)',
+                            background: 'var(--pf-surface-2)',
+                            color: 'var(--pf-text-muted)',
+                          }}
+                          onClick={event => {
+                            event.stopPropagation();
+                            openProxyConnectDialog(acc.id);
+                          }}
+                        >
+                          <Network size={12} />
+                          Подключить
+                        </button>
                       </div>
                     </article>
                   );
@@ -686,6 +780,37 @@ export default function Accounts() {
                 </section>
 
                 <section className="space-y-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--pf-text-dim)]">Прокси</h4>
+                  <div
+                    className="rounded-xl border p-3"
+                    style={{ borderColor: 'var(--pf-border)', background: 'var(--pf-surface-2)' }}
+                  >
+                    <p className="inline-flex items-center gap-1.5 text-sm text-[var(--pf-text)]">
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: proxyDotColor(selectedAccount) }} />
+                      {selectedAccount.proxy_label || 'Прокси не подключен'}
+                    </p>
+                    <p className="mt-2 text-xs text-[var(--pf-text-dim)]">
+                      {selectedAccount.proxy_connected
+                        ? 'Все запросы аккаунта идут через прокси.'
+                        : 'Без прокси воркеры (Runner, Keeper, Raiser) не запускаются.'}
+                    </p>
+                    <button
+                      type="button"
+                      className="mt-3 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md border text-sm"
+                      style={{
+                        borderColor: 'var(--pf-border)',
+                        background: 'var(--pf-surface-3)',
+                        color: 'var(--pf-text-muted)',
+                      }}
+                      onClick={() => openProxyConnectDialog(selectedAccount.id)}
+                    >
+                      <Network size={14} />
+                      {selectedAccount.proxy_connected ? 'Сменить прокси' : 'Подключить прокси'}
+                    </button>
+                  </div>
+                </section>
+
+                <section className="space-y-3">
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--pf-text-dim)]">Действия</h4>
                   <button
                     type="button"
@@ -752,6 +877,81 @@ export default function Accounts() {
               {deletingAccount ? <Loader2 size={14} className="animate-spin" /> : 'Удалить'}
             </button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showProxyDialog}
+        onOpenChange={open => {
+          setShowProxyDialog(open);
+          if (!open) {
+            setProxyAccountID(null);
+            setProxyConnectError(null);
+          }
+        }}
+      >
+        <DialogContent className="platform-dialog-content" style={{ maxWidth: 480 }}>
+          <DialogHeader>
+            <DialogTitle>Выберите прокси</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-[var(--pf-text-muted)]">
+            Аккаунт: <strong>{proxyTargetAccount ? displayName(proxyTargetAccount) : '—'}</strong>
+          </p>
+
+          <div className="space-y-3">
+            <button
+              type="button"
+              className="w-full rounded-lg border p-3 text-left transition-colors hover:bg-[var(--pf-surface-2)] disabled:opacity-60"
+              style={{ borderColor: 'var(--pf-border)' }}
+              onClick={connectFreeProxy}
+              disabled={proxyConnecting || !proxyTargetAccount}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-[var(--pf-text)]">Бесплатный прокси</div>
+                  <p className="mt-1 text-xs text-[var(--pf-text-dim)]">
+                    Автоматическое подключение к shared-пулу. Лимит: до 2 аккаунтов на прокси.
+                  </p>
+                </div>
+                {proxyConnecting ? <Loader2 size={16} className="animate-spin text-[var(--pf-accent)]" /> : <Network size={16} />}
+              </div>
+            </button>
+
+            <div
+              className="w-full rounded-lg border p-3 text-left opacity-80"
+              style={{ borderColor: 'var(--pf-border)', background: 'var(--pf-surface-2)' }}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-[var(--pf-text)]">Индивидуальное прокси</div>
+                  <p className="mt-1 text-xs text-[var(--pf-text-dim)]">
+                    119 ₽/мес. Подключение через API появится в следующем релизе.
+                  </p>
+                </div>
+                <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] text-[var(--pf-text-muted)]" style={{ borderColor: 'var(--pf-border)' }}>
+                  <BadgeDollarSign size={11} />
+                  Скоро
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {proxyConnectError && (
+            <div className="rounded-lg border px-3 py-2" style={{ borderColor: 'color-mix(in srgb, var(--pf-warning) 45%, transparent)', background: 'color-mix(in srgb, var(--pf-warning) 10%, transparent)' }}>
+              <p className="text-sm text-[var(--pf-text)]">{proxyConnectError}</p>
+              {proxyConnectError.toLowerCase().includes('заняты') && (
+                <a
+                  href={proxySupportURL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--pf-accent)]"
+                >
+                  <LifeBuoy size={12} />
+                  Написать в поддержку
+                </a>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
