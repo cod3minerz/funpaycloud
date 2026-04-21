@@ -25,7 +25,11 @@ type ApiEnvelope<T> = {
   error?: string;
 };
 
-type ApiRequestOptions = RequestInit & { timeoutMs?: number; _retryAttempted?: boolean };
+type ApiRequestOptions = RequestInit & {
+  timeoutMs?: number;
+  _retryAttempted?: boolean;
+  _csrfRetryAttempted?: boolean;
+};
 
 function getCookie(name: string): string {
   if (typeof document === 'undefined') return '';
@@ -63,7 +67,7 @@ async function ensureCsrfToken(): Promise<string> {
 }
 
 async function refreshSession(): Promise<boolean> {
-  const csrf = getCookie('fp_csrf');
+  const csrf = await ensureCsrfToken();
   try {
     const response = await fetch(`${BASE_URL}/api/auth/refresh`, {
       method: 'POST',
@@ -87,7 +91,7 @@ export async function apiRequest<T = unknown>(
     throw new ApiError(`Неверный путь API: ${path}`);
   }
 
-  const { timeoutMs = 15000, _retryAttempted = false, ...fetchOptions } = options;
+  const { timeoutMs = 15000, _retryAttempted = false, _csrfRetryAttempted = false, ...fetchOptions } = options;
   const method = (fetchOptions.method || 'GET').toUpperCase();
 
   const headers: Record<string, string> = {
@@ -142,6 +146,14 @@ export async function apiRequest<T = unknown>(
       logout();
     }
     throw new ApiError(envelope.error || 'Сессия истекла. Войдите снова.', 401);
+  }
+
+  if (response.status === 403 && !_csrfRetryAttempted && isStateChangingMethod(method)) {
+    const errorText = (envelope.error || '').toLowerCase();
+    if (errorText.includes('csrf')) {
+      await ensureCsrfToken();
+      return apiRequest<T>(path, { ...options, _csrfRetryAttempted: true });
+    }
   }
 
   if (!response.ok || !envelope.success) {

@@ -25,22 +25,59 @@ function getCookie(name: string): string {
   return row ? decodeURIComponent(row.split('=').slice(1).join('=')) : '';
 }
 
+async function ensureCsrfToken(apiBase: string): Promise<string> {
+  let csrf = getCookie('fp_csrf');
+  if (csrf) return csrf;
+
+  try {
+    const response = await fetch(`${apiBase}/api/auth/csrf`, {
+      method: 'GET',
+      credentials: 'include',
+      mode: 'cors',
+    });
+    if (!response.ok) return '';
+    const payload = (await response.json()) as { success?: boolean; data?: { csrf_token?: string } };
+    csrf = payload?.data?.csrf_token || getCookie('fp_csrf');
+    return csrf || '';
+  } catch {
+    return '';
+  }
+}
+
+function clearClientSideAuthMarkers(): void {
+  const cookieVariants = [
+    'fp_access=; path=/; max-age=0',
+    'fp_refresh=; path=/; max-age=0',
+    'fp_csrf=; path=/; max-age=0',
+    'token=; path=/; max-age=0',
+    'fp_access=; path=/; max-age=0; domain=.funpay.cloud',
+    'fp_refresh=; path=/; max-age=0; domain=.funpay.cloud',
+    'fp_csrf=; path=/; max-age=0; domain=.funpay.cloud',
+    'token=; path=/; max-age=0; domain=.funpay.cloud',
+  ];
+  cookieVariants.forEach(value => {
+    document.cookie = value;
+  });
+}
+
 export function logout(): void {
   if (typeof window === 'undefined') {
     return;
   }
-  const csrf = getCookie('fp_csrf');
-  void fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://api.funpay.cloud'}/api/auth/logout`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: csrf ? { 'X-CSRF-Token': csrf } : undefined,
-  }).finally(() => {
-    document.cookie = 'fp_access=; path=/; max-age=0';
-    document.cookie = 'fp_refresh=; path=/; max-age=0';
-    document.cookie = 'fp_csrf=; path=/; max-age=0';
-    document.cookie = 'token=; path=/; max-age=0';
-    window.location.href = '/auth/login';
-  });
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://api.funpay.cloud';
+  void (async () => {
+    const csrf = await ensureCsrfToken(apiBase);
+    try {
+      await fetch(`${apiBase}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: csrf ? { 'X-CSRF-Token': csrf } : undefined,
+      });
+    } finally {
+      clearClientSideAuthMarkers();
+      window.location.href = '/auth/login';
+    }
+  })();
 }
 
 export function getAdminToken(): string | null {
