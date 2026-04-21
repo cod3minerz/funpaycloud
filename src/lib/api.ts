@@ -41,6 +41,27 @@ function isStateChangingMethod(method?: string): boolean {
   return normalized !== 'GET' && normalized !== 'HEAD' && normalized !== 'OPTIONS';
 }
 
+async function ensureCsrfToken(): Promise<string> {
+  let token = getCookie('fp_csrf');
+  if (token) return token;
+
+  try {
+    const response = await fetch(`${BASE_URL}/api/auth/csrf`, {
+      method: 'GET',
+      credentials: 'include',
+      mode: 'cors',
+    });
+    if (!response.ok) {
+      return '';
+    }
+    const payload = (await response.json()) as ApiEnvelope<{ csrf_token?: string }>;
+    token = payload?.data?.csrf_token || getCookie('fp_csrf');
+    return token || '';
+  } catch {
+    return '';
+  }
+}
+
 async function refreshSession(): Promise<boolean> {
   const csrf = getCookie('fp_csrf');
   try {
@@ -76,7 +97,7 @@ export async function apiRequest<T = unknown>(
     headers['Content-Type'] = 'application/json';
   }
   if (isStateChangingMethod(method)) {
-    const csrf = getCookie('fp_csrf');
+    const csrf = await ensureCsrfToken();
     if (csrf) {
       headers['X-CSRF-Token'] = csrf;
     }
