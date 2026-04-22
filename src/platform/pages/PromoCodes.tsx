@@ -121,7 +121,7 @@ export default function PromoCodesPage() {
 
           <div className="platform-toolbar">
             <label className="platform-search platform-toolbar-grow max-w-none">
-              <Gift size={14} color="var(--pf-text-dim)" />
+              <Gift size={14} className="text-[var(--pf-text-dim)]" />
               <input
                 value={code}
                 onChange={event => setCode(event.target.value.toUpperCase())}
@@ -149,10 +149,7 @@ export default function PromoCodesPage() {
             </div>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-[var(--pf-border)]">
-            <div
-              className="h-full rounded-full bg-[var(--pf-accent)] transition-all"
-              style={{ width: `${usagePercent}%` }}
-            />
+            <progress className="platform-ai-progress normal h-full w-full rounded-full" value={usagePercent} max={100} />
           </div>
           <div className="text-xs text-[var(--pf-text-dim)]">
             Осталось: {aiMeta.remaining.toLocaleString('ru-RU')} сообщений
@@ -170,7 +167,7 @@ export default function PromoCodesPage() {
             <EmptyState>Вы ещё не активировали ни одного промокода.</EmptyState>
           ) : (
             <div className="platform-desktop-table">
-              <table className="platform-table" style={{ minWidth: 640 }}>
+              <table className="platform-table min-w-[640px]">
                 <thead>
                   <tr>
                     <th>Код</th>

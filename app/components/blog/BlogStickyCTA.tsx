@@ -40,7 +40,7 @@ export function BlogStickyCTA({ slug, config }: BlogStickyCTAProps) {
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[65] border-t border-[var(--line-2)] bg-[color:color-mix(in_srgb,var(--bg-card)_96%,transparent)] px-3 pb-[calc(env(safe-area-inset-bottom,0px)+10px)] pt-2 shadow-[0_-8px_24px_-18px_rgba(14,17,22,0.35)] backdrop-blur-md xl:hidden">
+    <div className="fixed inset-x-0 bottom-0 z-[65] border-t border-[var(--line-2)] bg-[color:color-mix(in_srgb,var(--bg-card)_96%,transparent)] px-3 pb-[calc(env(safe-area-inset-bottom,0px)+10px)] pt-2 shadow-[var(--blog-shadow-soft)] backdrop-blur-md xl:hidden">
       <div className="mx-auto flex w-full max-w-7xl items-center gap-2 rounded-xl border border-[var(--line-2)] bg-[var(--bg)] px-3 py-2">
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-semibold text-[var(--text-primary)]">{subtitle}</p>

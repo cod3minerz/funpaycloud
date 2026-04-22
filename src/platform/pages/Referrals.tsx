@@ -100,16 +100,13 @@ export default function Referrals() {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }}>
       <PageShell>
         <PageHeader>
-          <PageTitle
-            title="Реферальная программа"
-            subtitle="Приглашайте пользователей и получайте 20% с каждой их подписки."
-          />
+          <PageTitle title="Реферальная программа" />
         </PageHeader>
 
         {/* 1. Referral link card */}
         <SectionCard>
           <div className="mb-3 flex items-center gap-2 text-[13px] font-semibold text-[var(--pf-text-muted)]">
-            <Link2 size={14} color="var(--pf-accent)" />
+            <Link2 size={14} className="text-[var(--pf-accent)]" />
             Ваша реферальная ссылка
           </div>
 
@@ -135,7 +132,7 @@ export default function Referrals() {
           <KpiCard>
             <div className="flex items-center justify-between gap-2">
               <span className="platform-kpi-meta">Приглашено</span>
-              <Users size={15} color="var(--pf-accent)" />
+              <Users size={15} className="text-[var(--pf-accent)]" />
             </div>
             <strong className="text-[28px] font-black">{referrals.length.toLocaleString('ru-RU')}</strong>
             <span className="platform-kpi-meta">пользователей</span>
@@ -144,7 +141,7 @@ export default function Referrals() {
           <KpiCard>
             <div className="flex items-center justify-between gap-2">
               <span className="platform-kpi-meta">Заработано</span>
-              <Wallet size={15} color="var(--pf-success)" />
+              <Wallet size={15} className="text-[var(--pf-success)]" />
             </div>
             <strong className="text-[28px] font-black">{formatRub(totalEarned)}</strong>
             <span className="platform-kpi-meta">за всё время</span>
@@ -153,7 +150,7 @@ export default function Referrals() {
           <KpiCard>
             <div className="flex items-center justify-between gap-2">
               <span className="platform-kpi-meta">Ваша комиссия</span>
-              <Percent size={15} color="#fbbf24" />
+              <Percent size={15} className="text-[var(--pf-warning)]" />
             </div>
             <strong className="text-[28px] font-black">{COMMISSION}%</strong>
             <span className="platform-kpi-meta">с каждой подписки</span>
@@ -175,13 +172,13 @@ export default function Referrals() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="platform-table" style={{ minWidth: 480 }}>
+              <table className="platform-table min-w-[480px]">
                 <thead>
                   <tr>
                     <th>Пользователь</th>
                     <th>Дата</th>
                     <th>Статус</th>
-                    <th style={{ textAlign: 'right' }}>Заработок</th>
+                    <th className="text-right">Заработок</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -190,7 +187,7 @@ export default function Referrals() {
                       <td>{String(ref.email ?? `Реферал #${idx + 1}`)}</td>
                       <td>{String(ref.created_at ?? '—')}</td>
                       <td>Активен</td>
-                      <td style={{ textAlign: 'right' }}>—</td>
+                      <td className="text-right">—</td>
                     </tr>
                   ))}
                 </tbody>

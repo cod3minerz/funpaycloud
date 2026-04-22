@@ -83,14 +83,8 @@ function TestChatPanel({
   messagesRef: React.RefObject<HTMLDivElement | null>;
 }) {
   return (
-    <div
-      className="flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-surface)]"
-      style={{ boxShadow: 'var(--pf-shadow-card)' }}
-    >
-      <div
-        className="flex items-center gap-3 border-b border-[var(--pf-border)] px-4 py-3.5"
-        style={{ background: 'linear-gradient(90deg, rgba(58,47,224,0.05), rgba(91,33,182,0.03))' }}
-      >
+    <div className="platform-ai-chat-panel flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-surface)]">
+      <div className="platform-ai-chat-head flex items-center gap-3 border-b border-[var(--pf-border)] px-4 py-3.5">
         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500">
           <Bot size={16} className="text-white" />
         </div>
@@ -123,8 +117,7 @@ function TestChatPanel({
         ) : messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center px-4 text-center">
             <div
-              className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/20 to-violet-500/10"
-              style={{ boxShadow: '0 0 20px rgba(99,102,241,0.15)' }}
+              className="platform-ai-chat-spark mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/20 to-violet-500/10"
             >
               <Sparkles size={20} className="text-indigo-400" />
             </div>
@@ -150,10 +143,7 @@ function TestChatPanel({
             <div key={`${message.role}-${index}`}>
               {message.role === 'user' ? (
                 <div className="flex justify-end">
-                  <div
-                    className="max-w-[80%] rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm text-white"
-                    style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
-                  >
+                  <div className="platform-ai-chat-user-bubble max-w-[80%] rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm text-white">
                     {message.text}
                   </div>
                 </div>
@@ -166,11 +156,7 @@ function TestChatPanel({
                     {message.loading ? (
                       <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm border border-[var(--pf-border)] bg-[var(--pf-surface-2)] px-3.5 py-3">
                         {[0, 1, 2].map(i => (
-                          <span
-                            key={i}
-                            className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-400"
-                            style={{ animationDelay: `${i * 0.15}s` }}
-                          />
+                          <span key={i} className="platform-ai-typing-dot h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-400" />
                         ))}
                       </div>
                     ) : (
@@ -205,14 +191,13 @@ function TestChatPanel({
             }}
             disabled={limitExhausted || testing}
             placeholder={limitExhausted ? 'Лимит исчерпан' : 'Напишите как покупатель...'}
-            className="flex-1 rounded-xl border border-[var(--pf-border-strong)] bg-[var(--pf-elevated)] px-4 py-2.5 text-sm text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] transition-colors focus:border-[rgba(58,47,224,0.55)] focus:outline-none disabled:opacity-40"
+            className="flex-1 rounded-xl border border-[var(--pf-border-strong)] bg-[var(--pf-elevated)] px-4 py-2.5 text-sm text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] transition-colors focus:border-[var(--pf-accent-soft-strong)] focus:outline-none disabled:opacity-40"
           />
           <button
             type="button"
             onClick={onSend}
             disabled={!input.trim() || testing || limitExhausted}
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-white transition-all disabled:opacity-30"
-            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+            className="platform-ai-send-btn flex h-10 w-10 items-center justify-center rounded-xl text-white transition-all disabled:opacity-30"
           >
             <Send size={15} />
           </button>
@@ -456,16 +441,7 @@ export default function AIAssistant() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div>
           {/* Status + usage banner */}
-          <div
-            className="relative mb-6 overflow-hidden rounded-2xl border p-6"
-            style={{
-              borderColor: enabled ? 'rgba(58,47,224,0.25)' : 'var(--pf-border)',
-              background: enabled
-                ? 'linear-gradient(135deg, rgba(58,47,224,0.08) 0%, rgba(91,33,182,0.05) 50%, var(--pf-surface) 100%)'
-                : 'var(--pf-surface)',
-              boxShadow: enabled ? '0 0 40px rgba(58,47,224,0.06)' : 'none',
-            }}
-          >
+          <div className={`relative mb-6 overflow-hidden rounded-2xl border p-6 ${enabled ? 'platform-ai-hero-enabled' : 'platform-ai-hero-disabled'}`}>
             {enabled && (
               <>
                 <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-violet-500/10 blur-2xl" />
@@ -532,15 +508,10 @@ export default function AIAssistant() {
                   </span>
                 </div>
                 <div className="h-1.5 overflow-hidden rounded-full bg-[var(--pf-surface-3)]">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${usagePercent}%`,
-                      background:
-                        usagePercent > 80
-                          ? 'linear-gradient(90deg, #ef4444, #dc2626)'
-                          : 'linear-gradient(90deg, #6366f1, #8b5cf6)',
-                    }}
+                  <progress
+                    className={`platform-ai-progress h-full w-full rounded-full ${usagePercent > 80 ? 'danger' : 'normal'}`}
+                    value={usagePercent}
+                    max={100}
                   />
                 </div>
                 <div className="mt-1.5 flex justify-between">
@@ -588,7 +559,7 @@ export default function AIAssistant() {
                       onClick={() => setTone(item.key as 'formal' | 'neutral' | 'friendly')}
                       className={`rounded-xl border p-3 text-left transition-all ${
                         tone === item.key
-                          ? 'border-[rgba(58,47,224,0.40)] bg-[var(--pf-accent-soft)]'
+                          ? 'border-[var(--pf-accent-soft-strong)] bg-[var(--pf-accent-soft)]'
                           : 'border-[var(--pf-border)] bg-[var(--pf-surface-2)] hover:border-[var(--pf-border-strong)]'
                       }`}
                     >
@@ -684,7 +655,7 @@ export default function AIAssistant() {
                   className={`w-full resize-none rounded-xl border bg-[var(--pf-elevated)] px-4 py-3 text-sm leading-relaxed text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] transition-colors focus:outline-none ${
                     prompt.length > MAX_PROMPT_LENGTH * 0.9
                       ? 'border-amber-500/40 focus:border-amber-500/60'
-                      : 'border-[var(--pf-border-strong)] focus:border-[rgba(58,47,224,0.55)]'
+                      : 'border-[var(--pf-border-strong)] focus:border-[var(--pf-accent-soft-strong)]'
                   }`}
                 />
                 <div className="mt-2 flex justify-between">
@@ -783,18 +754,16 @@ export default function AIAssistant() {
             type="button"
             onClick={save}
             disabled={saving || loading || !selectedAccountID || noAiOnPlan || prompt.length > MAX_PROMPT_LENGTH}
-            className="w-full rounded-xl py-3 text-sm font-semibold text-white transition-all disabled:cursor-not-allowed disabled:opacity-50"
-            style={{
-              background: saving ? 'rgba(99,102,241,0.3)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-              boxShadow: saving ? 'none' : '0 4px 20px rgba(99,102,241,0.25)',
-            }}
+            className={`w-full rounded-xl py-3 text-sm font-semibold text-white transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+              saving ? 'platform-ai-save-btn-saving' : 'platform-ai-save-btn'
+            }`}
           >
             {saving ? 'Сохраняем...' : 'Сохранить настройки'}
           </button>
         </div>
 
         <div className="hidden xl:block">
-          <div className="sticky top-6" style={{ height: 'calc(100vh - 120px)' }}>
+          <div className="platform-ai-chat-sticky sticky top-6">
             <TestChatPanel
               messages={testMessages}
               input={testInput}

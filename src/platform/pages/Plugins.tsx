@@ -57,21 +57,21 @@ function iconByPlugin(plugin: ApiPlugin): LucideIcon {
   return fallbackIcons[hash % fallbackIcons.length];
 }
 
-function iconTone(plugin: ApiPlugin): { bg: string; fg: string } {
+function iconToneClass(plugin: ApiPlugin): string {
   const source = `${plugin.slug} ${plugin.category}`.toLowerCase();
   if (source.includes('ai') || source.includes('chat')) {
-    return { bg: 'rgba(58, 47, 224, 0.12)', fg: 'var(--pf-accent)' };
+    return 'platform-plugin-icon-tone-ai';
   }
   if (source.includes('security') || source.includes('safe')) {
-    return { bg: 'rgba(14, 138, 87, 0.12)', fg: 'var(--pf-success)' };
+    return 'platform-plugin-icon-tone-security';
   }
   if (source.includes('analytics')) {
-    return { bg: 'rgba(14, 111, 255, 0.12)', fg: '#0E6FFF' };
+    return 'platform-plugin-icon-tone-analytics';
   }
   if (source.includes('promo') || source.includes('discount')) {
-    return { bg: 'rgba(184, 110, 0, 0.12)', fg: 'var(--pf-warning)' };
+    return 'platform-plugin-icon-tone-promo';
   }
-  return { bg: 'var(--pf-surface-3)', fg: 'var(--pf-text-muted)' };
+  return 'platform-plugin-icon-tone-default';
 }
 
 export default function Plugins() {
@@ -196,7 +196,7 @@ export default function Plugins() {
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {filtered.map(plugin => {
               const Icon = iconByPlugin(plugin);
-              const tone = iconTone(plugin);
+              const toneClass = iconToneClass(plugin);
               const busy = togglingIDs.has(plugin.id);
               return (
                 <article
@@ -204,7 +204,7 @@ export default function Plugins() {
                   className="rounded-xl border border-[var(--pf-border)] bg-[var(--pf-surface)] p-4 transition-all hover:-translate-y-0.5 hover:border-[var(--pf-border-strong)] hover:shadow-[var(--pf-shadow-soft)]"
                 >
                   <div className="mb-3 flex items-start justify-between gap-3">
-                    <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: tone.bg, color: tone.fg }}>
+                    <div className={`inline-flex h-9 w-9 items-center justify-center rounded-lg ${toneClass}`}>
                       <Icon size={16} />
                     </div>
                     <span className={plugin.installed ? 'badge-active' : 'badge-inactive'}>

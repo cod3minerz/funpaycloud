@@ -160,7 +160,7 @@ export default function PlatformTopBar({
                 aria-label="Профиль пользователя"
                 className="inline-flex h-9 items-center gap-2 rounded-[12px] border border-[var(--pf-border-strong)] bg-[var(--pf-surface)] px-2.5 text-[var(--pf-text)] transition-all hover:border-[var(--pf-accent)] hover:bg-[var(--pf-accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--pf-accent)]/40"
               >
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold text-white" style={{ background: 'linear-gradient(135deg, var(--pf-accent) 0%, var(--pf-accent-2) 100%)' }}>
+                <span className="platform-avatar-gradient inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold text-white">
                   {avatarText}
                 </span>
                 <span className="hidden max-w-[120px] truncate text-sm font-medium sm:block">{displayName}</span>

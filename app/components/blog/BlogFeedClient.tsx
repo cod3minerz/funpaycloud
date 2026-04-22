@@ -53,9 +53,9 @@ export function BlogFeedClient({ posts, categories }: BlogFeedClientProps) {
 
   return (
     <>
-      <section className="relative overflow-hidden rounded-3xl border border-[var(--line-2)] bg-[linear-gradient(165deg,var(--bg-card)_0%,var(--bg-secondary)_100%)] px-5 py-10 sm:px-9 sm:py-14">
+      <section className="relative overflow-hidden rounded-3xl border border-[var(--line-2)] bg-[linear-gradient(165deg,var(--bg-card)_0%,var(--bg-secondary)_100%)] px-5 py-10 shadow-[0_20px_44px_-36px_color-mix(in_srgb,var(--text-primary)_32%,transparent)] sm:px-9 sm:py-14">
         <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-[var(--accent-soft)] blur-3xl" />
-        <div className="absolute -bottom-24 left-10 h-48 w-48 rounded-full bg-[#D9D4C6]/35 blur-3xl" />
+        <div className="absolute -bottom-24 left-10 h-48 w-48 rounded-full bg-[color:color-mix(in_srgb,var(--line-2)_65%,transparent)] blur-3xl" />
 
         <div className="relative mx-auto max-w-3xl">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Блог FunPay Cloud</p>
@@ -66,7 +66,7 @@ export function BlogFeedClient({ posts, categories }: BlogFeedClientProps) {
             Разбираем рабочие сценарии: от автоподнятия и выдачи до роста конверсии и стабильной операционки магазина.
           </p>
 
-          <label className="mt-7 flex min-h-12 items-center gap-3 rounded-2xl border border-[var(--line-2)] bg-[var(--bg-card)] px-4 shadow-[0_10px_30px_-26px_rgba(14,17,22,0.35)]">
+          <label className="mt-7 flex min-h-12 items-center gap-3 rounded-2xl border border-[var(--line-2)] bg-[var(--bg-card)] px-4 shadow-[var(--blog-shadow-soft)]">
             <Search size={18} className="text-[var(--text-muted)]" />
             <input
               value={query}
@@ -115,7 +115,7 @@ export function BlogFeedClient({ posts, categories }: BlogFeedClientProps) {
 
       {featured && (
         <section className="mt-8" id="about">
-          <article className="overflow-hidden rounded-3xl border border-[var(--line-2)] bg-[var(--bg-card)] shadow-[0_20px_40px_-34px_rgba(14,17,22,0.45)]">
+          <article className="overflow-hidden rounded-3xl border border-[var(--line-2)] bg-[var(--bg-card)] shadow-[0_20px_40px_-34px_color-mix(in_srgb,var(--text-primary)_42%,transparent)]">
             {featured.cover && (
               <Link href={`/blog/${featured.slug}`} className="relative block aspect-[1200/630] w-full overflow-hidden border-b border-[var(--line)]">
                 <Image

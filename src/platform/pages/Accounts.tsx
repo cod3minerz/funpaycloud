@@ -35,24 +35,24 @@ import {
   ToolbarRow,
 } from '@/platform/components/primitives';
 
-const AVATAR_COLORS = [
-  '#3b82f6',
-  '#10b981',
-  '#f59e0b',
-  '#ef4444',
-  '#8b5cf6',
-  '#06b6d4',
-  '#84cc16',
-  '#f97316',
+const AVATAR_TONES = [
+  'platform-avatar-tone-0',
+  'platform-avatar-tone-1',
+  'platform-avatar-tone-2',
+  'platform-avatar-tone-3',
+  'platform-avatar-tone-4',
+  'platform-avatar-tone-5',
+  'platform-avatar-tone-6',
+  'platform-avatar-tone-7',
 ];
 
-function getAvatarColor(name: string): string {
-  if (!name) return '#475569';
+function getAvatarToneClass(name: string): string {
+  if (!name) return 'platform-avatar-tone-fallback';
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+  return AVATAR_TONES[Math.abs(hash) % AVATAR_TONES.length];
 }
 
 function displayName(acc: ApiAccount): string {
@@ -111,20 +111,20 @@ function getNextRaiseCountdown(timeValue?: string, timezoneValue?: string): stri
   return `через ${hours}ч ${minutes}м`;
 }
 
-function getRecencyColor(value?: string | null): string {
-  if (!value) return 'var(--pf-text-soft)';
+function getRecencyClass(value?: string | null): string {
+  if (!value) return 'text-[var(--pf-text-soft)]';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'var(--pf-text-soft)';
+  if (Number.isNaN(date.getTime())) return 'text-[var(--pf-text-soft)]';
   const diffHours = (Date.now() - date.getTime()) / (1000 * 60 * 60);
-  if (diffHours < 1) return 'var(--pf-success)';
-  if (diffHours < 6) return 'var(--pf-warning)';
-  return 'var(--pf-danger)';
+  if (diffHours < 1) return 'text-[var(--pf-success)]';
+  if (diffHours < 6) return 'text-[var(--pf-warning)]';
+  return 'text-[var(--pf-danger)]';
 }
 
-function proxyDotColor(acc: ApiAccount): string {
-  if (!acc.proxy_connected) return 'var(--pf-text-soft)';
-  if (acc.proxy_healthy) return 'var(--pf-success)';
-  return 'var(--pf-warning)';
+function getProxyDotClass(acc: ApiAccount): string {
+  if (!acc.proxy_connected) return 'platform-status-dot-soft';
+  if (acc.proxy_healthy) return 'platform-status-dot-success';
+  return 'platform-status-dot-warning';
 }
 
 function isAccountRuntimeActive(acc: ApiAccount): boolean {
@@ -440,10 +440,9 @@ export default function Accounts() {
             </label>
 
             <select
-              className="platform-select"
+              className="platform-select w-full sm:max-w-[220px]"
               value={statusFilter}
               onChange={event => setStatusFilter(event.target.value as typeof statusFilter)}
-              style={{ maxWidth: 220 }}
             >
               <option value="all">Все статусы</option>
               <option value="online">Keeper онлайн</option>
@@ -463,13 +462,13 @@ export default function Accounts() {
             <>
               <div className="platform-desktop-table">
                 <DataTableWrap>
-                  <table className="platform-table" style={{ minWidth: 760 }}>
+                  <table className="platform-table min-w-[760px]">
                     <thead>
                       <tr>
-                        <th style={{ width: 320 }}>Аккаунт</th>
+                        <th className="w-[320px]">Аккаунт</th>
                         <th>Статусы</th>
                         <th>Прокси</th>
-                        <th style={{ textAlign: 'right' }}>Действия</th>
+                        <th className="text-right">Действия</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -484,16 +483,13 @@ export default function Accounts() {
                           >
                             <td>
                               <div className="flex items-center gap-3">
-                                <span className="platform-avatar" style={{ backgroundColor: getAvatarColor(name) }}>
+                                <span className={`platform-avatar ${getAvatarToneClass(name)}`}>
                                   {name[0]?.toUpperCase() ?? 'U'}
                                 </span>
                                 <div>
                                   <div className="font-semibold">{name}</div>
                                   <div className="text-[12px] text-[var(--pf-text-dim)] inline-flex items-center gap-1.5">
-                                    <span
-                                      className="inline-block w-2 h-2 rounded-full"
-                                      style={{ backgroundColor: isOnline ? '#22c55e' : '#64748b' }}
-                                    />
+                                    <span className={`inline-block h-2 w-2 rounded-full ${isOnline ? 'platform-status-dot-success' : 'platform-status-dot-muted'}`} />
                                     {isOnline ? 'Онлайн' : 'Оффлайн'}
                                   </div>
                                 </div>
@@ -503,40 +499,29 @@ export default function Accounts() {
                               <div className="inline-flex items-center gap-2">
                                 <span
                                   title={`Runner: ${acc.runner_active ? 'Активен' : 'Остановлен'}`}
-                                  className="h-2.5 w-2.5 rounded-full"
-                                  style={{ backgroundColor: acc.runner_active ? 'var(--pf-accent)' : 'var(--pf-text-soft)' }}
+                                  className={`h-2.5 w-2.5 rounded-full ${acc.runner_active ? 'platform-status-dot-accent' : 'platform-status-dot-soft'}`}
                                 />
                                 <span
                                   title={`Keeper: ${acc.keeper_active ? 'Онлайн' : 'Оффлайн'}`}
-                                  className="h-2.5 w-2.5 rounded-full"
-                                  style={{ backgroundColor: acc.keeper_active ? 'var(--pf-success)' : 'var(--pf-text-soft)' }}
+                                  className={`h-2.5 w-2.5 rounded-full ${acc.keeper_active ? 'platform-status-dot-success' : 'platform-status-dot-soft'}`}
                                 />
                                 <span
                                   title={`Raiser: ${acc.raiser_active ? 'Запущен' : 'Остановлен'}`}
-                                  className="h-2.5 w-2.5 rounded-full"
-                                  style={{ backgroundColor: acc.raiser_active ? 'var(--pf-warning)' : 'var(--pf-text-soft)' }}
+                                  className={`h-2.5 w-2.5 rounded-full ${acc.raiser_active ? 'platform-status-dot-warning' : 'platform-status-dot-soft'}`}
                                 />
                               </div>
                             </td>
                             <td>
                               <div className="inline-flex items-center gap-1.5 text-xs text-[var(--pf-text-muted)]">
-                                <span
-                                  className="inline-block w-2 h-2 rounded-full"
-                                  style={{ backgroundColor: proxyDotColor(acc) }}
-                                />
+                                <span className={`inline-block h-2 w-2 rounded-full ${getProxyDotClass(acc)}`} />
                                 {acc.proxy_label || 'Прокси не подключен'}
                               </div>
                             </td>
-                            <td style={{ textAlign: 'right' }}>
+                            <td className="text-right">
                               <div className="inline-flex items-center gap-1">
                                 <button
                                   type="button"
-                                  className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs hover:opacity-90"
-                                  style={{
-                                    borderColor: 'var(--pf-border)',
-                                    color: 'var(--pf-text-muted)',
-                                    background: 'var(--pf-surface-2)',
-                                  }}
+                                  className="platform-account-inline-btn"
                                   onClick={event => {
                                     event.stopPropagation();
                                     openAccountSheet(acc.id);
@@ -547,12 +532,7 @@ export default function Accounts() {
                                 </button>
                                 <button
                                   type="button"
-                                  className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs hover:opacity-90"
-                                  style={{
-                                    borderColor: 'var(--pf-border)',
-                                    color: 'var(--pf-text-muted)',
-                                    background: 'var(--pf-surface-2)',
-                                  }}
+                                  className="platform-account-inline-btn"
                                   onClick={event => {
                                     event.stopPropagation();
                                     openProxyConnectDialog(acc.id);
@@ -578,13 +558,12 @@ export default function Accounts() {
                   return (
                     <article
                       key={acc.id}
-                      className="platform-mobile-card cursor-pointer"
-                      style={{ borderColor: 'var(--pf-border)' }}
+                      className="platform-mobile-card platform-mobile-card-bordered cursor-pointer"
                       onClick={() => openAccountSheet(acc.id)}
                     >
                       <div className="platform-mobile-card-head">
                         <div className="inline-flex items-center gap-2">
-                          <span className="platform-avatar" style={{ backgroundColor: getAvatarColor(name) }}>
+                          <span className={`platform-avatar ${getAvatarToneClass(name)}`}>
                             {name[0]?.toUpperCase() ?? 'U'}
                           </span>
                           <div className="text-[13px] font-semibold">{name}</div>
@@ -598,18 +577,15 @@ export default function Accounts() {
                         <div className="inline-flex items-center gap-2">
                           <span
                             title={`Runner: ${acc.runner_active ? 'Активен' : 'Остановлен'}`}
-                            className="h-2.5 w-2.5 rounded-full"
-                            style={{ backgroundColor: acc.runner_active ? 'var(--pf-accent)' : 'var(--pf-text-soft)' }}
+                            className={`h-2.5 w-2.5 rounded-full ${acc.runner_active ? 'platform-status-dot-accent' : 'platform-status-dot-soft'}`}
                           />
                           <span
                             title={`Keeper: ${acc.keeper_active ? 'Онлайн' : 'Оффлайн'}`}
-                            className="h-2.5 w-2.5 rounded-full"
-                            style={{ backgroundColor: acc.keeper_active ? 'var(--pf-success)' : 'var(--pf-text-soft)' }}
+                            className={`h-2.5 w-2.5 rounded-full ${acc.keeper_active ? 'platform-status-dot-success' : 'platform-status-dot-soft'}`}
                           />
                           <span
                             title={`Raiser: ${acc.raiser_active ? 'Запущен' : 'Остановлен'}`}
-                            className="h-2.5 w-2.5 rounded-full"
-                            style={{ backgroundColor: acc.raiser_active ? 'var(--pf-warning)' : 'var(--pf-text-soft)' }}
+                            className={`h-2.5 w-2.5 rounded-full ${acc.raiser_active ? 'platform-status-dot-warning' : 'platform-status-dot-soft'}`}
                           />
                         </div>
                         <span className="inline-flex items-center gap-1 text-xs text-[var(--pf-text-dim)]">
@@ -619,17 +595,12 @@ export default function Accounts() {
                       <div className="mt-2 flex items-center justify-between gap-2">
                         <span className="inline-flex items-center gap-1.5 text-xs text-[var(--pf-text-dim)]">
                           <span className="text-[var(--pf-text-soft)]">Прокси:</span>
-                          <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: proxyDotColor(acc) }} />
+                          <span className={`inline-block h-2 w-2 rounded-full ${getProxyDotClass(acc)}`} />
                           {acc.proxy_label || 'Прокси не подключен'}
                         </span>
                         <button
                           type="button"
-                          className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs"
-                          style={{
-                            borderColor: 'var(--pf-border)',
-                            background: 'var(--pf-surface-2)',
-                            color: 'var(--pf-text-muted)',
-                          }}
+                          className="platform-account-inline-btn !px-2 !py-1 !text-xs"
                           onClick={event => {
                             event.stopPropagation();
                             openProxyConnectDialog(acc.id);
@@ -660,24 +631,15 @@ export default function Accounts() {
       >
         <SheetContent
           side="right"
-          className="w-full p-0 data-[state=open]:duration-200 data-[state=closed]:duration-200 sm:max-w-[380px]"
-          style={{
-            borderLeftColor: 'var(--pf-border)',
-            background: 'var(--pf-bg)',
-            color: 'var(--pf-text)',
-          }}
+          className="platform-account-sheet-content w-full p-0 data-[state=open]:duration-200 data-[state=closed]:duration-200 sm:max-w-[380px]"
         >
           {selectedAccount && (
             <div className="h-full overflow-y-auto p-4 pb-6 sm:p-5 sm:pb-7">
               <div className="space-y-6">
-                <section
-                  className="rounded-xl border p-3 sm:p-4"
-                  style={{ borderColor: 'var(--pf-border)', background: 'var(--pf-surface-2)' }}
-                >
+                <section className="platform-account-sheet-block rounded-xl p-3 sm:p-4">
                   <div className="flex items-center gap-3">
                     <span
-                      className="inline-flex h-12 w-12 items-center justify-center rounded-full text-lg font-semibold text-white"
-                      style={{ backgroundColor: getAvatarColor(displayName(selectedAccount)) }}
+                      className={`inline-flex h-12 w-12 items-center justify-center rounded-full text-lg font-semibold text-white ${getAvatarToneClass(displayName(selectedAccount))}`}
                     >
                       {displayName(selectedAccount)[0]?.toUpperCase() ?? 'U'}
                     </span>
@@ -689,15 +651,11 @@ export default function Accounts() {
                         FunPay ID: {selectedAccount.funpay_user_id || '—'}
                       </p>
                       <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-[var(--pf-text-muted)]">
-                        <span
-                          className="h-2 w-2 rounded-full"
-                          style={{
-                            backgroundColor:
-                              selectedAccount.runner_active || selectedAccount.keeper_active || selectedAccount.raiser_active
-                                ? 'var(--pf-success)'
-                                : 'var(--pf-text-soft)',
-                          }}
-                        />
+                        <span className={`h-2 w-2 rounded-full ${
+                          selectedAccount.runner_active || selectedAccount.keeper_active || selectedAccount.raiser_active
+                            ? 'platform-status-dot-success'
+                            : 'platform-status-dot-soft'
+                        }`} />
                         {selectedAccount.runner_active || selectedAccount.keeper_active || selectedAccount.raiser_active ? 'Онлайн' : 'Оффлайн'}
                       </p>
                     </div>
@@ -707,13 +665,10 @@ export default function Accounts() {
                 <section className="space-y-3">
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--pf-text-dim)]">Воркеры</h4>
 
-                  <div
-                    className="rounded-xl border p-3"
-                    style={{ borderColor: 'var(--pf-border)', background: 'var(--pf-surface-2)' }}
-                  >
+                  <div className="platform-account-sheet-block rounded-xl p-3">
                     <div className="flex items-center justify-between text-sm font-medium">
                       <span>Runner</span>
-                      <span style={{ color: selectedAccount.runner_active ? 'var(--pf-success)' : 'var(--pf-text-soft)' }}>
+                      <span className={selectedAccount.runner_active ? 'text-[var(--pf-success)]' : 'text-[var(--pf-text-soft)]'}>
                         {selectedAccount.runner_active ? 'Активен' : 'Остановлен'}
                       </span>
                     </div>
@@ -721,20 +676,17 @@ export default function Accounts() {
                       <p>Событий сегодня: {selectedAccount.runner_events_today ?? 0}</p>
                       <p>
                         Последнее событие:{' '}
-                        <span style={{ color: getRecencyColor(selectedAccount.runner_last_event_at) }}>
+                        <span className={getRecencyClass(selectedAccount.runner_last_event_at)}>
                           {formatRelativeTime(selectedAccount.runner_last_event_at)}
                         </span>
                       </p>
                     </div>
                   </div>
 
-                  <div
-                    className="rounded-xl border p-3"
-                    style={{ borderColor: 'var(--pf-border)', background: 'var(--pf-surface-2)' }}
-                  >
+                  <div className="platform-account-sheet-block rounded-xl p-3">
                     <div className="flex items-center justify-between text-sm font-medium">
                       <span>Keeper</span>
-                      <span style={{ color: selectedAccount.keeper_active ? 'var(--pf-success)' : 'var(--pf-text-soft)' }}>
+                      <span className={selectedAccount.keeper_active ? 'text-[var(--pf-success)]' : 'text-[var(--pf-text-soft)]'}>
                         {selectedAccount.keeper_active ? 'Онлайн' : 'Остановлен'}
                       </span>
                     </div>
@@ -743,13 +695,10 @@ export default function Accounts() {
                     </p>
                   </div>
 
-                  <div
-                    className="rounded-xl border p-3"
-                    style={{ borderColor: 'var(--pf-border)', background: 'var(--pf-surface-2)' }}
-                  >
+                  <div className="platform-account-sheet-block rounded-xl p-3">
                     <div className="flex items-center justify-between text-sm font-medium">
                       <span>Raiser</span>
-                      <span style={{ color: selectedAccount.raiser_active ? 'var(--pf-success)' : 'var(--pf-text-soft)' }}>
+                      <span className={selectedAccount.raiser_active ? 'text-[var(--pf-success)]' : 'text-[var(--pf-text-soft)]'}>
                         {selectedAccount.raiser_active ? 'Запущен' : 'Остановлен'}
                       </span>
                     </div>
@@ -762,12 +711,7 @@ export default function Accounts() {
                     </p>
                     <button
                       type="button"
-                      className="mt-3 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md border text-sm disabled:cursor-not-allowed disabled:opacity-60"
-                      style={{
-                        borderColor: 'var(--pf-border)',
-                        background: 'var(--pf-surface-3)',
-                        color: 'var(--pf-text-muted)',
-                      }}
+                      className="platform-account-inline-btn mt-3 inline-flex h-10 w-full items-center justify-center gap-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-60"
                       onClick={() => toggleRaiser(selectedAccount)}
                       disabled={raisingIds.has(selectedAccount.id)}
                     >
@@ -790,19 +734,11 @@ export default function Accounts() {
 
                 <section className="space-y-3">
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--pf-text-dim)]">Расписание</h4>
-                  <div
-                    className="rounded-xl border p-3"
-                    style={{ borderColor: 'var(--pf-border)', background: 'var(--pf-surface-2)' }}
-                  >
+                  <div className="platform-account-sheet-block rounded-xl p-3">
                     <div className="flex items-center gap-2">
                       <input
                         type="time"
-                        className="h-11 flex-1 rounded-md border px-3 text-sm outline-none"
-                        style={{
-                          borderColor: 'var(--pf-border)',
-                          background: 'var(--pf-bg-soft)',
-                          color: 'var(--pf-text)',
-                        }}
+                        className="platform-input h-11 flex-1"
                         value={scheduleDrafts[String(selectedAccount.id)] || '12:00'}
                         onChange={event =>
                           setScheduleDrafts(prev => ({ ...prev, [String(selectedAccount.id)]: event.target.value }))
@@ -810,12 +746,7 @@ export default function Accounts() {
                       />
                       <button
                         type="button"
-                        className="inline-flex h-11 items-center justify-center rounded-md border px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
-                        style={{
-                          borderColor: 'var(--pf-border)',
-                          background: 'var(--pf-surface-3)',
-                          color: 'var(--pf-text-muted)',
-                        }}
+                        className="platform-account-inline-btn inline-flex h-11 items-center justify-center px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
                         onClick={() => saveSchedule(selectedAccount)}
                         disabled={savingScheduleIds.has(selectedAccount.id)}
                       >
@@ -834,12 +765,9 @@ export default function Accounts() {
 
                 <section className="space-y-3">
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--pf-text-dim)]">Прокси</h4>
-                  <div
-                    className="rounded-xl border p-3"
-                    style={{ borderColor: 'var(--pf-border)', background: 'var(--pf-surface-2)' }}
-                  >
+                  <div className="platform-account-sheet-block rounded-xl p-3">
                     <p className="inline-flex items-center gap-1.5 text-sm text-[var(--pf-text)]">
-                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: proxyDotColor(selectedAccount) }} />
+                      <span className={`h-2 w-2 rounded-full ${getProxyDotClass(selectedAccount)}`} />
                       {selectedAccount.proxy_label || 'Прокси не подключен'}
                     </p>
                     <p className="mt-2 text-xs text-[var(--pf-text-dim)]">
@@ -849,12 +777,7 @@ export default function Accounts() {
                     </p>
                     <button
                       type="button"
-                      className="mt-3 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md border text-sm"
-                      style={{
-                        borderColor: 'var(--pf-border)',
-                        background: 'var(--pf-surface-3)',
-                        color: 'var(--pf-text-muted)',
-                      }}
+                      className="platform-account-inline-btn mt-3 inline-flex h-10 w-full items-center justify-center gap-1.5 text-sm"
                       onClick={() => openProxyConnectDialog(selectedAccount.id)}
                     >
                       <Network size={14} />
@@ -868,16 +791,11 @@ export default function Accounts() {
                   <button
                     type="button"
                     onClick={() => toggleAccountRuntime(selectedAccount)}
-                    className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-md border text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
-                    style={{
-                      borderColor: isAccountRuntimeActive(selectedAccount)
-                        ? 'color-mix(in srgb, var(--pf-danger) 48%, transparent)'
-                        : 'color-mix(in srgb, var(--pf-success) 52%, transparent)',
-                      background: isAccountRuntimeActive(selectedAccount)
-                        ? 'color-mix(in srgb, var(--pf-danger) 14%, transparent)'
-                        : 'color-mix(in srgb, var(--pf-success) 14%, transparent)',
-                      color: isAccountRuntimeActive(selectedAccount) ? 'var(--pf-danger)' : 'var(--pf-success)',
-                    }}
+                    className={`inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-md border text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60 ${
+                      isAccountRuntimeActive(selectedAccount)
+                        ? 'platform-account-danger-btn'
+                        : 'platform-account-success-btn'
+                    }`}
                     disabled={runtimeLoadingIds.has(selectedAccount.id)}
                   >
                     {runtimeLoadingIds.has(selectedAccount.id) ? (
@@ -897,12 +815,7 @@ export default function Accounts() {
                   <button
                     type="button"
                     onClick={() => setShowDeleteConfirm(true)}
-                    className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-md border text-sm font-medium"
-                    style={{
-                      borderColor: 'color-mix(in srgb, var(--pf-danger) 50%, transparent)',
-                      background: 'color-mix(in srgb, var(--pf-danger) 14%, transparent)',
-                      color: 'var(--pf-danger)',
-                    }}
+                    className="platform-account-danger-btn inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-md border text-sm font-medium"
                   >
                     <Trash2 size={14} />
                     Удалить аккаунт
@@ -915,14 +828,7 @@ export default function Accounts() {
       </Sheet>
 
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <DialogContent
-          className="max-w-[420px]"
-          style={{
-            borderColor: 'var(--pf-border)',
-            background: 'var(--pf-surface)',
-            color: 'var(--pf-text)',
-          }}
-        >
+        <DialogContent className="platform-dialog-content sm:max-w-[420px]">
           <DialogHeader>
             <DialogTitle>Удалить аккаунт?</DialogTitle>
             <DialogDescription className="sr-only">
@@ -937,12 +843,7 @@ export default function Accounts() {
           <div className="mt-2 flex justify-end gap-2">
             <button
               type="button"
-              className="inline-flex h-10 items-center justify-center rounded-md border px-3 text-sm"
-              style={{
-                borderColor: 'var(--pf-border)',
-                background: 'var(--pf-surface-2)',
-                color: 'var(--pf-text-muted)',
-              }}
+              className="platform-account-inline-btn inline-flex h-10 items-center justify-center px-3 text-sm"
               onClick={() => setShowDeleteConfirm(false)}
               disabled={deletingAccount}
             >
@@ -950,12 +851,7 @@ export default function Accounts() {
             </button>
             <button
               type="button"
-              className="inline-flex h-10 items-center justify-center rounded-md border px-3 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
-              style={{
-                borderColor: 'color-mix(in srgb, var(--pf-danger) 50%, transparent)',
-                background: 'color-mix(in srgb, var(--pf-danger) 18%, transparent)',
-                color: 'var(--pf-danger)',
-              }}
+              className="platform-account-danger-btn inline-flex h-10 items-center justify-center rounded-md border px-3 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
               onClick={() => selectedAccount && removeAccount(selectedAccount.id)}
               disabled={!selectedAccount || deletingAccount}
             >
@@ -975,7 +871,7 @@ export default function Accounts() {
           }
         }}
       >
-        <DialogContent className="platform-dialog-content" style={{ maxWidth: 480 }}>
+        <DialogContent className="platform-dialog-content sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle>Выберите прокси</DialogTitle>
             <DialogDescription className="sr-only">
@@ -989,8 +885,7 @@ export default function Accounts() {
           <div className="space-y-3">
             <button
               type="button"
-              className="w-full rounded-lg border p-3 text-left transition-colors hover:bg-[var(--pf-surface-2)] disabled:opacity-60"
-              style={{ borderColor: 'var(--pf-border)' }}
+              className="platform-proxy-option-btn w-full rounded-lg p-3 text-left disabled:opacity-60"
               onClick={connectFreeProxy}
               disabled={proxyConnecting || !proxyTargetAccount}
             >
@@ -1006,8 +901,7 @@ export default function Accounts() {
             </button>
 
             <div
-              className="w-full rounded-lg border p-3 text-left opacity-80"
-              style={{ borderColor: 'var(--pf-border)', background: 'var(--pf-surface-2)' }}
+              className="platform-proxy-option-muted w-full rounded-lg p-3 text-left opacity-80"
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -1016,7 +910,7 @@ export default function Accounts() {
                     119 ₽/мес. Подключение через API появится в следующем релизе.
                   </p>
                 </div>
-                <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] text-[var(--pf-text-muted)]" style={{ borderColor: 'var(--pf-border)' }}>
+                <span className="platform-chip inline-flex items-center gap-1 px-2 py-0.5 text-[11px]">
                   <BadgeDollarSign size={11} />
                   Скоро
                 </span>
@@ -1025,7 +919,7 @@ export default function Accounts() {
           </div>
 
           {proxyConnectError && (
-            <div className="rounded-lg border px-3 py-2" style={{ borderColor: 'color-mix(in srgb, var(--pf-warning) 45%, transparent)', background: 'color-mix(in srgb, var(--pf-warning) 10%, transparent)' }}>
+            <div className="platform-alert-warning rounded-lg px-3 py-2">
               <p className="text-sm text-[var(--pf-text)]">{proxyConnectError}</p>
               {proxyConnectError.toLowerCase().includes('заняты') && (
                 <a
@@ -1044,7 +938,7 @@ export default function Accounts() {
       </Dialog>
 
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="platform-dialog-content" style={{ maxWidth: 460 }}>
+        <DialogContent className="platform-dialog-content sm:max-w-[460px]">
           <DialogHeader>
             <DialogTitle>Новый аккаунт</DialogTitle>
             <DialogDescription className="sr-only">

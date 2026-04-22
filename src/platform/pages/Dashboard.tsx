@@ -42,7 +42,7 @@ const BANNERS: Banner[] = [
     description: 'Пошаговый разбор настроек автоподнятия и ошибок, которые режут выдачу.',
     href: '/blog/avtopodnyatie-lotov-funpay',
     cta: 'Читать статью',
-    gradientClass: 'bg-[linear-gradient(135deg,#0f2744_0%,#1e40af_60%,#2563eb_100%)]',
+    gradientClass: 'platform-dashboard-banner-blue',
     tagClass: 'text-blue-300',
     textClass: 'text-white',
     mutedClass: 'text-blue-200/80',
@@ -56,7 +56,7 @@ const BANNERS: Banner[] = [
     description: 'Ускорили подтверждение исходящих и усилили обработку reconnect в веб-сокетах.',
     href: '/platform/chats',
     cta: 'Подробнее',
-    gradientClass: 'bg-[linear-gradient(135deg,#2d1b69_0%,#5b21b6_50%,#7c3aed_100%)]',
+    gradientClass: 'platform-dashboard-banner-violet',
     tagClass: 'text-violet-200',
     textClass: 'text-white',
     mutedClass: 'text-violet-200/80',
@@ -70,7 +70,7 @@ const BANNERS: Banner[] = [
     description: 'Настройте тон, базу знаний и сразу проверьте ответы в тестовом чате.',
     href: '/platform/ai-assistant',
     cta: 'Открыть AI',
-    gradientClass: 'bg-[linear-gradient(135deg,#064e3b_0%,#065f46_50%,#047857_100%)]',
+    gradientClass: 'platform-dashboard-banner-emerald',
     tagClass: 'text-emerald-200',
     textClass: 'text-white',
     mutedClass: 'text-emerald-200/80',
@@ -337,7 +337,7 @@ export default function Dashboard() {
                   onClick={() => setActiveSlide(idx)}
                   aria-label={`Показать баннер ${idx + 1}`}
                   className={`h-0.5 rounded-full transition-all duration-300 ${
-                    idx === activeSlide ? 'w-6 bg-[var(--pf-accent)]' : 'w-2 bg-[rgba(14,17,22,0.30)]'
+                    idx === activeSlide ? 'w-6 bg-[var(--pf-accent)]' : 'w-2 bg-[var(--pf-border-strong)]'
                   }`}
                 />
               ))}
@@ -345,12 +345,12 @@ export default function Dashboard() {
           </section>
 
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <article className="group relative overflow-hidden rounded-xl border border-[rgba(58,47,224,0.22)] bg-gradient-to-br from-[var(--pf-accent-soft)] to-transparent p-5 transition-all hover:border-[rgba(58,47,224,0.44)]">
-              <div className="absolute -right-4 -top-4 h-20 w-20 rounded-full bg-blue-500/10" />
+            <article className="platform-dashboard-community-telegram group relative overflow-hidden rounded-xl p-5 transition-all">
+              <div className="platform-dashboard-community-telegram-decor absolute -right-4 -top-4 h-20 w-20 rounded-full" />
 
               <div className="mb-3 flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--pf-accent-soft)]">
-                  <Send size={18} className="text-blue-700" />
+                <div className="platform-dashboard-community-telegram-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+                  <Send size={18} className="platform-dashboard-community-telegram-icon-fg" />
                 </div>
                 <div>
                   <div className="text-sm font-semibold text-[var(--pf-text)]">Telegram канал</div>
@@ -363,16 +363,16 @@ export default function Dashboard() {
                 href="https://t.me/funpaycloud"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 transition-colors group-hover:text-blue-800"
+                className="platform-dashboard-community-telegram-link inline-flex items-center gap-1.5 text-xs font-semibold transition-colors"
               >
                 Подписаться
                 <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
               </a>
             </article>
 
-            <article className="group rounded-xl border border-[#4C75A3]/26 bg-gradient-to-br from-[#4C75A3]/12 to-transparent p-5 transition-colors hover:border-[#4C75A3]/52">
+            <article className="platform-dashboard-community-vk group rounded-xl p-5 transition-colors">
               <div className="mb-3 flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#4C75A3]/20 text-sm font-bold text-[#325b88]">
+                <div className="platform-dashboard-community-vk-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold">
                   VK
                 </div>
                 <div>
@@ -386,7 +386,7 @@ export default function Dashboard() {
                 href="https://vk.com/funpaycloud"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#325b88] transition-colors group-hover:text-[#24476c]"
+                className="platform-dashboard-community-vk-link inline-flex items-center gap-1.5 text-xs font-semibold transition-colors"
               >
                 Вступить
                 <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
@@ -428,8 +428,8 @@ export default function Dashboard() {
                 href="/docs"
                 className="group flex items-center gap-4 p-5 transition-colors hover:bg-[var(--pf-surface-2)] sm:p-6"
               >
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10">
-                  <BookOpen size={20} className="text-amber-600" />
+                <div className="platform-dashboard-docs-icon flex h-12 w-12 shrink-0 items-center justify-center rounded-xl">
+                  <BookOpen size={20} className="platform-dashboard-docs-icon-fg" />
                 </div>
                 <div className="flex-1">
                   <div className="mb-1 text-sm font-semibold text-[var(--pf-text)]">Документация</div>
@@ -442,8 +442,8 @@ export default function Dashboard() {
                 href="/blog"
                 className="group flex items-center gap-4 p-5 transition-colors hover:bg-[var(--pf-surface-2)] sm:p-6"
               >
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/10">
-                  <FileText size={20} className="text-purple-600" />
+                <div className="platform-dashboard-blog-icon flex h-12 w-12 shrink-0 items-center justify-center rounded-xl">
+                  <FileText size={20} className="platform-dashboard-blog-icon-fg" />
                 </div>
                 <div className="flex-1">
                   <div className="mb-1 text-sm font-semibold text-[var(--pf-text)]">Блог</div>
@@ -460,7 +460,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 gap-px overflow-hidden rounded-xl bg-[var(--pf-surface-3)] sm:grid-cols-2 xl:grid-cols-3">
               {FEATURES.map((feature, idx) => (
                 <article key={feature.title} className="group bg-[var(--pf-surface)] p-5 transition-colors hover:bg-[var(--pf-surface-2)]">
-                  <div className="mb-3 text-2xl font-bold text-[rgba(14,17,22,0.18)] transition-colors group-hover:text-[rgba(14,17,22,0.30)]">
+                  <div className="platform-dashboard-feature-number mb-3 text-2xl font-bold transition-colors">
                     {`0${idx + 1}`}
                   </div>
                   <h3 className="mb-1 text-sm font-medium text-[var(--pf-text)]">{feature.title}</h3>

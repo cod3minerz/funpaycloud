@@ -321,7 +321,7 @@ export default function Settings() {
                 <div className="relative">
                   <input
                     type={showOld ? 'text' : 'password'}
-                    className="w-full rounded-lg border border-[var(--pf-border-strong)] bg-[var(--pf-elevated)] px-4 py-2.5 pr-10 text-sm text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] focus:border-[rgba(58,47,224,0.55)] focus:outline-none transition-colors"
+                    className="w-full rounded-lg border border-[var(--pf-border-strong)] bg-[var(--pf-elevated)] px-4 py-2.5 pr-10 text-sm text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] focus:border-[var(--pf-accent-soft-strong)] focus:outline-none transition-colors"
                     placeholder="••••••••"
                     value={oldPassword}
                     onChange={e => setOldPassword(e.target.value)}
@@ -342,7 +342,7 @@ export default function Settings() {
                 <div className="relative">
                   <input
                     type={showNew ? 'text' : 'password'}
-                    className="w-full rounded-lg border border-[var(--pf-border-strong)] bg-[var(--pf-elevated)] px-4 py-2.5 pr-10 text-sm text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] focus:border-[rgba(58,47,224,0.55)] focus:outline-none transition-colors"
+                    className="w-full rounded-lg border border-[var(--pf-border-strong)] bg-[var(--pf-elevated)] px-4 py-2.5 pr-10 text-sm text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] focus:border-[var(--pf-accent-soft-strong)] focus:outline-none transition-colors"
                     placeholder="Введите новый пароль"
                     value={newPassword}
                     onChange={e => setNewPassword(e.target.value)}
@@ -374,7 +374,7 @@ export default function Settings() {
                 <div className="relative">
                   <input
                     type={showConfirm ? 'text' : 'password'}
-                    className="w-full rounded-lg border border-[var(--pf-border-strong)] bg-[var(--pf-elevated)] px-4 py-2.5 pr-10 text-sm text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] focus:border-[rgba(58,47,224,0.55)] focus:outline-none transition-colors"
+                    className="w-full rounded-lg border border-[var(--pf-border-strong)] bg-[var(--pf-elevated)] px-4 py-2.5 pr-10 text-sm text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] focus:border-[var(--pf-accent-soft-strong)] focus:outline-none transition-colors"
                     placeholder="Повторите пароль"
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
@@ -471,10 +471,7 @@ export default function Settings() {
                 <span>{leftDays === null ? '∞' : 'из 30'}</span>
               </div>
               <div className="h-1 overflow-hidden rounded-full bg-[var(--pf-surface-3)]">
-                <div
-                  className="h-full rounded-full bg-[var(--pf-accent)]"
-                  style={{ width: `${progressPercent}%` }}
-                />
+                <progress className="platform-ai-progress normal h-full w-full rounded-full" value={progressPercent} max={100} />
               </div>
             </div>
           </div>

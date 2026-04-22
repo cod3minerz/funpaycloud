@@ -118,9 +118,8 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
 
   return (
     <div
-      className="platform-scope platform-shell"
+      className={`platform-scope platform-shell ${sidebarCollapsed ? 'platform-shell--collapsed' : 'platform-shell--expanded'}`}
       data-theme={theme}
-      style={{ ['--pf-sidebar-width' as string]: `${sidebarCollapsed ? 84 : 252}px` }}
     >
       <Sidebar collapsed={sidebarCollapsed} theme={theme} />
 

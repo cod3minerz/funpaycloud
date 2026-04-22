@@ -14,30 +14,18 @@ export function StatCard({
   color?: 'accent' | 'success' | 'warning' | 'danger';
   className?: string;
 }) {
-  const colorMap = {
-    accent: 'var(--pf-accent)',
-    success: 'var(--pf-success)',
-    warning: 'var(--pf-warning)',
-    danger: 'var(--pf-danger)',
-  };
-
   return (
     <article
-      className={cn('platform-card platform-kpi-card relative overflow-hidden', className)}
-      style={{ '--stat-color': colorMap[color] } as React.CSSProperties}
+      className={cn('platform-card platform-kpi-card platform-stat-card relative overflow-hidden', `platform-stat-card--${color}`, className)}
     >
-      <div
-        className="absolute inset-x-0 top-0 h-[2px]"
-        style={{ background: `linear-gradient(90deg, ${colorMap[color]}, transparent)` }}
-        aria-hidden
-      />
+      <div className="platform-stat-card-line absolute inset-x-0 top-0 h-[2px]" aria-hidden />
       {icon && (
-        <div className="inline-flex items-center gap-2 text-[13px] font-semibold" style={{ color: colorMap[color] }}>
+        <div className="platform-stat-card-icon inline-flex items-center gap-2 text-[13px] font-semibold">
           {icon}
         </div>
       )}
       <strong className="text-[28px] font-bold leading-none tracking-tight">{value}</strong>
-      <span className="text-[12px]" style={{ color: 'var(--pf-text-dim)' }}>{label}</span>
+      <span className="text-[12px] text-[var(--pf-text-dim)]">{label}</span>
     </article>
   );
 }

@@ -216,7 +216,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         </div>
 
         <aside className="hidden xl:block">
-          <div className="sticky top-24 space-y-5 rounded-3xl border border-[var(--line-2)] bg-[var(--bg-card)] p-5 shadow-[0_16px_36px_-30px_rgba(14,17,22,0.35)]">
+          <div className="sticky top-24 space-y-5 rounded-3xl border border-[var(--line-2)] bg-[var(--bg-card)] p-5 shadow-[var(--blog-shadow-soft)]">
             <h2 className="text-sm font-semibold text-[var(--text-primary)]">Содержание</h2>
             <TableOfContents headings={headings} />
             <div className="border-t border-[var(--line)] pt-4">

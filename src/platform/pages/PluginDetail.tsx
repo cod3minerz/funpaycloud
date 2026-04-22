@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { ArrowLeft, Loader2, RefreshCw, Save, Zap } from 'lucide-react';
 import { toast } from 'sonner';
+import { Switch } from '@/app/components/ui/switch';
 import {
   ApiConfigField,
   ApiPluginLog,
@@ -124,20 +125,8 @@ function ConfigFieldInput({
   if (field.type === 'bool') {
     const checked = value === 'true' || value === '1' || value === 'yes';
     return (
-      <label className="flex items-center gap-3 cursor-pointer select-none">
-        <button
-          type="button"
-          role="switch"
-          aria-checked={checked}
-          onClick={() => onChange(checked ? 'false' : 'true')}
-          className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border transition-colors ${
-            checked ? 'bg-[var(--pf-accent)] border-[var(--pf-accent)]' : 'bg-[var(--pf-surface-3)] border-[var(--pf-border)]'
-          }`}
-        >
-          <span
-            className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform mt-0.5 ${checked ? 'translate-x-4' : 'translate-x-0.5'}`}
-          />
-        </button>
+      <label className="flex cursor-pointer select-none items-center gap-3">
+        <Switch checked={checked} onCheckedChange={next => onChange(next ? 'true' : 'false')} />
         <span className="text-sm text-[var(--pf-text)]">{checked ? 'Включено' : 'Выключено'}</span>
       </label>
     );
@@ -349,7 +338,7 @@ export default function PluginDetail() {
                     <div key={field.key} className="flex flex-col gap-1.5">
                       <label className="text-sm font-medium text-[var(--pf-text)]">
                         {field.label}
-                        {field.required && <span className="text-[var(--pf-bad)] ml-1">*</span>}
+                        {field.required && <span className="ml-1 text-[var(--pf-danger)]">*</span>}
                       </label>
                       <ConfigFieldInput
                         field={field}
@@ -391,13 +380,15 @@ export default function PluginDetail() {
                       <div
                         key={log.id}
                         className={`flex gap-3 py-1.5 px-2 rounded-lg ${
-                          log.level === 'error' ? 'bg-[rgba(178,58,58,0.06)] text-[var(--pf-bad)]' : 'text-[var(--pf-text-muted)]'
+                          log.level === 'error'
+                            ? 'bg-[color-mix(in_srgb,var(--pf-danger)_10%,transparent)] text-[var(--pf-danger)]'
+                            : 'text-[var(--pf-text-muted)]'
                         }`}
                       >
                         <span className="shrink-0 text-[11px] opacity-60 mt-0.5">
                           {new Date(log.created_at).toLocaleTimeString('ru-RU')}
                         </span>
-                        <span className={`shrink-0 font-semibold ${log.level === 'error' ? 'text-[var(--pf-bad)]' : 'text-[var(--pf-accent)]'}`}>
+                        <span className={`shrink-0 font-semibold ${log.level === 'error' ? 'text-[var(--pf-danger)]' : 'text-[var(--pf-accent)]'}`}>
                           {log.level === 'error' ? '✕' : '✓'}
                         </span>
                         <span className="text-[var(--pf-text)]">{log.event}</span>

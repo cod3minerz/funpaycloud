@@ -180,9 +180,9 @@ export default function SubscriptionPage() {
       </PageHeader>
 
       <div className="space-y-8 pb-8">
-        <section className="relative overflow-hidden rounded-2xl border border-[rgba(58,47,224,0.16)] bg-gradient-to-br from-[var(--pf-accent-soft)] via-[var(--pf-surface)] to-[var(--pf-surface-2)] p-5 sm:p-7 lg:p-8">
-          <div className="pointer-events-none absolute right-0 top-0 h-72 w-72 translate-x-28 -translate-y-28 rounded-full bg-blue-500/10 blur-3xl" />
-          <div className="pointer-events-none absolute bottom-0 left-0 h-56 w-56 -translate-x-20 translate-y-20 rounded-full bg-purple-500/10 blur-3xl" />
+        <section className="relative overflow-hidden rounded-2xl border border-[var(--pf-accent-soft-strong)] bg-gradient-to-br from-[var(--pf-accent-soft)] via-[var(--pf-surface)] to-[var(--pf-surface-2)] p-5 sm:p-7 lg:p-8">
+          <div className="pointer-events-none absolute right-0 top-0 h-72 w-72 translate-x-28 -translate-y-28 rounded-full bg-[var(--pf-accent-soft)] blur-3xl" />
+          <div className="pointer-events-none absolute bottom-0 left-0 h-56 w-56 -translate-x-20 translate-y-20 rounded-full bg-[var(--pf-accent-soft)] blur-3xl" />
 
           <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
@@ -195,7 +195,7 @@ export default function SubscriptionPage() {
 
               <h2 className="mb-2 text-2xl font-bold text-[var(--pf-text)] sm:text-3xl">
                 Тариф{' '}
-                <span className="bg-gradient-to-r from-[var(--pf-accent)] to-purple-600 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-[var(--pf-accent)] to-[var(--pf-accent-2)] bg-clip-text text-transparent">
                   {currentPlanLabel}
                 </span>
               </h2>
@@ -219,7 +219,7 @@ export default function SubscriptionPage() {
 
             <div className="relative hidden h-20 w-20 shrink-0 md:flex md:items-center md:justify-center">
               <svg className="h-20 w-20 -rotate-90" viewBox="0 0 36 36">
-                <circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(14,17,22,0.10)" strokeWidth="2.2" />
+                <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--pf-border-strong)" strokeWidth="2.2" />
                 <circle
                   cx="18"
                   cy="18"
@@ -233,8 +233,8 @@ export default function SubscriptionPage() {
                 />
                 <defs>
                   <linearGradient id="subscription-progress-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#60a5fa" />
-                    <stop offset="100%" stopColor="#8b5cf6" />
+                    <stop offset="0%" stopColor="var(--pf-accent)" />
+                    <stop offset="100%" stopColor="var(--pf-accent-2)" />
                   </linearGradient>
                 </defs>
               </svg>
@@ -310,12 +310,12 @@ export default function SubscriptionPage() {
                   key={plan.id}
                   className={`relative ${cardOrderClass(plan.id)} rounded-2xl border p-6 transition-all duration-300 ${
                     plan.id === 'pro'
-                      ? 'border-[rgba(58,47,224,0.30)] bg-gradient-to-br from-[var(--pf-accent-soft)] via-[var(--pf-surface)] to-[var(--pf-surface)] shadow-[0_0_34px_rgba(58,47,224,0.10)]'
+                      ? 'border-[var(--pf-accent-soft-strong)] bg-gradient-to-br from-[var(--pf-accent-soft)] via-[var(--pf-surface)] to-[var(--pf-surface)] shadow-[var(--pf-shadow-soft)]'
                       : 'border-[var(--pf-border)] bg-[var(--pf-surface)] hover:border-[var(--pf-border-strong)]'
                   }`}
                 >
                   {plan.id === 'pro' ? (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-blue-600 to-[var(--pf-accent)] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-[var(--pf-accent-2)] to-[var(--pf-accent)] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
                       Популярный
                     </div>
                   ) : null}
@@ -340,7 +340,7 @@ export default function SubscriptionPage() {
                       isCurrent
                         ? 'cursor-default border border-emerald-400/40 bg-emerald-500/15 text-emerald-300'
                         : plan.id === 'pro'
-                          ? 'bg-gradient-to-r from-blue-600 to-[var(--pf-accent)] text-white shadow-[0_10px_24px_rgba(110,139,255,0.28)] hover:from-blue-500 hover:to-[var(--pf-accent-hover)]'
+                          ? 'bg-gradient-to-r from-[var(--pf-accent-2)] to-[var(--pf-accent)] text-white shadow-[var(--pf-shadow-soft)] hover:from-[var(--pf-accent-hover)] hover:to-[var(--pf-accent)]'
                           : plan.id === 'ultra'
                             ? 'border border-purple-500/30 bg-purple-500/10 text-purple-700 hover:bg-purple-500/15'
                             : 'border border-[var(--pf-border-strong)] bg-[var(--pf-surface-2)] text-[var(--pf-text-muted)] hover:border-[var(--pf-accent-soft-strong)] hover:text-[var(--pf-text)]'

@@ -28,11 +28,11 @@ const typeLabelMap: Record<string, string> = {
   fee: 'Комиссия',
 };
 
-const typeColorMap: Record<string, string> = {
-  sale: '#22c55e',
-  withdrawal: '#60a5fa',
-  refund: '#ef4444',
-  fee: '#94a3b8',
+const typeChipClassMap: Record<string, string> = {
+  sale: 'platform-finance-chip-sale',
+  withdrawal: 'platform-finance-chip-withdrawal',
+  refund: 'platform-finance-chip-refund',
+  fee: 'platform-finance-chip-fee',
 };
 
 const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
@@ -201,8 +201,8 @@ export default function Finances() {
         </PageHeader>
 
         {showExportAlert && (
-          <SectionCard className="border-[rgba(34,197,94,0.35)] bg-[rgba(34,197,94,0.08)] py-3">
-            <div className="inline-flex items-center gap-2 text-[13px] font-semibold text-[#86efac]">
+          <SectionCard className="platform-alert-success py-3">
+            <div className="inline-flex items-center gap-2 text-[13px] font-semibold text-[var(--pf-success)]">
               <Download size={15} /> CSV выгружен.
             </div>
           </SectionCard>
@@ -211,7 +211,7 @@ export default function Finances() {
         <KpiGrid>
           <KpiCard>
             <div className="inline-flex items-center gap-2 text-[13px] font-semibold">
-              <Wallet size={15} color="#60a5fa" />
+              <Wallet size={15} className="text-[var(--pf-accent)]" />
               Общая выручка
             </div>
             <strong className="text-[26px]">
@@ -224,7 +224,7 @@ export default function Finances() {
 
           <KpiCard>
             <div className="inline-flex items-center gap-2 text-[13px] font-semibold">
-              <TrendingUp size={15} color="#fbbf24" />
+              <TrendingUp size={15} className="text-[var(--pf-warning)]" />
               Заказов
             </div>
             <strong className="text-[26px]">{Number(data.total_orders || 0)}</strong>
@@ -249,21 +249,28 @@ export default function Finances() {
           <div className="mt-3 h-[240px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthlyData} margin={{ top: 6, right: 8, bottom: 2, left: 2 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.16)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--pf-border)" />
                 <XAxis dataKey="name" tick={{ fill: 'var(--pf-text-muted)', fontSize: 12 }} />
                 <YAxis tick={{ fill: 'var(--pf-text-muted)', fontSize: 12 }} />
                 <Tooltip
                   contentStyle={{
                     background: 'var(--pf-surface)',
-                    border: '1px solid rgba(96,165,250,0.44)',
+                    border: '1px solid var(--pf-accent-soft-strong)',
                     borderRadius: 10,
-                    color: '#fff',
+                    color: 'var(--pf-text)',
                   }}
                   formatter={(value: number) => [`${value.toLocaleString('ru-RU')} ₽`, 'Выручка']}
                 />
                 <Bar dataKey="revenue" radius={[5, 5, 0, 0]}>
                   {monthlyData.map((_, idx) => (
-                    <Cell key={idx} fill={idx === monthlyData.length - 1 ? '#5b8cff' : 'rgba(91,140,255,0.48)'} />
+                    <Cell
+                      key={idx}
+                      fill={
+                        idx === monthlyData.length - 1
+                          ? 'var(--pf-accent)'
+                          : 'color-mix(in srgb, var(--pf-accent) 52%, transparent)'
+                      }
+                    />
                   ))}
                 </Bar>
               </BarChart>
@@ -287,10 +294,9 @@ export default function Finances() {
 
             <div className="hidden md:flex md:flex-wrap md:items-center md:gap-2">
               <select
-                className="platform-select"
+                className="platform-select w-full md:w-auto md:min-w-[220px]"
                 value={accountFilter}
                 onChange={event => setAccountFilter(event.target.value)}
-                style={{ maxWidth: 240 }}
               >
                 <option value="all">Все аккаунты</option>
                 {accounts.map(account => (
@@ -301,10 +307,9 @@ export default function Finances() {
               </select>
 
               <select
-                className="platform-select"
+                className="platform-select w-full md:w-auto md:min-w-[220px]"
                 value={typeFilter}
                 onChange={event => setTypeFilter(event.target.value)}
-                style={{ maxWidth: 240 }}
               >
                 <option value="all">Все операции</option>
                 <option value="sale">Продажи</option>
@@ -322,10 +327,9 @@ export default function Finances() {
           {showFilters && (
             <ToolbarRow className="mt-2 md:hidden">
               <select
-                className="platform-select"
+                className="platform-select w-full md:w-auto md:min-w-[220px]"
                 value={accountFilter}
                 onChange={event => setAccountFilter(event.target.value)}
-                style={{ maxWidth: 240 }}
               >
                 <option value="all">Все аккаунты</option>
                 {accounts.map(account => (
@@ -336,10 +340,9 @@ export default function Finances() {
               </select>
 
               <select
-                className="platform-select"
+                className="platform-select w-full md:w-auto md:min-w-[220px]"
                 value={typeFilter}
                 onChange={event => setTypeFilter(event.target.value)}
-                style={{ maxWidth: 240 }}
               >
                 <option value="all">Все операции</option>
                 <option value="sale">Продажи</option>
@@ -362,41 +365,33 @@ export default function Finances() {
             <>
               <div className="platform-desktop-table">
                 <DataTableWrap className="tablet-dense-scroll">
-                  <table className="platform-table" style={{ minWidth: 760 }}>
+                  <table className="platform-table min-w-[760px]">
                     <thead>
                       <tr>
                         <th>Дата</th>
                         <th>Тип</th>
                         <th>Описание</th>
                         <th className="platform-col-tablet-hide">Аккаунт</th>
-                        <th style={{ textAlign: 'right' }}>Сумма</th>
+                        <th className="text-right">Сумма</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredTxs.map(tx => {
                         const isPositive = tx.type === 'sale';
                         const amountSign = isPositive ? '+' : '-';
-                        const color = typeColorMap[tx.type] || '#94a3b8';
                         return (
                           <tr key={`${tx.id}-${tx.date}`}>
                             <td className="whitespace-nowrap">{fmtDate(tx.date)}</td>
                             <td>
                               <span
-                                className="platform-chip !min-h-[22px] !text-[11px]"
-                                style={{ color, borderColor: `${color}66` }}
+                                className={`platform-chip platform-finance-chip !min-h-[22px] !text-[11px] ${typeChipClassMap[tx.type] || 'platform-finance-chip-fee'}`}
                               >
                                 {typeLabelMap[tx.type] || tx.type}
                               </span>
                             </td>
                             <td>{tx.description || '—'}</td>
                             <td className="platform-col-tablet-hide">{tx.account_username || `ID ${tx.funpay_account_id}`}</td>
-                            <td
-                              style={{
-                                textAlign: 'right',
-                                fontWeight: 700,
-                                color: isPositive ? '#4ade80' : '#f87171',
-                              }}
-                            >
+                            <td className={`text-right font-bold ${isPositive ? 'text-[var(--pf-success)]' : 'text-[var(--pf-danger)]'}`}>
                               {amountSign}{Math.abs(Number(tx.amount || 0)).toLocaleString('ru-RU')} ₽
                             </td>
                           </tr>

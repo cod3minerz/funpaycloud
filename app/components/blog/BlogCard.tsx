@@ -5,7 +5,7 @@ import { formatDate, slugifyCategory } from '@/lib/blog-types';
 
 export function BlogCard({ post }: { post: BlogPostSummary }) {
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)] hover:shadow-[0_18px_36px_-30px_rgba(58,47,224,0.55)]">
+    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)] hover:shadow-[0_18px_36px_-30px_color-mix(in_srgb,var(--accent)_48%,transparent)]">
       {post.cover && (
         <Link href={`/blog/${post.slug}`} className="block aspect-[16/9] overflow-hidden border-b border-[var(--border)]">
           <Image

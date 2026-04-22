@@ -6,6 +6,7 @@
     "build": "next build",
     "dev": "next dev",
     "start": "next start",
+    "lint:design-system": "node scripts/check-design-system.js",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",

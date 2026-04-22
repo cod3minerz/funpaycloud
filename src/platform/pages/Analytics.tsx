@@ -10,7 +10,14 @@ import { DataTableWrap, KpiCard, KpiGrid, PageHeader, PageShell, PageTitle, Requ
 
 type Period = 'week' | 'month' | 'quarter' | 'year';
 
-const COLORS = ['#5b8cff', '#4ade80', '#f59e0b', '#fb7185', '#22d3ee', '#a78bfa'];
+const COLORS = [
+  'var(--pf-accent)',
+  'var(--pf-success)',
+  'var(--pf-warning)',
+  'var(--pf-danger)',
+  'var(--pf-accent-2)',
+  'var(--pf-text-dim)',
+];
 
 function pct(curr: number, prev: number) {
   if (!prev) return 0;
@@ -61,7 +68,7 @@ export default function Analytics() {
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
       <PageShell>
         <PageHeader>
-          <PageTitle title="Аналитика" subtitle="Реальные показатели по заказам, выручке и покупателям." />
+          <PageTitle title="Аналитика" />
           <ToolbarRow>
             {(['week', 'month', 'quarter', 'year'] as Period[]).map(item => (
               <button key={item} className={period === item ? 'platform-btn-primary' : 'platform-btn-secondary'} onClick={() => setPeriod(item)}>
@@ -108,11 +115,11 @@ export default function Analytics() {
                 <div className="mt-3 h-[260px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chart}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.16)" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--pf-border)" />
                       <XAxis dataKey="date" tick={{ fill: 'var(--pf-text-muted)', fontSize: 11 }} />
                       <YAxis tick={{ fill: 'var(--pf-text-muted)', fontSize: 11 }} />
                       <Tooltip formatter={(v: number) => [`${v.toLocaleString('ru-RU')} ₽`, 'Выручка']} />
-                      <Area type="monotone" dataKey="revenue" stroke="#5b8cff" fill="rgba(91,140,255,0.25)" strokeWidth={2} />
+                      <Area type="monotone" dataKey="revenue" stroke="var(--pf-accent)" fill="var(--pf-accent-soft)" strokeWidth={2} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -139,11 +146,11 @@ export default function Analytics() {
                 <div className="mt-3 h-[280px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={topProducts} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.16)" horizontal={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--pf-border)" horizontal={false} />
                       <XAxis type="number" tick={{ fill: 'var(--pf-text-muted)', fontSize: 11 }} />
                       <YAxis type="category" dataKey="name" width={180} tick={{ fill: 'var(--pf-text-muted)', fontSize: 11 }} />
                       <Tooltip formatter={(v: number) => [`${v.toLocaleString('ru-RU')} ₽`, 'Выручка']} />
-                      <Bar dataKey="revenue" fill="#5b8cff" radius={[0, 6, 6, 0]} />
+                      <Bar dataKey="revenue" fill="var(--pf-accent)" radius={[0, 6, 6, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -153,7 +160,7 @@ export default function Analytics() {
                 <h2 className="m-0 text-[15px] font-bold">Активность по часам</h2>
                 <div className="mt-3 grid grid-cols-6 gap-2">
                   {hourly.map(point => (
-                    <div key={point.hour} className="rounded-[8px] border border-[rgba(91,140,255,0.25)] p-2 text-center">
+                    <div key={point.hour} className="rounded-[8px] border border-[color-mix(in_srgb,var(--pf-accent)_35%,transparent)] p-2 text-center">
                       <div className="text-[11px] text-[var(--pf-text-dim)]">{point.hour}:00</div>
                       <div className="text-[13px] font-bold">{point.orders}</div>
                     </div>
@@ -169,18 +176,18 @@ export default function Analytics() {
                     <thead>
                       <tr>
                         <th>Покупатель</th>
-                        <th style={{ textAlign: 'right' }}>Заказов</th>
-                        <th style={{ textAlign: 'right' }}>Выручка</th>
-                        <th style={{ textAlign: 'right' }}>Последний заказ</th>
+                        <th className="text-right">Заказов</th>
+                        <th className="text-right">Выручка</th>
+                        <th className="text-right">Последний заказ</th>
                       </tr>
                     </thead>
                     <tbody>
                       {topBuyers.map(row => (
                         <tr key={row.username}>
                           <td>{row.username}</td>
-                          <td style={{ textAlign: 'right' }}>{row.orders}</td>
-                          <td style={{ textAlign: 'right' }}>{Number(row.revenue || 0).toLocaleString('ru-RU')} ₽</td>
-                          <td style={{ textAlign: 'right' }}>{row.last_order}</td>
+                          <td className="text-right">{row.orders}</td>
+                          <td className="text-right">{Number(row.revenue || 0).toLocaleString('ru-RU')} ₽</td>
+                          <td className="text-right">{row.last_order}</td>
                         </tr>
                       ))}
                     </tbody>

@@ -24,8 +24,11 @@ export function ReadingProgress() {
   }, []);
 
   return (
-    <div className="fixed inset-x-0 top-0 z-[60] h-0.5 bg-transparent">
-      <div className="h-full bg-[var(--accent)]" style={{ width: `${progress}%` }} />
-    </div>
+    <progress
+      className="blog-reading-progress fixed inset-x-0 top-0 z-[60] h-0.5 w-full border-0 bg-transparent"
+      max={100}
+      value={progress}
+      aria-label="Прогресс чтения"
+    />
   );
 }

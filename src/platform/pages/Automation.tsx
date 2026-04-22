@@ -236,10 +236,7 @@ export default function Automation() {
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
       <PageShell>
         <PageHeader>
-          <PageTitle
-            title="Автоматизация"
-            subtitle="Сценарии обработки заказов и сообщений в единой управляемой системе."
-          />
+          <PageTitle title="Автоматизация" />
           <button className="platform-btn-primary" onClick={openNewRule}>
             <Plus size={15} /> Добавить правило
           </button>
@@ -267,9 +264,8 @@ export default function Automation() {
               return (
                 <button
                   key={preset.name}
-                  className="platform-panel flex items-center gap-3 p-3 text-left"
+                  className={`platform-panel flex items-center gap-3 p-3 text-left ${added ? 'cursor-default opacity-70' : 'cursor-pointer'}`}
                   onClick={() => !added && addPreset(preset)}
-                  style={{ opacity: added ? 0.7 : 1, cursor: added ? 'default' : 'pointer' }}
                   disabled={saving}
                 >
                   <span className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-[var(--pf-border)] bg-[var(--pf-surface-2)] text-[var(--pf-text-muted)]">
@@ -279,11 +275,12 @@ export default function Automation() {
                     <span className="block text-[13px] font-bold">{preset.name}</span>
                     <span className="text-[11px] text-[var(--pf-text-dim)]">{preset.triggerLabel} → {preset.actionLabel}</span>
                   </span>
-                  <span
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--pf-border)]"
-                    style={{ background: added ? 'rgba(74,222,128,0.16)' : 'rgba(91,140,255,0.24)' }}
-                  >
-                    {added ? <Check size={13} color="#4ade80" /> : <Plus size={13} />}
+                  <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--pf-border)] ${
+                    added
+                      ? 'bg-[color-mix(in_srgb,var(--pf-success)_18%,transparent)]'
+                      : 'bg-[color-mix(in_srgb,var(--pf-accent)_20%,transparent)]'
+                  }`}>
+                    {added ? <Check size={13} className="text-[var(--pf-success)]" /> : <Plus size={13} />}
                   </span>
                 </button>
               );
@@ -309,7 +306,7 @@ export default function Automation() {
                       <Panel className="p-3">
                         <div className="mb-3 flex items-center gap-2">
                           <span className="inline-flex h-8 w-8 items-center justify-center rounded-[10px] border border-[var(--pf-border)] bg-[var(--pf-surface-2)]">
-                            <Zap size={14} color="#60a5fa" />
+                            <Zap size={14} className="text-[var(--pf-accent)]" />
                           </span>
                           <strong className="flex-1 text-[15px]">{rule.name}</strong>
                           {isToggling ? (
@@ -327,14 +324,14 @@ export default function Automation() {
 
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="platform-chip">{getTriggerLabel(rule.trigger_type)}</span>
-                          <ChevronRight size={14} color="var(--pf-text-dim)" />
+                          <ChevronRight size={14} className="text-[var(--pf-text-dim)]" />
                           {rule.trigger_value && (
                             <>
-                              <span className="platform-chip" style={{ color: '#fbbf24' }}>{rule.trigger_value}</span>
-                              <ChevronRight size={14} color="var(--pf-text-dim)" />
+                              <span className="platform-chip text-[var(--pf-warning)]">{rule.trigger_value}</span>
+                              <ChevronRight size={14} className="text-[var(--pf-text-dim)]" />
                             </>
                           )}
-                          <span className="platform-chip" style={{ color: '#4ade80' }}>{getActionLabel(rule.action_type)}</span>
+                          <span className="platform-chip text-[var(--pf-success)]">{getActionLabel(rule.action_type)}</span>
                           <span className="platform-chip">Аккаунт: {accounts.find(acc => acc.id === rule.funpay_account_id)?.username || `ID ${rule.funpay_account_id}`}</span>
                         </div>
 
@@ -343,7 +340,7 @@ export default function Automation() {
                         )}
 
                         {!rule.enabled && (
-                          <div className="mt-2 rounded-[10px] border border-[rgba(251,113,133,0.34)] bg-[rgba(251,113,133,0.08)] px-2 py-1 text-[12px] font-semibold text-[#fb7185]">
+                          <div className="mt-2 rounded-[10px] border border-[color-mix(in_srgb,var(--pf-danger)_36%,transparent)] bg-[color-mix(in_srgb,var(--pf-danger)_10%,transparent)] px-2 py-1 text-[12px] font-semibold text-[var(--pf-danger)]">
                             Правило отключено
                           </div>
                         )}
@@ -359,7 +356,7 @@ export default function Automation() {
       </PageShell>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="platform-dialog-content" style={{ maxWidth: 540 }}>
+        <DialogContent className="platform-dialog-content sm:max-w-[540px]">
           <DialogHeader>
             <DialogTitle>{editingId ? 'Редактировать правило' : 'Новое правило'}</DialogTitle>
           </DialogHeader>

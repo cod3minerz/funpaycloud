@@ -105,13 +105,13 @@ export default function Orders() {
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }}>
       <PageShell>
         <PageHeader>
-          <PageTitle title="Заказы" subtitle="Пагинация и фильтры по аккаунту/статусу с реальными данными из БД." />
+          <PageTitle title="Заказы" />
         </PageHeader>
 
         <SectionCard>
           <ToolbarRow>
             <label className="platform-search platform-toolbar-grow max-w-none">
-              <Search size={14} color="var(--pf-text-dim)" />
+              <Search size={14} className="text-[var(--pf-text-dim)]" />
               <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Поиск по заказам" />
             </label>
             <select className="platform-select" value={accountFilter} onChange={event => { setAccountFilter(event.target.value); setPage(1); }}>
@@ -148,7 +148,7 @@ export default function Orders() {
             <>
               <div className="platform-desktop-table">
                 <DataTableWrap>
-                  <table className="platform-table" style={{ minWidth: 900 }}>
+                  <table className="platform-table min-w-[900px]">
                     <thead>
                       <tr>
                         <th>ID</th>
@@ -156,11 +156,11 @@ export default function Orders() {
                         <th>Покупатель</th>
                         <th>Описание</th>
                         <th>Аккаунт</th>
-                        <th style={{ textAlign: 'right' }}>Сумма</th>
+                        <th className="text-right">Сумма</th>
                         <th>Статус</th>
                         <th>Выдача</th>
-                        <th style={{ textAlign: 'right' }}>Действие</th>
-                        <th style={{ textAlign: 'right' }}>Дата</th>
+                        <th className="text-right">Действие</th>
+                        <th className="text-right">Дата</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -171,10 +171,10 @@ export default function Orders() {
                           <td>{order.buyer_username}</td>
                           <td>{order.description}</td>
                           <td>{accounts.find(acc => acc.id === order.funpay_account_id)?.username || `ID ${order.funpay_account_id}`}</td>
-                          <td style={{ textAlign: 'right', fontWeight: 700 }}>{Number(order.price || 0)} ₽</td>
+                          <td className="text-right font-bold">{Number(order.price || 0)} ₽</td>
                           <td>{STATUS_NUM_LABEL[order.status] || String(order.status)}</td>
                           <td>{formatDelivery(order)}</td>
-                          <td style={{ textAlign: 'right' }}>
+                          <td className="text-right">
                             <button
                               className="platform-btn-secondary"
                               onClick={() => void deliver(order)}
@@ -187,7 +187,7 @@ export default function Orders() {
                                   : <><Send size={14} /> Выдать</>}
                             </button>
                           </td>
-                          <td style={{ textAlign: 'right' }}>{formatDate(order.created_at)}</td>
+                          <td className="text-right">{formatDate(order.created_at)}</td>
                         </tr>
                       ))}
                     </tbody>

@@ -74,7 +74,7 @@ export default function ProxyMarket() {
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }}>
       <PageShell>
         <PageHeader>
-          <PageTitle title="Прокси в аренду" subtitle="Прокси-маркет с привязкой аренды к выбранному аккаунту." />
+          <PageTitle title="Прокси в аренду" />
         </PageHeader>
 
         <SectionCard>
@@ -85,7 +85,7 @@ export default function ProxyMarket() {
               ))}
             </select>
             <label className="platform-search platform-toolbar-grow max-w-none">
-              <Search size={14} color="var(--pf-text-dim)" />
+              <Search size={14} className="text-[var(--pf-text-dim)]" />
               <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Поиск по IP/стране/городу" />
             </label>
           </ToolbarRow>
@@ -102,16 +102,16 @@ export default function ProxyMarket() {
             <>
               <div className="platform-desktop-table">
                 <DataTableWrap>
-                  <table className="platform-table" style={{ minWidth: 980 }}>
+                  <table className="platform-table min-w-[980px]">
                     <thead>
                       <tr>
                         <th>IP</th>
                         <th>Гео</th>
                         <th>Тип</th>
                         <th>Протокол</th>
-                        <th style={{ textAlign: 'right' }}>Скорость</th>
-                        <th style={{ textAlign: 'right' }}>Цена/мес</th>
-                        <th style={{ textAlign: 'right' }}>Действие</th>
+                        <th className="text-right">Скорость</th>
+                        <th className="text-right">Цена/мес</th>
+                        <th className="text-right">Действие</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -121,9 +121,9 @@ export default function ProxyMarket() {
                           <td>{proxy.country}, {proxy.city}</td>
                           <td>{proxy.type}</td>
                           <td>{proxy.protocol}</td>
-                          <td style={{ textAlign: 'right' }}>{proxy.speed_ms} ms</td>
-                          <td style={{ textAlign: 'right' }}>{proxy.price_month} ₽</td>
-                          <td style={{ textAlign: 'right' }}>
+                          <td className="text-right">{proxy.speed_ms} ms</td>
+                          <td className="text-right">{proxy.price_month} ₽</td>
+                          <td className="text-right">
                             <button className="platform-btn-primary" onClick={() => rent(proxy)} disabled={rentingIDs.has(proxy.id)}>
                               {rentingIDs.has(proxy.id) ? <Loader2 size={14} className="animate-spin" /> : 'Арендовать'}
                             </button>

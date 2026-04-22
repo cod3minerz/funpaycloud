@@ -688,7 +688,7 @@ function Svg4() {
 function SvgCssTransform() {
   return (
     <div className="content-stretch flex flex-col h-[56.971px] items-start pb-[23.029px] relative shrink-0" data-name="SVG:css-transform">
-      <div className="flex items-center justify-center relative shrink-0 size-[33.941px]" style={{ "--transform-inner-width": "1200", "--transform-inner-height": "19" } as React.CSSProperties}>
+      <div className="import-6000w-transform flex items-center justify-center relative shrink-0 size-[33.941px]">
         <div className="-rotate-45 flex-none">
           <Svg4 />
         </div>
@@ -754,7 +754,7 @@ function Link10() {
     <div className="backdrop-blur-[2px] bg-[rgba(19,20,31,0.6)] col-1 justify-self-stretch relative rounded-[24px] row-1 self-start shrink-0" data-name="Link">
       <div className="overflow-clip rounded-[inherit] size-full">
         <div className="content-stretch flex flex-col items-start justify-between p-[25px] relative w-full">
-          <div className="absolute inset-px opacity-0" data-name="Gradient" style={{ backgroundImage: "linear-gradient(155.31deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%)" }} />
+          <div className="import-6000w-gloss absolute inset-px opacity-0" data-name="Gradient" />
           <Margin3 />
           <Container19 />
         </div>
@@ -801,7 +801,7 @@ function Svg6() {
 function SvgCssTransform1() {
   return (
     <div className="content-stretch flex flex-col h-[56.971px] items-start pb-[23.029px] relative shrink-0" data-name="SVG:css-transform">
-      <div className="flex items-center justify-center relative shrink-0 size-[33.941px]" style={{ "--transform-inner-width": "1200", "--transform-inner-height": "19" } as React.CSSProperties}>
+      <div className="import-6000w-transform flex items-center justify-center relative shrink-0 size-[33.941px]">
         <div className="-rotate-45 flex-none">
           <Svg6 />
         </div>
@@ -874,7 +874,7 @@ function Link11() {
     <div className="backdrop-blur-[2px] bg-[rgba(19,20,31,0.6)] col-2 justify-self-stretch relative rounded-[24px] row-1 self-start shrink-0" data-name="Link">
       <div className="overflow-clip rounded-[inherit] size-full">
         <div className="content-stretch flex flex-col items-start justify-between p-[25px] relative w-full">
-          <div className="absolute inset-px opacity-0" data-name="Gradient" style={{ backgroundImage: "linear-gradient(155.261deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%)" }} />
+          <div className="import-6000w-gloss absolute inset-px opacity-0" data-name="Gradient" />
           <Margin4 />
           <Margin5 />
         </div>
@@ -921,7 +921,7 @@ function Svg8() {
 function SvgCssTransform2() {
   return (
     <div className="content-stretch flex flex-col h-[56.971px] items-start pb-[23.029px] relative shrink-0" data-name="SVG:css-transform">
-      <div className="flex items-center justify-center relative shrink-0 size-[33.941px]" style={{ "--transform-inner-width": "1200", "--transform-inner-height": "19" } as React.CSSProperties}>
+      <div className="import-6000w-transform flex items-center justify-center relative shrink-0 size-[33.941px]">
         <div className="-rotate-45 flex-none">
           <Svg8 />
         </div>
@@ -987,7 +987,7 @@ function Link12() {
     <div className="backdrop-blur-[2px] bg-[rgba(19,20,31,0.6)] col-3 justify-self-stretch relative rounded-[24px] row-1 self-start shrink-0" data-name="Link">
       <div className="overflow-clip rounded-[inherit] size-full">
         <div className="content-stretch flex flex-col items-start justify-between p-[25px] relative w-full">
-          <div className="absolute inset-px opacity-0" data-name="Gradient" style={{ backgroundImage: "linear-gradient(155.31deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%)" }} />
+          <div className="import-6000w-gloss absolute inset-px opacity-0" data-name="Gradient" />
           <Margin6 />
           <Container25 />
         </div>
@@ -1045,7 +1045,7 @@ function Svg10() {
 function SvgCssTransform3() {
   return (
     <div className="content-stretch flex flex-col h-[56.971px] items-start pb-[23.029px] relative shrink-0" data-name="SVG:css-transform">
-      <div className="flex items-center justify-center relative shrink-0 size-[33.941px]" style={{ "--transform-inner-width": "1200", "--transform-inner-height": "19" } as React.CSSProperties}>
+      <div className="import-6000w-transform flex items-center justify-center relative shrink-0 size-[33.941px]">
         <div className="-rotate-45 flex-none">
           <Svg10 />
         </div>
@@ -1111,7 +1111,7 @@ function Link13() {
     <div className="backdrop-blur-[2px] bg-[rgba(19,20,31,0.6)] col-1 justify-self-stretch relative rounded-[24px] row-2 self-start shrink-0" data-name="Link">
       <div className="overflow-clip rounded-[inherit] size-full">
         <div className="content-stretch flex flex-col items-start justify-between p-[25px] relative w-full">
-          <div className="absolute inset-px opacity-0" data-name="Gradient" style={{ backgroundImage: "linear-gradient(155.31deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%)" }} />
+          <div className="import-6000w-gloss absolute inset-px opacity-0" data-name="Gradient" />
           <Margin7 />
           <Container28 />
         </div>
@@ -1157,7 +1157,7 @@ function Svg12() {
 function SvgCssTransform4() {
   return (
     <div className="content-stretch flex flex-col h-[56.971px] items-start pb-[23.029px] relative shrink-0" data-name="SVG:css-transform">
-      <div className="flex items-center justify-center relative shrink-0 size-[33.941px]" style={{ "--transform-inner-width": "1200", "--transform-inner-height": "19" } as React.CSSProperties}>
+      <div className="import-6000w-transform flex items-center justify-center relative shrink-0 size-[33.941px]">
         <div className="-rotate-45 flex-none">
           <Svg12 />
         </div>
@@ -1223,7 +1223,7 @@ function Link14() {
     <div className="backdrop-blur-[2px] bg-[rgba(19,20,31,0.6)] col-2 justify-self-stretch relative rounded-[24px] row-2 self-start shrink-0" data-name="Link">
       <div className="overflow-clip rounded-[inherit] size-full">
         <div className="content-stretch flex flex-col items-start justify-between p-[25px] relative w-full">
-          <div className="absolute inset-px opacity-0" data-name="Gradient" style={{ backgroundImage: "linear-gradient(155.31deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%)" }} />
+          <div className="import-6000w-gloss absolute inset-px opacity-0" data-name="Gradient" />
           <Margin8 />
           <Container31 />
         </div>
@@ -3173,7 +3173,7 @@ function Container9() {
 
 export default function Component6000WLight() {
   return (
-    <div className="content-stretch flex flex-col items-start relative size-full" data-name="6000w light" style={{ backgroundImage: "linear-gradient(90deg, rgba(26, 27, 38, 0.3) 2.5%, rgba(26, 27, 38, 0) 2.5%), linear-gradient(rgba(26, 27, 38, 0.3) 2.5%, rgba(26, 27, 38, 0) 2.5%), linear-gradient(90deg, rgb(10, 11, 20) 0%, rgb(10, 11, 20) 100%), linear-gradient(90deg, rgb(255, 255, 255) 0%, rgb(255, 255, 255) 100%)" }}>
+    <div className="import-6000w-root content-stretch flex flex-col items-start relative size-full" data-name="6000w light">
       <Header />
       <Container4 />
       <Container9 />

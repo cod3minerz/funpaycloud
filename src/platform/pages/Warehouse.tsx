@@ -240,20 +240,17 @@ export default function Warehouse() {
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
       <PageShell>
         <PageHeader>
-          <PageTitle
-            title="Склад"
-            subtitle="Реальные остатки и шаблоны авто-выдачи по лотам из базы данных."
-          />
+          <PageTitle title="Склад" />
           <span className="platform-chip">Лотов на складе: {lots.length}</span>
         </PageHeader>
 
         <SectionCard>
           <ToolbarRow>
             <select
-              className="platform-select"
+              className="platform-select w-full sm:max-w-[280px]"
               value={accountFilter}
               onChange={event => setAccountFilter(event.target.value)}
-              style={{ maxWidth: 280 }}
+              aria-label="Фильтр по аккаунту"
             >
               <option value="all">Все аккаунты</option>
               {accounts.map(acc => (
@@ -267,7 +264,7 @@ export default function Warehouse() {
           <KpiGrid>
             <KpiCard>
               <div className="text-[13px] font-semibold">Доступно</div>
-              <strong className="text-[26px] text-[#4ade80]">{available}</strong>
+              <strong className="text-[26px] text-[var(--pf-success)]">{available}</strong>
               <span className="platform-kpi-meta">Товаров готово к выдаче</span>
             </KpiCard>
             <KpiCard>
@@ -309,20 +306,19 @@ export default function Warehouse() {
                   return (
                     <button
                       key={lot.id}
-                      className="border-b border-[rgba(148,163,184,0.12)] px-4 py-3 text-left"
-                      style={{
-                        background: isActive ? 'rgba(91,140,255,0.16)' : 'transparent',
-                        borderLeft: isActive ? '3px solid #5b8cff' : '3px solid transparent',
-                      }}
+                      className={`platform-lot-list-item ${isActive ? 'active' : ''}`}
                       onClick={() => setSelectedLotId(lot.id)}
                     >
                       <div className="text-[13px] font-semibold">{lot.title}</div>
                       <div className="mt-1 text-[11px] text-[var(--pf-text-dim)]">{lot.account_username}</div>
                       <div className="mt-1 inline-flex items-center gap-2">
-                        <span
-                          className="platform-chip !min-h-[20px] !text-[10px]"
-                          style={{ color: lotAvailable < 1 ? '#fb7185' : lotAvailable < 10 ? '#fbbf24' : '#4ade80' }}
-                        >
+                        <span className={`platform-chip !min-h-[20px] !text-[10px] ${
+                          lotAvailable < 1
+                            ? '!text-[var(--pf-danger)]'
+                            : lotAvailable < 10
+                              ? '!text-[var(--pf-warning)]'
+                              : '!text-[var(--pf-success)]'
+                        }`}>
                           {lotAvailable} доступно
                         </span>
                         {lot.auto_delivery_enabled && <span className="platform-chip !min-h-[20px] !text-[10px]">авто</span>}
@@ -353,7 +349,7 @@ export default function Warehouse() {
                       <h2 className="m-0 text-[18px] font-extrabold">{selectedLot.title}</h2>
                       <div className="mt-1 text-[13px] text-[var(--pf-text-muted)]">
                         Аккаунт: <strong>{selectedLot.account_username}</strong> · Доступно:{' '}
-                        <strong className="text-[#4ade80]">{available}</strong> · Выдано: <strong>{delivered}</strong>
+                        <strong className="text-[var(--pf-success)]">{available}</strong> · Выдано: <strong>{delivered}</strong>
                       </div>
                     </div>
                     <button className="platform-btn-secondary" onClick={exportDelivered}>
@@ -363,16 +359,16 @@ export default function Warehouse() {
                 </SectionCard>
 
                 {available === 0 && (
-                  <SectionCard className="border-[rgba(251,113,133,0.4)] bg-[rgba(251,113,133,0.08)]">
-                    <div className="inline-flex items-center gap-2 text-[13px] font-semibold text-[#fb7185]">
+                  <SectionCard className="platform-alert-danger">
+                    <div className="inline-flex items-center gap-2 text-[13px] font-semibold text-[var(--pf-danger)]">
                       <XCircle size={15} /> Товары закончились. Пополните склад.
                     </div>
                   </SectionCard>
                 )}
 
                 {available > 0 && available < 10 && (
-                  <SectionCard className="border-[rgba(251,191,36,0.36)] bg-[rgba(251,191,36,0.08)]">
-                    <div className="inline-flex items-center gap-2 text-[13px] font-semibold text-[#fbbf24]">
+                  <SectionCard className="platform-alert-warning">
+                    <div className="inline-flex items-center gap-2 text-[13px] font-semibold text-[var(--pf-warning)]">
                       <AlertTriangle size={15} /> Осталось мало товаров. Рекомендуется пополнение.
                     </div>
                   </SectionCard>
@@ -384,8 +380,7 @@ export default function Warehouse() {
                     {(['single', 'list', 'file'] as const).map(tab => (
                       <button
                         key={tab}
-                        className={addTab === tab ? 'platform-btn-primary' : 'platform-btn-secondary'}
-                        style={{ minHeight: 34 }}
+                        className={`${addTab === tab ? 'platform-btn-primary' : 'platform-btn-secondary'} min-h-[34px]`}
                         onClick={() => setAddTab(tab)}
                       >
                         {tab === 'single' ? 'По одному' : tab === 'list' ? 'Списком' : 'Файл'}
@@ -425,11 +420,7 @@ export default function Warehouse() {
 
                   {addTab === 'file' && (
                     <div
-                      className="mt-3 rounded-[12px] border-2 border-dashed p-8 text-center"
-                      style={{
-                        borderColor: dragOver ? '#5b8cff' : 'rgba(96,165,250,0.44)',
-                        background: dragOver ? 'rgba(91,140,255,0.12)' : 'transparent',
-                      }}
+                      className={`platform-file-dropzone mt-3 ${dragOver ? 'dragover' : ''}`}
                       onDragOver={event => {
                         event.preventDefault();
                         setDragOver(true);
@@ -508,14 +499,14 @@ export default function Warehouse() {
 
                     <div className="platform-desktop-table">
                       <DataTableWrap className="tablet-dense-scroll">
-                        <table className="platform-table" style={{ minWidth: 720 }}>
+                        <table className="platform-table min-w-[720px]">
                           <thead>
                             <tr>
-                              <th style={{ width: 54 }}>#</th>
+                              <th className="w-[54px]">#</th>
                               <th>Товар</th>
                               <th>Статус</th>
-                              <th className="platform-col-tablet-hide" style={{ textAlign: 'right' }}>Дата выдачи</th>
-                              <th style={{ textAlign: 'right' }}>Действие</th>
+                              <th className="platform-col-tablet-hide text-right">Дата выдачи</th>
+                              <th className="text-right">Действие</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -528,7 +519,7 @@ export default function Warehouse() {
                                     {item.status === 'available' ? 'Доступен' : 'Выдан'}
                                   </span>
                                 </td>
-                                <td className="platform-col-tablet-hide" style={{ textAlign: 'right', color: 'var(--pf-text-muted)' }}>
+                                <td className="platform-col-tablet-hide text-right text-[var(--pf-text-muted)]">
                                   {item.delivered_at
                                     ? `${new Date(item.delivered_at).toLocaleDateString('ru-RU')} ${new Date(item.delivered_at).toLocaleTimeString('ru-RU', {
                                         hour: '2-digit',
@@ -536,7 +527,7 @@ export default function Warehouse() {
                                       })}`
                                     : '—'}
                                 </td>
-                                <td style={{ textAlign: 'right' }}>
+                                <td className="text-right">
                                   <button
                                     className="platform-btn-secondary"
                                     onClick={() => void removeItem(idx)}

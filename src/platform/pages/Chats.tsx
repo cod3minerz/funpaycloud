@@ -15,15 +15,15 @@ type ThreadRenderItem =
   | { type: 'separator'; key: string; label: string }
   | { type: 'message'; key: string; message: ThreadMessage; grouped: boolean };
 
-const AVATAR_COLORS = [
-  '#3b82f6',
-  '#10b981',
-  '#f59e0b',
-  '#ef4444',
-  '#8b5cf6',
-  '#06b6d4',
-  '#84cc16',
-  '#f97316',
+const AVATAR_TONES = [
+  'platform-avatar-tone-0',
+  'platform-avatar-tone-1',
+  'platform-avatar-tone-2',
+  'platform-avatar-tone-3',
+  'platform-avatar-tone-4',
+  'platform-avatar-tone-5',
+  'platform-avatar-tone-6',
+  'platform-avatar-tone-7',
 ] as const;
 
 function sortChatsByUpdatedAt(chats: ChatRow[]) {
@@ -57,12 +57,12 @@ function getAvatarLabel(name?: string) {
   return normalized[0].toUpperCase();
 }
 
-function getAvatarColor(name: string): string {
+function getAvatarToneClass(name: string): string {
   let hash = 0;
   for (let i = 0; i < name.length; i += 1) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+  return AVATAR_TONES[Math.abs(hash) % AVATAR_TONES.length];
 }
 
 function formatDateSeparator(value?: string) {
@@ -857,9 +857,9 @@ export default function Chats() {
                     <div ref={threadScrollRef} className="platform-thread-messages-scroll">
                       {loadingMessages ? (
                         <div className="space-y-3 py-2">
-                          <div className="h-14 w-[72%] animate-pulse rounded bg-[rgba(148,163,184,0.15)]" />
-                          <div className="h-14 w-[56%] animate-pulse rounded bg-[rgba(110,139,255,0.18)]" />
-                          <div className="h-14 w-[68%] animate-pulse rounded bg-[rgba(148,163,184,0.15)]" />
+                          <div className="platform-skeleton-line-muted h-14 w-[72%] animate-pulse rounded" />
+                          <div className="platform-skeleton-line-accent h-14 w-[56%] animate-pulse rounded" />
+                          <div className="platform-skeleton-line-muted h-14 w-[68%] animate-pulse rounded" />
                         </div>
                       ) : messagesError ? (
                         <div className="platform-chat-empty gap-3">
@@ -892,7 +892,7 @@ export default function Chats() {
                               key={item.key}
                               className={
                                 isOutgoing
-                                  ? 'flex gap-2.5 px-4 py-1 rounded border-l-2 border-[var(--pf-accent)] pl-[14px] bg-[var(--pf-accent-soft)] hover:bg-[rgba(58,47,224,0.08)] group'
+                                  ? 'platform-chat-message-outgoing flex gap-2.5 px-4 py-1 rounded border-l-2 pl-[14px] group'
                                   : 'flex gap-2.5 px-4 py-1 rounded hover:bg-[var(--pf-surface-2)] group'
                               }
                             >
@@ -900,8 +900,9 @@ export default function Chats() {
                                 <div className="w-8 flex-shrink-0" />
                               ) : (
                                 <div
-                                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white flex-shrink-0 mt-0.5"
-                                  style={{ backgroundColor: isOutgoing ? 'var(--pf-accent)' : getAvatarColor(authorName) }}
+                                  className={`mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white ${
+                                    isOutgoing ? 'bg-[var(--pf-accent)]' : getAvatarToneClass(authorName)
+                                  }`}
                                   aria-hidden="true"
                                 >
                                   {getAvatarLabel(authorName)}
@@ -955,7 +956,7 @@ export default function Chats() {
                     <div className="platform-composer-row">
                       <textarea
                         ref={composerRef}
-                        className="w-full bg-[var(--pf-elevated)] border border-[var(--pf-border-strong)] rounded-lg px-4 py-3 text-sm text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] resize-none focus:outline-none focus:border-[rgba(58,47,224,0.55)] transition-colors"
+                        className="platform-textarea"
                         placeholder="Введите сообщение..."
                         value={inputValue}
                         onChange={event => setInputValue(event.target.value)}
@@ -967,7 +968,6 @@ export default function Chats() {
                           }
                         }}
                         rows={1}
-                        style={{ minHeight: '44px', maxHeight: '120px' }}
                       />
                       <button className="platform-btn-primary" onClick={() => void sendMessage()} disabled={sending || !inputValue.trim()}>
                         {sending ? <Loader2 size={15} className="animate-spin" /> : <SendHorizontal size={15} />}

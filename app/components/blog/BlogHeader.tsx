@@ -68,7 +68,7 @@ export function BlogHeader() {
             priority
             className="h-8 w-auto"
           />
-          <span className="inline-flex h-6 items-center rounded-md bg-[#0E1116] px-2.5 text-[10px] font-bold tracking-[0.12em] text-white">
+          <span className="inline-flex h-6 items-center rounded-md bg-[var(--text-primary)] px-2.5 text-[10px] font-bold tracking-[0.12em] text-white">
             BLOG
           </span>
         </Link>
@@ -115,7 +115,7 @@ export function BlogHeader() {
         type="button"
         aria-label="Закрыть мобильное меню"
         onClick={() => setMobileOpen(false)}
-        className={`fixed inset-0 top-16 z-[58] bg-[#0E1116]/20 transition-opacity lg:hidden ${
+        className={`fixed inset-0 top-16 z-[58] bg-[color:color-mix(in_srgb,var(--text-primary)_18%,transparent)] transition-opacity lg:hidden ${
           mobileOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
         }`}
       />
@@ -125,7 +125,7 @@ export function BlogHeader() {
           mobileOpen ? 'pointer-events-auto translate-y-0 opacity-100' : 'pointer-events-none -translate-y-2 opacity-0'
         }`}
       >
-        <div className="mx-auto w-full max-w-7xl rounded-b-2xl border border-t-0 border-[var(--border)] bg-[var(--bg-card)] p-4 shadow-[0_20px_40px_-30px_rgba(14,17,22,0.32)]">
+        <div className="mx-auto w-full max-w-7xl rounded-b-2xl border border-t-0 border-[var(--border)] bg-[var(--bg-card)] p-4 shadow-[var(--blog-shadow-soft)]">
           <nav className="flex flex-col gap-2">
             {NAV_LINKS.map(link => (
               <Link

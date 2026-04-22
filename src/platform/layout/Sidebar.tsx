@@ -76,20 +76,18 @@ const mobileTopLinks = [
 function AISidebarIcon({ size = 16 }: { size?: number }) {
   const gradientID = `ai-gradient-${useId().replace(/:/g, '')}`;
   return (
-    <span className="inline-flex items-center justify-center" style={{ width: size, height: size }} aria-hidden>
+    <span className="inline-flex items-center justify-center" aria-hidden>
       <svg width="0" height="0" focusable="false" aria-hidden>
         <defs>
           <linearGradient id={gradientID} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#818cf8" />
-            <stop offset="100%" stopColor="#a78bfa" />
+            <stop offset="0%" stopColor="var(--pf-accent)" />
+            <stop offset="100%" stopColor="var(--pf-accent-2)" />
           </linearGradient>
         </defs>
       </svg>
       <Sparkles
-        size={18}
-        style={{
-          stroke: `url(#${gradientID})`,
-        }}
+        size={size}
+        stroke={`url(#${gradientID})`}
       />
     </span>
   );
@@ -176,30 +174,7 @@ export default function Sidebar({
                   aria-current={isActive ? 'page' : undefined}
                 >
                   <Icon size={16} />
-                  {!collapsed && (
-                    <span
-                      className={!isAIItem ? undefined : ''}
-                      style={
-                        isAIItem
-                          ? {
-                              ...(isActive
-                                ? {
-                                    color: '#ffffff',
-                                  }
-                                : {
-                                    background: 'linear-gradient(90deg, #818cf8, #a78bfa, #c084fc)',
-                                    backgroundSize: '200% auto',
-                                    WebkitBackgroundClip: 'text',
-                                    WebkitTextFillColor: 'transparent',
-                                    animation: 'shimmer 3s linear infinite',
-                                  }),
-                            }
-                          : undefined
-                      }
-                    >
-                      {label}
-                    </span>
-                  )}
+                  {!collapsed && <span className={isAIItem ? `platform-ai-nav-label${isActive ? ' active' : ''}` : undefined}>{label}</span>}
                 </Link>
               );
             })}
@@ -233,8 +208,8 @@ export default function Sidebar({
         ) : (
           <div className="platform-subscription-card">
             <div className="platform-subscription-head">
-              <Crown size={14} style={{ color: 'var(--pf-accent)' }} />
-              <span style={{ color: 'var(--pf-accent)' }}>{showUpsell ? 'Подписка' : `Тариф: ${currentPlanName}`}</span>
+              <Crown size={14} className="text-[var(--pf-accent)]" />
+              <span className="text-[var(--pf-accent)]">{showUpsell ? 'Подписка' : `Тариф: ${currentPlanName}`}</span>
             </div>
             <p className="platform-footer-note">
               {showUpsell

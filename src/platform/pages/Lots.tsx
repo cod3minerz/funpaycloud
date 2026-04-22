@@ -280,7 +280,7 @@ export default function Lots() {
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }}>
       <PageShell>
         <PageHeader>
-          <PageTitle title="Лоты" subtitle="Полный CRUD лотов, поднятие и синхронизация с FunPay." />
+          <PageTitle title="Лоты" />
           <button
             className="platform-btn-primary"
             onClick={() => {
@@ -325,16 +325,16 @@ export default function Lots() {
             <>
               <div className="platform-desktop-table">
                 <DataTableWrap>
-                  <table className="platform-table" style={{ minWidth: 1100 }}>
+                  <table className="platform-table min-w-[1100px]">
                     <thead>
                       <tr>
                         <th>Лот</th>
                         <th>Категория</th>
                         <th>Аккаунт</th>
-                        <th style={{ textAlign: 'right' }}>Цена</th>
-                        <th style={{ textAlign: 'right' }}>Кол-во</th>
+                        <th className="text-right">Цена</th>
+                        <th className="text-right">Кол-во</th>
                         <th>Статус</th>
-                        <th style={{ textAlign: 'right' }}>Действия</th>
+                        <th className="text-right">Действия</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -350,14 +350,14 @@ export default function Lots() {
                             </td>
                             <td>{lot.category_name || '—'}</td>
                             <td>{lot.account_username || `ID ${lot.funpay_account_id}`}</td>
-                            <td style={{ textAlign: 'right', fontWeight: 700 }}>{Number(lot.price || 0)} {lot.currency || '₽'}</td>
-                            <td style={{ textAlign: 'right' }}>{Number(lot.amount || 0)}</td>
+                            <td className="text-right font-bold">{Number(lot.price || 0)} {lot.currency || '₽'}</td>
+                            <td className="text-right">{Number(lot.amount || 0)}</td>
                             <td>
                               <span className={lot.is_active ? 'badge-active' : 'badge-inactive'}>
                                 {lot.is_active ? 'Активен' : 'Неактивен'}
                               </span>
                             </td>
-                            <td style={{ textAlign: 'right' }}>
+                            <td className="text-right">
                               <div className="inline-flex flex-wrap justify-end gap-2">
                                 <button className="platform-btn-secondary" onClick={() => void raise(lot)} disabled={busy}>
                                   {raisingIDs.has(key) ? <Loader2 size={14} className="animate-spin" /> : <><ArrowUpCircle size={14} /> Поднять</>}
@@ -387,14 +387,14 @@ export default function Lots() {
       </PageShell>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="platform-dialog-content" style={{ maxWidth: 560 }}>
+        <DialogContent className="platform-dialog-content sm:max-w-[560px]">
           <DialogHeader>
             <DialogTitle>Создать лот</DialogTitle>
           </DialogHeader>
           <div className="platform-form-grid">
             <label className="platform-field">
               <span>Аккаунт</span>
-              <select className="platform-input" value={createAccountID ?? ''} onChange={event => setCreateAccountID(Number(event.target.value))}>
+              <select className="platform-select" value={createAccountID ?? ''} onChange={event => setCreateAccountID(Number(event.target.value))}>
                 {accounts.map(acc => (
                   <option key={acc.id} value={acc.id}>{acc.username || `ID ${acc.id}`}</option>
                 ))}
@@ -402,7 +402,7 @@ export default function Lots() {
             </label>
             <label className="platform-field">
               <span>Категория</span>
-              <select className="platform-input" value={createNodeID} onChange={event => setCreateNodeID(Number(event.target.value))}>
+              <select className="platform-select" value={createNodeID} onChange={event => setCreateNodeID(Number(event.target.value))}>
                 {categoriesLoading ? (
                   <option value={0}>Загрузка...</option>
                 ) : (
@@ -443,7 +443,7 @@ export default function Lots() {
       </Dialog>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="platform-dialog-content" style={{ maxWidth: 560 }}>
+        <DialogContent className="platform-dialog-content sm:max-w-[560px]">
           <DialogHeader>
             <DialogTitle>Редактировать лот</DialogTitle>
           </DialogHeader>

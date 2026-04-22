@@ -57,7 +57,7 @@ export function YandexMetrika() {
       <Script id="yandex-metrika" strategy="afterInteractive" dangerouslySetInnerHTML={{ __html: INIT_SCRIPT }} />
       <noscript>
         <div>
-          <img src={`https://mc.yandex.ru/watch/${METRIKA_ID}`} style={{ position: 'absolute', left: '-9999px' }} alt="" />
+          <img src={`https://mc.yandex.ru/watch/${METRIKA_ID}`} className="metrika-noscript-image" alt="" />
         </div>
       </noscript>
     </>
