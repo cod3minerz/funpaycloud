@@ -464,6 +464,7 @@ export default function Chats() {
           const withUser = String(event.data.with_user ?? '');
           const createdAt = String(event.data.created_at ?? new Date().toISOString());
           const tempID = Number(event.data.temp_id ?? 0);
+          const incomingID = Number(event.data.id ?? event.data.funpay_message_id ?? 0);
           const isMyMsg = Boolean(event.data.is_my_msg);
           const status = String(event.data.status ?? (isMyMsg ? 'pending' : 'delivered'));
 
@@ -502,25 +503,28 @@ export default function Chats() {
 
           if (!found || !isOpened || targetChatID === 0) return;
 
-          const parsedCreatedAt = new Date(createdAt).getTime();
           setMessages(prev => {
             const duplicate = prev.some(message => {
-              if (message.is_my_msg !== isMyMsg || message.text !== text) return false;
-              if (message.created_at === createdAt) return true;
-
-              const currentTime = new Date(message.created_at).getTime();
-              if (!Number.isNaN(parsedCreatedAt) && !Number.isNaN(currentTime)) {
-                return Math.abs(currentTime - parsedCreatedAt) <= 5000;
+              if (incomingID > 0) {
+                if ((message.funpay_message_id ?? 0) === incomingID) return true;
+                if (message.id === incomingID) return true;
               }
-              return false;
+              if (tempID > 0 && (message.temp_id ?? 0) === tempID) return true;
+              return (
+                message.is_my_msg === isMyMsg &&
+                (message.author_name || '').trim() === authorName.trim() &&
+                message.text === text &&
+                message.created_at === createdAt
+              );
             });
             if (duplicate) return prev;
 
             const nextMessage: ThreadMessage = {
-              id: Number(event.data.id ?? (tempID || Date.now())),
+              id: incomingID || tempID || Date.now(),
               temp_id: tempID || undefined,
               funpay_message_id:
-                Number(event.data.real_funpay_message_id ?? event.data.funpay_message_id ?? 0) || undefined,
+                Number(event.data.real_funpay_message_id ?? event.data.funpay_message_id ?? event.data.id ?? 0) ||
+                undefined,
               chat_id: targetChatID,
               author_id: Number(event.data.author_id ?? 0),
               author_name: authorName,
