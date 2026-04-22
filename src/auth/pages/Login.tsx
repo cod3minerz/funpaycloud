@@ -7,10 +7,10 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { AuthShell } from "@/auth/components/AuthShell";
 import { authApi } from "@/lib/api";
-import { sanitizeInput, validateEmail, validatePassword } from "@/lib/sanitize";
+import { sanitizeInput, validateEmail } from "@/lib/sanitize";
 
 const fieldClass =
-  "h-12 w-full rounded-xl border border-[var(--line-2)] bg-[var(--bg)] px-4 text-[14px] text-[var(--ink)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]";
+  "auth-input h-12 w-full rounded-xl border border-[var(--line-2)] bg-[var(--bg)] px-4 text-[14px] text-[var(--ink)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]";
 
 function GoogleMark() {
   return (
@@ -45,8 +45,7 @@ export default function LoginPage() {
   function validate(): boolean {
     const errors: { email?: string; password?: string } = {};
     if (!validateEmail(email)) errors.email = "Введите корректный email";
-    const pwdCheck = validatePassword(password);
-    if (!pwdCheck.valid) errors.password = pwdCheck.error;
+    if (!password.trim()) errors.password = "Введите пароль";
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   }
@@ -74,7 +73,7 @@ export default function LoginPage() {
       title="Вход"
       subtitle="Войдите в аккаунт, чтобы продолжить работу в FunPay Cloud."
     >
-      <form onSubmit={handleLogin} className="space-y-5 sm:space-y-6">
+      <form onSubmit={handleLogin} className="space-y-5">
         <div className="space-y-2">
           <label className="text-[13px] font-semibold text-[var(--ink-2)]">Email</label>
           <input
@@ -90,12 +89,7 @@ export default function LoginPage() {
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between gap-3">
-            <label className="text-[13px] font-semibold text-[var(--ink-2)]">Пароль</label>
-            <a href="#" className="text-[12px] text-[var(--accent)] hover:opacity-90">
-              Забыли пароль?
-            </a>
-          </div>
+          <label className="text-[13px] font-semibold text-[var(--ink-2)]">Пароль</label>
           <input
             className={fieldClass}
             type="password"
@@ -108,18 +102,18 @@ export default function LoginPage() {
           )}
         </div>
 
-        <div className="space-y-3 pt-1">
+        <div className="auth-actions space-y-3 pt-1">
           <button
             type="submit"
             disabled={loading}
-            className="btn btn-primary h-12 w-full justify-center rounded-xl text-[14px] font-bold disabled:opacity-60"
+            className="btn btn-primary auth-btn-main h-12 w-full justify-center rounded-xl text-[14px] font-bold disabled:opacity-60"
           >
             {loading ? <Loader2 size={15} className="animate-spin" /> : <>Войти <ArrowRight size={15} /></>}
           </button>
 
           <button
             type="button"
-            className="btn btn-outline h-12 w-full justify-center rounded-xl text-[14px] font-semibold"
+            className="btn btn-outline auth-btn-secondary h-12 w-full justify-center rounded-xl text-[14px] font-semibold"
           >
             <GoogleMark />
             Войти через Google

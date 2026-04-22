@@ -11,7 +11,7 @@ import { readStoredReferralCode, storeReferralCode } from "@/lib/referral";
 import { sanitizeInput, validateEmail, validatePassword } from "@/lib/sanitize";
 
 const fieldClass =
-  "h-11 w-full rounded-xl border border-[var(--line-2)] bg-[var(--bg)] px-4 text-[14px] text-[var(--ink)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)] sm:h-12";
+  "auth-input h-11 w-full rounded-xl border border-[var(--line-2)] bg-[var(--bg)] px-4 text-[14px] text-[var(--ink)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)] sm:h-12";
 
 function strengthScore(password: string) {
   let score = 0;
@@ -133,11 +133,9 @@ export default function RegisterPage() {
             <p className="text-[12px] text-[var(--bad)]">{fieldErrors.password}</p>
           ) : (
             <div className="flex flex-wrap items-center gap-2 text-[12px] text-[var(--muted)]">
-              <span>Минимум 8 символов</span>
+              <span>Минимум 8 символов, буквы и цифры</span>
               <span className="text-[var(--line-2)]">•</span>
-              <span>Буквы и цифры</span>
-              <span className="text-[var(--line-2)]">•</span>
-              <span className="text-[var(--ink-2)]">
+              <span className="text-[var(--ink-2)] font-medium">
                 {score === 0 ? "Слабый" : score === 1 ? "Базовый" : score === 2 ? "Хороший" : "Надежный"}
               </span>
             </div>
@@ -158,7 +156,7 @@ export default function RegisterPage() {
           )}
         </div>
 
-        <div className="rounded-xl border border-[var(--line-2)] bg-[var(--bg-2)] p-3">
+        <div className="rounded-xl border border-[var(--line-2)] bg-[var(--bg)] p-3">
           <button
             type="button"
             className="inline-flex items-center gap-2 text-[13px] font-semibold text-[var(--ink-2)] hover:text-[var(--ink)]"
@@ -181,7 +179,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="btn btn-primary h-12 w-full justify-center rounded-xl text-[14px] font-bold disabled:opacity-60"
+            className="btn btn-primary auth-btn-main h-12 w-full justify-center rounded-xl text-[14px] font-bold disabled:opacity-60"
           >
             {loading ? (
               <Loader2 size={15} className="animate-spin" />
@@ -192,7 +190,7 @@ export default function RegisterPage() {
 
           <button
             type="button"
-            className="btn btn-outline h-12 w-full justify-center rounded-xl text-[14px] font-semibold"
+            className="btn btn-outline auth-btn-secondary h-12 w-full justify-center rounded-xl text-[14px] font-semibold"
           >
             <GoogleMark />
             Зарегистрироваться с Google

@@ -165,21 +165,21 @@
 }
 
 .landing {
-  --bg: #fbfaf7;
-  --bg-2: #f3f1eb;
-  --ink: #0e1116;
-  --ink-2: #2a2f38;
-  --muted: #6b7280;
-  --line: #e7e3da;
-  --line-2: #d9d4c6;
+  --bg: #fcfbf8;
+  --bg-2: #f4f2ec;
+  --ink: #10131a;
+  --ink-2: #2d3340;
+  --muted: #6a7383;
+  --line: #e6e2d8;
+  --line-2: #d8d2c4;
   --card: #ffffff;
-  --accent: #3a2fe0;
+  --accent: #4a43e6;
   --accent-ink: #ffffff;
-  --accent-soft: #eeecfe;
-  --good: #0e8a57;
-  --warn: #b86e00;
-  --bad: #b23a3a;
-  --landing-card-shadow: 0 30px 60px -28px color-mix(in srgb, var(--ink) 18%, transparent);
+  --accent-soft: #eceafe;
+  --good: #0f8f5a;
+  --warn: #b77510;
+  --bad: #b74040;
+  --landing-card-shadow: 0 26px 58px -32px color-mix(in srgb, var(--ink) 16%, transparent);
   --bg-pattern-dot: rgba(14, 17, 22, 0.11);
   --bg-pattern-dot-soft: rgba(14, 17, 22, 0.055);
   min-height: 100vh;
@@ -198,8 +198,8 @@
 
 html:has(.landing),
 body:has(.landing) {
-  background-color: #fbfaf7 !important;
-  color: #0e1116;
+  background-color: #fcfbf8 !important;
+  color: #10131a;
 }
 
 .landing * {
@@ -232,7 +232,7 @@ body:has(.landing) {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(251, 250, 247, 0.82);
+  background: color-mix(in srgb, var(--bg) 82%, #ffffff 18%);
   backdrop-filter: saturate(140%) blur(12px);
   border-bottom: 1px solid var(--line);
 }
@@ -2223,13 +2223,68 @@ body:has(.landing) {
 
 .landing.auth-scope .auth-scope-backdrop {
   background:
-    radial-gradient(860px 520px at 0% -30%, rgba(58, 47, 224, 0.08), transparent 62%),
-    radial-gradient(820px 520px at 100% 0%, rgba(58, 47, 224, 0.06), transparent 64%);
+    radial-gradient(860px 520px at 0% -30%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 62%),
+    radial-gradient(820px 520px at 100% 0%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 64%);
 }
 
 .landing.auth-scope .auth-scope-title,
 .landing.auth-scope .auth-scope-subtitle {
   font-family: var(--font-sans);
+}
+
+.landing.auth-scope .auth-panel {
+  overflow: hidden;
+}
+
+.landing.auth-scope .auth-panel-body {
+  display: grid;
+  gap: 0;
+}
+
+.landing.auth-scope .auth-content {
+  display: grid;
+  gap: 0;
+}
+
+.landing.auth-scope .auth-input {
+  transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+}
+
+.landing.auth-scope .auth-input:focus {
+  background: var(--card);
+}
+
+.landing.auth-scope .auth-btn-main,
+.landing.auth-scope .auth-btn-secondary {
+  min-height: 46px;
+}
+
+.landing.auth-scope .auth-code-input {
+  letter-spacing: 0.02em;
+}
+
+.landing.auth-scope .auth-panel-foot {
+  background: color-mix(in srgb, var(--bg-2) 38%, var(--card));
+}
+
+@media (max-width: 640px) {
+  .landing.auth-scope main {
+    align-items: center;
+    padding-top: max(6px, env(safe-area-inset-top));
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  .landing.auth-scope .auth-panel {
+    max-width: 100%;
+  }
+
+  .landing.auth-scope .auth-panel-body {
+    padding: 16px;
+  }
+
+  .landing.auth-scope .auth-panel-foot {
+    padding: 10px 16px;
+  }
 }
 
 .blog-reading-progress {

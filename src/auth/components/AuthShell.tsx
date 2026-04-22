@@ -15,21 +15,21 @@ export function AuthShell({ title, subtitle, children }: AuthShellProps) {
     <div className="landing auth-scope relative min-h-[100dvh] overflow-x-hidden bg-[var(--bg)] text-[var(--ink)]">
       <div className="auth-scope-backdrop pointer-events-none absolute inset-0" />
 
-      <main className="relative z-10 flex min-h-[100dvh] items-center justify-center px-4 py-[max(10px,env(safe-area-inset-top))] sm:px-6 sm:py-5">
+      <main className="relative z-10 flex min-h-[100dvh] items-center justify-center px-4 py-[max(8px,env(safe-area-inset-top))] sm:px-6 sm:py-4">
         <motion.section
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.26, ease: "easeOut" }}
-          className="w-full max-w-[520px] rounded-2xl border border-[var(--line)] bg-[var(--card)] shadow-[var(--landing-card-shadow)]"
+          className="auth-panel w-full max-w-[500px] rounded-2xl border border-[var(--line)] bg-[var(--card)] shadow-[var(--landing-card-shadow)]"
         >
-          <div className="px-5 pb-5 pt-5 sm:px-8 sm:pb-6 sm:pt-7">
-            <div className="mb-4 flex justify-center sm:mb-5">
+          <div className="auth-panel-body px-4 pb-4 pt-4 sm:px-7 sm:pb-5 sm:pt-6">
+            <div className="mb-4 flex justify-center">
               <Link href="/" aria-label="FunPay Cloud" className="inline-flex">
                 <BrandLogo className="h-8 w-auto" />
               </Link>
             </div>
 
-            <header className="mb-5 text-center sm:mb-6">
+            <header className="mb-5 text-center">
               <h1 className="auth-scope-title text-[clamp(34px,4vw,40px)] font-black leading-[1.05] tracking-[-0.02em] text-[var(--ink)]">
                 {title}
               </h1>
@@ -38,9 +38,11 @@ export function AuthShell({ title, subtitle, children }: AuthShellProps) {
               </p>
             </header>
 
-            <div className="space-y-5">{children}</div>
+            <div className="auth-content">{children}</div>
+          </div>
 
-            <footer className="pt-5 text-center text-[12px] leading-5 text-[var(--muted)]">
+          <footer className="auth-panel-foot border-t border-[var(--line)] px-4 py-3 text-center text-[12px] leading-5 text-[var(--muted)] sm:px-7">
+            <p className="mx-auto max-w-[390px]">
               Продолжая, вы принимаете{" "}
               <a href="/legal/terms-of-service" className="font-semibold text-[var(--accent)] hover:opacity-90">
                 условия
@@ -50,8 +52,8 @@ export function AuthShell({ title, subtitle, children }: AuthShellProps) {
                 политику
               </a>
               .
-            </footer>
-          </div>
+            </p>
+          </footer>
         </motion.section>
       </main>
     </div>
