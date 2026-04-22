@@ -752,6 +752,7 @@ export default function Chats() {
         composerRef.current?.focus();
       });
       toast.error(err instanceof Error ? err.message : 'Не удалось отправить сообщение');
+      void runSilentResync();
     } finally {
       setSending(false);
     }
