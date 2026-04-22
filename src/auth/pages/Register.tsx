@@ -11,7 +11,7 @@ import { readStoredReferralCode, storeReferralCode } from "@/lib/referral";
 import { sanitizeInput, validateEmail, validatePassword } from "@/lib/sanitize";
 
 const fieldClass =
-  "auth-input h-11 w-full rounded-xl border border-[var(--line-2)] bg-[var(--bg)] px-4 text-[14px] text-[var(--ink)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)] sm:h-12";
+  "auth-input h-11 w-full rounded-xl border border-[var(--line-2)] bg-[var(--card)] px-4 text-[15px] text-[var(--ink)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)] sm:h-12";
 
 function strengthScore(password: string) {
   let score = 0;
@@ -156,7 +156,7 @@ export default function RegisterPage() {
           )}
         </div>
 
-        <div className="rounded-xl border border-[var(--line-2)] bg-[var(--bg)] p-3">
+        <div className="rounded-xl border border-[var(--line-2)] bg-[var(--bg-2)] p-3">
           <button
             type="button"
             className="inline-flex items-center gap-2 text-[13px] font-semibold text-[var(--ink-2)] hover:text-[var(--ink)]"

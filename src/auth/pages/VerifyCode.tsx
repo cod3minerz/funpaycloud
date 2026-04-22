@@ -126,7 +126,7 @@ export default function VerifyCodePage({ email: rawEmail, mode: rawMode }: Verif
       subtitle="Введите 6-значный код, отправленный на вашу почту."
     >
       <form onSubmit={handleSubmit} onPaste={handlePaste} className="space-y-5">
-        <div className="rounded-xl border border-[var(--line-2)] bg-[var(--bg)] p-3 text-center text-[13px] text-[var(--ink-2)]">
+        <div className="rounded-xl border border-[var(--line-2)] bg-[var(--bg-2)] p-3 text-center text-[13px] text-[var(--ink-2)]">
           Код отправлен на <span className="font-semibold text-[var(--ink)]">{maskEmail(email)}</span>
         </div>
 
@@ -143,7 +143,7 @@ export default function VerifyCodePage({ email: rawEmail, mode: rawMode }: Verif
                 onKeyDown={(event) => handleKeyDown(index, event)}
                 maxLength={1}
                 inputMode="numeric"
-                className="auth-code-input h-12 rounded-xl border border-[var(--line-2)] bg-[var(--bg)] text-center text-[20px] font-bold text-[var(--ink)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
+                className="auth-code-input h-12 rounded-xl border border-[var(--line-2)] bg-[var(--card)] text-center text-[20px] font-bold text-[var(--ink)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
               />
             ))}
           </div>

@@ -55,7 +55,7 @@
 
   --pf-overlay-bg: rgba(14, 17, 22, 0.48);
   --pf-overlay-blur: 8px;
-  --pf-overlay-border: #D9D4C6;
+  --pf-overlay-border: #D1D5DB;
   --pf-surface-overlay: rgba(255, 255, 255, 0.98);
 
   --pf-sidebar-width: 256px;
@@ -208,6 +208,14 @@ body[data-platform-theme] {
 @media (min-width: 1280px) {
   .platform-main-scroll {
     padding: 0 24px 28px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .platform-scope input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  .platform-scope select,
+  .platform-scope textarea {
+    font-size: 16px !important;
   }
 }
 

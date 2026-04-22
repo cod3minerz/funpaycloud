@@ -10,7 +10,7 @@ import { authApi } from "@/lib/api";
 import { sanitizeInput, validateEmail } from "@/lib/sanitize";
 
 const fieldClass =
-  "auth-input h-12 w-full rounded-xl border border-[var(--line-2)] bg-[var(--bg)] px-4 text-[14px] text-[var(--ink)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]";
+  "auth-input h-12 w-full rounded-xl border border-[var(--line-2)] bg-[var(--card)] px-4 text-[15px] text-[var(--ink)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]";
 
 function GoogleMark() {
   return (
@@ -73,7 +73,7 @@ export default function LoginPage() {
       title="Вход"
       subtitle="Войдите в аккаунт, чтобы продолжить работу в FunPay Cloud."
     >
-      <form onSubmit={handleLogin} className="space-y-5">
+      <form onSubmit={handleLogin} className="space-y-4">
         <div className="space-y-2">
           <label className="text-[13px] font-semibold text-[var(--ink-2)]">Email</label>
           <input

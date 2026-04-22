@@ -15,14 +15,14 @@ export function AuthShell({ title, subtitle, children }: AuthShellProps) {
     <div className="landing auth-scope relative min-h-[100dvh] overflow-x-hidden bg-[var(--bg)] text-[var(--ink)]">
       <div className="auth-scope-backdrop pointer-events-none absolute inset-0" />
 
-      <main className="relative z-10 flex min-h-[100dvh] items-center justify-center px-4 py-[max(8px,env(safe-area-inset-top))] sm:px-6 sm:py-4">
+      <main className="relative z-10 flex min-h-[100dvh] items-center justify-center px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-[max(16px,env(safe-area-inset-top))] sm:px-6 sm:pb-6 sm:pt-8">
         <motion.section
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.26, ease: "easeOut" }}
-          className="auth-panel w-full max-w-[500px] rounded-2xl border border-[var(--line)] bg-[var(--card)] shadow-[var(--landing-card-shadow)]"
+          className="auth-panel w-full max-w-[460px]"
         >
-          <div className="auth-panel-body px-4 pb-4 pt-4 sm:px-7 sm:pb-5 sm:pt-6">
+          <div className="auth-panel-body px-4 pb-4 pt-4 sm:px-6 sm:pb-5 sm:pt-6">
             <div className="mb-4 flex justify-center">
               <Link href="/" aria-label="FunPay Cloud" className="inline-flex">
                 <BrandLogo className="h-8 w-auto" />
@@ -40,21 +40,19 @@ export function AuthShell({ title, subtitle, children }: AuthShellProps) {
 
             <div className="auth-content">{children}</div>
           </div>
-
-          <footer className="auth-panel-foot border-t border-[var(--line)] px-4 py-3 text-center text-[12px] leading-5 text-[var(--muted)] sm:px-7">
-            <p className="mx-auto max-w-[390px]">
-              Продолжая, вы принимаете{" "}
-              <a href="/legal/terms-of-service" className="font-semibold text-[var(--accent)] hover:opacity-90">
-                условия
-              </a>{" "}
-              и{" "}
-              <a href="/legal/privacy-policy" className="font-semibold text-[var(--accent)] hover:opacity-90">
-                политику
-              </a>
-              .
-            </p>
-          </footer>
         </motion.section>
+
+        <p className="auth-legal-note mt-3 w-full max-w-[460px] px-4 text-center text-[12px] leading-5 text-[var(--muted)] sm:px-6">
+          Продолжая, вы принимаете{" "}
+          <a href="/legal/terms-of-service" className="font-semibold text-[var(--accent)] hover:opacity-90">
+            условия
+          </a>{" "}
+          и{" "}
+          <a href="/legal/privacy-policy" className="font-semibold text-[var(--accent)] hover:opacity-90">
+            политику
+          </a>
+          .
+        </p>
       </main>
     </div>
   );
