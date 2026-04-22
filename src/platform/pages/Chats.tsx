@@ -106,6 +106,7 @@ export default function Chats() {
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const selectedChatRef = useRef<ChatRow | null>(null);
   const messageLoadSeqRef = useRef(0);
+  const silentResyncInFlightRef = useRef(false);
   const loadChatsRef = useRef<(scope: AccountScope, preserveSelection: boolean) => Promise<number | null>>(
     async () => null,
   );
@@ -347,21 +348,29 @@ export default function Chats() {
     };
   }, [reloadKey, loadChats]);
 
+  const runSilentResync = useCallback(async () => {
+    if (silentResyncInFlightRef.current) return;
+    silentResyncInFlightRef.current = true;
+    try {
+      const currentSelected = selectedChatRef.current?.id ?? null;
+      const nextSelected = await loadChatsRef.current(accountScope, true);
+      const target = currentSelected && nextSelected === currentSelected ? currentSelected : nextSelected;
+      if (target) {
+        await loadMessages(target, { silent: true });
+      }
+    } catch {
+      // no-op
+    } finally {
+      silentResyncInFlightRef.current = false;
+    }
+  }, [accountScope, loadMessages]);
+
   useEffect(() => {
     if (accounts.length === 0) return;
 
-    const onVisible = async () => {
+    const onVisible = () => {
       if (document.visibilityState !== 'visible') return;
-      try {
-        const currentSelected = selectedChatRef.current?.id ?? null;
-        const nextSelected = await loadChatsRef.current(accountScope, true);
-        const target = currentSelected && nextSelected === currentSelected ? currentSelected : nextSelected;
-        if (target) {
-          await loadMessages(target, { silent: true });
-        }
-      } catch {
-        // no-op
-      }
+      void runSilentResync();
     };
 
     document.addEventListener('visibilitychange', onVisible);
@@ -369,7 +378,20 @@ export default function Chats() {
     return () => {
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [accountScope, accounts.length, loadMessages]);
+  }, [accounts.length, runSilentResync]);
+
+  useEffect(() => {
+    if (accounts.length === 0) return;
+
+    const timer = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      void runSilentResync();
+    }, 35000);
+
+    return () => {
+      clearInterval(timer);
+    };
+  }, [accounts.length, runSilentResync]);
 
   useEffect(() => {
     const targetAccountIDs =
