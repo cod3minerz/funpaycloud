@@ -1054,6 +1054,36 @@ export type AdminPromoCode = {
   status: 'active' | 'deactivated' | 'expired' | 'used' | string;
 };
 
+export type AdminChatRuntime = {
+  runtime: {
+    active_accounts: number;
+    runner_total: number;
+    runner_alive: number;
+    stale_runner_ids: number[];
+  };
+  pipeline: {
+    pending_messages_total: number;
+    pending_queue_total: number;
+    failed_last_hour: number;
+    stale_pending_total: number;
+    oldest_pending_age_sec: number;
+    oldest_queue_age_sec: number;
+  };
+  ws: {
+    connects_5m: number;
+    disconnects_5m: number;
+    rejects_5m: number;
+    connections_open: number;
+    accounts_open: number;
+  };
+  alerts: Array<{
+    level: 'critical' | 'warning' | 'info' | string;
+    code: string;
+    message: string;
+  }>;
+  checked_at: string;
+};
+
 export const adminApi = {
   login: (email: string, password: string, totp: string) =>
     adminApiRequest<{ token: string; user: { id: number; email: string } }>('/admin-api/auth/login', {
@@ -1068,6 +1098,7 @@ export const adminApi = {
   stats: () => adminApiRequest<AdminStats>('/admin-api/stats'),
   metrics: (period: '1h' | '24h' | '7d' = '24h') =>
     adminApiRequest<{ current: AdminMetric; history: AdminMetric[]; period: string }>(`/admin-api/metrics?period=${period}`),
+  chatRuntime: () => adminApiRequest<AdminChatRuntime>('/admin-api/chat-runtime'),
   logs: (params: { category?: string; level?: string; user_id?: number; account_id?: number; from?: string; to?: string; page?: number; limit?: number }) => {
     const query = new URLSearchParams();
     if (params.category) query.set('category', params.category);
