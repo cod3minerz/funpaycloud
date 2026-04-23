@@ -590,8 +590,20 @@ export type ApiScenario = {
   trigger_type: string;
   flow_data: string; // JSON string
   is_active: boolean;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
+};
+
+export type ApiScenarioLog = {
+  id: string;
+  scenario_id: string;
+  funpay_account_id: number;
+  status: string;
+  started_at: string;
+  completed_at: string;
+  error_message: string;
+  execution_path: string;
 };
 
 export const scenariosApi = {
@@ -611,6 +623,7 @@ export const scenariosApi = {
       body: JSON.stringify(data),
     }),
   delete: (id: string) => apiRequest<{ success: boolean }>(`/api/scenarios/${id}`, { method: 'DELETE' }),
+  getLogs: (id: string) => apiRequest<ApiScenarioLog[]>(`/api/scenarios/${id}/logs`),
 };
 
 // ── Plugins ───────────────────────────────────────────────────────────────────

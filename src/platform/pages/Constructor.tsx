@@ -20,8 +20,8 @@ import {
   ReactFlowProvider
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { accountsApi, scenariosApi, ApiAccount, ApiScenario } from '@/lib/api';
-import { Loader2, Save, Plus, GitMerge, Workflow, Zap, Play, Copy, Trash2, Bot, ChevronUp, Check, Settings } from 'lucide-react';
+import { accountsApi, scenariosApi, ApiAccount, ApiScenario, ApiScenarioLog } from '@/lib/api';
+import { Loader2, Save, Plus, GitMerge, Workflow, Zap, Play, Copy, Trash2, Bot, ChevronUp, Check, Settings, History, X, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 // --- NODE COMPONENT DEFINITIONS ---
@@ -180,6 +180,11 @@ function ConstructorFlow() {
   // Palette State
   const [activePalette, setActivePalette] = useState<string | null>(null);
 
+  // Logs State
+  const [isLogsOpen, setIsLogsOpen] = useState(false);
+  const [logs, setLogs] = useState<ApiScenarioLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+
   // Initial load
   useEffect(() => {
     accountsApi.list().then(accs => {
@@ -324,6 +329,20 @@ function ConstructorFlow() {
     }
   };
 
+  const handleOpenLogs = async () => {
+    if (!selectedScenarioID) return;
+    setIsLogsOpen(true);
+    setLogsLoading(true);
+    try {
+      const res = await scenariosApi.getLogs(selectedScenarioID);
+      setLogs(res);
+    } catch (err) {
+      toast.error('Ошибка загрузки логов');
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
   // Node Actions
   const handleDuplicateSelected = () => {
     const selected = nodes.filter(n => n.selected);
@@ -417,6 +436,13 @@ function ConstructorFlow() {
         {/* TOP RIGHT: Actions */}
         <FlowPanel position="top-right" className="m-4">
           <div className="flex gap-2">
+            <button 
+              className="platform-btn-secondary h-10 px-4 rounded-xl shadow-lg bg-[var(--pf-surface)] hover:bg-[var(--pf-surface-2)] border-[var(--pf-border)]" 
+              onClick={handleOpenLogs}
+              disabled={!selectedScenarioID}
+            >
+              <History size={16} className="mr-2" /> История
+            </button>
             <button className="platform-btn-secondary h-10 px-4 rounded-xl shadow-lg bg-[var(--pf-surface)] hover:bg-[var(--pf-surface-2)] border-[var(--pf-border)]" onClick={handleCreateScenario}>
               <Plus size={16} className="mr-2" /> Создать
             </button>
@@ -529,6 +555,40 @@ function ConstructorFlow() {
         )}
 
       </ReactFlow>
+
+      {/* LOGS DRAWER */}
+      {isLogsOpen && (
+        <div className="absolute top-0 right-0 h-full w-[400px] bg-[var(--pf-surface)] border-l border-[var(--pf-border)] shadow-2xl z-50 flex flex-col animate-in slide-in-from-right-full">
+          <div className="flex justify-between items-center p-4 border-b border-[var(--pf-border)]">
+            <h3 className="text-[14px] font-bold text-[var(--pf-text)] flex items-center gap-2"><History size={16}/> История запусков</h3>
+            <button className="text-[var(--pf-text-dim)] hover:text-[var(--pf-text)]" onClick={() => setIsLogsOpen(false)}><X size={20}/></button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {logsLoading ? (
+              <div className="flex justify-center p-4"><Loader2 className="animate-spin text-[var(--pf-accent)]" /></div>
+            ) : logs.length === 0 ? (
+              <div className="text-center text-[13px] text-[var(--pf-text-dim)] py-8">Запусков пока не было</div>
+            ) : (
+              logs.map(log => (
+                <div key={log.id} className="bg-[var(--pf-surface-2)] p-3 rounded-xl border border-[var(--pf-border)]">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className={`text-[12px] font-bold px-2 py-0.5 rounded ${log.status === 'success' ? 'bg-[color-mix(in_srgb,var(--pf-success)_15%,transparent)] text-[var(--pf-success)]' : 'bg-[color-mix(in_srgb,var(--pf-danger)_15%,transparent)] text-[var(--pf-danger)]'}`}>
+                      {log.status === 'success' ? 'УСПЕШНО' : 'ОШИБКА'}
+                    </span>
+                    <span className="text-[11px] text-[var(--pf-text-dim)] flex items-center gap-1"><Clock size={12}/> {new Date(log.started_at).toLocaleString()}</span>
+                  </div>
+                  {log.error_message && (
+                    <div className="text-[12px] text-[var(--pf-danger)] mt-2 bg-[color-mix(in_srgb,var(--pf-danger)_10%,transparent)] p-2 rounded">
+                      {log.error_message}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
