@@ -198,7 +198,6 @@ export default function Orders() {
                 <EmptyState
                   icon={SearchX}
                   title="Заказы не найдены"
-                  description="По текущим фильтрам нет подходящих заказов. Попробуйте изменить параметры поиска."
                   action={
                     search ? (
                       <button className="platform-btn-secondary" onClick={() => setSearch('')}>
@@ -206,7 +205,9 @@ export default function Orders() {
                       </button>
                     ) : undefined
                   }
-                />
+                >
+                  По текущим фильтрам нет подходящих заказов. Попробуйте изменить параметры поиска.
+                </EmptyState>
               )}
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--pf-border)] px-4 py-3">
                 <span className="platform-kpi-meta">Всего: {total}</span>

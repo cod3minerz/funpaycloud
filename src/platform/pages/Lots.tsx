@@ -384,7 +384,6 @@ export default function Lots() {
                 <EmptyState
                   icon={SearchX}
                   title="Лоты не найдены"
-                  description="По текущим фильтрам нет подходящих лотов. Попробуйте изменить параметры поиска."
                   action={
                     search ? (
                       <button className="platform-btn-secondary" onClick={() => setSearch('')}>
@@ -392,7 +391,9 @@ export default function Lots() {
                       </button>
                     ) : undefined
                   }
-                />
+                >
+                  По текущим фильтрам нет подходящих лотов. Попробуйте изменить параметры поиска.
+                </EmptyState>
               )}
             </>
           )}

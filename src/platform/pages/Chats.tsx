@@ -834,10 +834,10 @@ export default function Chats() {
                   </button>
                 ))}
                 {filteredChats.length === 0 && chats.length === 0 && (
-                  <div className="p-4"><EmptyState icon={SearchX} title="Нет чатов" description="Если вы только что добавили аккаунт, подождите 30 секунд и обновите страницу." /></div>
+                  <div className="p-4"><EmptyState icon={SearchX} title="Нет чатов">Если вы только что добавили аккаунт, подождите 30 секунд и обновите страницу.</EmptyState></div>
                 )}
                 {filteredChats.length === 0 && chats.length > 0 && (
-                  <div className="p-4"><EmptyState icon={SearchX} title="Чаты не найдены" description="По текущему фильтру ничего не найдено." /></div>
+                  <div className="p-4"><EmptyState icon={SearchX} title="Чаты не найдены">По текущему фильтру ничего не найдено.</EmptyState></div>
                 )}
               </div>
             </aside>
@@ -845,7 +845,7 @@ export default function Chats() {
             <section className="platform-chat-thread">
               {!selectedChat ? (
                 <div className="h-full flex items-center justify-center p-8">
-                  <EmptyState icon={MessageSquareQuote} title="Выберите чат" description="Выберите собеседника из списка слева, чтобы начать общение." />
+                  <EmptyState icon={MessageSquareQuote} title="Выберите чат">Выберите собеседника из списка слева, чтобы начать общение.</EmptyState>
                 </div>
               ) : (
                 <>
@@ -873,7 +873,7 @@ export default function Chats() {
                         </div>
                       ) : messages.length === 0 ? (
                         <div className="h-full flex items-center justify-center p-8">
-                          <EmptyState icon={MessageCircle} title="Нет сообщений" description="Напишите первым, чтобы начать диалог!" />
+                          <EmptyState icon={MessageCircle} title="Нет сообщений">Напишите первым, чтобы начать диалог!</EmptyState>
                         </div>
                       ) : (
                         threadRenderItems.map(item => {

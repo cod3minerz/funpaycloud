@@ -7,28 +7,24 @@ import './globals.css';
 
 const syne = Syne({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
   display: 'swap',
   variable: '--font-syne',
 });
 
 const inter = Inter({
   subsets: ['latin', 'cyrillic'],
-  weight: ['400', '500', '600', '700', '800', '900'],
   display: 'swap',
   variable: '--font-inter',
 });
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
   display: 'swap',
   variable: '--font-mono',
 });
 
 const caveat = Caveat({
   subsets: ['latin', 'cyrillic'],
-  weight: ['600', '700'],
   display: 'swap',
   variable: '--font-caveat',
 });

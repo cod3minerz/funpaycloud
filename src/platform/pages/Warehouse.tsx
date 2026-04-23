@@ -332,8 +332,9 @@ export default function Warehouse() {
                     <EmptyState
                       icon={SearchX}
                       title="Лоты не найдены"
-                      description="У данного аккаунта пока нет лотов или они не загрузились."
-                    />
+                    >
+                      У данного аккаунта пока нет лотов или они не загрузились.
+                    </EmptyState>
                   </div>
                 )}
               </div>
@@ -346,8 +347,9 @@ export default function Warehouse() {
                 <EmptyState
                   icon={MousePointerClick}
                   title="Лот не выбран"
-                  description="Выберите лот из списка слева, чтобы открыть управление его складом и авто-выдачей."
-                />
+                >
+                  Выберите лот из списка слева, чтобы открыть управление его складом и авто-выдачей.
+                </EmptyState>
               </SectionCard>
             ) : (
               <>
@@ -588,8 +590,9 @@ export default function Warehouse() {
                       <EmptyState
                         icon={PackageOpen}
                         title="Склад пуст"
-                        description="Добавьте товары, чтобы они выдавались покупателям автоматически."
-                      />
+                      >
+                        Добавьте товары, чтобы они выдавались покупателям автоматически.
+                      </EmptyState>
                     )}
                   </Panel>
                 </SectionCard>
