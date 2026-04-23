@@ -580,6 +580,39 @@ export const automationApi = {
     apiRequest<ApiAutomationRule>(`/api/automation/${id}/toggle`, { method: 'PATCH' }),
 };
 
+// ── Scenarios ─────────────────────────────────────────────────────────────────
+
+export type ApiScenario = {
+  id: string;
+  user_id: number;
+  funpay_account_id: number;
+  name: string;
+  trigger_type: string;
+  flow_data: string; // JSON string
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export const scenariosApi = {
+  list: (accountId: number | string) => apiRequest<ApiScenario[]>(`/api/accounts/${accountId}/scenarios`),
+  create: (
+    accountId: number | string,
+    data: { name: string; trigger_type: string; flow_data: string; is_active: boolean },
+  ) =>
+    apiRequest<{ id: string; success: boolean }>(`/api/accounts/${accountId}/scenarios`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  get: (id: string) => apiRequest<ApiScenario>(`/api/scenarios/${id}`),
+  update: (id: string, data: { name: string; flow_data: string; is_active: boolean }) =>
+    apiRequest<{ success: boolean }>(`/api/scenarios/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) => apiRequest<{ success: boolean }>(`/api/scenarios/${id}`, { method: 'DELETE' }),
+};
+
 // ── Plugins ───────────────────────────────────────────────────────────────────
 
 export type ApiPlugin = {

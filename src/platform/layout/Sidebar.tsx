@@ -19,6 +19,7 @@ import {
   Users,
   Server,
   X,
+  Workflow,
 } from 'lucide-react';
 import { BrandLogo } from '@/app/components/BrandLogo';
 import { TelegramMark, VkMark } from '@/platform/components/SocialMarks';
@@ -54,6 +55,7 @@ const navGroups = [
     title: 'Управление',
     items: [
       { icon: Users, label: 'Аккаунты', path: '/platform/accounts' },
+      { icon: Workflow, label: 'Конструктор', path: '/platform/constructor' },
       { icon: BarChart2, label: 'Аналитика', path: '/platform/analytics' },
       { icon: AISidebarIcon, label: 'AI-Ассистент', path: '/platform/ai-assistant' },
       { icon: Puzzle, label: 'Плагины', path: '/platform/plugins' },
