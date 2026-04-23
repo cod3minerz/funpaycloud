@@ -9,6 +9,7 @@ const PUBLIC_AUTH_PATHS = new Set([
   '/api/auth/refresh',
   '/api/auth/csrf',
 ]);
+let refreshInFlight: Promise<boolean> | null = null;
 
 export class ApiError extends Error {
   constructor(
@@ -67,20 +68,30 @@ async function ensureCsrfToken(): Promise<string> {
 }
 
 async function refreshSession(): Promise<boolean> {
-  const csrf = await ensureCsrfToken();
-  try {
-    const response = await fetch(`${BASE_URL}/api/auth/refresh`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
-      },
-    });
-    return response.ok;
-  } catch {
-    return false;
+  if (refreshInFlight) {
+    return refreshInFlight;
   }
+
+  refreshInFlight = (async () => {
+    const csrf = await ensureCsrfToken();
+    try {
+      const response = await fetch(`${BASE_URL}/api/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
+        },
+      });
+      return response.ok;
+    } catch {
+      return false;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
 }
 
 export async function apiRequest<T = unknown>(
@@ -590,7 +601,6 @@ export type ApiScenario = {
   trigger_type: string;
   flow_data: string; // JSON string
   is_active: boolean;
-  is_active: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -612,17 +622,17 @@ export const scenariosApi = {
     accountId: number | string,
     data: { name: string; trigger_type: string; flow_data: string; is_active: boolean },
   ) =>
-    apiRequest<{ id: string; success: boolean }>(`/api/accounts/${accountId}/scenarios`, {
+    apiRequest<{ id: string }>(`/api/accounts/${accountId}/scenarios`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   get: (id: string) => apiRequest<ApiScenario>(`/api/scenarios/${id}`),
   update: (id: string, data: { name: string; flow_data: string; is_active: boolean }) =>
-    apiRequest<{ success: boolean }>(`/api/scenarios/${id}`, {
+    apiRequest<{ updated: boolean }>(`/api/scenarios/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
-  delete: (id: string) => apiRequest<{ success: boolean }>(`/api/scenarios/${id}`, { method: 'DELETE' }),
+  delete: (id: string) => apiRequest<{ deleted: boolean }>(`/api/scenarios/${id}`, { method: 'DELETE' }),
   getLogs: (id: string) => apiRequest<ApiScenarioLog[]>(`/api/scenarios/${id}/logs`),
 };
 
