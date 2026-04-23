@@ -2224,6 +2224,39 @@ body[data-platform-theme='dark'] .platform-nav-item.active {
   color: var(--pf-text) !important;
 }
 
+.constructor-canvas .react-flow__attribution {
+  display: none !important;
+}
+
+.constructor-canvas .react-flow__controls {
+  background: var(--pf-surface) !important;
+  border: 1px solid var(--pf-border) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--pf-shadow-card) !important;
+}
+
+.constructor-canvas .react-flow__controls-button {
+  background: transparent !important;
+  color: var(--pf-text) !important;
+  fill: var(--pf-text) !important;
+  border-bottom: 1px solid var(--pf-border) !important;
+}
+
+.constructor-canvas .react-flow__controls-button:last-child {
+  border-bottom: none !important;
+}
+
+.constructor-canvas .react-flow__controls-button:hover {
+  background: var(--pf-surface-2) !important;
+}
+
+.constructor-canvas .react-flow__minimap {
+  background: var(--pf-surface) !important;
+  border: 1px solid var(--pf-border) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--pf-shadow-card) !important;
+}
+
 .platform-settings-layout {
   display: grid;
   gap: 14px;

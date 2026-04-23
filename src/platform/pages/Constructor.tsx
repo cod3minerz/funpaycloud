@@ -23,6 +23,7 @@ import '@xyflow/react/dist/style.css';
 import { accountsApi, scenariosApi, ApiAccount, ApiScenario, ApiScenarioLog } from '@/lib/api';
 import { Loader2, Save, Plus, GitMerge, Workflow, Zap, Play, Copy, Trash2, Bot, ChevronUp, Check, Settings, History, X, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 
 // --- NODE COMPONENT DEFINITIONS ---
 
@@ -184,6 +185,9 @@ function ConstructorFlow() {
   const [isLogsOpen, setIsLogsOpen] = useState(false);
   const [logs, setLogs] = useState<ApiScenarioLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newScenarioName, setNewScenarioName] = useState('');
+  const [creatingScenario, setCreatingScenario] = useState(false);
 
   // Initial load
   useEffect(() => {
@@ -215,7 +219,8 @@ function ConstructorFlow() {
         }
       }).catch(err => {
         console.error(err);
-        toast.error('Ошибка загрузки сценариев');
+        const details = err instanceof Error ? err.message : '';
+        toast.error(details ? `Ошибка загрузки сценариев: ${details}` : 'Ошибка загрузки сценариев');
       }).finally(() => {
         setLoading(false);
       });
@@ -298,9 +303,9 @@ function ConstructorFlow() {
 
   const handleCreateScenario = async () => {
     if (!selectedAccountID) return;
-    const name = prompt('Введите название нового сценария:');
+    const name = newScenarioName.trim();
     if (!name) return;
-    setLoading(true);
+    setCreatingScenario(true);
     try {
       const res = await scenariosApi.create(selectedAccountID, {
         name,
@@ -308,6 +313,7 @@ function ConstructorFlow() {
         flow_data: '{}',
         is_active: true,
       });
+      const nowIso = new Date().toISOString();
       const newScenario: ApiScenario = {
         id: res.id,
         user_id: 0,
@@ -316,16 +322,20 @@ function ConstructorFlow() {
         trigger_type: 'chat_message',
         flow_data: '{}',
         is_active: true,
-        created_at: '',
-        updated_at: ''
+        created_at: nowIso,
+        updated_at: nowIso
       };
-      setScenarios(prev => [...prev, newScenario]);
+      setScenarios(prev => [newScenario, ...prev]);
       setSelectedScenarioID(res.id);
+      setNodes([]);
+      setEdges([]);
+      setCreateDialogOpen(false);
+      setNewScenarioName('');
       toast.success('Сценарий создан');
     } catch (err) {
       toast.error('Ошибка создания');
     } finally {
-      setLoading(false);
+      setCreatingScenario(false);
     }
   };
 
@@ -379,7 +389,7 @@ function ConstructorFlow() {
   const defaultEdgeOptions = { animated: true, style: { stroke: 'var(--pf-accent)', strokeWidth: 2 } };
 
   return (
-    <div className="flex-1 w-full h-full relative overflow-hidden bg-[var(--pf-surface-2)]">
+    <div className="constructor-canvas flex-1 w-full h-full relative overflow-hidden bg-[var(--pf-surface-2)]">
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-[var(--pf-surface)]/50 backdrop-blur-sm z-50">
            <Loader2 size={32} className="animate-spin text-[var(--pf-accent)]" />
@@ -396,11 +406,13 @@ function ConstructorFlow() {
         isValidConnection={isValidConnection}
         nodeTypes={nodeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
+        proOptions={{ hideAttribution: true }}
         fitView
       >
         <Controls className="bg-[var(--pf-surface)] border border-[var(--pf-border)] shadow-lg rounded-lg overflow-hidden fill-[var(--pf-text)] text-[var(--pf-text)]" />
         <MiniMap 
           className="bg-[var(--pf-surface)] border border-[var(--pf-border)] rounded-lg overflow-hidden shadow-lg" 
+          style={{ backgroundColor: 'var(--pf-surface)' }}
           maskColor="color-mix(in srgb, var(--pf-surface) 80%, transparent)" 
           nodeColor="var(--pf-border-strong)"
         />
@@ -443,7 +455,14 @@ function ConstructorFlow() {
             >
               <History size={16} className="mr-2" /> История
             </button>
-            <button className="platform-btn-secondary h-10 px-4 rounded-xl shadow-lg bg-[var(--pf-surface)] hover:bg-[var(--pf-surface-2)] border-[var(--pf-border)]" onClick={handleCreateScenario}>
+            <button
+              className="platform-btn-secondary h-10 px-4 rounded-xl shadow-lg bg-[var(--pf-surface)] hover:bg-[var(--pf-surface-2)] border-[var(--pf-border)]"
+              onClick={() => {
+                setNewScenarioName('');
+                setCreateDialogOpen(true);
+              }}
+              disabled={!selectedAccountID}
+            >
               <Plus size={16} className="mr-2" /> Создать
             </button>
             <button 
@@ -588,6 +607,56 @@ function ConstructorFlow() {
           </div>
         </div>
       )}
+
+      <Dialog open={createDialogOpen} onOpenChange={(open) => {
+        if (creatingScenario) return;
+        setCreateDialogOpen(open);
+      }}>
+        <DialogContent className="platform-dialog-content sm:max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle>Новый сценарий</DialogTitle>
+            <DialogDescription className="sr-only">
+              Создание нового сценария конструктора для выбранного аккаунта.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-[var(--pf-text-muted)]">Название сценария</label>
+            <input
+              className="platform-input w-full"
+              value={newScenarioName}
+              onChange={(e) => setNewScenarioName(e.target.value)}
+              placeholder="Например: Автоответ на новые сообщения"
+              maxLength={80}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !creatingScenario && newScenarioName.trim()) {
+                  e.preventDefault();
+                  void handleCreateScenario();
+                }
+              }}
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <button
+              type="button"
+              className="platform-btn-secondary"
+              onClick={() => setCreateDialogOpen(false)}
+              disabled={creatingScenario}
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              className="platform-btn-primary"
+              onClick={() => void handleCreateScenario()}
+              disabled={creatingScenario || !newScenarioName.trim()}
+            >
+              {creatingScenario ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Plus size={16} className="mr-2" />}
+              Создать сценарий
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
