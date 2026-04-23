@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { AlertTriangle, Download, Loader2, Plus, Save, Trash2, Upload, XCircle } from 'lucide-react';
+import { AlertTriangle, Download, Loader2, Plus, Save, Trash2, Upload, XCircle, SearchX, MousePointerClick, PackageOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { Switch } from '@/app/components/ui/switch';
 import { accountsApi, ApiAccount, ApiWarehouseItem, ApiWarehouseLot, warehouseApi } from '@/lib/api';
@@ -329,7 +329,11 @@ export default function Warehouse() {
 
                 {lots.length === 0 && (
                   <div className="p-4">
-                    <EmptyState>Лоты не найдены.</EmptyState>
+                    <EmptyState
+                      icon={SearchX}
+                      title="Лоты не найдены"
+                      description="У данного аккаунта пока нет лотов или они не загрузились."
+                    />
                   </div>
                 )}
               </div>
@@ -339,7 +343,11 @@ export default function Warehouse() {
           <div className="platform-stack">
             {!selectedLot ? (
               <SectionCard>
-                <EmptyState>Выберите лот, чтобы открыть управление складом.</EmptyState>
+                <EmptyState
+                  icon={MousePointerClick}
+                  title="Лот не выбран"
+                  description="Выберите лот из списка слева, чтобы открыть управление его складом и авто-выдачей."
+                />
               </SectionCard>
             ) : (
               <>
@@ -576,7 +584,13 @@ export default function Warehouse() {
                       ))}
                     </div>
 
-                    {selectedLot.stock_items.length === 0 && <EmptyState>Склад этого лота пуст.</EmptyState>}
+                    {selectedLot.stock_items.length === 0 && (
+                      <EmptyState
+                        icon={PackageOpen}
+                        title="Склад пуст"
+                        description="Добавьте товары, чтобы они выдавались покупателям автоматически."
+                      />
+                    )}
                   </Panel>
                 </SectionCard>
               </>

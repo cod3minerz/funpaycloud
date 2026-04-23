@@ -42,13 +42,13 @@ const BANNERS: Banner[] = [
     description: 'Пошаговый разбор настроек автоподнятия и ошибок, которые режут выдачу.',
     href: '/blog/avtopodnyatie-lotov-funpay',
     cta: 'Читать статью',
-    gradientClass: 'platform-dashboard-banner-blue',
-    tagClass: 'text-blue-300',
+    gradientClass: 'bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700',
+    tagClass: 'text-blue-200',
     textClass: 'text-white',
-    mutedClass: 'text-blue-200/80',
-    ctaClass: 'bg-white/20 hover:bg-white/30 text-white',
-    decorationClass: 'bg-blue-400/10',
-    decorationSecondaryClass: 'bg-blue-300/10',
+    mutedClass: 'text-blue-100/80',
+    ctaClass: 'bg-white/10 hover:bg-white/20 text-white backdrop-blur-md shadow-sm border border-white/10',
+    decorationClass: 'bg-blue-400/20 blur-[2px]',
+    decorationSecondaryClass: 'bg-blue-300/20 blur-[2px]',
   },
   {
     tag: 'ОБНОВЛЕНИЕ',
@@ -56,13 +56,13 @@ const BANNERS: Banner[] = [
     description: 'Ускорили подтверждение исходящих и усилили обработку reconnect в веб-сокетах.',
     href: '/platform/chats',
     cta: 'Подробнее',
-    gradientClass: 'platform-dashboard-banner-violet',
+    gradientClass: 'bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-700',
     tagClass: 'text-violet-200',
     textClass: 'text-white',
-    mutedClass: 'text-violet-200/80',
-    ctaClass: 'bg-white/20 hover:bg-white/30 text-white',
-    decorationClass: 'bg-violet-300/10',
-    decorationSecondaryClass: 'bg-fuchsia-300/10',
+    mutedClass: 'text-violet-100/80',
+    ctaClass: 'bg-white/10 hover:bg-white/20 text-white backdrop-blur-md shadow-sm border border-white/10',
+    decorationClass: 'bg-violet-400/20 blur-[2px]',
+    decorationSecondaryClass: 'bg-fuchsia-400/20 blur-[2px]',
   },
   {
     tag: 'СОВЕТ',
@@ -70,13 +70,13 @@ const BANNERS: Banner[] = [
     description: 'Настройте тон, базу знаний и сразу проверьте ответы в тестовом чате.',
     href: '/platform/ai-assistant',
     cta: 'Открыть AI',
-    gradientClass: 'platform-dashboard-banner-emerald',
+    gradientClass: 'bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700',
     tagClass: 'text-emerald-200',
     textClass: 'text-white',
-    mutedClass: 'text-emerald-200/80',
-    ctaClass: 'bg-white/20 hover:bg-white/30 text-white',
-    decorationClass: 'bg-emerald-300/10',
-    decorationSecondaryClass: 'bg-teal-300/10',
+    mutedClass: 'text-emerald-100/80',
+    ctaClass: 'bg-white/10 hover:bg-white/20 text-white backdrop-blur-md shadow-sm border border-white/10',
+    decorationClass: 'bg-emerald-400/20 blur-[2px]',
+    decorationSecondaryClass: 'bg-teal-400/20 blur-[2px]',
   },
 ];
 
@@ -345,66 +345,66 @@ export default function Dashboard() {
           </section>
 
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <article className="platform-dashboard-community-telegram group relative overflow-hidden rounded-xl p-5 transition-all">
-              <div className="platform-dashboard-community-telegram-decor absolute -right-4 -top-4 h-20 w-20 rounded-full" />
+            <article className="platform-dashboard-community-telegram group relative overflow-hidden rounded-2xl p-5 transition-all hover:-translate-y-1 hover:shadow-lg shadow-sm border border-[var(--pf-border)]">
+              <div className="platform-dashboard-community-telegram-decor absolute -right-4 -top-4 h-20 w-20 rounded-full opacity-50" />
 
-              <div className="mb-3 flex items-start gap-3">
-                <div className="platform-dashboard-community-telegram-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+              <div className="mb-3 flex items-start gap-3 relative z-10">
+                <div className="platform-dashboard-community-telegram-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm">
                   <Send size={18} className="platform-dashboard-community-telegram-icon-fg" />
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-[var(--pf-text)]">Telegram канал</div>
+                  <div className="text-sm font-bold text-[var(--pf-text)]">Telegram канал</div>
                   <div className="mt-0.5 text-xs text-[var(--pf-text-muted)]">2 400 подписчиков</div>
                 </div>
               </div>
 
-              <p className="mb-4 text-xs text-[var(--pf-text-dim)]">Новости платформы, обновления и эксклюзивные советы</p>
+              <p className="mb-4 text-xs text-[var(--pf-text-dim)] relative z-10">Новости платформы, обновления и эксклюзивные советы</p>
               <a
                 href="https://t.me/funpaycloud"
                 target="_blank"
                 rel="noreferrer"
-                className="platform-dashboard-community-telegram-link inline-flex items-center gap-1.5 text-xs font-semibold transition-colors"
+                className="platform-dashboard-community-telegram-link inline-flex items-center gap-1.5 text-xs font-semibold transition-colors relative z-10"
               >
                 Подписаться
                 <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
               </a>
             </article>
 
-            <article className="platform-dashboard-community-vk group rounded-xl p-5 transition-colors">
-              <div className="mb-3 flex items-start gap-3">
-                <div className="platform-dashboard-community-vk-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold">
+            <article className="platform-dashboard-community-vk group rounded-2xl p-5 transition-all hover:-translate-y-1 hover:shadow-lg shadow-sm border border-[var(--pf-border)] relative overflow-hidden">
+              <div className="mb-3 flex items-start gap-3 relative z-10">
+                <div className="platform-dashboard-community-vk-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold shadow-sm">
                   VK
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-[var(--pf-text)]">Группа ВКонтакте</div>
+                  <div className="text-sm font-bold text-[var(--pf-text)]">Группа ВКонтакте</div>
                   <div className="mt-0.5 text-xs text-[var(--pf-text-muted)]">Кейсы и обсуждения продавцов</div>
                 </div>
               </div>
 
-              <p className="mb-4 text-xs text-[var(--pf-text-dim)]">Разборы ниш, связки и реальные результаты участников сообщества</p>
+              <p className="mb-4 text-xs text-[var(--pf-text-dim)] relative z-10">Разборы ниш, связки и реальные результаты участников сообщества</p>
               <a
                 href="https://vk.com/funpaycloud"
                 target="_blank"
                 rel="noreferrer"
-                className="platform-dashboard-community-vk-link inline-flex items-center gap-1.5 text-xs font-semibold transition-colors"
+                className="platform-dashboard-community-vk-link inline-flex items-center gap-1.5 text-xs font-semibold transition-colors relative z-10"
               >
                 Вступить
                 <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
               </a>
             </article>
 
-            <article className="group rounded-xl border border-emerald-500/26 bg-gradient-to-br from-emerald-500/12 to-transparent p-5 transition-colors hover:border-emerald-500/42 sm:col-span-2 xl:col-span-1">
+            <article className="group rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-transparent p-5 transition-all hover:-translate-y-1 hover:border-emerald-500/30 hover:shadow-lg shadow-sm sm:col-span-2 xl:col-span-1">
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 shadow-sm">
                     <MessageCircle size={18} className="text-emerald-700" />
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-[var(--pf-text)]">Поддержка</div>
+                    <div className="text-sm font-bold text-[var(--pf-text)]">Поддержка</div>
                     <div className="mt-0.5 text-xs text-[var(--pf-text-muted)]">Поможем с настройкой и ошибками</div>
                   </div>
                 </div>
-                <span className="inline-flex items-center rounded-full border border-emerald-600/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                <span className="inline-flex items-center rounded-full border border-emerald-600/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 backdrop-blur-sm">
                   ~ 30 мин
                 </span>
               </div>
@@ -422,36 +422,38 @@ export default function Dashboard() {
             </article>
           </section>
 
-          <section className="overflow-hidden rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-surface)]">
-            <div className="grid grid-cols-1 divide-y divide-[var(--pf-border)] sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-              <Link
-                href="/docs"
-                className="group flex items-center gap-4 p-5 transition-colors hover:bg-[var(--pf-surface-2)] sm:p-6"
-              >
-                <div className="platform-dashboard-docs-icon flex h-12 w-12 shrink-0 items-center justify-center rounded-xl">
-                  <BookOpen size={20} className="platform-dashboard-docs-icon-fg" />
-                </div>
-                <div className="flex-1">
-                  <div className="mb-1 text-sm font-semibold text-[var(--pf-text)]">Документация</div>
-                  <div className="text-xs text-[var(--pf-text-muted)]">Подробные инструкции по всем функциям</div>
-                </div>
-                <ArrowRight size={16} className="text-[var(--pf-text-dim)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--pf-text-muted)]" />
-              </Link>
+          <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Link
+              href="/docs"
+              className="group flex items-center gap-4 rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-surface)] p-5 transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-[var(--pf-border-strong)] sm:p-6"
+            >
+              <div className="platform-dashboard-docs-icon flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-sm">
+                <BookOpen size={20} className="platform-dashboard-docs-icon-fg" />
+              </div>
+              <div className="flex-1">
+                <div className="mb-1 text-sm font-bold text-[var(--pf-text)]">Документация</div>
+                <div className="text-xs text-[var(--pf-text-muted)]">Подробные инструкции по всем функциям</div>
+              </div>
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--pf-surface-2)] transition-colors group-hover:bg-[var(--pf-border)]">
+                <ArrowRight size={16} className="text-[var(--pf-text-dim)] transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--pf-text-muted)]" />
+              </div>
+            </Link>
 
-              <Link
-                href="/blog"
-                className="group flex items-center gap-4 p-5 transition-colors hover:bg-[var(--pf-surface-2)] sm:p-6"
-              >
-                <div className="platform-dashboard-blog-icon flex h-12 w-12 shrink-0 items-center justify-center rounded-xl">
-                  <FileText size={20} className="platform-dashboard-blog-icon-fg" />
-                </div>
-                <div className="flex-1">
-                  <div className="mb-1 text-sm font-semibold text-[var(--pf-text)]">Блог</div>
-                  <div className="text-xs text-[var(--pf-text-muted)]">Кейсы и советы для продавцов</div>
-                </div>
-                <ArrowRight size={16} className="text-[var(--pf-text-dim)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--pf-text-muted)]" />
-              </Link>
-            </div>
+            <Link
+              href="/blog"
+              className="group flex items-center gap-4 rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-surface)] p-5 transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-[var(--pf-border-strong)] sm:p-6"
+            >
+              <div className="platform-dashboard-blog-icon flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-sm">
+                <FileText size={20} className="platform-dashboard-blog-icon-fg" />
+              </div>
+              <div className="flex-1">
+                <div className="mb-1 text-sm font-bold text-[var(--pf-text)]">Блог</div>
+                <div className="text-xs text-[var(--pf-text-muted)]">Кейсы и советы для продавцов</div>
+              </div>
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--pf-surface-2)] transition-colors group-hover:bg-[var(--pf-border)]">
+                <ArrowRight size={16} className="text-[var(--pf-text-dim)] transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--pf-text-muted)]" />
+              </div>
+            </Link>
           </section>
 
           <section className="rounded-2xl border border-[var(--pf-border)] p-5 sm:p-6">

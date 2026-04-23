@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { Loader2, Search, Send } from 'lucide-react';
+import { Loader2, Search, Send, SearchX } from 'lucide-react';
 import { toast } from 'sonner';
 import { accountsApi, ApiAccount, ApiOrder, ordersApi } from '@/lib/api';
 import { DataTableWrap, EmptyState, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard, ToolbarRow } from '@/platform/components/primitives';
@@ -194,7 +194,20 @@ export default function Orders() {
                   </table>
                 </DataTableWrap>
               </div>
-              {visible.length === 0 && <EmptyState>Заказы по текущим фильтрам не найдены.</EmptyState>}
+              {visible.length === 0 && (
+                <EmptyState
+                  icon={SearchX}
+                  title="Заказы не найдены"
+                  description="По текущим фильтрам нет подходящих заказов. Попробуйте изменить параметры поиска."
+                  action={
+                    search ? (
+                      <button className="platform-btn-secondary" onClick={() => setSearch('')}>
+                        Сбросить поиск
+                      </button>
+                    ) : undefined
+                  }
+                />
+              )}
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--pf-border)] px-4 py-3">
                 <span className="platform-kpi-meta">Всего: {total}</span>
                 <div className="inline-flex items-center gap-2">

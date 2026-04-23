@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { cn } from '@/app/components/ui/utils';
+import { motion } from 'motion/react';
 
 export function StatCard({
   label,
@@ -31,7 +32,15 @@ export function StatCard({
 }
 
 export function PageShell({ className, ...props }: React.ComponentProps<'section'>) {
-  return <section className={cn('platform-page', className)} {...props} />;
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 12, filter: 'blur(4px)' }}
+      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
+      className={cn('platform-page', className)}
+      {...(props as any)}
+    />
+  );
 }
 
 export function PageHeader({ className, ...props }: React.ComponentProps<'header'>) {
@@ -54,7 +63,12 @@ export function PageTitle({
 }
 
 export function SectionCard({ className, ...props }: React.ComponentProps<'section'>) {
-  return <section className={cn('platform-card', className)} {...props} />;
+  return (
+    <motion.section
+      className={cn('platform-card', className)}
+      {...(props as any)}
+    />
+  );
 }
 
 export function Panel({ className, ...props }: React.ComponentProps<'article'>) {
@@ -70,7 +84,13 @@ export function KpiGrid({ className, ...props }: React.ComponentProps<'div'>) {
 }
 
 export function KpiCard({ className, ...props }: React.ComponentProps<'article'>) {
-  return <article className={cn('platform-card platform-kpi-card', className)} {...props} />;
+  return (
+    <motion.article
+      whileHover={{ y: -2, transition: { duration: 0.15 } }}
+      className={cn('platform-card platform-kpi-card', className)}
+      {...(props as any)}
+    />
+  );
 }
 
 export function DataTableWrap({ className, ...props }: React.ComponentProps<'div'>) {
@@ -79,12 +99,37 @@ export function DataTableWrap({ className, ...props }: React.ComponentProps<'div
 
 export function EmptyState({
   children,
+  icon: Icon,
+  title,
+  action,
   className,
 }: {
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  icon?: any;
+  title?: string;
+  action?: React.ReactNode;
   className?: string;
 }) {
-  return <div className={cn('platform-empty', className)}>{children}</div>;
+  if (!title && !Icon && !action && children) {
+    return (
+      <div className={cn('flex flex-col items-center justify-center p-8 text-center rounded-2xl border border-dashed border-[var(--pf-border-strong)] bg-[var(--pf-surface-2)]/40', className)}>
+        <p className="text-[13px] text-[var(--pf-text-dim)]">{children}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn('flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-dashed border-[var(--pf-border-strong)] bg-[var(--pf-surface-2)]/40', className)}>
+      {Icon && (
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--pf-surface)] shadow-sm border border-[var(--pf-border)] text-[var(--pf-text-muted)]">
+          <Icon size={24} />
+        </div>
+      )}
+      {title && <h3 className="mb-1 text-[15px] font-semibold text-[var(--pf-text)]">{title}</h3>}
+      {children && <div className="mb-5 max-w-[320px] text-[13px] text-[var(--pf-text-dim)] leading-relaxed">{children}</div>}
+      {action && <div>{action}</div>}
+    </div>
+  );
 }
 
 export function RequestErrorState({

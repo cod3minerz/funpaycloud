@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowUpCircle, Loader2, Pencil, Plus, Power, Trash2 } from 'lucide-react';
+import { ArrowUpCircle, Loader2, Pencil, Plus, Power, Trash2, SearchX } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { accountsApi, ApiAccount, ApiLot, lotsApi } from '@/lib/api';
@@ -380,7 +380,20 @@ export default function Lots() {
                   </table>
                 </DataTableWrap>
               </div>
-              {filtered.length === 0 && <EmptyState>Лоты по текущим фильтрам не найдены.</EmptyState>}
+              {filtered.length === 0 && (
+                <EmptyState
+                  icon={SearchX}
+                  title="Лоты не найдены"
+                  description="По текущим фильтрам нет подходящих лотов. Попробуйте изменить параметры поиска."
+                  action={
+                    search ? (
+                      <button className="platform-btn-secondary" onClick={() => setSearch('')}>
+                        Сбросить поиск
+                      </button>
+                    ) : undefined
+                  }
+                />
+              )}
             </>
           )}
         </SectionCard>

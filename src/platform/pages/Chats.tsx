@@ -2,8 +2,9 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { Check, CheckCheck, Loader2, SendHorizontal } from 'lucide-react';
+import { Check, CheckCheck, Loader2, SendHorizontal, SearchX, MessageSquareQuote, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/app/components/ui/utils';
 import { accountsApi, ApiAccount, ApiChat, ApiMessage, chatsApi, createAccountWebSocket, SendMessageResponse } from '@/lib/api';
 import { sanitizeInput } from '@/lib/sanitize';
 import { EmptyState, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard } from '@/platform/components/primitives';
@@ -833,17 +834,19 @@ export default function Chats() {
                   </button>
                 ))}
                 {filteredChats.length === 0 && chats.length === 0 && (
-                  <EmptyState>Чаты не найдены. Если вы только что добавили аккаунт, подождите 30 секунд и обновите страницу.</EmptyState>
+                  <div className="p-4"><EmptyState icon={SearchX} title="Нет чатов" description="Если вы только что добавили аккаунт, подождите 30 секунд и обновите страницу." /></div>
                 )}
                 {filteredChats.length === 0 && chats.length > 0 && (
-                  <EmptyState>Чаты не найдены по текущему фильтру.</EmptyState>
+                  <div className="p-4"><EmptyState icon={SearchX} title="Чаты не найдены" description="По текущему фильтру ничего не найдено." /></div>
                 )}
               </div>
             </aside>
 
             <section className="platform-chat-thread">
               {!selectedChat ? (
-                <EmptyState>Выберите чат слева.</EmptyState>
+                <div className="h-full flex items-center justify-center p-8">
+                  <EmptyState icon={MessageSquareQuote} title="Выберите чат" description="Выберите собеседника из списка слева, чтобы начать общение." />
+                </div>
               ) : (
                 <>
                   <header className="platform-thread-head">
@@ -869,7 +872,9 @@ export default function Chats() {
                           </button>
                         </div>
                       ) : messages.length === 0 ? (
-                        <EmptyState>Нет сообщений. Напишите первым!</EmptyState>
+                        <div className="h-full flex items-center justify-center p-8">
+                          <EmptyState icon={MessageCircle} title="Нет сообщений" description="Напишите первым, чтобы начать диалог!" />
+                        </div>
                       ) : (
                         threadRenderItems.map(item => {
                           if (item.type === 'separator') {
