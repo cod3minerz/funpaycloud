@@ -25,7 +25,7 @@ type VerifyCodePageProps = {
 export default function VerifyCodePage({ email: rawEmail, mode: rawMode }: VerifyCodePageProps) {
   const router = useRouter();
   const email = rawEmail || "user@funpay.cloud";
-  const mode = rawMode || "register";
+  const mode = rawMode === "reset" ? "reset" : "register";
 
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [seconds, setSeconds] = useState(25);
@@ -94,11 +94,16 @@ export default function VerifyCodePage({ email: rawEmail, mode: rawMode }: Verif
 
     setLoading(true);
     try {
-      await authApi.verify(email, code);
-      clearStoredReferralCode();
-      router.push("/platform/dashboard");
+      if (mode === "reset") {
+        const data = await authApi.verifyResetCode(email, code);
+        router.push(`/auth/reset?token=${encodeURIComponent(data.reset_token)}`);
+      } else {
+        await authApi.verify(email, code);
+        clearStoredReferralCode();
+        router.push("/platform/dashboard");
+      }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Неверный код подтверждения");
+      toast.error(err instanceof Error ? err.message : "Неверный код");
     } finally {
       setLoading(false);
     }
@@ -107,14 +112,13 @@ export default function VerifyCodePage({ email: rawEmail, mode: rawMode }: Verif
   async function handleResend() {
     setResendLoading(true);
     try {
-      // Повторная отправка: регистрируем снова с тем же email
-      // Бэкенд должен повторно отправить письмо
+      await authApi.resendCode(email, mode);
       toast.success("Код отправлен повторно");
       setSeconds(25);
       setDigits(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
-    } catch {
-      toast.error("Не удалось отправить код повторно");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось отправить код повторно");
     } finally {
       setResendLoading(false);
     }
@@ -122,8 +126,8 @@ export default function VerifyCodePage({ email: rawEmail, mode: rawMode }: Verif
 
   return (
     <AuthShell
-      title="Код подтверждения"
-      subtitle="Введите 6-значный код, отправленный на вашу почту."
+      title={mode === "reset" ? "Код восстановления" : "Код подтверждения"}
+      subtitle={mode === "reset" ? "Введите 6-значный код из письма для сброса пароля." : "Введите 6-значный код, отправленный на вашу почту."}
     >
       <form onSubmit={handleSubmit} onPaste={handlePaste} className="space-y-5">
         <div className="rounded-xl border border-[var(--line-2)] bg-[var(--bg-2)] p-3 text-center text-[13px] text-[var(--ink-2)]">
@@ -157,7 +161,7 @@ export default function VerifyCodePage({ email: rawEmail, mode: rawMode }: Verif
           {loading ? (
             <Loader2 size={15} className="animate-spin" />
           ) : (
-            <>Подтвердить <ArrowRight size={15} /></>
+            <>{mode === "reset" ? "Продолжить" : "Подтвердить"} <ArrowRight size={15} /></>
           )}
         </button>
 
@@ -174,7 +178,7 @@ export default function VerifyCodePage({ email: rawEmail, mode: rawMode }: Verif
             </span>
           </button>
           <Link
-            href={mode === "login" ? "/auth/login" : "/auth/register"}
+            href={mode === "reset" ? "/auth/forgot" : "/auth/register"}
             className="inline-flex items-center gap-1.5 text-[var(--muted)] transition hover:text-[var(--ink-2)]"
           >
             <ArrowLeft size={13} />

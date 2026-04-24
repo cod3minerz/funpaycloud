@@ -29,10 +29,12 @@ type DragState = {
   offsetY: number;
 } | null;
 
-const NODE_WIDTH = 206;
-const NODE_HEIGHT = 86;
+const DESKTOP_NODE_WIDTH = 206;
+const DESKTOP_NODE_HEIGHT = 86;
+const COMPACT_NODE_WIDTH = 154;
+const COMPACT_NODE_HEIGHT = 74;
 
-const INITIAL_POSITIONS: Record<MockNodeID, NodePosition> = {
+const DESKTOP_POSITIONS: Record<MockNodeID, NodePosition> = {
   message: { x: 34, y: 78 },
   ai: { x: 298, y: 66 },
   telegram: { x: 560, y: 158 },
@@ -77,30 +79,59 @@ const NODES = [
 ];
 
 export default function LandingMockup() {
-  const [positions, setPositions] = useState<Record<MockNodeID, NodePosition>>(INITIAL_POSITIONS);
+  const [positions, setPositions] = useState<Record<MockNodeID, NodePosition>>(DESKTOP_POSITIONS);
+  const [isCompact, setIsCompact] = useState(false);
   const [dragState, setDragState] = useState<DragState>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
+
+  const nodeWidth = isCompact ? COMPACT_NODE_WIDTH : DESKTOP_NODE_WIDTH;
+  const nodeHeight = isCompact ? COMPACT_NODE_HEIGHT : DESKTOP_NODE_HEIGHT;
+
+  const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+  const getCompactPositions = (canvasWidth: number): Record<MockNodeID, NodePosition> => {
+    const center = (canvasWidth - nodeWidth) / 2;
+    return {
+      message: { x: center - 34, y: 26 },
+      ai: { x: center, y: 102 },
+      telegram: { x: center + 34, y: 178 },
+    };
+  };
+
+  const fitToCanvas = (source: Record<MockNodeID, NodePosition>, width: number, height: number) => {
+    const next = { ...source };
+    (Object.keys(next) as MockNodeID[]).forEach((id) => {
+      next[id] = {
+        x: clamp(next[id].x, 12, width - nodeWidth - 12),
+        y: clamp(next[id].y, 12, height - nodeHeight - 12),
+      };
+    });
+    return next;
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const media = window.matchMedia('(max-width: 768px)');
+    const syncMode = () => setIsCompact(media.matches);
+    syncMode();
+    media.addEventListener('change', syncMode);
+    return () => media.removeEventListener('change', syncMode);
+  }, []);
 
   useEffect(() => {
     const syncBounds = () => {
       if (!canvasRef.current) return;
       const rect = canvasRef.current.getBoundingClientRect();
       setPositions((current) => {
-        const next = { ...current };
-        (Object.keys(next) as MockNodeID[]).forEach((id) => {
-          next[id] = {
-            x: Math.max(12, Math.min(current[id].x, rect.width - NODE_WIDTH - 12)),
-            y: Math.max(12, Math.min(current[id].y, rect.height - NODE_HEIGHT - 12)),
-          };
-        });
-        return next;
+        const base = isCompact ? getCompactPositions(rect.width) : current;
+        return fitToCanvas(base, rect.width, rect.height);
       });
     };
 
     syncBounds();
     window.addEventListener('resize', syncBounds);
     return () => window.removeEventListener('resize', syncBounds);
-  }, []);
+  }, [isCompact, nodeWidth, nodeHeight]);
 
   useEffect(() => {
     if (!dragState) return;
@@ -111,8 +142,8 @@ export default function LandingMockup() {
       const nextX = event.clientX - rect.left - dragState.offsetX;
       const nextY = event.clientY - rect.top - dragState.offsetY;
 
-      const clampedX = Math.max(12, Math.min(nextX, rect.width - NODE_WIDTH - 12));
-      const clampedY = Math.max(12, Math.min(nextY, rect.height - NODE_HEIGHT - 12));
+      const clampedX = clamp(nextX, 12, rect.width - nodeWidth - 12);
+      const clampedY = clamp(nextY, 12, rect.height - nodeHeight - 12);
 
       setPositions((current) => ({
         ...current,
@@ -129,9 +160,10 @@ export default function LandingMockup() {
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
     };
-  }, [dragState]);
+  }, [dragState, nodeHeight, nodeWidth]);
 
   const handlePointerDown = (id: MockNodeID, event: React.PointerEvent<HTMLDivElement>) => {
+    if (isCompact) return;
     if (event.button !== 0) return;
     const rect = event.currentTarget.getBoundingClientRect();
     setDragState({
@@ -141,15 +173,15 @@ export default function LandingMockup() {
     });
   };
 
-  const messageCenterX = positions.message.x + NODE_WIDTH;
-  const messageCenterY = positions.message.y + NODE_HEIGHT / 2;
+  const messageCenterX = positions.message.x + nodeWidth;
+  const messageCenterY = positions.message.y + nodeHeight / 2;
   const aiCenterX = positions.ai.x;
-  const aiCenterY = positions.ai.y + NODE_HEIGHT / 2;
+  const aiCenterY = positions.ai.y + nodeHeight / 2;
 
-  const aiOutX = positions.ai.x + NODE_WIDTH;
-  const aiOutY = positions.ai.y + NODE_HEIGHT / 2;
+  const aiOutX = positions.ai.x + nodeWidth;
+  const aiOutY = positions.ai.y + nodeHeight / 2;
   const tgInX = positions.telegram.x;
-  const tgInY = positions.telegram.y + NODE_HEIGHT / 2;
+  const tgInY = positions.telegram.y + nodeHeight / 2;
 
   return (
     <div className="wrap">
@@ -205,8 +237,8 @@ export default function LandingMockup() {
                 return (
                   <div
                     key={node.id}
-                    className={`mock-flow-node ${node.accent}`}
-                    style={{ left: pos.x, top: pos.y }}
+                    className={`mock-flow-node ${node.accent} ${isCompact ? 'is-compact' : ''}`}
+                    style={{ left: pos.x, top: pos.y, width: nodeWidth, minHeight: nodeHeight }}
                     onPointerDown={(event) => handlePointerDown(node.id, event)}
                   >
                     <div className="mock-flow-node-head">
@@ -220,7 +252,7 @@ export default function LandingMockup() {
 
               <div className="mock-constructor-tip">
                 <Sparkles size={13} />
-                Перетаскивайте узлы, чтобы почувствовать механику конструктора
+                {isCompact ? 'Демо конструктора в режиме просмотра' : 'Перетаскивайте узлы, чтобы почувствовать механику конструктора'}
               </div>
               <div className="mock-constructor-brand">
                 <Cable size={12} />

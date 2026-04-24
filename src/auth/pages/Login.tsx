@@ -91,9 +91,9 @@ export default function LoginPage() {
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <label className="text-[13px] font-semibold text-[var(--ink-2)]">Пароль</label>
-            <span className="text-[12px] font-semibold text-[var(--muted)]">
+            <Link href="/auth/forgot" className="text-[12px] font-semibold text-[var(--muted)] transition hover:text-[var(--accent)]">
               Забыли пароль?
-            </span>
+            </Link>
           </div>
           <input
             className={fieldClass}

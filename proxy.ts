@@ -31,7 +31,14 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  if ((pathname === '/login' || pathname.startsWith('/auth/login') || pathname.startsWith('/auth/register')) && token) {
+  if (
+    (pathname === '/login' ||
+      pathname.startsWith('/auth/login') ||
+      pathname.startsWith('/auth/register') ||
+      pathname.startsWith('/auth/forgot') ||
+      pathname.startsWith('/auth/reset')) &&
+    token
+  ) {
     return NextResponse.redirect(new URL('/platform/dashboard', request.url));
   }
 
@@ -39,5 +46,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/platform/:path*', '/auth/login', '/auth/register', '/login', '/admin/:path*'],
+  matcher: ['/platform/:path*', '/auth/login', '/auth/register', '/auth/forgot', '/auth/reset', '/login', '/admin/:path*'],
 };

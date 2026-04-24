@@ -94,7 +94,11 @@ export default function RegisterPage() {
       );
       router.push(`/auth/verify?mode=register&email=${encodeURIComponent(email.trim())}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Ошибка регистрации");
+      const message = err instanceof Error ? err.message : "Ошибка регистрации";
+      if (message.toLowerCase().includes("почта уже зарегистрирована")) {
+        setFieldErrors((prev) => ({ ...prev, email: "Почта уже зарегистрирована. Войдите в аккаунт." }));
+      }
+      toast.error(message);
     } finally {
       setLoading(false);
     }

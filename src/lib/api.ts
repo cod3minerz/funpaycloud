@@ -6,6 +6,10 @@ const PUBLIC_AUTH_PATHS = new Set([
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/verify',
+  '/api/auth/verify/resend',
+  '/api/auth/password/forgot',
+  '/api/auth/password/verify-code',
+  '/api/auth/password/reset',
   '/api/auth/refresh',
   '/api/auth/csrf',
 ]);
@@ -275,10 +279,34 @@ export const authApi = {
       body: JSON.stringify({ email, code }),
     }),
 
+  resendCode: (email: string, mode: 'register' | 'reset' = 'register') =>
+    apiRequest('/api/auth/verify/resend', {
+      method: 'POST',
+      body: JSON.stringify({ email, mode }),
+    }),
+
   login: (email: string, password: string) =>
     apiRequest<AuthResult>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
+    }),
+
+  forgotPassword: (email: string) =>
+    apiRequest('/api/auth/password/forgot', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  verifyResetCode: (email: string, code: string) =>
+    apiRequest<{ reset_token: string }>('/api/auth/password/verify-code', {
+      method: 'POST',
+      body: JSON.stringify({ email, code }),
+    }),
+
+  resetPassword: (reset_token: string, password: string) =>
+    apiRequest('/api/auth/password/reset', {
+      method: 'POST',
+      body: JSON.stringify({ reset_token, password }),
     }),
 
   me: () => apiRequest<AuthMeData>('/api/auth/me'),

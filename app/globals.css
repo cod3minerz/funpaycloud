@@ -2124,13 +2124,21 @@ body:has(.landing) {
     grid-template-columns: repeat(2, 1fr);
   }
 
+  .landing .mock-side {
+    display: none;
+  }
+
   .landing .mock-body {
-    grid-template-columns: 200px 1fr;
-    min-height: 560px;
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .landing .mock-main {
+    padding: 16px;
   }
 
   .landing .mock-constructor-canvas {
-    min-height: 380px;
+    min-height: 360px;
   }
 
   .landing .cmp-cta {
@@ -2202,21 +2210,16 @@ body:has(.landing) {
     display: none;
   }
 
-  .landing .mock-side {
-    display: none;
-  }
-
-  .landing .mock-body {
-    grid-template-columns: 1fr;
-    min-height: auto;
-  }
-
   .landing .mock-main {
     padding: 14px;
   }
 
   .landing .mock-constructor-canvas {
-    min-height: 300px;
+    min-height: 278px;
+  }
+
+  .landing .mock-flow-node {
+    padding: 8px 10px;
   }
 
   .landing .mock-flow-node-head {
@@ -2224,8 +2227,27 @@ body:has(.landing) {
   }
 
   .landing .mock-flow-node-sub {
-    margin-top: 8px;
-    font-size: 10.5px;
+    margin-top: 6px;
+    font-size: 10px;
+  }
+
+  .landing .mock-constructor-lines path {
+    stroke-width: 1.4;
+  }
+
+  .landing .mock-constructor-tip {
+    left: 10px;
+    right: 10px;
+    bottom: 8px;
+    padding: 6px 9px;
+    font-size: 10px;
+    line-height: 1.25;
+  }
+
+  .landing .mock-constructor-brand {
+    right: 10px;
+    bottom: 10px;
+    font-size: 10px;
   }
 
   .landing .mock-head {
