@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const accessToken = request.cookies.get('fp_access')?.value || request.cookies.get('token')?.value;
   const refreshToken = request.cookies.get('fp_refresh')?.value;
   const token = accessToken || refreshToken;
@@ -8,7 +8,6 @@ export function middleware(request: NextRequest) {
   const legacyAdminToken = request.cookies.get('admin_token')?.value;
   const { pathname } = request.nextUrl;
 
-  // Защита /platform/* — без токена редирект на /auth/login
   if (pathname.startsWith('/platform')) {
     if (!token) {
       return NextResponse.redirect(new URL('/auth/login', request.url));
@@ -32,7 +31,6 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Если пользователь уже залогинен и заходит на страницы авторизации
   if ((pathname === '/login' || pathname.startsWith('/auth/login') || pathname.startsWith('/auth/register')) && token) {
     return NextResponse.redirect(new URL('/platform/dashboard', request.url));
   }

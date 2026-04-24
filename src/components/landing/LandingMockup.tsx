@@ -1,4 +1,156 @@
+'use client';
+
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Activity,
+  BarChart3,
+  Bot,
+  Boxes,
+  Cable,
+  CircleDashed,
+  FolderKanban,
+  MessageSquare,
+  Send,
+  ShoppingCart,
+  Sparkles,
+  Tags,
+} from 'lucide-react';
+
+type MockNodeID = 'message' | 'ai' | 'telegram';
+
+type NodePosition = {
+  x: number;
+  y: number;
+};
+
+type DragState = {
+  id: MockNodeID;
+  offsetX: number;
+  offsetY: number;
+} | null;
+
+const NODE_WIDTH = 206;
+const NODE_HEIGHT = 86;
+
+const INITIAL_POSITIONS: Record<MockNodeID, NodePosition> = {
+  message: { x: 34, y: 78 },
+  ai: { x: 298, y: 66 },
+  telegram: { x: 560, y: 158 },
+};
+
+const SIDEBAR_ITEMS = [
+  { icon: BarChart3, label: 'Главная' },
+  { icon: ShoppingCart, label: 'Заказы' },
+  { icon: MessageSquare, label: 'Чаты', badge: '31' },
+  { icon: Tags, label: 'Лоты' },
+  { icon: Boxes, label: 'Склад' },
+];
+
+const MANAGEMENT_ITEMS = [
+  { icon: Activity, label: 'Аналитика' },
+  { icon: FolderKanban, label: 'Конструктор', active: true },
+  { icon: CircleDashed, label: 'Статус системы' },
+];
+
+const NODES = [
+  {
+    id: 'message' as const,
+    title: 'Новое сообщение',
+    subtitle: 'chat_message',
+    accent: 'is-blue',
+    icon: MessageSquare,
+  },
+  {
+    id: 'ai' as const,
+    title: 'ИИ-ассистент',
+    subtitle: 'Короткий ответ по инструкции',
+    accent: 'is-purple',
+    icon: Bot,
+  },
+  {
+    id: 'telegram' as const,
+    title: 'Отправить в Telegram',
+    subtitle: 'Уведомить о важном диалоге',
+    accent: 'is-green',
+    icon: Send,
+  },
+];
+
 export default function LandingMockup() {
+  const [positions, setPositions] = useState<Record<MockNodeID, NodePosition>>(INITIAL_POSITIONS);
+  const [dragState, setDragState] = useState<DragState>(null);
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const syncBounds = () => {
+      if (!canvasRef.current) return;
+      const rect = canvasRef.current.getBoundingClientRect();
+      setPositions((current) => {
+        const next = { ...current };
+        (Object.keys(next) as MockNodeID[]).forEach((id) => {
+          next[id] = {
+            x: Math.max(12, Math.min(current[id].x, rect.width - NODE_WIDTH - 12)),
+            y: Math.max(12, Math.min(current[id].y, rect.height - NODE_HEIGHT - 12)),
+          };
+        });
+        return next;
+      });
+    };
+
+    syncBounds();
+    window.addEventListener('resize', syncBounds);
+    return () => window.removeEventListener('resize', syncBounds);
+  }, []);
+
+  useEffect(() => {
+    if (!dragState) return;
+
+    const onPointerMove = (event: PointerEvent) => {
+      if (!canvasRef.current) return;
+      const rect = canvasRef.current.getBoundingClientRect();
+      const nextX = event.clientX - rect.left - dragState.offsetX;
+      const nextY = event.clientY - rect.top - dragState.offsetY;
+
+      const clampedX = Math.max(12, Math.min(nextX, rect.width - NODE_WIDTH - 12));
+      const clampedY = Math.max(12, Math.min(nextY, rect.height - NODE_HEIGHT - 12));
+
+      setPositions((current) => ({
+        ...current,
+        [dragState.id]: { x: clampedX, y: clampedY },
+      }));
+    };
+
+    const onPointerUp = () => setDragState(null);
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp, { once: true });
+
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+  }, [dragState]);
+
+  const handlePointerDown = (id: MockNodeID, event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    setDragState({
+      id,
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top,
+    });
+  };
+
+  const messageCenterX = positions.message.x + NODE_WIDTH;
+  const messageCenterY = positions.message.y + NODE_HEIGHT / 2;
+  const aiCenterX = positions.ai.x;
+  const aiCenterY = positions.ai.y + NODE_HEIGHT / 2;
+
+  const aiOutX = positions.ai.x + NODE_WIDTH;
+  const aiOutY = positions.ai.y + NODE_HEIGHT / 2;
+  const tgInX = positions.telegram.x;
+  const tgInY = positions.telegram.y + NODE_HEIGHT / 2;
+
   return (
     <div className="wrap">
       <div className="mock-frame">
@@ -8,194 +160,71 @@ export default function LandingMockup() {
             <i />
             <i />
           </div>
-          <div className="url mono">app.funpaycloud.io / dashboard</div>
+          <div className="url mono">funpay.cloud - самый быстрый облачный сервис</div>
           <div className="mono mock-version">v2.4.1</div>
         </div>
 
         <div className="mock-body">
           <aside className="mock-side">
             <div className="side-title">Операции</div>
-            <div className="side-item active">
-              <span className="sq" />Дашборд
-            </div>
-            <div className="side-item">
-              <span className="sq" />Заказы<span className="badge">94</span>
-            </div>
-            <div className="side-item">
-              <span className="sq" />Чаты<span className="badge">31</span>
-            </div>
-            <div className="side-item">
-              <span className="sq" />Лоты
-            </div>
-            <div className="side-item">
-              <span className="sq" />Склад
-            </div>
-            <div className="side-title side-title-gap">Аналитика</div>
-            <div className="side-item">
-              <span className="sq" />Отчёты
-            </div>
-            <div className="side-item">
-              <span className="sq" />Автоматизация
-            </div>
-            <div className="side-item">
-              <span className="sq" />Статус системы
-            </div>
+            {SIDEBAR_ITEMS.map((item) => (
+              <div key={item.label} className="side-item">
+                <item.icon size={14} className="ico" />
+                {item.label}
+                {item.badge ? <span className="badge">{item.badge}</span> : null}
+              </div>
+            ))}
+            <div className="side-title side-title-gap">Управление</div>
+            {MANAGEMENT_ITEMS.map((item) => (
+              <div key={item.label} className={`side-item ${item.active ? 'active' : ''}`}>
+                <item.icon size={14} className="ico" />
+                {item.label}
+              </div>
+            ))}
           </aside>
 
-          <div className="mock-main">
+          <div className="mock-main constructor-main">
             <div className="mock-head">
-              <h3>Дашборд · Продавец 24/7</h3>
-              <span className="period mono">последние 24ч ▾</span>
+              <h3>Конструктор сценариев</h3>
+              <span className="period mono">режим демо</span>
             </div>
 
-            <div className="kpis">
-              <div className="kpi">
-                <div className="lbl">Оборот 24ч</div>
-                <div className="val">128 540 ₽</div>
-                <div className="chg">▲ 18.4%</div>
-              </div>
-              <div className="kpi">
-                <div className="lbl">Новые заказы</div>
-                <div className="val">94</div>
-                <div className="chg">▲ 12 от среднего</div>
-              </div>
-              <div className="kpi">
-                <div className="lbl">Активные чаты</div>
-                <div className="val">31</div>
-                <div className="chg neutral">· AI ведёт 22</div>
-              </div>
-              <div className="kpi">
-                <div className="lbl">Аптайм</div>
-                <div className="val">99.98%</div>
-                <div className="chg">● online</div>
-              </div>
-            </div>
+            <div className="mock-constructor-canvas" ref={canvasRef}>
+              <svg className="mock-constructor-lines" viewBox="0 0 1000 420" preserveAspectRatio="none">
+                <path
+                  d={`M ${messageCenterX} ${messageCenterY} C ${messageCenterX + 70} ${messageCenterY}, ${aiCenterX - 70} ${aiCenterY}, ${aiCenterX} ${aiCenterY}`}
+                />
+                <path
+                  d={`M ${aiOutX} ${aiOutY} C ${aiOutX + 70} ${aiOutY}, ${tgInX - 70} ${tgInY}, ${tgInX} ${tgInY}`}
+                />
+              </svg>
 
-            <div className="mock-cols">
-              <div className="panel">
-                <div className="panel-h">
-                  Последние заказы <span className="link">смотреть все →</span>
-                </div>
-                <table className="orders">
-                  <thead>
-                    <tr>
-                      <th>Заказ</th>
-                      <th>Покупатель</th>
-                      <th>Сумма</th>
-                      <th>Статус</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="mono">#A-48215</td>
-                      <td>dmitry_p</td>
-                      <td>1 490 ₽</td>
-                      <td>
-                        <span className="pill ok">Выдан</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="mono">#A-48214</td>
-                      <td>nikita_x</td>
-                      <td>3 200 ₽</td>
-                      <td>
-                        <span className="pill ok">Выдан</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="mono">#A-48213</td>
-                      <td>elena_r</td>
-                      <td>890 ₽</td>
-                      <td>
-                        <span className="pill new">AI отвечает</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="mono">#A-48212</td>
-                      <td>pro_gamer</td>
-                      <td>5 400 ₽</td>
-                      <td>
-                        <span className="pill wait">Проверка</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="mono">#A-48211</td>
-                      <td>kirill_77</td>
-                      <td>2 150 ₽</td>
-                      <td>
-                        <span className="pill ok">Выдан</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="mock-right-column">
-                <div className="panel">
-                  <div className="panel-h">Недавние диалоги</div>
-                  <div className="chat-list">
-                    <div className="chat-row">
-                      <div className="avatar">D</div>
-                      <div className="chat-txt">
-                        <div className="nm">dmitry_p</div>
-                        <div className="ms">Оплата прошла, жду ключ…</div>
-                      </div>
+              {NODES.map((node) => {
+                const Icon = node.icon;
+                const pos = positions[node.id];
+                return (
+                  <div
+                    key={node.id}
+                    className={`mock-flow-node ${node.accent}`}
+                    style={{ left: pos.x, top: pos.y }}
+                    onPointerDown={(event) => handlePointerDown(node.id, event)}
+                  >
+                    <div className="mock-flow-node-head">
+                      <Icon size={14} />
+                      <span>{node.title}</span>
                     </div>
-                    <div className="chat-row">
-                      <div className="avatar">E</div>
-                      <div className="chat-txt">
-                        <div className="nm">elena_r</div>
-                        <div className="ms">AI: ключ отправлен, удачной игры!</div>
-                      </div>
-                    </div>
-                    <div className="chat-row">
-                      <div className="avatar">K</div>
-                      <div className="chat-txt">
-                        <div className="nm">kirill_77</div>
-                        <div className="ms">Спасибо, всё работает ✓</div>
-                      </div>
-                    </div>
+                    <div className="mock-flow-node-sub">{node.subtitle}</div>
                   </div>
-                </div>
+                );
+              })}
 
-                <div className="panel">
-                  <div className="panel-h">Статус системы</div>
-                  <div className="status-grid">
-                    <div className="status-row">
-                      <span className="name">Автовыдача</span>
-                      <span className="val">
-                        <span className="d" />работает
-                      </span>
-                    </div>
-                    <div className="status-row">
-                      <span className="name">Автоподнятие</span>
-                      <span className="val">
-                        <span className="d" />работает
-                      </span>
-                    </div>
-                    <div className="status-row">
-                      <span className="name">AI-ответы</span>
-                      <span className="val">
-                        <span className="d" />работает
-                      </span>
-                    </div>
-                    <div className="status-row">
-                      <span className="name">Telegram-бот</span>
-                      <span className="val">
-                        <span className="d" />online
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="panel">
-                  <div className="panel-h">Быстрые действия</div>
-                  <div className="quick">
-                    <span className="q">Поднять лоты</span>
-                    <span className="q">Проверить чаты</span>
-                    <span className="q">Обновить склад</span>
-                  </div>
-                </div>
+              <div className="mock-constructor-tip">
+                <Sparkles size={13} />
+                Перетаскивайте узлы, чтобы почувствовать механику конструктора
+              </div>
+              <div className="mock-constructor-brand">
+                <Cable size={12} />
+                Flow
               </div>
             </div>
           </div>

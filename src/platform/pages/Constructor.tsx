@@ -17,7 +17,8 @@ import {
   Handle,
   Position,
   useReactFlow,
-  ReactFlowProvider
+  ReactFlowProvider,
+  NodeProps
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { accountsApi, scenariosApi, ApiAccount, ApiScenario, ApiScenarioLog } from '@/lib/api';
@@ -27,7 +28,33 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 
 // --- NODE COMPONENT DEFINITIONS ---
 
-const TriggerNode = ({ id, data }: any) => {
+type ConstructorNodeData = {
+  subtype?: string;
+  readOnly?: boolean;
+  keyword?: string;
+  client_type?: string;
+  text?: string;
+  prompt?: string;
+  [key: string]: unknown;
+};
+
+type ConstructorNode = Node<ConstructorNodeData>;
+
+type ConstructorFlowData = {
+  nodes?: ConstructorNode[];
+  edges?: Edge[];
+};
+
+function parseFlowData(input: unknown): ConstructorFlowData {
+  if (!input || typeof input !== 'object') return {};
+  const candidate = input as { nodes?: unknown; edges?: unknown };
+  return {
+    nodes: Array.isArray(candidate.nodes) ? (candidate.nodes as ConstructorNode[]) : [],
+    edges: Array.isArray(candidate.edges) ? (candidate.edges as Edge[]) : [],
+  };
+}
+
+const TriggerNode = ({ id, data }: NodeProps<ConstructorNode>) => {
   const { updateNodeData } = useReactFlow();
   const readOnly = Boolean(data?.readOnly);
   const label = data.subtype === 'new_order' ? 'Новый заказ' : data.subtype === 'manual_start' ? 'Ручной запуск' : 'Новое сообщение';
@@ -47,7 +74,7 @@ const TriggerNode = ({ id, data }: any) => {
   );
 };
 
-const ConditionNode = ({ id, data }: any) => {
+const ConditionNode = ({ id, data }: NodeProps<ConstructorNode>) => {
   const { updateNodeData } = useReactFlow();
   const readOnly = Boolean(data?.readOnly);
   
@@ -96,7 +123,7 @@ const ConditionNode = ({ id, data }: any) => {
   );
 };
 
-const ActionNode = ({ id, data }: any) => {
+const ActionNode = ({ id, data }: NodeProps<ConstructorNode>) => {
   const { updateNodeData } = useReactFlow();
   const readOnly = Boolean(data?.readOnly);
   
@@ -132,7 +159,7 @@ const ActionNode = ({ id, data }: any) => {
   );
 };
 
-const AiNode = ({ id, data }: any) => {
+const AiNode = ({ id, data }: NodeProps<ConstructorNode>) => {
   const { updateNodeData } = useReactFlow();
   const readOnly = Boolean(data?.readOnly);
   
@@ -181,7 +208,7 @@ function ConstructorFlow() {
   const [scenarios, setScenarios] = useState<ApiScenario[]>([]);
   const [selectedScenarioID, setSelectedScenarioID] = useState<string | null>(null);
   
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<ConstructorNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   
   const [loading, setLoading] = useState(true);
@@ -201,8 +228,8 @@ function ConstructorFlow() {
   const [deletingScenario, setDeletingScenario] = useState(false);
   const [isCompactReadOnly, setIsCompactReadOnly] = useState(false);
 
-  const normalizeNodeType = useCallback((node: Node): Node => {
-    const subtype = (node.data as any)?.subtype;
+  const normalizeNodeType = useCallback((node: ConstructorNode): ConstructorNode => {
+    const subtype = node.data?.subtype;
     const knownTypes = new Set(['triggerNode', 'conditionNode', 'actionNode', 'aiNode']);
     if (knownTypes.has(String(node.type || ''))) return node;
 
@@ -223,7 +250,7 @@ function ConstructorFlow() {
   }, []);
 
   const applyReadonlyFlag = useCallback(
-    (list: Node[]): Node[] =>
+    (list: ConstructorNode[]): ConstructorNode[] =>
       list.map((node) => ({
         ...node,
         selected: isCompactReadOnly ? false : node.selected,
@@ -310,11 +337,11 @@ function ConstructorFlow() {
                 ? rawFlow
                 : {};
           const loadedNodes = applyReadonlyFlag(
-            (Array.isArray((parsed as any).nodes) ? (parsed as any).nodes : []).map((n: Node) =>
+            (parseFlowData(parsed).nodes || []).map((n: ConstructorNode) =>
               normalizeNodeType(n),
             ),
           );
-          const loadedEdges = Array.isArray((parsed as any).edges) ? (parsed as any).edges : [];
+          const loadedEdges = parseFlowData(parsed).edges || [];
           setNodes(loadedNodes);
           setEdges(loadedEdges);
           requestAnimationFrame(() => {
@@ -496,9 +523,9 @@ function ConstructorFlow() {
   };
 
   // Add Specific Node
-  const handleAddNode = (type: string, subtype: string, initialData: any = {}) => {
+  const handleAddNode = (type: string, subtype: string, initialData: Record<string, unknown> = {}) => {
     if (isCompactReadOnly) return;
-    const newNode: Node = {
+    const newNode: ConstructorNode = {
       id: `node_${Date.now()}`,
       type,
       position: { x: Math.random() * 200 + 100, y: Math.random() * 200 + 100 },
@@ -548,32 +575,40 @@ function ConstructorFlow() {
 
         {/* TOP LEFT: Selectors */}
         <FlowPanel position="top-left" className="m-4">
-          <div className="flex bg-[var(--pf-surface)] border border-[var(--pf-border)] p-1.5 rounded-xl shadow-lg animate-in fade-in zoom-in-95">
-            <select 
-              className="platform-select text-[12px] h-9 border-none bg-transparent min-w-[150px] max-w-[200px]"
-              value={selectedAccountID || ''}
-              onChange={e => setSelectedAccountID(Number(e.target.value))}
-            >
-              <option value="" disabled>Выберите аккаунт</option>
-              {accounts.map(acc => (
-                <option key={acc.id} value={acc.id}>{acc.username || `Account #${acc.id}`}</option>
-              ))}
-            </select>
-            <div className="w-[1px] bg-[var(--pf-border)] mx-1" />
-            <select 
-              className="platform-select text-[12px] h-9 border-none bg-transparent min-w-[150px] max-w-[200px]"
-              value={selectedScenarioID || ''}
-              onChange={e => setSelectedScenarioID(e.target.value)}
-            >
-              <option value="">Выберите сценарий</option>
-              {scenarios.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
+          <div className="flex flex-col items-start gap-2">
+            <div className="flex bg-[var(--pf-surface)] border border-[var(--pf-border)] p-1.5 rounded-xl shadow-lg animate-in fade-in zoom-in-95">
+              <select 
+                className="platform-select text-[12px] h-9 border-none bg-transparent min-w-[150px] max-w-[200px]"
+                value={selectedAccountID || ''}
+                onChange={e => setSelectedAccountID(Number(e.target.value))}
+              >
+                <option value="" disabled>Выберите аккаунт</option>
+                {accounts.map(acc => (
+                  <option key={acc.id} value={acc.id}>{acc.username || `Account #${acc.id}`}</option>
+                ))}
+              </select>
+              <div className="w-[1px] bg-[var(--pf-border)] mx-1" />
+              <select 
+                className="platform-select text-[12px] h-9 border-none bg-transparent min-w-[150px] max-w-[200px]"
+                value={selectedScenarioID || ''}
+                onChange={e => setSelectedScenarioID(e.target.value)}
+              >
+                <option value="">Выберите сценарий</option>
+                {scenarios.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            {isCompactReadOnly && (
+              <div className="inline-flex h-8 items-center rounded-lg border border-[var(--pf-border)] bg-[var(--pf-surface)] px-3 text-[11px] font-medium text-[var(--pf-text-dim)]">
+                Режим просмотра
+              </div>
+            )}
           </div>
         </FlowPanel>
 
         {/* TOP RIGHT: Actions */}
+        {!isCompactReadOnly && (
         <FlowPanel position="top-right" className="m-4">
           <div className="flex gap-2">
             <button 
@@ -583,42 +618,35 @@ function ConstructorFlow() {
             >
               <History size={16} className="mr-2" /> История
             </button>
-            {isCompactReadOnly ? (
-              <div className="inline-flex h-10 items-center rounded-xl border border-[var(--pf-border)] bg-[var(--pf-surface)] px-3 text-xs font-medium text-[var(--pf-text-dim)]">
-                Режим просмотра
-              </div>
-            ) : (
-              <>
-                <button
-                  className="platform-btn-secondary h-10 px-4 rounded-xl shadow-lg bg-[var(--pf-surface)] hover:bg-[var(--pf-surface-2)] border-[var(--pf-border)]"
-                  onClick={() => {
-                    setNewScenarioName('');
-                    setCreateDialogOpen(true);
-                  }}
-                  disabled={!selectedAccountID}
-                >
-                  <Plus size={16} className="mr-2" /> Создать
-                </button>
-                <button
-                  className="platform-btn-secondary h-10 px-4 rounded-xl shadow-lg bg-[var(--pf-surface)] hover:bg-[color-mix(in_srgb,var(--pf-danger)_10%,transparent)] border-[var(--pf-border)] disabled:opacity-50"
-                  onClick={() => setDeleteDialogOpen(true)}
-                  disabled={!selectedScenarioID || deletingScenario}
-                >
-                  {deletingScenario ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Trash2 size={16} className="mr-2" />}
-                  Удалить
-                </button>
-                <button 
-                  className="platform-btn-primary h-10 px-4 rounded-xl shadow-lg" 
-                  onClick={handleSave} 
-                  disabled={saving || !selectedScenarioID}
-                >
-                  {saving ? <Loader2 className="animate-spin mr-2" size={16} /> : <Save className="mr-2" size={16} />}
-                  Сохранить
-                </button>
-              </>
-            )}
+            <button
+              className="platform-btn-secondary h-10 px-4 rounded-xl shadow-lg bg-[var(--pf-surface)] hover:bg-[var(--pf-surface-2)] border-[var(--pf-border)]"
+              onClick={() => {
+                setNewScenarioName('');
+                setCreateDialogOpen(true);
+              }}
+              disabled={!selectedAccountID}
+            >
+              <Plus size={16} className="mr-2" /> Создать
+            </button>
+            <button
+              className="platform-btn-secondary h-10 px-4 rounded-xl shadow-lg bg-[var(--pf-surface)] hover:bg-[color-mix(in_srgb,var(--pf-danger)_10%,transparent)] border-[var(--pf-border)] disabled:opacity-50"
+              onClick={() => setDeleteDialogOpen(true)}
+              disabled={!selectedScenarioID || deletingScenario}
+            >
+              {deletingScenario ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Trash2 size={16} className="mr-2" />}
+              Удалить
+            </button>
+            <button 
+              className="platform-btn-primary h-10 px-4 rounded-xl shadow-lg" 
+              onClick={handleSave} 
+              disabled={saving || !selectedScenarioID}
+            >
+              {saving ? <Loader2 className="animate-spin mr-2" size={16} /> : <Save className="mr-2" size={16} />}
+              Сохранить
+            </button>
           </div>
         </FlowPanel>
+        )}
 
         {/* BOTTOM: Node Palette or Toolbar */}
         {!isCompactReadOnly && (
