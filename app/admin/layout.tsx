@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Activity, Ban, LayoutDashboard, LogOut, Logs, PlayCircle, Users, Network, Ticket } from 'lucide-react';
 import { clearAdminToken } from '@/lib/auth';
+import { adminApi } from '@/lib/api';
 
 const navItems = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -60,9 +61,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           <button
             type="button"
-            onClick={() => {
-              clearAdminToken();
-              router.push('/admin/login');
+            onClick={async () => {
+              try {
+                await adminApi.logout();
+              } catch {
+                // no-op: local cleanup below still runs
+              } finally {
+                clearAdminToken();
+                router.push('/admin/login');
+              }
             }}
             className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-800/70 text-sm font-medium text-slate-200 hover:border-red-500/40 hover:text-red-300"
           >

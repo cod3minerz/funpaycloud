@@ -1,4 +1,4 @@
-import { clearAdminToken, getAdminToken, logout } from './auth';
+import { clearAdminToken, logout } from './auth';
 
 const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://api.funpay.cloud').replace(/\/+$/, '');
 
@@ -182,14 +182,11 @@ export async function adminApiRequest<T = unknown>(
     throw new ApiError(`Неверный путь Admin API: ${path}`);
   }
 
-  const token = getAdminToken();
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> | undefined),
   };
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  if (options.body && !(options.body instanceof FormData) && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
   }
 
   let response: Response;
@@ -200,8 +197,7 @@ export async function adminApiRequest<T = unknown>(
       ...options,
       headers,
       signal: controller.signal,
-      // Admin auth is header-based; do not send browser cookies to keep headers compact.
-      credentials: 'omit',
+      credentials: 'include',
     });
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
@@ -1175,7 +1171,7 @@ export type AdminChatRuntime = {
 
 export const adminApi = {
   login: (email: string, password: string, totp: string) =>
-    adminApiRequest<{ token: string; user: { id: number; email: string } }>('/admin-api/auth/login', {
+    adminApiRequest<{ user: { id: number; email: string } }>('/admin-api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password, totp }),
     }),
@@ -1209,11 +1205,7 @@ export const adminApi = {
     if (params.from) query.set('from', params.from);
     if (params.to) query.set('to', params.to);
     return fetch(`/admin-api/logs?${query.toString()}`, {
-      headers: (() => {
-        const token = getAdminToken();
-        return token ? { Authorization: `Bearer ${token}` } : {};
-      })(),
-      credentials: 'omit',
+      credentials: 'include',
     });
   },
   users: (params: { page?: number; limit?: number; search?: string }) => {

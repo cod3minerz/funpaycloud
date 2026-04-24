@@ -1,13 +1,26 @@
 import type { NextConfig } from 'next';
 import path from 'path';
 import createMDX from '@next/mdx';
+import WebpackObfuscator from 'webpack-obfuscator';
 
 const withMDX = createMDX({
   extension: /\.(md|mdx)$/,
 });
 
+const isProduction = process.env.NODE_ENV === 'production';
+const enableObfuscation = isProduction && process.env.NEXT_DISABLE_OBFUSCATION !== 'true';
+const scriptSrc = [
+  "'self'",
+  "'unsafe-inline'",
+  ...(isProduction ? [] : ["'unsafe-eval'"]),
+  'https://www.googletagmanager.com',
+  'https://mc.yandex.ru',
+  'https://yastatic.net',
+].join(' ');
+
 const config: NextConfig = {
   pageExtensions: ['ts', 'tsx', 'md', 'mdx'],
+  productionBrowserSourceMaps: false,
   experimental: {
     optimizePackageImports: ['lucide-react', 'recharts'],
   },
@@ -27,7 +40,7 @@ const config: NextConfig = {
           {
             key: 'Content-Security-Policy',
             value:
-              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://mc.yandex.ru https://yastatic.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https: wss: https://mc.yandex.ru; frame-ancestors 'none'; base-uri 'self'; object-src 'none'",
+              `default-src 'self'; script-src ${scriptSrc}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https: wss: https://mc.yandex.ru; frame-ancestors 'none'; base-uri 'self'; object-src 'none'`,
           },
         ],
       },
@@ -66,6 +79,28 @@ const config: NextConfig = {
     resolveAlias: {
       '@': path.resolve(__dirname, 'src'),
     },
+  },
+  webpack: (webpackConfig, { dev, isServer }) => {
+    if (!dev && !isServer && enableObfuscation) {
+      webpackConfig.plugins.push(
+        new WebpackObfuscator(
+          {
+            rotateStringArray: true,
+            stringArray: true,
+            stringArrayThreshold: 0.75,
+            deadCodeInjection: false,
+            debugProtection: false,
+            selfDefending: true,
+            simplify: true,
+            splitStrings: true,
+            splitStringsChunkLength: 8,
+            unicodeEscapeSequence: false,
+          },
+          ['**/framework-*.js', '**/main-*.js', '**/webpack-*.js'],
+        ),
+      );
+    }
+    return webpackConfig;
   },
 };
 

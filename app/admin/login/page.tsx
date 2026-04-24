@@ -4,7 +4,6 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ShieldCheck } from 'lucide-react';
 import { adminApi } from '@/lib/api';
-import { setAdminToken } from '@/lib/auth';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -24,8 +23,7 @@ export default function AdminLoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await adminApi.login(email.trim(), password, totp.trim());
-      setAdminToken(response.token);
+      await adminApi.login(email.trim(), password, totp.trim());
       router.push('/admin/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка входа');

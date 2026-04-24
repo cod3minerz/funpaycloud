@@ -1,8 +1,5 @@
 'use client';
 
-const ADMIN_TOKEN_KEY = 'admin_token';
-const ADMIN_AUTH_COOKIE = 'admin_auth';
-
 export function getToken(): string | null {
   return null;
 }
@@ -81,24 +78,19 @@ export function logout(): void {
 }
 
 export function getAdminToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(ADMIN_TOKEN_KEY);
+  return null;
 }
 
-export function setAdminToken(token: string): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(ADMIN_TOKEN_KEY, token);
-  // Keep only a tiny marker cookie for middleware redirects, not full JWT.
-  document.cookie = `${ADMIN_AUTH_COOKIE}=1; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
-  // Cleanup legacy cookie that stored full admin JWT.
-  document.cookie = 'admin_token=; path=/; max-age=0';
+export function setAdminToken(_token: string): void {
+  // Admin auth now cookie-first (HttpOnly cookie from backend).
 }
 
 export function clearAdminToken(): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(ADMIN_TOKEN_KEY);
-  document.cookie = `${ADMIN_AUTH_COOKIE}=; path=/; max-age=0`;
+  document.cookie = 'fp_admin=; path=/; max-age=0';
+  document.cookie = 'fp_admin=; path=/; max-age=0; domain=.funpay.cloud';
   document.cookie = 'admin_token=; path=/; max-age=0';
+  document.cookie = 'admin_auth=; path=/; max-age=0';
 }
 
 export function logoutAdmin(): void {

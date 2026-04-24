@@ -4,7 +4,7 @@ export function middleware(request: NextRequest) {
   const accessToken = request.cookies.get('fp_access')?.value || request.cookies.get('token')?.value;
   const refreshToken = request.cookies.get('fp_refresh')?.value;
   const token = accessToken || refreshToken;
-  const adminSession = request.cookies.get('admin_auth')?.value || request.cookies.get('admin_token')?.value;
+  const adminSession = request.cookies.get('fp_admin')?.value || request.cookies.get('admin_auth')?.value || request.cookies.get('admin_token')?.value;
   const legacyAdminToken = request.cookies.get('admin_token')?.value;
   const { pathname } = request.nextUrl;
 
@@ -24,6 +24,7 @@ export function middleware(request: NextRequest) {
       if (legacyAdminToken) {
         response.cookies.set('admin_token', '', { path: '/', maxAge: 0 });
       }
+      response.cookies.set('admin_auth', '', { path: '/', maxAge: 0 });
       return response;
     }
     if (!adminSession) {

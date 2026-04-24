@@ -15,11 +15,19 @@ async function proxyToAdmin(request: NextRequest, params: { path?: string[] }) {
   const headers = new Headers();
   const contentType = request.headers.get('content-type');
   const accept = request.headers.get('accept');
-  const auth = request.headers.get('authorization');
+  const cookie = request.headers.get('cookie');
 
   if (contentType) headers.set('Content-Type', contentType);
   if (accept) headers.set('Accept', accept);
-  if (auth) headers.set('Authorization', auth);
+  if (cookie) {
+    const adminCookie = cookie
+      .split(';')
+      .map(part => part.trim())
+      .find(part => part.startsWith('fp_admin='));
+    if (adminCookie) {
+      headers.set('Cookie', adminCookie);
+    }
+  }
 
   // Ensure exactly one admin key header from server env.
   headers.delete('X-Admin-Key');
