@@ -153,8 +153,14 @@ export default function Accounts() {
   const [showProxyDialog, setShowProxyDialog] = useState(false);
   const [proxyAccountID, setProxyAccountID] = useState<number | null>(null);
   const [proxyConnecting, setProxyConnecting] = useState(false);
+  const [proxyConnectingMode, setProxyConnectingMode] = useState<'free' | 'external' | null>(null);
   const [proxyConnectError, setProxyConnectError] = useState<string | null>(null);
   const [proxySupportURL, setProxySupportURL] = useState('https://t.me/funpaycloud_support');
+  const [externalProxyHost, setExternalProxyHost] = useState('');
+  const [externalProxyPort, setExternalProxyPort] = useState('8080');
+  const [externalProxyProtocol, setExternalProxyProtocol] = useState<'HTTP' | 'HTTPS' | 'SOCKS5'>('HTTP');
+  const [externalProxyUsername, setExternalProxyUsername] = useState('');
+  const [externalProxyPassword, setExternalProxyPassword] = useState('');
   const [, setMinuteTick] = useState(Date.now());
 
   async function loadAccounts() {
@@ -336,15 +342,22 @@ export default function Accounts() {
   const openProxyConnectDialog = (accountID: number) => {
     setProxyAccountID(accountID);
     setProxyConnectError(null);
+    setProxyConnectingMode(null);
+    setExternalProxyHost('');
+    setExternalProxyPort('8080');
+    setExternalProxyProtocol('HTTP');
+    setExternalProxyUsername('');
+    setExternalProxyPassword('');
     setShowProxyDialog(true);
   };
 
   async function connectFreeProxy() {
     if (!proxyTargetAccount) return;
     setProxyConnecting(true);
+    setProxyConnectingMode('free');
     setProxyConnectError(null);
     try {
-      const result = await accountsApi.connectProxy(proxyTargetAccount.id, 'free');
+      const result = await accountsApi.connectProxy(proxyTargetAccount.id, { mode: 'free' });
       if (result?.support_url) {
         setProxySupportURL(result.support_url);
       }
@@ -361,6 +374,53 @@ export default function Accounts() {
       }
     } finally {
       setProxyConnecting(false);
+      setProxyConnectingMode(null);
+    }
+  }
+
+  async function connectExternalProxy() {
+    if (!proxyTargetAccount) return;
+    const host = sanitizeInput(externalProxyHost).trim().toLowerCase();
+    const port = Number(externalProxyPort);
+    const username = sanitizeInput(externalProxyUsername).trim();
+    const password = sanitizeInput(externalProxyPassword).trim();
+
+    if (!host) {
+      const message = 'Введите хост внешнего прокси';
+      setProxyConnectError(message);
+      toast.error(message);
+      return;
+    }
+    if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+      const message = 'Порт должен быть числом от 1 до 65535';
+      setProxyConnectError(message);
+      toast.error(message);
+      return;
+    }
+
+    setProxyConnecting(true);
+    setProxyConnectingMode('external');
+    setProxyConnectError(null);
+    try {
+      const result = await accountsApi.connectProxy(proxyTargetAccount.id, {
+        mode: 'external',
+        protocol: externalProxyProtocol,
+        host,
+        port,
+        username: username || undefined,
+        password: password || undefined,
+      });
+      toast.success(result?.label || 'Внешний прокси подключен');
+      await loadAccounts();
+      setShowProxyDialog(false);
+      setProxyAccountID(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Не удалось подключить внешний прокси';
+      setProxyConnectError(message);
+      toast.error(message);
+    } finally {
+      setProxyConnecting(false);
+      setProxyConnectingMode(null);
     }
   }
 
@@ -869,6 +929,12 @@ export default function Accounts() {
           if (!open) {
             setProxyAccountID(null);
             setProxyConnectError(null);
+            setProxyConnectingMode(null);
+            setExternalProxyHost('');
+            setExternalProxyPort('8080');
+            setExternalProxyProtocol('HTTP');
+            setExternalProxyUsername('');
+            setExternalProxyPassword('');
           }
         }}
       >
@@ -905,7 +971,7 @@ export default function Accounts() {
                   />
                 </div>
               </div>
-              {proxyConnecting ? (
+              {proxyConnecting && proxyConnectingMode === 'free' ? (
                 <span className="platform-proxy-card-badge">
                   <Loader2 size={13} className="animate-spin" />
                   Подключаем...
@@ -940,7 +1006,7 @@ export default function Accounts() {
               </span>
             </div>
 
-            <div className="platform-proxy-card platform-proxy-card-muted">
+            <div className="platform-proxy-card platform-proxy-card-action">
               <div className="platform-proxy-card-content">
                 <h4 className="platform-proxy-card-title">Внешний прокси</h4>
                 <p className="platform-proxy-card-description">
@@ -955,11 +1021,73 @@ export default function Accounts() {
                     className="h-[118px] w-auto object-contain object-right"
                   />
                 </div>
+                <div className="mt-3 grid gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_110px]">
+                    <input
+                      value={externalProxyHost}
+                      onChange={event => setExternalProxyHost(event.target.value)}
+                      placeholder="host или ip"
+                      className="platform-input h-10"
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                    <input
+                      value={externalProxyPort}
+                      onChange={event => setExternalProxyPort(event.target.value.replace(/[^\d]/g, '').slice(0, 5))}
+                      placeholder="port"
+                      inputMode="numeric"
+                      className="platform-input h-10"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    <select
+                      value={externalProxyProtocol}
+                      onChange={event => setExternalProxyProtocol(event.target.value as 'HTTP' | 'HTTPS' | 'SOCKS5')}
+                      className="platform-select h-10 min-w-0"
+                    >
+                      <option value="HTTP">HTTP</option>
+                      <option value="HTTPS">HTTPS</option>
+                      <option value="SOCKS5">SOCKS5</option>
+                    </select>
+                    <input
+                      value={externalProxyUsername}
+                      onChange={event => setExternalProxyUsername(event.target.value)}
+                      placeholder="логин (опц.)"
+                      className="platform-input h-10"
+                      autoComplete="off"
+                    />
+                    <input
+                      value={externalProxyPassword}
+                      onChange={event => setExternalProxyPassword(event.target.value)}
+                      placeholder="пароль (опц.)"
+                      className="platform-input h-10"
+                      type="password"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                </div>
               </div>
-              <span className="platform-proxy-card-badge">
-                <BadgeDollarSign size={13} />
-                Скоро
-              </span>
+              <button
+                type="button"
+                className="platform-proxy-card-badge"
+                onClick={event => {
+                  event.stopPropagation();
+                  void connectExternalProxy();
+                }}
+                disabled={proxyConnecting || !proxyTargetAccount}
+              >
+                {proxyConnecting && proxyConnectingMode === 'external' ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" />
+                    Подключаем...
+                  </>
+                ) : (
+                  <>
+                    <Network size={13} />
+                    Подключить
+                  </>
+                )}
+              </button>
             </div>
           </div>
 

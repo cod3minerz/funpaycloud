@@ -334,6 +334,17 @@ export type ApiAccount = {
   proxy_max_accounts?: number;
 };
 
+export type ConnectProxyPayload =
+  | { mode: 'free' | 'individual' }
+  | {
+      mode: 'external';
+      protocol: 'HTTP' | 'HTTPS' | 'SOCKS5';
+      host: string;
+      port: number;
+      username?: string;
+      password?: string;
+    };
+
 export const accountsApi = {
   list: () => apiRequest<ApiAccount[]>('/api/accounts'),
   add: (golden_key: string) =>
@@ -368,7 +379,7 @@ export const accountsApi = {
     apiRequest<{ started: number; failed: Record<string, string> }>('/api/accounts/runtime/start-all', {
       method: 'POST',
     }),
-  connectProxy: (id: number | string, mode: 'free' | 'individual') =>
+  connectProxy: (id: number | string, payload: ConnectProxyPayload | 'free' | 'individual') =>
     apiRequest<{
       proxy_id: number;
       shared_number?: number;
@@ -377,9 +388,12 @@ export const accountsApi = {
       max_accounts?: number;
       support_url?: string;
       is_shared_free?: boolean;
+      protocol?: string;
+      host?: string;
+      port?: number;
     }>(`/api/accounts/${id}/proxy/connect`, {
       method: 'POST',
-      body: JSON.stringify({ mode }),
+      body: JSON.stringify(typeof payload === 'string' ? { mode: payload } : payload),
     }),
 };
 
