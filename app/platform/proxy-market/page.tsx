@@ -1,2 +1,6 @@
 'use client';
-export { default } from '@/platform/pages/ProxyMarket';
+import { redirect } from 'next/navigation';
+
+export default function ProxyMarketPage() {
+  redirect('/platform/accounts');
+}

@@ -151,11 +151,15 @@ export default function Accounts() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [showProxyDialog, setShowProxyDialog] = useState(false);
+  const [showExternalProxyDialog, setShowExternalProxyDialog] = useState(false);
+  const [switchingToExternalProxyDialog, setSwitchingToExternalProxyDialog] = useState(false);
   const [proxyAccountID, setProxyAccountID] = useState<number | null>(null);
   const [proxyConnecting, setProxyConnecting] = useState(false);
   const [proxyConnectingMode, setProxyConnectingMode] = useState<'free' | 'external' | null>(null);
   const [proxyConnectError, setProxyConnectError] = useState<string | null>(null);
   const [proxySupportURL, setProxySupportURL] = useState('https://t.me/funpaycloud_support');
+  const [externalProxyStatus, setExternalProxyStatus] = useState<'form' | 'checking' | 'success'>('form');
+  const [externalProxyError, setExternalProxyError] = useState<string | null>(null);
   const [externalProxyHost, setExternalProxyHost] = useState('');
   const [externalProxyPort, setExternalProxyPort] = useState('8080');
   const [externalProxyProtocol, setExternalProxyProtocol] = useState<'HTTP' | 'HTTPS' | 'SOCKS5'>('HTTP');
@@ -343,12 +347,22 @@ export default function Accounts() {
     setProxyAccountID(accountID);
     setProxyConnectError(null);
     setProxyConnectingMode(null);
+    setExternalProxyStatus('form');
+    setExternalProxyError(null);
     setExternalProxyHost('');
     setExternalProxyPort('8080');
     setExternalProxyProtocol('HTTP');
     setExternalProxyUsername('');
     setExternalProxyPassword('');
     setShowProxyDialog(true);
+  };
+
+  const openExternalProxyDialog = () => {
+    setSwitchingToExternalProxyDialog(true);
+    setExternalProxyStatus('form');
+    setExternalProxyError(null);
+    setShowExternalProxyDialog(true);
+    setShowProxyDialog(false);
   };
 
   async function connectFreeProxy() {
@@ -387,20 +401,19 @@ export default function Accounts() {
 
     if (!host) {
       const message = 'Введите хост внешнего прокси';
-      setProxyConnectError(message);
+      setExternalProxyError(message);
       toast.error(message);
       return;
     }
     if (!Number.isInteger(port) || port <= 0 || port > 65535) {
       const message = 'Порт должен быть числом от 1 до 65535';
-      setProxyConnectError(message);
+      setExternalProxyError(message);
       toast.error(message);
       return;
     }
 
-    setProxyConnecting(true);
-    setProxyConnectingMode('external');
-    setProxyConnectError(null);
+    setExternalProxyStatus('checking');
+    setExternalProxyError(null);
     try {
       const result = await accountsApi.connectProxy(proxyTargetAccount.id, {
         mode: 'external',
@@ -412,15 +425,12 @@ export default function Accounts() {
       });
       toast.success(result?.label || 'Внешний прокси подключен');
       await loadAccounts();
-      setShowProxyDialog(false);
-      setProxyAccountID(null);
+      setExternalProxyStatus('success');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Не удалось подключить внешний прокси';
-      setProxyConnectError(message);
+      setExternalProxyStatus('form');
+      setExternalProxyError(message);
       toast.error(message);
-    } finally {
-      setProxyConnecting(false);
-      setProxyConnectingMode(null);
     }
   }
 
@@ -927,7 +937,6 @@ export default function Accounts() {
         onOpenChange={open => {
           setShowProxyDialog(open);
           if (!open) {
-            setProxyAccountID(null);
             setProxyConnectError(null);
             setProxyConnectingMode(null);
             setExternalProxyHost('');
@@ -935,6 +944,13 @@ export default function Accounts() {
             setExternalProxyProtocol('HTTP');
             setExternalProxyUsername('');
             setExternalProxyPassword('');
+            setExternalProxyError(null);
+            setExternalProxyStatus('form');
+            if (!switchingToExternalProxyDialog) {
+              setProxyAccountID(null);
+            } else {
+              setSwitchingToExternalProxyDialog(false);
+            }
           }
         }}
       >
@@ -1021,72 +1037,18 @@ export default function Accounts() {
                     className="h-[118px] w-auto object-contain object-right"
                   />
                 </div>
-                <div className="mt-3 grid gap-2">
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_110px]">
-                    <input
-                      value={externalProxyHost}
-                      onChange={event => setExternalProxyHost(event.target.value)}
-                      placeholder="host или ip"
-                      className="platform-input h-10"
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
-                    <input
-                      value={externalProxyPort}
-                      onChange={event => setExternalProxyPort(event.target.value.replace(/[^\d]/g, '').slice(0, 5))}
-                      placeholder="port"
-                      inputMode="numeric"
-                      className="platform-input h-10"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                    <select
-                      value={externalProxyProtocol}
-                      onChange={event => setExternalProxyProtocol(event.target.value as 'HTTP' | 'HTTPS' | 'SOCKS5')}
-                      className="platform-select h-10 min-w-0"
-                    >
-                      <option value="HTTP">HTTP</option>
-                      <option value="HTTPS">HTTPS</option>
-                      <option value="SOCKS5">SOCKS5</option>
-                    </select>
-                    <input
-                      value={externalProxyUsername}
-                      onChange={event => setExternalProxyUsername(event.target.value)}
-                      placeholder="логин (опц.)"
-                      className="platform-input h-10"
-                      autoComplete="off"
-                    />
-                    <input
-                      value={externalProxyPassword}
-                      onChange={event => setExternalProxyPassword(event.target.value)}
-                      placeholder="пароль (опц.)"
-                      className="platform-input h-10"
-                      type="password"
-                      autoComplete="new-password"
-                    />
-                  </div>
-                </div>
               </div>
               <button
                 type="button"
                 className="platform-proxy-card-badge"
                 onClick={event => {
                   event.stopPropagation();
-                  void connectExternalProxy();
+                  openExternalProxyDialog();
                 }}
-                disabled={proxyConnecting || !proxyTargetAccount}
+                disabled={!proxyTargetAccount}
               >
-                {proxyConnecting && proxyConnectingMode === 'external' ? (
-                  <>
-                    <Loader2 size={13} className="animate-spin" />
-                    Подключаем...
-                  </>
-                ) : (
-                  <>
-                    <Network size={13} />
-                    Подключить
-                  </>
-                )}
+                <Network size={13} />
+                Настроить
               </button>
             </div>
           </div>
@@ -1106,6 +1068,140 @@ export default function Accounts() {
                 </a>
               )}
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showExternalProxyDialog}
+        onOpenChange={open => {
+          setShowExternalProxyDialog(open);
+          if (!open) {
+            setExternalProxyStatus('form');
+            setExternalProxyError(null);
+            setProxyAccountID(null);
+            setExternalProxyHost('');
+            setExternalProxyPort('8080');
+            setExternalProxyProtocol('HTTP');
+            setExternalProxyUsername('');
+            setExternalProxyPassword('');
+          }
+        }}
+      >
+        <DialogContent className="platform-dialog-content sm:max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle>Настройка внешнего прокси</DialogTitle>
+            <DialogDescription className="sr-only">
+              Введите параметры собственного прокси и подключите его к аккаунту.
+            </DialogDescription>
+          </DialogHeader>
+
+          {externalProxyStatus === 'checking' ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+              <Loader2 size={28} className="animate-spin text-[var(--pf-accent)]" />
+              <p className="text-sm font-medium text-[var(--pf-text)]">
+                Проверяем прокси и подключаем аккаунт
+              </p>
+              <p className="text-xs text-[var(--pf-text-dim)]">
+                Пробуем подключиться к FunPay через указанный прокси...
+              </p>
+            </div>
+          ) : externalProxyStatus === 'success' ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-6 text-center">
+              <CircleCheck size={34} className="text-[var(--pf-success)]" />
+              <p className="text-base font-semibold text-[var(--pf-text)]">Вы подключены</p>
+              <p className="text-sm text-[var(--pf-text-dim)]">
+                Внешний прокси успешно привязан к аккаунту{' '}
+                <strong>{proxyTargetAccount ? displayName(proxyTargetAccount) : '—'}</strong>.
+              </p>
+              <button
+                type="button"
+                className="platform-btn-primary mt-1"
+                onClick={() => {
+                  setShowExternalProxyDialog(false);
+                  setExternalProxyStatus('form');
+                  setExternalProxyError(null);
+                  setProxyAccountID(null);
+                }}
+              >
+                Готово
+              </button>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-[var(--pf-text-muted)]">
+                Аккаунт: <strong>{proxyTargetAccount ? displayName(proxyTargetAccount) : '—'}</strong>
+              </p>
+              <div className="grid gap-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_120px]">
+                  <input
+                    value={externalProxyHost}
+                    onChange={event => setExternalProxyHost(event.target.value)}
+                    placeholder="host или ip"
+                    className="platform-input h-11"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <input
+                    value={externalProxyPort}
+                    onChange={event => setExternalProxyPort(event.target.value.replace(/[^\d]/g, '').slice(0, 5))}
+                    placeholder="port"
+                    inputMode="numeric"
+                    className="platform-input h-11"
+                  />
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <select
+                    value={externalProxyProtocol}
+                    onChange={event => setExternalProxyProtocol(event.target.value as 'HTTP' | 'HTTPS' | 'SOCKS5')}
+                    className="platform-select h-11 min-w-0"
+                  >
+                    <option value="HTTP">HTTP</option>
+                    <option value="HTTPS">HTTPS</option>
+                    <option value="SOCKS5">SOCKS5</option>
+                  </select>
+                  <input
+                    value={externalProxyUsername}
+                    onChange={event => setExternalProxyUsername(event.target.value)}
+                    placeholder="логин (опц.)"
+                    className="platform-input h-11"
+                    autoComplete="off"
+                  />
+                  <input
+                    value={externalProxyPassword}
+                    onChange={event => setExternalProxyPassword(event.target.value)}
+                    placeholder="пароль (опц.)"
+                    className="platform-input h-11"
+                    type="password"
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+
+              {externalProxyError && (
+                <div className="platform-alert-warning rounded-lg px-3 py-2">
+                  <p className="text-sm text-[var(--pf-text)]">{externalProxyError}</p>
+                </div>
+              )}
+
+              <div className="mt-1 flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="platform-btn-secondary"
+                  onClick={() => {
+                    setShowExternalProxyDialog(false);
+                    setExternalProxyStatus('form');
+                    setExternalProxyError(null);
+                    setProxyAccountID(null);
+                  }}
+                >
+                  Отмена
+                </button>
+                <button type="button" className="platform-btn-primary" onClick={() => void connectExternalProxy()}>
+                  Подтвердить
+                </button>
+              </div>
+            </>
           )}
         </DialogContent>
       </Dialog>

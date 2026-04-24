@@ -14,7 +14,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { aiApi, accountsApi, ApiAccount } from '@/lib/api';
+import { aiApi, accountsApi, ApiAccount, ApiScenario, scenariosApi } from '@/lib/api';
 import { PageHeader, PageShell, PageTitle } from '@/platform/components/primitives';
 
 type FaqDraft = {
@@ -28,6 +28,8 @@ type TestMessage = {
   text: string;
   loading?: boolean;
 };
+
+type ChatMode = 'assistant' | 'constructor';
 
 const QUICK_TAGS = [
   'Выдача мгновенная',
@@ -66,6 +68,7 @@ function TestChatPanel({
   input,
   testing,
   limitExhausted,
+  disabledByMode,
   onInputChange,
   onSend,
   onQuickSend,
@@ -76,6 +79,7 @@ function TestChatPanel({
   input: string;
   testing: boolean;
   limitExhausted: boolean;
+  disabledByMode: boolean;
   onInputChange: (value: string) => void;
   onSend: () => void;
   onQuickSend: (value: string) => void;
@@ -106,7 +110,17 @@ function TestChatPanel({
       </div>
 
       <div ref={messagesRef} className="flex-1 space-y-3 overflow-y-auto p-4">
-        {limitExhausted ? (
+        {disabledByMode ? (
+          <div className="flex h-full flex-col items-center justify-center px-4 text-center">
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--pf-accent-soft)]">
+              <Info size={18} className="text-[var(--pf-accent)]" />
+            </div>
+            <p className="mb-1 text-sm text-[var(--pf-text-muted)]">Тест-чат выключен</p>
+            <p className="text-xs text-[var(--pf-text-dim)]">
+              Сейчас активен режим конструктора. Для теста AI переключитесь на режим AI-Ассистент.
+            </p>
+          </div>
+        ) : limitExhausted ? (
           <div className="flex h-full flex-col items-center justify-center px-4 text-center">
             <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10">
               <AlertCircle size={18} className="text-red-400" />
@@ -189,14 +203,14 @@ function TestChatPanel({
                 onSend();
               }
             }}
-            disabled={limitExhausted || testing}
-            placeholder={limitExhausted ? 'Лимит исчерпан' : 'Напишите как покупатель...'}
+            disabled={disabledByMode || limitExhausted || testing}
+            placeholder={disabledByMode ? 'Тест-чат недоступен в режиме конструктора' : limitExhausted ? 'Лимит исчерпан' : 'Напишите как покупатель...'}
             className="flex-1 rounded-xl border border-[var(--pf-border-strong)] bg-[var(--pf-elevated)] px-4 py-2.5 text-sm text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] transition-colors focus:border-[var(--pf-accent-soft-strong)] focus:outline-none disabled:opacity-40"
           />
           <button
             type="button"
             onClick={onSend}
-            disabled={!input.trim() || testing || limitExhausted}
+            disabled={!input.trim() || testing || limitExhausted || disabledByMode}
             className="platform-ai-send-btn flex h-10 w-10 items-center justify-center rounded-xl text-white transition-all disabled:opacity-30"
           >
             <Send size={15} />
@@ -230,6 +244,9 @@ export default function AIAssistant() {
   const [delay, setDelay] = useState(3);
   const [prompt, setPrompt] = useState('');
   const [showAISignature, setShowAISignature] = useState(false);
+  const [chatMode, setChatMode] = useState<ChatMode>('assistant');
+  const [constructorScenarioID, setConstructorScenarioID] = useState('');
+  const [accountScenarios, setAccountScenarios] = useState<ApiScenario[]>([]);
   const [used, setUsed] = useState(0);
   const [limit, setLimit] = useState(0);
   const [faqItems, setFaqItems] = useState<FaqDraft[]>([]);
@@ -246,7 +263,11 @@ export default function AIAssistant() {
   }, [testMessages]);
 
   async function loadAccountData(accountID: number) {
-    const [config, faq] = await Promise.all([aiApi.getConfig(accountID), aiApi.getFaq(accountID)]);
+    const [config, faq, scenarios] = await Promise.all([
+      aiApi.getConfig(accountID),
+      aiApi.getFaq(accountID),
+      scenariosApi.list(accountID),
+    ]);
     setEnabled(Boolean(config.is_enabled));
     setTone(
       config.tone === 'formal' || config.tone === 'friendly' || config.tone === 'neutral'
@@ -256,6 +277,14 @@ export default function AIAssistant() {
     setDelay(typeof config.delay_seconds === 'number' ? config.delay_seconds : 3);
     setPrompt(config.system_prompt ?? '');
     setShowAISignature(Boolean(config.show_ai_signature));
+    const modeValue = config.chat_mode === 'constructor' ? 'constructor' : 'assistant';
+    setChatMode(modeValue);
+    setAccountScenarios(scenarios);
+    const requestedScenarioID = modeValue === 'constructor' ? (config.constructor_scenario_id ?? '') : '';
+    const hasRequestedScenario = requestedScenarioID
+      ? scenarios.some(scenario => scenario.id === requestedScenarioID)
+      : false;
+    setConstructorScenarioID(hasRequestedScenario ? requestedScenarioID : '');
     setUsed(config.used_messages ?? 0);
     setLimit(config.limit_messages ?? 0);
     setFaqItems(faq.map(item => ({ id: item.id, question: item.question, answer: item.answer })));
@@ -325,6 +354,10 @@ export default function AIAssistant() {
       toast.error(`Инструкция превышает ${MAX_PROMPT_LENGTH} символов`);
       return;
     }
+    if (chatMode === 'constructor' && !constructorScenarioID) {
+      toast.error('Выберите сценарий конструктора для этого аккаунта');
+      return;
+    }
 
     const normalizedFaq = faqItems
       .map(item => ({ question: item.question.trim(), answer: item.answer.trim() }))
@@ -338,6 +371,8 @@ export default function AIAssistant() {
         system_prompt: prompt.trim(),
         delay_seconds: delay,
         show_ai_signature: showAISignature,
+        chat_mode: chatMode,
+        constructor_scenario_id: chatMode === 'constructor' ? constructorScenarioID : '',
       });
 
       const currentFaq = await aiApi.getFaq(selectedAccountID);
@@ -359,6 +394,10 @@ export default function AIAssistant() {
 
   async function sendTestMessage(rawText?: string) {
     if (!selectedAccountID || testing) return;
+    if (chatMode === 'constructor') {
+      toast.info('Тестовый чат работает только в режиме AI-Ассистент');
+      return;
+    }
     const text = (rawText ?? testInput).trim();
     if (!text) return;
 
@@ -377,6 +416,11 @@ export default function AIAssistant() {
         account_id: selectedAccountID,
         message: text,
         history,
+        config_override: {
+          tone,
+          system_prompt: prompt.trim(),
+          show_ai_signature: showAISignature,
+        },
       });
       setTestMessages(prev => {
         const copy = [...prev];
@@ -426,8 +470,13 @@ export default function AIAssistant() {
   }, [accounts, selectedAccountID]);
 
   const nextMonth = useMemo(() => monthLabel(), []);
+  const activeChatScenarios = useMemo(
+    () => accountScenarios.filter(scenario => scenario.trigger_type === 'chat_message' && scenario.is_active),
+    [accountScenarios],
+  );
 
   const formDisabled = loading || saving;
+  const assistantModeActive = chatMode === 'assistant';
 
   return (
     <PageShell>
@@ -471,7 +520,7 @@ export default function AIAssistant() {
                 <button
                   type="button"
                   onClick={() => setEnabled(prev => !prev)}
-                  disabled={formDisabled || noAiOnPlan}
+                  disabled={formDisabled || (assistantModeActive && noAiOnPlan)}
                   className={`relative flex-shrink-0 h-6 w-11 rounded-full transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${
                     enabled
                       ? 'bg-gradient-to-r from-indigo-500 to-violet-500 shadow-lg shadow-violet-500/30'
@@ -489,7 +538,7 @@ export default function AIAssistant() {
               </div>
             </div>
 
-            {noAiOnPlan ? (
+            {assistantModeActive && noAiOnPlan ? (
               <div className="relative mt-5 flex items-start gap-2.5 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
                 <Info size={14} className="mt-0.5 flex-shrink-0 text-amber-400" />
                 <div>
@@ -523,7 +572,7 @@ export default function AIAssistant() {
           </div>
 
           {/* Settings */}
-          <fieldset disabled={formDisabled || noAiOnPlan} className="group/fields">
+          <fieldset disabled={formDisabled || (noAiOnPlan && assistantModeActive)} className="group/fields">
             <div className="mb-6 overflow-hidden rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-surface)] group-disabled/fields:opacity-60">
               <div className="border-b border-[var(--pf-border)] p-5">
                 <label className="mb-3 block text-xs font-semibold uppercase tracking-widest text-[var(--pf-text-dim)]">
@@ -541,6 +590,86 @@ export default function AIAssistant() {
                   ))}
                 </select>
                 <p className="mt-2 text-[11px] text-[var(--pf-text-dim)]">AI будет отвечать от имени выбранного аккаунта</p>
+              </div>
+
+              <div className="border-b border-[var(--pf-border)] p-5">
+                <label className="mb-3 block text-xs font-semibold uppercase tracking-widest text-[var(--pf-text-dim)]">
+                  Режим обработки сообщений
+                </label>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => setChatMode('assistant')}
+                    className={`rounded-xl border p-3 text-left transition-all ${
+                      chatMode === 'assistant'
+                        ? 'border-[var(--pf-accent-soft-strong)] bg-[var(--pf-accent-soft)]'
+                        : 'border-[var(--pf-border)] bg-[var(--pf-surface-2)] hover:border-[var(--pf-border-strong)]'
+                    }`}
+                  >
+                    <div className={`mb-1 text-xs font-semibold ${chatMode === 'assistant' ? 'text-[var(--pf-accent)]' : 'text-[var(--pf-text)]'}`}>
+                      AI-Ассистент
+                    </div>
+                    <div className="text-[10px] leading-tight text-[var(--pf-text-dim)]">
+                      Автоответ от нейросети по промпту и FAQ
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setChatMode('constructor');
+                      if (!constructorScenarioID && activeChatScenarios.length > 0) {
+                        setConstructorScenarioID(activeChatScenarios[0].id);
+                      }
+                    }}
+                    className={`rounded-xl border p-3 text-left transition-all ${
+                      chatMode === 'constructor'
+                        ? 'border-[var(--pf-accent-soft-strong)] bg-[var(--pf-accent-soft)]'
+                        : 'border-[var(--pf-border)] bg-[var(--pf-surface-2)] hover:border-[var(--pf-border-strong)]'
+                    }`}
+                  >
+                    <div className={`mb-1 text-xs font-semibold ${chatMode === 'constructor' ? 'text-[var(--pf-accent)]' : 'text-[var(--pf-text)]'}`}>
+                      Конструктор сценариев
+                    </div>
+                    <div className="text-[10px] leading-tight text-[var(--pf-text-dim)]">
+                      Выполнение сценариев из вкладки Конструктор
+                    </div>
+                  </button>
+                </div>
+
+                {chatMode === 'constructor' && (
+                  <div className="mt-3 space-y-2">
+                    <label className="block text-xs font-semibold text-[var(--pf-text-muted)]">
+                      Сценарий для чатов этого аккаунта
+                    </label>
+                    <select
+                      value={constructorScenarioID}
+                      onChange={event => setConstructorScenarioID(event.target.value)}
+                      className="platform-select"
+                    >
+                      <option value="">Выберите сценарий</option>
+                      {activeChatScenarios.map(scenario => (
+                        <option key={scenario.id} value={scenario.id}>
+                          {scenario.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[11px] text-[var(--pf-text-dim)]">
+                        В этом режиме AI-ассистент отключается, отвечают только выбранные сценарии.
+                      </p>
+                      <a href="/platform/constructor" className="text-xs font-medium text-[var(--pf-accent)] hover:underline">
+                        Открыть конструктор
+                      </a>
+                    </div>
+                    {activeChatScenarios.length === 0 && (
+                      <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2">
+                        <p className="text-xs text-amber-700">
+                          Для режима конструктора нужен хотя бы один активный сценарий с триггером «chat_message».
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="border-b border-[var(--pf-border)] p-5">
@@ -753,7 +882,13 @@ export default function AIAssistant() {
           <button
             type="button"
             onClick={save}
-            disabled={saving || loading || !selectedAccountID || noAiOnPlan || prompt.length > MAX_PROMPT_LENGTH}
+            disabled={
+              saving ||
+              loading ||
+              !selectedAccountID ||
+              (assistantModeActive && noAiOnPlan) ||
+              (assistantModeActive && prompt.length > MAX_PROMPT_LENGTH)
+            }
             className={`w-full rounded-xl py-3 text-sm font-semibold text-white transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
               saving ? 'platform-ai-save-btn-saving' : 'platform-ai-save-btn'
             }`}
@@ -768,7 +903,8 @@ export default function AIAssistant() {
               messages={testMessages}
               input={testInput}
               testing={testing}
-              limitExhausted={limitExhausted || noAiOnPlan}
+              limitExhausted={assistantModeActive && (limitExhausted || noAiOnPlan)}
+              disabledByMode={!assistantModeActive}
               onInputChange={setTestInput}
               onSend={() => void sendTestMessage()}
               onQuickSend={question => void sendTestMessage(question)}
@@ -794,7 +930,8 @@ export default function AIAssistant() {
               messages={testMessages}
               input={testInput}
               testing={testing}
-              limitExhausted={limitExhausted || noAiOnPlan}
+              limitExhausted={assistantModeActive && (limitExhausted || noAiOnPlan)}
+              disabledByMode={!assistantModeActive}
               onInputChange={setTestInput}
               onSend={() => void sendTestMessage()}
               onQuickSend={question => void sendTestMessage(question)}

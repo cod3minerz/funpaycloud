@@ -17,7 +17,6 @@ import {
   Puzzle,
   Wallet,
   Users,
-  Server,
   X,
   Workflow,
 } from 'lucide-react';
@@ -62,10 +61,6 @@ const navGroups = [
       { icon: Wallet, label: 'Финансы', path: '/platform/finances' },
       { icon: CircleDollarSign, label: 'Реферальная система', path: '/platform/referrals' },
     ],
-  },
-  {
-    title: 'Маркет',
-    items: [{ icon: Server, label: 'Прокси в аренду', path: '/platform/proxy-market' }],
   },
 ];
 

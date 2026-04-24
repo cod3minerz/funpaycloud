@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, ChevronDown, CreditCard, LifeBuoy, LogOut, Moon, PanelLeft, Settings, Sun, Ticket } from 'lucide-react';
+import { ChevronDown, CreditCard, LifeBuoy, LogOut, Moon, PanelLeft, Settings, Sun, Ticket } from 'lucide-react';
 import { settingsApi, type ProfileData } from '@/lib/api';
 import { logout } from '@/lib/auth';
 import {
@@ -22,14 +22,6 @@ type PlatformTopBarProps = {
   onToggleTheme: () => void;
 };
 
-type NotificationItem = {
-  id: string;
-  title: string;
-  text: string;
-  unread: boolean;
-  time: string;
-};
-
 export default function PlatformTopBar({
   onOpenMobileSidebar,
   sidebarCollapsed,
@@ -39,9 +31,6 @@ export default function PlatformTopBar({
 }: PlatformTopBarProps) {
   const router = useRouter();
   const [profile, setProfile] = useState<ProfileData | null>(null);
-
-  const notifications = useMemo<NotificationItem[]>(() => [], []);
-  const unreadCount = useMemo(() => notifications.filter(item => item.unread).length, [notifications]);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,50 +97,6 @@ export default function PlatformTopBar({
           >
             {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
           </button>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label="Уведомления"
-                className="h-9 w-9 inline-flex items-center justify-center rounded-[10px] border border-[var(--pf-border-strong)] bg-[var(--pf-surface)] text-[var(--pf-text-muted)] transition-all hover:border-[var(--pf-accent)] hover:text-[var(--pf-accent-2)] hover:bg-[var(--pf-accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--pf-accent)]/40 relative"
-              >
-                <Bell size={17} />
-                {unreadCount > 0 ? (
-                  <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                ) : null}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              sideOffset={10}
-              className="platform-topbar-dropdown w-[320px] border-[var(--pf-overlay-border)] bg-[var(--pf-surface-overlay)] p-0 text-[var(--pf-text)]"
-              onCloseAutoFocus={event => event.preventDefault()}
-            >
-              <div className="flex items-center justify-between border-b border-[var(--pf-border)] px-4 py-3">
-                <strong className="text-sm">Уведомления</strong>
-                <span className="text-xs text-[var(--pf-text-muted)]">{unreadCount > 0 ? `${unreadCount} новых` : '0 новых'}</span>
-              </div>
-
-              {notifications.length === 0 ? (
-                <div className="px-4 py-6 text-center text-sm text-[var(--pf-text-dim)]">Нет новых уведомлений</div>
-              ) : (
-                <div className="max-h-[320px] overflow-auto py-1">
-                  {notifications.map(item => (
-                    <div key={item.id} className="border-b border-[var(--pf-border)] px-4 py-3 last:border-0">
-                      <div className="mb-1 flex items-center justify-between gap-2">
-                        <strong className="text-xs text-[var(--pf-text)]">{item.title}</strong>
-                        <span className="text-[11px] text-[var(--pf-text-dim)]">{item.time}</span>
-                      </div>
-                      <p className="text-xs text-[var(--pf-text-dim)]">{item.text}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

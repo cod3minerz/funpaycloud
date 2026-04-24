@@ -775,6 +775,8 @@ export type AIConfig = {
   system_prompt: string;
   delay_seconds: number;
   show_ai_signature: boolean;
+  chat_mode?: 'assistant' | 'constructor' | string;
+  constructor_scenario_id?: string | null;
   used_messages: number;
   limit_messages: number;
   remaining_messages: number;
@@ -847,7 +849,15 @@ export const aiApi = {
     apiRequest<AIConfig>(`/api/ai/config/${accountId}`),
   saveConfig: (
     accountId: number | string,
-    payload: { is_enabled: boolean; tone: string; system_prompt: string; delay_seconds: number; show_ai_signature: boolean },
+    payload: {
+      is_enabled: boolean;
+      tone: string;
+      system_prompt: string;
+      delay_seconds: number;
+      show_ai_signature: boolean;
+      chat_mode?: 'assistant' | 'constructor' | string;
+      constructor_scenario_id?: string;
+    },
   ) =>
     apiRequest<AIConfig>(`/api/ai/config/${accountId}`, {
       method: 'PUT',
@@ -864,7 +874,16 @@ export const aiApi = {
     apiRequest(`/api/ai/faq/${accountId}/${faqId}`, {
       method: 'DELETE',
     }),
-  test: (payload: { account_id: number; message: string; history: AITestHistoryItem[] }) =>
+  test: (payload: {
+    account_id: number;
+    message: string;
+    history: AITestHistoryItem[];
+    config_override?: {
+      tone?: string;
+      system_prompt?: string;
+      show_ai_signature?: boolean;
+    };
+  }) =>
     apiRequest<AITestResponse>('/api/ai/test', {
       method: 'POST',
       body: JSON.stringify(payload),
