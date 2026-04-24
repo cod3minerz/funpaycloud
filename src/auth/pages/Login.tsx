@@ -111,7 +111,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="auth-btn-main flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--ink)] text-[var(--accent-ink)] hover:opacity-90 active:scale-[0.98] transition-all text-[15px] font-bold disabled:opacity-60"
+            className="auth-btn-main flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0e1116] text-white hover:opacity-90 active:scale-[0.98] transition-all text-[15px] font-bold disabled:opacity-60"
           >
             {loading ? <Loader2 size={18} className="animate-spin" /> : <>Войти <ArrowRight size={18} /></>}
           </button>

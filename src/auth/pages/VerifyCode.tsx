@@ -152,7 +152,7 @@ export default function VerifyCodePage({ email: rawEmail, mode: rawMode }: Verif
         <button
           type="submit"
           disabled={loading}
-          className="auth-btn-main inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--ink)] text-[var(--accent-ink)] hover:opacity-90 active:scale-[0.98] transition-all text-[14px] font-bold disabled:opacity-60"
+          className="auth-btn-main inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0e1116] text-white hover:opacity-90 active:scale-[0.98] transition-all text-[14px] font-bold disabled:opacity-60"
         >
           {loading ? (
             <Loader2 size={15} className="animate-spin" />

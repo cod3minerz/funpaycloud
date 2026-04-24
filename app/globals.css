@@ -2248,6 +2248,8 @@ body:has(.landing) {
   background: var(--card);
   box-shadow: 0 20px 44px -30px rgba(14, 17, 22, 0.14);
   overflow: hidden;
+  min-height: 0;
+  height: auto;
 }
 
 .landing.auth-scope .auth-panel-body {
@@ -2258,6 +2260,8 @@ body:has(.landing) {
 .landing.auth-scope .auth-content {
   display: grid;
   gap: 0;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
 }
 
 .landing.auth-scope .auth-content form {
@@ -2278,6 +2282,20 @@ body:has(.landing) {
   font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+.landing.auth-scope .auth-btn-main {
+  background: #0e1116 !important;
+  color: #fff !important;
+  border: 1px solid #0e1116 !important;
+}
+
+.landing.auth-scope .auth-btn-secondary {
+  color: var(--ink) !important;
+}
+
+.landing.auth-scope .auth-legal {
+  background: var(--card) !important;
+}
+
 .landing.auth-scope .auth-code-input {
   letter-spacing: 0.02em;
 }
@@ -2285,8 +2303,8 @@ body:has(.landing) {
 @media (max-width: 640px) {
   .landing.auth-scope main {
     align-items: center;
-    padding-top: max(4px, env(safe-area-inset-top));
-    padding-bottom: max(4px, env(safe-area-inset-bottom));
+    padding-top: max(0px, env(safe-area-inset-top));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
   }
 
   .landing.auth-scope .auth-panel {

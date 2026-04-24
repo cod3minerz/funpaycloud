@@ -16,26 +16,26 @@ export function AuthShell({ title, subtitle, children }: AuthShellProps) {
       <div className="auth-scope-backdrop pointer-events-none absolute inset-0" />
       <div className="auth-scope-pattern pointer-events-none absolute inset-0" />
 
-      <main className="relative z-10 mx-auto grid min-h-[100dvh] w-full max-w-[560px] place-items-center px-3 py-[max(4px,env(safe-area-inset-top))] sm:px-4 sm:py-1">
+      <main className="relative z-10 mx-auto grid min-h-[100dvh] w-full max-w-[560px] place-items-center px-3 py-[max(0px,env(safe-area-inset-top))] sm:px-4 sm:py-0">
         <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className="auth-panel relative w-full max-w-[460px] overflow-hidden rounded-[20px] border border-[var(--line)] bg-[var(--card)] shadow-[0_20px_44px_-30px_rgba(0,0,0,0.14)]"
+          className="auth-panel relative w-full max-w-[460px] overflow-hidden rounded-[20px] border border-[var(--line)] bg-[var(--card)] shadow-[0_12px_28px_-22px_rgba(0,0,0,0.12)]"
         >
-          <div className="auth-head px-5 pb-4 pt-5 sm:px-6 sm:pt-6">
-            <Link href="/" aria-label="FunPay Cloud" className="mb-4 inline-flex items-center">
+          <div className="auth-head flex flex-col items-center px-5 pb-3 pt-4 text-center sm:px-6 sm:pb-4 sm:pt-5">
+            <Link href="/" aria-label="FunPay Cloud" className="mb-3 inline-flex items-center">
               <BrandLogo className="h-7 w-auto sm:h-8" />
             </Link>
-            <h1 className="auth-scope-title text-[42px] font-extrabold tracking-tight text-[var(--ink)] sm:text-[46px]">
+            <h1 className="auth-scope-title text-center text-[42px] font-extrabold tracking-tight text-[var(--ink)] sm:text-[46px]">
               {title}
             </h1>
-            <p className="auth-scope-subtitle mt-3 text-[16px] leading-relaxed text-[var(--ink-2)]">
+            <p className="auth-scope-subtitle mt-2 text-center text-[16px] leading-relaxed text-[var(--ink-2)]">
               {subtitle}
             </p>
           </div>
 
-          <div className="auth-content px-5 pb-5 sm:px-6 sm:pb-6">
+          <div className="auth-content px-5 pb-4 sm:px-6 sm:pb-5">
             {children}
           </div>
 
