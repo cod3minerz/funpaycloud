@@ -2239,14 +2239,14 @@ body:has(.landing) {
 
 .landing.auth-scope .auth-scope-title,
 .landing.auth-scope .auth-scope-subtitle {
-  font-family: var(--font-sans);
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .landing.auth-scope .auth-panel {
   border-radius: 20px;
   border: 1px solid var(--line);
   background: var(--card);
-  box-shadow: 0 28px 60px -34px rgba(14, 17, 22, 0.16);
+  box-shadow: 0 20px 44px -30px rgba(14, 17, 22, 0.14);
   overflow: hidden;
 }
 
@@ -2275,6 +2275,7 @@ body:has(.landing) {
 .landing.auth-scope .auth-btn-main,
 .landing.auth-scope .auth-btn-secondary {
   min-height: 46px;
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .landing.auth-scope .auth-code-input {
@@ -2284,8 +2285,8 @@ body:has(.landing) {
 @media (max-width: 640px) {
   .landing.auth-scope main {
     align-items: center;
-    padding-top: max(12px, env(safe-area-inset-top));
-    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    padding-top: max(4px, env(safe-area-inset-top));
+    padding-bottom: max(4px, env(safe-area-inset-bottom));
   }
 
   .landing.auth-scope .auth-panel {
@@ -2293,8 +2294,8 @@ body:has(.landing) {
   }
 
   .landing.auth-scope .auth-scope-title {
-    font-size: 38px;
-    line-height: 1.02;
+    font-size: 40px;
+    line-height: 1.04;
   }
 
   .landing.auth-scope .auth-scope-subtitle {

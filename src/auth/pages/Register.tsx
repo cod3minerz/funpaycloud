@@ -156,17 +156,19 @@ export default function RegisterPage() {
           )}
         </div>
 
-        <div className="rounded-xl border border-[var(--line-2)] bg-[var(--bg)] p-4 transition-all">
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 text-[14px] font-bold text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors"
-            onClick={() => setHasPromo((prev) => !prev)}
-          >
+        <div className="space-y-2">
+          <label className="inline-flex cursor-pointer items-center gap-2 text-[14px] font-semibold text-[var(--ink-2)] hover:text-[var(--ink)]">
+            <input
+              type="checkbox"
+              checked={hasPromo}
+              onChange={(event) => setHasPromo(event.target.checked)}
+              className="h-4 w-4 rounded border border-[var(--line-2)] accent-[var(--accent)]"
+            />
             <Ticket size={16} />
-            {hasPromo ? "Скрыть промокод" : "У меня есть промокод"}
-          </button>
+            Есть промокод
+          </label>
           {hasPromo && (
-            <div className="mt-4 animate-in slide-in-from-top-2">
+            <div className="animate-in slide-in-from-top-2">
               <input
                 className={fieldClass}
                 placeholder="Введите код"
@@ -181,7 +183,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="auth-btn-main flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--ink)] text-white hover:opacity-90 active:scale-[0.98] transition-all text-[15px] font-bold disabled:opacity-60"
+            className="auth-btn-main flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--ink)] text-[var(--accent-ink)] hover:opacity-90 active:scale-[0.98] transition-all text-[15px] font-bold disabled:opacity-60"
           >
             {loading ? (
               <Loader2 size={18} className="animate-spin" />
@@ -192,7 +194,7 @@ export default function RegisterPage() {
 
           <button
             type="button"
-            className="auth-btn-secondary flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--card)] hover:bg-[var(--bg)] active:scale-[0.98] transition-all text-[15px] font-bold text-[var(--ink)]"
+            className="auth-btn-secondary flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[var(--line-2)] bg-[var(--card)] hover:bg-[var(--bg)] active:scale-[0.98] transition-all text-[15px] font-bold text-[var(--ink)]"
           >
             <GoogleMark />
             Зарегистрироваться с Google

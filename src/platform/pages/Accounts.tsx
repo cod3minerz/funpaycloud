@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
+import Image from 'next/image';
 import {
   BadgeDollarSign,
   ChevronRight,
@@ -871,50 +872,94 @@ export default function Accounts() {
           }
         }}
       >
-        <DialogContent className="platform-dialog-content sm:max-w-[480px]">
+        <DialogContent className="platform-dialog-content platform-proxy-dialog sm:max-w-[820px]">
           <DialogHeader>
             <DialogTitle>Выберите прокси</DialogTitle>
             <DialogDescription className="sr-only">
               Подключение бесплатного shared прокси или выбор индивидуального тарифа.
             </DialogDescription>
           </DialogHeader>
-          <p className="text-sm text-[var(--pf-text-muted)]">
+          <p className="text-base text-[var(--pf-text-muted)]">
             Аккаунт: <strong>{proxyTargetAccount ? displayName(proxyTargetAccount) : '—'}</strong>
           </p>
 
-          <div className="space-y-3">
+          <div className="platform-proxy-grid">
             <button
               type="button"
-              className="platform-proxy-option-btn w-full rounded-lg p-3 text-left disabled:opacity-60"
+              className="platform-proxy-card platform-proxy-card-action text-left disabled:opacity-60"
               onClick={connectFreeProxy}
               disabled={proxyConnecting || !proxyTargetAccount}
             >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-[var(--pf-text)]">Бесплатный прокси</div>
-                  <p className="mt-1 text-xs text-[var(--pf-text-dim)]">
-                    Автоматическое подключение к shared-пулу. Лимит: до 2 аккаунтов на прокси.
-                  </p>
+              <div className="platform-proxy-card-content">
+                <h4 className="platform-proxy-card-title">Бесплатный прокси</h4>
+                <p className="platform-proxy-card-description">
+                  Прокси для 2 человек на платформе.
+                </p>
+                <div className="platform-proxy-card-illustration">
+                  <Image
+                    src="/illustrations/proxy/free_proxy.png"
+                    alt=""
+                    width={118}
+                    height={118}
+                    className="h-[118px] w-[118px] object-contain"
+                  />
                 </div>
-                {proxyConnecting ? <Loader2 size={16} className="animate-spin text-[var(--pf-accent)]" /> : <Network size={16} />}
               </div>
+              {proxyConnecting ? (
+                <span className="platform-proxy-card-badge">
+                  <Loader2 size={13} className="animate-spin" />
+                  Подключаем...
+                </span>
+              ) : (
+                <span className="platform-proxy-card-badge">
+                  <Network size={13} />
+                  Подключить
+                </span>
+              )}
             </button>
 
-            <div
-              className="platform-proxy-option-muted w-full rounded-lg p-3 text-left opacity-80"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-[var(--pf-text)]">Индивидуальное прокси</div>
-                  <p className="mt-1 text-xs text-[var(--pf-text-dim)]">
-                    119 ₽/мес. Подключение через API появится в следующем релизе.
-                  </p>
+            <div className="platform-proxy-card platform-proxy-card-muted">
+              <div className="platform-proxy-card-content">
+                <h4 className="platform-proxy-card-title">Индивидуальный прокси</h4>
+                <p className="platform-proxy-card-description">
+                  Ваш личный безопасный прокси.
+                </p>
+                <div className="platform-proxy-card-illustration">
+                  <Image
+                    src="/illustrations/proxy/individual_proxy.png"
+                    alt=""
+                    width={118}
+                    height={118}
+                    className="h-[118px] w-[118px] object-contain"
+                  />
                 </div>
-                <span className="platform-chip inline-flex items-center gap-1 px-2 py-0.5 text-[11px]">
-                  <BadgeDollarSign size={11} />
-                  Скоро
-                </span>
               </div>
+              <span className="platform-proxy-card-badge">
+                <BadgeDollarSign size={13} />
+                Скоро
+              </span>
+            </div>
+
+            <div className="platform-proxy-card platform-proxy-card-muted">
+              <div className="platform-proxy-card-content">
+                <h4 className="platform-proxy-card-title">Внешний прокси</h4>
+                <p className="platform-proxy-card-description">
+                  Подключи свой собственный прокси.
+                </p>
+                <div className="platform-proxy-card-illustration platform-proxy-card-illustration-external">
+                  <Image
+                    src="/illustrations/proxy/external_proxy.png"
+                    alt=""
+                    width={134}
+                    height={118}
+                    className="h-[118px] w-auto object-contain object-right"
+                  />
+                </div>
+              </div>
+              <span className="platform-proxy-card-badge">
+                <BadgeDollarSign size={13} />
+                Скоро
+              </span>
             </div>
           </div>
 

@@ -111,14 +111,14 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="auth-btn-main flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--ink)] text-white hover:opacity-90 active:scale-[0.98] transition-all text-[15px] font-bold disabled:opacity-60"
+            className="auth-btn-main flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--ink)] text-[var(--accent-ink)] hover:opacity-90 active:scale-[0.98] transition-all text-[15px] font-bold disabled:opacity-60"
           >
             {loading ? <Loader2 size={18} className="animate-spin" /> : <>Войти <ArrowRight size={18} /></>}
           </button>
 
           <button
             type="button"
-            className="auth-btn-secondary flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--card)] hover:bg-[var(--bg)] active:scale-[0.98] transition-all text-[15px] font-bold text-[var(--ink)]"
+            className="auth-btn-secondary flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[var(--line-2)] bg-[var(--card)] hover:bg-[var(--bg)] active:scale-[0.98] transition-all text-[15px] font-bold text-[var(--ink)]"
           >
             <GoogleMark />
             Войти через Google

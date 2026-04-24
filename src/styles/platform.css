@@ -1822,6 +1822,173 @@ body[data-platform-theme='dark'] .platform-nav-item.active {
   background: var(--pf-surface-2);
 }
 
+.platform-proxy-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.platform-proxy-card {
+  position: relative;
+  min-height: 286px;
+  border-radius: 20px;
+  border: 1px solid var(--pf-border);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--pf-surface) 94%, transparent) 0%,
+    color-mix(in srgb, var(--pf-surface-2) 85%, transparent) 100%
+  );
+  overflow: hidden;
+}
+
+.platform-proxy-card-action {
+  cursor: pointer;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.platform-proxy-card-action:hover {
+  border-color: var(--pf-accent-soft-strong);
+  box-shadow: 0 12px 30px -22px color-mix(in srgb, var(--pf-accent) 44%, transparent);
+  transform: translateY(-1px) scale(1.005);
+}
+
+.platform-proxy-card-muted {
+  opacity: 0.9;
+}
+
+.platform-proxy-card-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 20px 18px;
+}
+
+.platform-proxy-card-title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.15;
+  font-weight: 700;
+  color: var(--pf-text);
+  letter-spacing: -0.02em;
+}
+
+.platform-proxy-card-description {
+  margin: 0;
+  max-width: 214px;
+  font-size: 14px;
+  line-height: 1.24;
+  color: var(--pf-text-dim);
+}
+
+.platform-proxy-card-illustration {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+.platform-proxy-card-illustration-external {
+  right: -2px;
+  bottom: 12px;
+}
+
+.platform-proxy-card-badge {
+  position: absolute;
+  left: 18px;
+  bottom: 14px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  border: 1px solid var(--pf-border-strong);
+  background: color-mix(in srgb, var(--pf-surface) 84%, transparent);
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pf-text-muted);
+}
+
+.platform-proxy-dialog {
+  border-radius: 30px !important;
+  padding: 30px 32px 28px !important;
+}
+
+.platform-proxy-dialog [data-slot='dialog-header'] {
+  gap: 10px !important;
+}
+
+.platform-proxy-dialog [data-slot='dialog-title'] {
+  font-size: 36px !important;
+  line-height: 1.04 !important;
+  letter-spacing: -0.03em !important;
+  font-weight: 700 !important;
+}
+
+.platform-scope[data-theme='dark'] .platform-proxy-card,
+body[data-platform-theme='dark'] .platform-proxy-card {
+  background: linear-gradient(180deg, #121a29 0%, #0f1520 100%);
+}
+
+@media (max-width: 1024px) {
+  .platform-proxy-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .platform-proxy-dialog {
+    padding: 24px !important;
+  }
+
+  .platform-proxy-dialog [data-slot='dialog-title'] {
+    font-size: 32px !important;
+  }
+
+  .platform-proxy-card {
+    min-height: 270px;
+  }
+
+  .platform-proxy-card-title {
+    font-size: 19px;
+  }
+
+  .platform-proxy-card-description {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 680px) {
+  .platform-proxy-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .platform-proxy-dialog {
+    padding: 20px 16px 18px !important;
+    border-radius: 22px !important;
+  }
+
+  .platform-proxy-dialog [data-slot='dialog-title'] {
+    font-size: 28px !important;
+  }
+
+  .platform-proxy-card {
+    min-height: 252px;
+  }
+
+  .platform-proxy-card-title {
+    font-size: 18px;
+  }
+
+  .platform-proxy-card-description {
+    font-size: 13px;
+    max-width: 220px;
+  }
+}
+
 .platform-ai-chat-panel {
   box-shadow: var(--pf-shadow-card);
 }
