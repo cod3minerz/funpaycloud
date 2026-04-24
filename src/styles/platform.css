@@ -1861,8 +1861,9 @@ body[data-platform-theme='dark'] .platform-nav-item.active {
   z-index: 1;
   display: flex;
   flex-direction: column;
+  height: 100%;
   gap: 8px;
-  padding: 20px 20px 18px;
+  padding: 20px 140px 84px 20px;
 }
 
 .platform-proxy-card-title {
@@ -1876,9 +1877,9 @@ body[data-platform-theme='dark'] .platform-nav-item.active {
 
 .platform-proxy-card-description {
   margin: 0;
-  max-width: 214px;
+  max-width: 100%;
   font-size: 14px;
-  line-height: 1.24;
+  line-height: 1.32;
   color: var(--pf-text-dim);
 }
 
@@ -1952,6 +1953,10 @@ body[data-platform-theme='dark'] .platform-proxy-card {
     min-height: 270px;
   }
 
+  .platform-proxy-card-content {
+    padding: 18px 128px 78px 18px;
+  }
+
   .platform-proxy-card-title {
     font-size: 19px;
   }
@@ -1977,6 +1982,10 @@ body[data-platform-theme='dark'] .platform-proxy-card {
 
   .platform-proxy-card {
     min-height: 252px;
+  }
+
+  .platform-proxy-card-content {
+    padding: 16px 124px 74px 16px;
   }
 
   .platform-proxy-card-title {
