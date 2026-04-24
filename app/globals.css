@@ -2218,13 +2218,23 @@ body:has(.landing) {
 }
 
 .landing.auth-scope {
+  background-color: var(--bg);
   background-image: none;
 }
 
 .landing.auth-scope .auth-scope-backdrop {
   background:
-    radial-gradient(860px 520px at 0% -30%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 62%),
-    radial-gradient(820px 520px at 100% 0%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 64%);
+    radial-gradient(860px 520px at 0% -30%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 62%),
+    radial-gradient(820px 520px at 100% 0%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 64%);
+}
+
+.landing.auth-scope .auth-scope-pattern {
+  background-image:
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--ink) 12%, transparent) 1.5px, transparent 0),
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--ink) 6%, transparent) 1px, transparent 0);
+  background-size: 26px 26px, 32px 32px;
+  background-position: 0 0, 13px 13px;
+  opacity: 0.5;
 }
 
 .landing.auth-scope .auth-scope-title,
@@ -2233,10 +2243,10 @@ body:has(.landing) {
 }
 
 .landing.auth-scope .auth-panel {
-  border-radius: 16px;
+  border-radius: 20px;
   border: 1px solid var(--line);
   background: var(--card);
-  box-shadow: var(--landing-card-shadow);
+  box-shadow: 0 28px 60px -34px rgba(14, 17, 22, 0.16);
   overflow: hidden;
 }
 
@@ -2274,16 +2284,25 @@ body:has(.landing) {
 @media (max-width: 640px) {
   .landing.auth-scope main {
     align-items: center;
-    padding-top: max(10px, env(safe-area-inset-top));
-    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    padding-top: max(12px, env(safe-area-inset-top));
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
 
   .landing.auth-scope .auth-panel {
     max-width: 100%;
   }
 
-  .landing.auth-scope .auth-panel-body {
-    padding: 14px;
+  .landing.auth-scope .auth-scope-title {
+    font-size: 38px;
+    line-height: 1.02;
+  }
+
+  .landing.auth-scope .auth-scope-subtitle {
+    font-size: 15px;
+  }
+
+  .landing.auth-scope .auth-scope-pattern {
+    opacity: 0.42;
   }
 }
 

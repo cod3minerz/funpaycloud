@@ -11,7 +11,7 @@ import { readStoredReferralCode, storeReferralCode } from "@/lib/referral";
 import { sanitizeInput, validateEmail, validatePassword } from "@/lib/sanitize";
 
 const fieldClass =
-  "auth-input h-11 w-full rounded-xl border border-[var(--line-2)] bg-[var(--card)] px-4 text-[15px] text-[var(--ink)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)] sm:h-12";
+  "auth-input h-12 w-full rounded-xl border border-[var(--line-2)] bg-[var(--bg)] px-4 text-[16px] font-medium text-[var(--ink)] placeholder:text-[var(--muted)] outline-none transition-all focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10";
 
 function strengthScore(password: string) {
   let score = 0;
@@ -105,7 +105,7 @@ export default function RegisterPage() {
       title="Регистрация"
       subtitle="Создайте аккаунт и запустите рабочее пространство FunPay Cloud."
     >
-      <form onSubmit={handleRegister} className="space-y-4 sm:space-y-5">
+      <form onSubmit={handleRegister} className="space-y-5">
         <div className="space-y-2">
           <label className="text-[13px] font-semibold text-[var(--ink-2)]">Email</label>
           <input
@@ -156,41 +156,43 @@ export default function RegisterPage() {
           )}
         </div>
 
-        <div className="rounded-xl border border-[var(--line-2)] bg-[var(--bg-2)] p-3">
+        <div className="rounded-xl border border-[var(--line-2)] bg-[var(--bg)] p-4 transition-all">
           <button
             type="button"
-            className="inline-flex items-center gap-2 text-[13px] font-semibold text-[var(--ink-2)] hover:text-[var(--ink)]"
+            className="inline-flex items-center gap-2 text-[14px] font-bold text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors"
             onClick={() => setHasPromo((prev) => !prev)}
           >
-            <Ticket size={14} />
-            {hasPromo ? "Скрыть промокод" : "Есть промокод"}
+            <Ticket size={16} />
+            {hasPromo ? "Скрыть промокод" : "У меня есть промокод"}
           </button>
           {hasPromo && (
-            <input
-              className={`${fieldClass} mt-3`}
-              placeholder="Введите промокод"
-              value={promoCode}
-              onChange={(event) => setPromoCode(event.target.value)}
-            />
+            <div className="mt-4 animate-in slide-in-from-top-2">
+              <input
+                className={fieldClass}
+                placeholder="Введите код"
+                value={promoCode}
+                onChange={(event) => setPromoCode(event.target.value)}
+              />
+            </div>
           )}
         </div>
 
-        <div className="space-y-2.5 pt-0.5">
+        <div className="space-y-3 pt-1">
           <button
             type="submit"
             disabled={loading}
-            className="btn btn-primary auth-btn-main h-12 w-full justify-center rounded-xl text-[14px] font-bold disabled:opacity-60"
+            className="auth-btn-main flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--ink)] text-white hover:opacity-90 active:scale-[0.98] transition-all text-[15px] font-bold disabled:opacity-60"
           >
             {loading ? (
-              <Loader2 size={15} className="animate-spin" />
+              <Loader2 size={18} className="animate-spin" />
             ) : (
-              <>Создать аккаунт <ArrowRight size={15} /></>
+              <>Создать аккаунт <ArrowRight size={18} /></>
             )}
           </button>
 
           <button
             type="button"
-            className="btn btn-outline auth-btn-secondary h-12 w-full justify-center rounded-xl text-[14px] font-semibold"
+            className="auth-btn-secondary flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--card)] hover:bg-[var(--bg)] active:scale-[0.98] transition-all text-[15px] font-bold text-[var(--ink)]"
           >
             <GoogleMark />
             Зарегистрироваться с Google

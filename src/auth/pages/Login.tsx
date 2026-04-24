@@ -10,7 +10,7 @@ import { authApi } from "@/lib/api";
 import { sanitizeInput, validateEmail } from "@/lib/sanitize";
 
 const fieldClass =
-  "auth-input h-12 w-full rounded-xl border border-[var(--line-2)] bg-[var(--card)] px-4 text-[15px] text-[var(--ink)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]";
+  "auth-input h-12 w-full rounded-xl border border-[var(--line-2)] bg-[var(--bg)] px-4 text-[16px] font-medium text-[var(--ink)] placeholder:text-[var(--muted)] outline-none transition-all focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10";
 
 function GoogleMark() {
   return (
@@ -73,7 +73,7 @@ export default function LoginPage() {
       title="Вход"
       subtitle="Войдите в аккаунт, чтобы продолжить работу в FunPay Cloud."
     >
-      <form onSubmit={handleLogin} className="space-y-4">
+      <form onSubmit={handleLogin} className="space-y-5">
         <div className="space-y-2">
           <label className="text-[13px] font-semibold text-[var(--ink-2)]">Email</label>
           <input
@@ -89,7 +89,12 @@ export default function LoginPage() {
         </div>
 
         <div className="space-y-2">
-          <label className="text-[13px] font-semibold text-[var(--ink-2)]">Пароль</label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-[13px] font-semibold text-[var(--ink-2)]">Пароль</label>
+            <span className="text-[12px] font-semibold text-[var(--muted)]">
+              Забыли пароль?
+            </span>
+          </div>
           <input
             className={fieldClass}
             type="password"
@@ -102,18 +107,18 @@ export default function LoginPage() {
           )}
         </div>
 
-        <div className="auth-actions space-y-3 pt-1">
+        <div className="space-y-3 pt-1">
           <button
             type="submit"
             disabled={loading}
-            className="btn btn-primary auth-btn-main h-12 w-full justify-center rounded-xl text-[14px] font-bold disabled:opacity-60"
+            className="auth-btn-main flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--ink)] text-white hover:opacity-90 active:scale-[0.98] transition-all text-[15px] font-bold disabled:opacity-60"
           >
-            {loading ? <Loader2 size={15} className="animate-spin" /> : <>Войти <ArrowRight size={15} /></>}
+            {loading ? <Loader2 size={18} className="animate-spin" /> : <>Войти <ArrowRight size={18} /></>}
           </button>
 
           <button
             type="button"
-            className="btn btn-outline auth-btn-secondary h-12 w-full justify-center rounded-xl text-[14px] font-semibold"
+            className="auth-btn-secondary flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--card)] hover:bg-[var(--bg)] active:scale-[0.98] transition-all text-[15px] font-bold text-[var(--ink)]"
           >
             <GoogleMark />
             Войти через Google

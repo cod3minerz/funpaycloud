@@ -167,6 +167,7 @@ const nodeTypes = {
 // --- MAIN COMPONENT ---
 
 function ConstructorFlow() {
+  const reactFlow = useReactFlow();
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [selectedAccountID, setSelectedAccountID] = useState<number | null>(null);
   const [scenarios, setScenarios] = useState<ApiScenario[]>([]);
@@ -188,6 +189,29 @@ function ConstructorFlow() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newScenarioName, setNewScenarioName] = useState('');
   const [creatingScenario, setCreatingScenario] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingScenario, setDeletingScenario] = useState(false);
+
+  const normalizeNodeType = useCallback((node: Node): Node => {
+    const subtype = (node.data as any)?.subtype;
+    const knownTypes = new Set(['triggerNode', 'conditionNode', 'actionNode', 'aiNode']);
+    if (knownTypes.has(String(node.type || ''))) return node;
+
+    if (subtype === 'new_message' || subtype === 'new_order' || subtype === 'manual_start') {
+      return { ...node, type: 'triggerNode' };
+    }
+    if (subtype === 'contains_word' || subtype === 'client_type') {
+      return { ...node, type: 'conditionNode' };
+    }
+    if (subtype === 'send_message' || subtype === 'deliver_item' || subtype === 'notify_tg') {
+      return { ...node, type: 'actionNode' };
+    }
+    if (subtype === 'ai_reply' || subtype === 'ai_summary') {
+      return { ...node, type: 'aiNode' };
+    }
+
+    return { ...node, type: 'actionNode' };
+  }, []);
 
   // Initial load
   useEffect(() => {
@@ -233,9 +257,22 @@ function ConstructorFlow() {
       const scenario = scenarios.find(s => s.id === selectedScenarioID);
       if (scenario && scenario.flow_data) {
         try {
-          const parsed = JSON.parse(scenario.flow_data);
-          setNodes(parsed.nodes || []);
-          setEdges(parsed.edges || []);
+          const rawFlow = scenario.flow_data as unknown;
+          const parsed =
+            typeof rawFlow === 'string'
+              ? JSON.parse(rawFlow || '{}')
+              : rawFlow && typeof rawFlow === 'object'
+                ? rawFlow
+                : {};
+          const loadedNodes = (Array.isArray((parsed as any).nodes) ? (parsed as any).nodes : []).map((n: Node) =>
+            normalizeNodeType(n),
+          );
+          const loadedEdges = Array.isArray((parsed as any).edges) ? (parsed as any).edges : [];
+          setNodes(loadedNodes);
+          setEdges(loadedEdges);
+          requestAnimationFrame(() => {
+            reactFlow.fitView({ padding: 0.24, duration: 260, includeHiddenNodes: false });
+          });
         } catch (err) {
           console.error(err);
           toast.error('Не удалось пропарсить данные графа');
@@ -248,7 +285,7 @@ function ConstructorFlow() {
       setNodes([]);
       setEdges([]);
     }
-  }, [selectedScenarioID, scenarios, setNodes, setEdges]);
+  }, [selectedScenarioID, scenarios, setNodes, setEdges, normalizeNodeType, reactFlow]);
 
   const onConnect = useCallback(
     (params: Connection | Edge) => setEdges((eds) => addEdge({ ...params }, eds)),
@@ -336,6 +373,30 @@ function ConstructorFlow() {
       toast.error('Ошибка создания');
     } finally {
       setCreatingScenario(false);
+    }
+  };
+
+  const handleDeleteScenario = async () => {
+    if (!selectedScenarioID) return;
+    setDeletingScenario(true);
+    const deletingID = selectedScenarioID;
+    try {
+      await scenariosApi.delete(deletingID);
+      const nextScenarios = scenarios.filter((s) => s.id !== deletingID);
+      setScenarios(nextScenarios);
+      if (nextScenarios.length > 0) {
+        setSelectedScenarioID(nextScenarios[0].id);
+      } else {
+        setSelectedScenarioID(null);
+        setNodes([]);
+        setEdges([]);
+      }
+      setDeleteDialogOpen(false);
+      toast.success('Сценарий удалён');
+    } catch (err) {
+      toast.error('Не удалось удалить сценарий');
+    } finally {
+      setDeletingScenario(false);
     }
   };
 
@@ -464,6 +525,14 @@ function ConstructorFlow() {
               disabled={!selectedAccountID}
             >
               <Plus size={16} className="mr-2" /> Создать
+            </button>
+            <button
+              className="platform-btn-secondary h-10 px-4 rounded-xl shadow-lg bg-[var(--pf-surface)] hover:bg-[color-mix(in_srgb,var(--pf-danger)_10%,transparent)] border-[var(--pf-border)] disabled:opacity-50"
+              onClick={() => setDeleteDialogOpen(true)}
+              disabled={!selectedScenarioID || deletingScenario}
+            >
+              {deletingScenario ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Trash2 size={16} className="mr-2" />}
+              Удалить
             </button>
             <button 
               className="platform-btn-primary h-10 px-4 rounded-xl shadow-lg" 
@@ -653,6 +722,42 @@ function ConstructorFlow() {
             >
               {creatingScenario ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Plus size={16} className="mr-2" />}
               Создать сценарий
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={(open) => {
+        if (deletingScenario) return;
+        setDeleteDialogOpen(open);
+      }}>
+        <DialogContent className="platform-dialog-content sm:max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle>Удалить сценарий?</DialogTitle>
+            <DialogDescription className="text-[var(--pf-text-dim)]">
+              Это действие необратимо. Сценарий и его конфигурация будут удалены навсегда.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-[var(--pf-border)] bg-[var(--pf-surface-2)] px-3 py-2.5 text-sm text-[var(--pf-text)]">
+            {scenarios.find((s) => s.id === selectedScenarioID)?.name || 'Выбранный сценарий'}
+          </div>
+          <DialogFooter className="gap-2">
+            <button
+              type="button"
+              className="platform-btn-secondary"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deletingScenario}
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              className="platform-btn-danger-subtle"
+              onClick={() => void handleDeleteScenario()}
+              disabled={deletingScenario || !selectedScenarioID}
+            >
+              {deletingScenario ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Trash2 size={16} className="mr-2" />}
+              Удалить навсегда
             </button>
           </DialogFooter>
         </DialogContent>
