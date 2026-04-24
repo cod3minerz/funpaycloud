@@ -653,7 +653,7 @@ body[data-platform-theme] {
   width: var(--pf-sidebar-width);
   flex-shrink: 0;
   border-right: 1px solid var(--pf-border);
-  background: var(--pf-bg-soft);
+  background: var(--pf-surface);
   display: flex;
   flex-direction: column;
   overflow-y: hidden;

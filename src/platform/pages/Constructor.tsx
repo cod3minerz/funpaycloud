@@ -29,6 +29,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 
 const TriggerNode = ({ id, data }: any) => {
   const { updateNodeData } = useReactFlow();
+  const readOnly = Boolean(data?.readOnly);
   const label = data.subtype === 'new_order' ? 'Новый заказ' : data.subtype === 'manual_start' ? 'Ручной запуск' : 'Новое сообщение';
   
   return (
@@ -48,6 +49,7 @@ const TriggerNode = ({ id, data }: any) => {
 
 const ConditionNode = ({ id, data }: any) => {
   const { updateNodeData } = useReactFlow();
+  const readOnly = Boolean(data?.readOnly);
   
   return (
     <div className="bg-[var(--pf-surface)] border border-[var(--pf-warning)] rounded-xl min-w-[220px] shadow-sm overflow-hidden">
@@ -65,6 +67,7 @@ const ConditionNode = ({ id, data }: any) => {
               value={data.keyword || ''}
               onChange={(e) => updateNodeData(id, { keyword: e.target.value })}
               placeholder="Например: скидка"
+              disabled={readOnly}
             />
           </>
         )}
@@ -75,6 +78,7 @@ const ConditionNode = ({ id, data }: any) => {
               className="platform-select text-[12px] py-1 h-8 bg-[var(--pf-surface-2)] w-full"
               value={data.client_type || 'new'}
               onChange={(e) => updateNodeData(id, { client_type: e.target.value })}
+              disabled={readOnly}
             >
               <option value="new">Новый клиент</option>
               <option value="returning">Повторный клиент</option>
@@ -94,6 +98,7 @@ const ConditionNode = ({ id, data }: any) => {
 
 const ActionNode = ({ id, data }: any) => {
   const { updateNodeData } = useReactFlow();
+  const readOnly = Boolean(data?.readOnly);
   
   return (
     <div className="bg-[var(--pf-surface)] border border-[var(--pf-success)] rounded-xl min-w-[220px] shadow-sm overflow-hidden">
@@ -111,6 +116,7 @@ const ActionNode = ({ id, data }: any) => {
               value={data.text || ''}
               onChange={(e) => updateNodeData(id, { text: e.target.value })}
               placeholder="Введите текст..."
+              disabled={readOnly}
             />
           </>
         )}
@@ -128,6 +134,7 @@ const ActionNode = ({ id, data }: any) => {
 
 const AiNode = ({ id, data }: any) => {
   const { updateNodeData } = useReactFlow();
+  const readOnly = Boolean(data?.readOnly);
   
   return (
     <div className="bg-[var(--pf-surface)] border border-[#a855f7] rounded-xl min-w-[220px] shadow-md shadow-purple-500/10 overflow-hidden">
@@ -145,6 +152,7 @@ const AiNode = ({ id, data }: any) => {
                 value={data.prompt || ''}
                 onChange={(e) => updateNodeData(id, { prompt: e.target.value })}
                 placeholder="Инструкция для ответа..."
+                disabled={readOnly}
               />
           </>
         )}
@@ -191,6 +199,7 @@ function ConstructorFlow() {
   const [creatingScenario, setCreatingScenario] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingScenario, setDeletingScenario] = useState(false);
+  const [isCompactReadOnly, setIsCompactReadOnly] = useState(false);
 
   const normalizeNodeType = useCallback((node: Node): Node => {
     const subtype = (node.data as any)?.subtype;
@@ -212,6 +221,42 @@ function ConstructorFlow() {
 
     return { ...node, type: 'actionNode' };
   }, []);
+
+  const applyReadonlyFlag = useCallback(
+    (list: Node[]): Node[] =>
+      list.map((node) => ({
+        ...node,
+        selected: isCompactReadOnly ? false : node.selected,
+        data: {
+          ...(node.data || {}),
+          readOnly: isCompactReadOnly,
+        },
+      })),
+    [isCompactReadOnly],
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const media = window.matchMedia('(max-width: 1024px)');
+    const sync = () => setIsCompactReadOnly(media.matches);
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
+
+  useEffect(() => {
+    setNodes((current) =>
+      current.map((node) => ({
+        ...node,
+        selected: isCompactReadOnly ? false : node.selected,
+        data: {
+          ...(node.data || {}),
+          readOnly: isCompactReadOnly,
+        },
+      })),
+    );
+    setActivePalette(null);
+  }, [isCompactReadOnly, setNodes]);
 
   // Initial load
   useEffect(() => {
@@ -264,8 +309,10 @@ function ConstructorFlow() {
               : rawFlow && typeof rawFlow === 'object'
                 ? rawFlow
                 : {};
-          const loadedNodes = (Array.isArray((parsed as any).nodes) ? (parsed as any).nodes : []).map((n: Node) =>
-            normalizeNodeType(n),
+          const loadedNodes = applyReadonlyFlag(
+            (Array.isArray((parsed as any).nodes) ? (parsed as any).nodes : []).map((n: Node) =>
+              normalizeNodeType(n),
+            ),
           );
           const loadedEdges = Array.isArray((parsed as any).edges) ? (parsed as any).edges : [];
           setNodes(loadedNodes);
@@ -285,7 +332,7 @@ function ConstructorFlow() {
       setNodes([]);
       setEdges([]);
     }
-  }, [selectedScenarioID, scenarios, setNodes, setEdges, normalizeNodeType, reactFlow]);
+  }, [selectedScenarioID, scenarios, setNodes, setEdges, normalizeNodeType, reactFlow, applyReadonlyFlag]);
 
   const onConnect = useCallback(
     (params: Connection | Edge) => setEdges((eds) => addEdge({ ...params }, eds)),
@@ -318,6 +365,10 @@ function ConstructorFlow() {
   }, [nodes, edges]);
 
   const handleSave = async () => {
+    if (isCompactReadOnly) {
+      toast.info('На телефоне и планшете доступен только просмотр. Редактирование — на десктопе.');
+      return;
+    }
     if (!selectedScenarioID) return;
     setSaving(true);
     const flowData = JSON.stringify({ nodes, edges });
@@ -339,6 +390,10 @@ function ConstructorFlow() {
   };
 
   const handleCreateScenario = async () => {
+    if (isCompactReadOnly) {
+      toast.info('Создание сценариев доступно на десктопе.');
+      return;
+    }
     if (!selectedAccountID) return;
     const name = newScenarioName.trim();
     if (!name) return;
@@ -377,6 +432,10 @@ function ConstructorFlow() {
   };
 
   const handleDeleteScenario = async () => {
+    if (isCompactReadOnly) {
+      toast.info('Удаление сценариев доступно на десктопе.');
+      return;
+    }
     if (!selectedScenarioID) return;
     setDeletingScenario(true);
     const deletingID = selectedScenarioID;
@@ -416,6 +475,7 @@ function ConstructorFlow() {
 
   // Node Actions
   const handleDuplicateSelected = () => {
+    if (isCompactReadOnly) return;
     const selected = nodes.filter(n => n.selected);
     if (selected.length === 0) return;
     const newNodes = selected.map(n => ({
@@ -428,6 +488,7 @@ function ConstructorFlow() {
   };
 
   const handleDeleteSelected = () => {
+    if (isCompactReadOnly) return;
     const selectedIds = new Set(nodes.filter(n => n.selected).map(n => n.id));
     if (selectedIds.size === 0) return;
     setNodes(nds => nds.filter(n => !selectedIds.has(n.id)));
@@ -436,17 +497,18 @@ function ConstructorFlow() {
 
   // Add Specific Node
   const handleAddNode = (type: string, subtype: string, initialData: any = {}) => {
+    if (isCompactReadOnly) return;
     const newNode: Node = {
       id: `node_${Date.now()}`,
       type,
       position: { x: Math.random() * 200 + 100, y: Math.random() * 200 + 100 },
-      data: { subtype, ...initialData },
+      data: { subtype, ...initialData, readOnly: isCompactReadOnly },
     };
     setNodes(nds => [...nds, newNode]);
     setActivePalette(null);
   };
 
-  const hasSelectedNodes = nodes.some(n => n.selected);
+  const hasSelectedNodes = !isCompactReadOnly && nodes.some(n => n.selected);
   const defaultEdgeOptions = { animated: true, style: { stroke: 'var(--pf-accent)', strokeWidth: 2 } };
 
   return (
@@ -461,13 +523,18 @@ function ConstructorFlow() {
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
+        onNodesChange={isCompactReadOnly ? undefined : onNodesChange}
+        onEdgesChange={isCompactReadOnly ? undefined : onEdgesChange}
+        onConnect={isCompactReadOnly ? undefined : onConnect}
         isValidConnection={isValidConnection}
         nodeTypes={nodeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
         proOptions={{ hideAttribution: true }}
+        nodesDraggable={!isCompactReadOnly}
+        nodesConnectable={!isCompactReadOnly}
+        elementsSelectable={!isCompactReadOnly}
+        selectionOnDrag={!isCompactReadOnly}
+        deleteKeyCode={isCompactReadOnly ? null : ['Backspace', 'Delete']}
         fitView
       >
         <Controls className="bg-[var(--pf-surface)] border border-[var(--pf-border)] shadow-lg rounded-lg overflow-hidden fill-[var(--pf-text)] text-[var(--pf-text)]" />
@@ -516,36 +583,45 @@ function ConstructorFlow() {
             >
               <History size={16} className="mr-2" /> История
             </button>
-            <button
-              className="platform-btn-secondary h-10 px-4 rounded-xl shadow-lg bg-[var(--pf-surface)] hover:bg-[var(--pf-surface-2)] border-[var(--pf-border)]"
-              onClick={() => {
-                setNewScenarioName('');
-                setCreateDialogOpen(true);
-              }}
-              disabled={!selectedAccountID}
-            >
-              <Plus size={16} className="mr-2" /> Создать
-            </button>
-            <button
-              className="platform-btn-secondary h-10 px-4 rounded-xl shadow-lg bg-[var(--pf-surface)] hover:bg-[color-mix(in_srgb,var(--pf-danger)_10%,transparent)] border-[var(--pf-border)] disabled:opacity-50"
-              onClick={() => setDeleteDialogOpen(true)}
-              disabled={!selectedScenarioID || deletingScenario}
-            >
-              {deletingScenario ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Trash2 size={16} className="mr-2" />}
-              Удалить
-            </button>
-            <button 
-              className="platform-btn-primary h-10 px-4 rounded-xl shadow-lg" 
-              onClick={handleSave} 
-              disabled={saving || !selectedScenarioID}
-            >
-              {saving ? <Loader2 className="animate-spin mr-2" size={16} /> : <Save className="mr-2" size={16} />}
-              Сохранить
-            </button>
+            {isCompactReadOnly ? (
+              <div className="inline-flex h-10 items-center rounded-xl border border-[var(--pf-border)] bg-[var(--pf-surface)] px-3 text-xs font-medium text-[var(--pf-text-dim)]">
+                Режим просмотра
+              </div>
+            ) : (
+              <>
+                <button
+                  className="platform-btn-secondary h-10 px-4 rounded-xl shadow-lg bg-[var(--pf-surface)] hover:bg-[var(--pf-surface-2)] border-[var(--pf-border)]"
+                  onClick={() => {
+                    setNewScenarioName('');
+                    setCreateDialogOpen(true);
+                  }}
+                  disabled={!selectedAccountID}
+                >
+                  <Plus size={16} className="mr-2" /> Создать
+                </button>
+                <button
+                  className="platform-btn-secondary h-10 px-4 rounded-xl shadow-lg bg-[var(--pf-surface)] hover:bg-[color-mix(in_srgb,var(--pf-danger)_10%,transparent)] border-[var(--pf-border)] disabled:opacity-50"
+                  onClick={() => setDeleteDialogOpen(true)}
+                  disabled={!selectedScenarioID || deletingScenario}
+                >
+                  {deletingScenario ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Trash2 size={16} className="mr-2" />}
+                  Удалить
+                </button>
+                <button 
+                  className="platform-btn-primary h-10 px-4 rounded-xl shadow-lg" 
+                  onClick={handleSave} 
+                  disabled={saving || !selectedScenarioID}
+                >
+                  {saving ? <Loader2 className="animate-spin mr-2" size={16} /> : <Save className="mr-2" size={16} />}
+                  Сохранить
+                </button>
+              </>
+            )}
           </div>
         </FlowPanel>
 
         {/* BOTTOM: Node Palette or Toolbar */}
+        {!isCompactReadOnly && (
         <FlowPanel position="bottom-center" className="mb-6">
           {hasSelectedNodes ? (
             // TOOLBAR (If nodes selected)
@@ -633,6 +709,7 @@ function ConstructorFlow() {
             </div>
           )}
         </FlowPanel>
+        )}
         
         {/* Placeholder if empty */}
         {!selectedScenarioID && !loading && (

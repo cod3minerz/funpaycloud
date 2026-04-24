@@ -1022,7 +1022,12 @@ export default function Accounts() {
               </span>
             </div>
 
-            <div className="platform-proxy-card platform-proxy-card-action">
+            <button
+              type="button"
+              className="platform-proxy-card platform-proxy-card-action text-left disabled:opacity-60"
+              onClick={openExternalProxyDialog}
+              disabled={!proxyTargetAccount}
+            >
               <div className="platform-proxy-card-content">
                 <h4 className="platform-proxy-card-title">Внешний прокси</h4>
                 <p className="platform-proxy-card-description">
@@ -1038,19 +1043,11 @@ export default function Accounts() {
                   />
                 </div>
               </div>
-              <button
-                type="button"
-                className="platform-proxy-card-badge"
-                onClick={event => {
-                  event.stopPropagation();
-                  openExternalProxyDialog();
-                }}
-                disabled={!proxyTargetAccount}
-              >
+              <span className="platform-proxy-card-badge">
                 <Network size={13} />
                 Настроить
-              </button>
-            </div>
+              </span>
+            </button>
           </div>
 
           {proxyConnectError && (
