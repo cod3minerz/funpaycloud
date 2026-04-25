@@ -954,7 +954,7 @@ export default function Accounts() {
           }
         }}
       >
-        <DialogContent className="platform-dialog-content platform-proxy-dialog sm:max-w-[820px]">
+        <DialogContent className="platform-dialog-content platform-proxy-dialog max-h-[calc(100dvh-1rem)] overflow-y-auto sm:max-w-[820px]">
           <DialogHeader>
             <DialogTitle>Выберите прокси</DialogTitle>
             <DialogDescription className="sr-only">
@@ -1085,7 +1085,7 @@ export default function Accounts() {
           }
         }}
       >
-        <DialogContent className="platform-dialog-content sm:max-w-[560px]">
+        <DialogContent className="platform-dialog-content platform-external-proxy-dialog max-h-[calc(100dvh-1rem)] overflow-y-auto sm:max-w-[560px]">
           <DialogHeader>
             <DialogTitle>Настройка внешнего прокси</DialogTitle>
             <DialogDescription className="sr-only">
