@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Activity, Ban, LayoutDashboard, LogOut, Logs, PlayCircle, Users, Network, Ticket } from 'lucide-react';
+import { Activity, Ban, LayoutDashboard, LogOut, Logs, PlayCircle, Users, Network, Ticket, MonitorSmartphone } from 'lucide-react';
 import { clearAdminToken } from '@/lib/auth';
 import { adminApi } from '@/lib/api';
 
 const navItems = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/logs', label: 'Логи', icon: Logs },
+  { href: '/admin/monitoring', label: 'Мониторинг', icon: MonitorSmartphone },
   { href: '/admin/runners', label: 'Воркеры', icon: PlayCircle },
   { href: '/admin/proxies', label: 'Прокси', icon: Network },
   { href: '/admin/promocodes', label: 'Промокоды', icon: Ticket },

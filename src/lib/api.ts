@@ -1197,6 +1197,21 @@ export type AdminChatRuntime = {
   checked_at: string;
 };
 
+export type AdminMonitoring = {
+  server: {
+    cpu_percent: number;
+    ram_percent: number;
+    disk_percent: number;
+    uptime_seconds: number;
+  };
+  requests: {
+    total_last_hour: number;
+    errors_last_hour: number;
+    avg_response_time_ms: number;
+  };
+  timestamp: string;
+};
+
 export const adminApi = {
   login: (email: string, password: string, totp: string) =>
     adminApiRequest<{ user: { id: number; email: string } }>('/admin-api/auth/login', {
@@ -1211,6 +1226,7 @@ export const adminApi = {
   stats: () => adminApiRequest<AdminStats>('/admin-api/stats'),
   metrics: (period: '1h' | '24h' | '7d' = '24h') =>
     adminApiRequest<{ current: AdminMetric; history: AdminMetric[]; period: string }>(`/admin-api/metrics?period=${period}`),
+  monitoring: () => adminApiRequest<AdminMonitoring>('/admin-api/monitoring'),
   chatRuntime: () => adminApiRequest<AdminChatRuntime>('/admin-api/chat-runtime'),
   logs: (params: { category?: string; level?: string; user_id?: number; account_id?: number; from?: string; to?: string; page?: number; limit?: number }) => {
     const query = new URLSearchParams();
