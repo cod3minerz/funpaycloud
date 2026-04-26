@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import {
   BadgeDollarSign,
   ChevronRight,
@@ -133,6 +134,7 @@ function isAccountRuntimeActive(acc: ApiAccount): boolean {
 }
 
 export default function Accounts() {
+  const router = useRouter();
   const [list, setList] = useState<ApiAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -165,6 +167,8 @@ export default function Accounts() {
   const [externalProxyProtocol, setExternalProxyProtocol] = useState<'HTTP' | 'HTTPS' | 'SOCKS5'>('HTTP');
   const [externalProxyUsername, setExternalProxyUsername] = useState('');
   const [externalProxyPassword, setExternalProxyPassword] = useState('');
+  const [handledAutoProxyAccountID, setHandledAutoProxyAccountID] = useState<number | null>(null);
+  const [autoProxyQueryAccountID, setAutoProxyQueryAccountID] = useState<number | null>(null);
   const [, setMinuteTick] = useState(Date.now());
 
   async function loadAccounts() {
@@ -208,6 +212,13 @@ export default function Accounts() {
     () => list.find(acc => acc.id === proxyAccountID) ?? null,
     [list, proxyAccountID],
   );
+  const hasFreeProxyOnAnotherAccount = useMemo(() => {
+    if (!proxyTargetAccount) {
+      return list.some(acc => acc.proxy_type === 'free_shared');
+    }
+    return list.some(acc => acc.id !== proxyTargetAccount.id && acc.proxy_type === 'free_shared');
+  }, [list, proxyTargetAccount]);
+  const freeProxyAllowed = Boolean(proxyTargetAccount) && (proxyTargetAccount?.proxy_type === 'free_shared' || !hasFreeProxyOnAnotherAccount);
 
   async function createAccount() {
     const key = sanitizeInput(goldenKey);
@@ -218,11 +229,15 @@ export default function Accounts() {
 
     setCreating(true);
     try {
-      await accountsApi.add(key);
+      const created = await accountsApi.add(key);
+      const createdID = Number(created?.id);
       setGoldenKey('');
       setShowCreate(false);
-      toast.success('Аккаунт добавлен. Подключите прокси, чтобы запустить воркеры.');
       await loadAccounts();
+      if (Number.isInteger(createdID) && createdID > 0) {
+        openProxyConnectDialog(createdID);
+      }
+      toast.success('Аккаунт добавлен. Подключите прокси, чтобы запустить воркеры.');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Ошибка добавления аккаунта');
     } finally {
@@ -365,8 +380,37 @@ export default function Accounts() {
     setShowProxyDialog(false);
   };
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const rawAccountID = new URLSearchParams(window.location.search).get('connectProxy');
+    if (!rawAccountID) return;
+    const accountID = Number(rawAccountID);
+    if (!Number.isInteger(accountID) || accountID <= 0) {
+      router.replace('/platform/accounts', { scroll: false });
+      return;
+    }
+    setAutoProxyQueryAccountID(accountID);
+  }, [router]);
+
+  useEffect(() => {
+    if (autoProxyQueryAccountID === null) return;
+    const accountID = autoProxyQueryAccountID;
+    if (handledAutoProxyAccountID === accountID) return;
+    if (!list.some(acc => acc.id === accountID)) return;
+
+    setHandledAutoProxyAccountID(accountID);
+    openProxyConnectDialog(accountID);
+    router.replace('/platform/accounts', { scroll: false });
+  }, [autoProxyQueryAccountID, router, list, handledAutoProxyAccountID]);
+
   async function connectFreeProxy() {
     if (!proxyTargetAccount) return;
+    if (!freeProxyAllowed) {
+      const message = 'Бесплатный прокси уже используется на другом аккаунте. Для этого аккаунта выберите внешний или индивидуальный прокси.';
+      setProxyConnectError(message);
+      toast.error(message);
+      return;
+    }
     setProxyConnecting(true);
     setProxyConnectingMode('free');
     setProxyConnectError(null);
@@ -970,12 +1014,14 @@ export default function Accounts() {
               type="button"
               className="platform-proxy-card platform-proxy-card-action text-left disabled:opacity-60"
               onClick={connectFreeProxy}
-              disabled={proxyConnecting || !proxyTargetAccount}
+              disabled={proxyConnecting || !proxyTargetAccount || !freeProxyAllowed}
             >
               <div className="platform-proxy-card-content">
                 <h4 className="platform-proxy-card-title">Бесплатный прокси</h4>
                 <p className="platform-proxy-card-description">
-                  Прокси для 2 человек на платформе.
+                  {freeProxyAllowed
+                    ? 'Прокси для 2 человек на платформе.'
+                    : 'Недоступно: бесплатный прокси уже подключен к другому вашему аккаунту.'}
                 </p>
                 <div className="platform-proxy-card-illustration">
                   <Image
@@ -991,6 +1037,10 @@ export default function Accounts() {
                 <span className="platform-proxy-card-badge">
                   <Loader2 size={13} className="animate-spin" />
                   Подключаем...
+                </span>
+              ) : !freeProxyAllowed ? (
+                <span className="platform-proxy-card-badge">
+                  Недоступно
                 </span>
               ) : (
                 <span className="platform-proxy-card-badge">

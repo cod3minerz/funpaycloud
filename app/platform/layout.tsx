@@ -117,10 +117,15 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
     setCreatingFirstAccount(true);
     setFirstAccountError('');
     try {
-      await accountsApi.add(goldenKey);
+      const created = await accountsApi.add(goldenKey);
+      const createdID = Number(created?.id);
       setAccountsCount(1);
       setFirstGoldenKey('');
-      router.push('/platform/accounts');
+      if (Number.isInteger(createdID) && createdID > 0) {
+        router.push(`/platform/accounts?connectProxy=${createdID}`);
+      } else {
+        router.push('/platform/accounts');
+      }
     } catch (error) {
       setFirstAccountError(error instanceof Error ? error.message : 'Не удалось добавить аккаунт.');
     } finally {
