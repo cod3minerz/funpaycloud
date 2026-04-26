@@ -811,28 +811,40 @@ export default function Chats() {
               </div>
 
               <div className="platform-chat-scroll">
-                {filteredChats.map(chat => (
-                  <button
-                    key={chat.id}
-                    className={`platform-chat-row ${chat.id === selectedChatID ? 'active' : ''} ${
-                      chat.unread_count > 0 && chat.id !== selectedChatID ? 'unread' : ''
-                    }`}
-                    onClick={() => void handleChatSelect(chat)}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <strong className="platform-chat-name">{chat.with_user || 'Пользователь'}</strong>
-                      <span className="text-[11px] text-[var(--pf-text-dim)]">{formatTime(chat.updated_at)}</span>
-                    </div>
-                    <p className="platform-chat-preview">{chat.last_message || ''}</p>
-                    {chat.unread_count > 0 && chat.id !== selectedChatID && (
-                      <div className="platform-chat-meta">
-                        <span className="inline-flex min-w-5 h-5 px-1.5 items-center justify-center rounded-full bg-[var(--pf-accent)] text-white text-[10px] font-semibold">
-                          {chat.unread_count > 9 ? '9+' : chat.unread_count}
-                        </span>
+                {filteredChats.map(chat => {
+                  const chatAccountName =
+                    chat.funpay_account_id != null
+                      ? accounts.find(account => account.id === chat.funpay_account_id)?.username || `ID ${chat.funpay_account_id}`
+                      : '';
+
+                  return (
+                    <button
+                      key={chat.id}
+                      className={`platform-chat-row ${chat.id === selectedChatID ? 'active' : ''} ${
+                        chat.unread_count > 0 && chat.id !== selectedChatID ? 'unread' : ''
+                      }`}
+                      onClick={() => void handleChatSelect(chat)}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <strong className="platform-chat-name">{chat.with_user || 'Пользователь'}</strong>
+                          {accountScope === 'all' && chatAccountName && (
+                            <div className="text-[11px] text-[var(--pf-text-dim)] truncate">{chatAccountName}</div>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-[var(--pf-text-dim)] flex-shrink-0">{formatTime(chat.updated_at)}</span>
                       </div>
-                    )}
-                  </button>
-                ))}
+                      <p className="platform-chat-preview">{chat.last_message || ''}</p>
+                      {chat.unread_count > 0 && chat.id !== selectedChatID && (
+                        <div className="platform-chat-meta">
+                          <span className="inline-flex min-w-5 h-5 px-1.5 items-center justify-center rounded-full bg-[var(--pf-accent)] text-white text-[10px] font-semibold">
+                            {chat.unread_count > 9 ? '9+' : chat.unread_count}
+                          </span>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
                 {filteredChats.length === 0 && chats.length === 0 && (
                   <div className="p-4"><EmptyState icon={SearchX} title="Нет чатов">Если вы только что добавили аккаунт, подождите 30 секунд и обновите страницу.</EmptyState></div>
                 )}
