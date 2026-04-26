@@ -252,6 +252,11 @@ export type AuthMeData = {
   plan: string;
   trial_expires_at?: string | null;
   trial_expired?: boolean;
+  subscription_expires_at?: string | null;
+  subscription_days_left?: number | null;
+  subscription_expired?: boolean;
+  status_code?: 'trial_expired' | 'subscription_expired' | string;
+  accounts_count?: number;
   ai_bonus_messages?: number;
   plan_limits?: Record<string, unknown>;
   referral_code?: string;
@@ -757,7 +762,11 @@ export type ProfileData = {
 export type SubscriptionData = {
   plan?: string;
   expires_at?: string | null;
-  days_left?: number;
+  days_left?: number | null;
+  trial_expired?: boolean;
+  subscription_expired?: boolean;
+  status_code?: 'trial_expired' | 'subscription_expired' | string;
+  ai_bonus_count?: number;
 };
 
 export type NotificationSettings = {

@@ -5,10 +5,11 @@ import { motion } from 'motion/react';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { analyticsApi, AnalyticsData } from '@/lib/api';
+import { analyticsApi, AnalyticsData, authApi } from '@/lib/api';
 import { DataTableWrap, KpiCard, KpiGrid, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard, ToolbarRow } from '@/platform/components/primitives';
 
 type Period = 'week' | 'month' | 'quarter' | 'year';
+const PERIOD_ITEMS: Period[] = ['week', 'month', 'quarter', 'year'];
 
 const COLORS = [
   'var(--pf-accent)',
@@ -26,11 +27,35 @@ function pct(curr: number, prev: number) {
 
 export default function Analytics() {
   const [period, setPeriod] = useState<Period>('month');
+  const [allowedPeriods, setAllowedPeriods] = useState<Set<Period>>(new Set(PERIOD_ITEMS));
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [prev, setPrev] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    authApi
+      .me()
+      .then(profile => {
+        if (cancelled) return;
+        const plan = String(profile.plan || '').toLowerCase();
+        if (plan === 'lite' || plan === 'trial') {
+          setAllowedPeriods(new Set<Period>(['week']));
+          setPeriod(prev => (prev === 'week' ? prev : 'week'));
+          return;
+        }
+        setAllowedPeriods(new Set<Period>(PERIOD_ITEMS));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setAllowedPeriods(new Set<Period>(PERIOD_ITEMS));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,8 +95,20 @@ export default function Analytics() {
         <PageHeader>
           <PageTitle title="Аналитика" />
           <ToolbarRow>
-            {(['week', 'month', 'quarter', 'year'] as Period[]).map(item => (
-              <button key={item} className={period === item ? 'platform-btn-primary' : 'platform-btn-secondary'} onClick={() => setPeriod(item)}>
+            {PERIOD_ITEMS.map(item => (
+              <button
+                key={item}
+                className={period === item ? 'platform-btn-primary' : 'platform-btn-secondary'}
+                disabled={!allowedPeriods.has(item)}
+                onClick={() => {
+                  if (!allowedPeriods.has(item)) {
+                    toast.info('Этот период недоступен на вашем тарифе');
+                    return;
+                  }
+                  setPeriod(item);
+                }}
+                style={!allowedPeriods.has(item) ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}
+              >
                 {item === 'week' ? 'Неделя' : item === 'month' ? 'Месяц' : item === 'quarter' ? 'Квартал' : 'Год'}
               </button>
             ))}

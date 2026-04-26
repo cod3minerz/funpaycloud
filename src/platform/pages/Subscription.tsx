@@ -66,8 +66,8 @@ function getDaysLeft(subscription: SubscriptionData | null): number | null {
 }
 
 function isSubscriptionActive(subscription: SubscriptionData | null, planId: CanonicalPlanId): boolean {
-  if (planId === 'trial') return true;
-  if (!subscription?.expires_at) return false;
+  if (subscription?.subscription_expired || subscription?.trial_expired) return false;
+  if (!subscription?.expires_at) return planId === 'trial';
   const expiresAt = new Date(subscription.expires_at);
   if (Number.isNaN(expiresAt.getTime())) return false;
   return expiresAt.getTime() > Date.now();
@@ -143,7 +143,7 @@ export default function SubscriptionPage() {
   const planLimit = PLAN_LIMITS[currentPlanId];
   const accountLimitText = Number.isFinite(planLimit.accounts) ? String(planLimit.accounts) : '∞';
 
-  const statusLabel = active ? 'Активная подписка' : 'Пробный период';
+  const statusLabel = active ? (currentPlanId === 'trial' ? 'Пробный период' : 'Активная подписка') : 'Подписка истекла';
 
   const heroCtaLabel = active ? 'Продлить на месяц' : 'Выбрать тариф';
 
