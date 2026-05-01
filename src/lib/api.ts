@@ -501,6 +501,7 @@ export type ApiMessage = {
   author_name: string;
   text: string;
   is_my_msg: boolean;
+  source?: string | null;
   status?: 'pending' | 'delivered' | 'failed';
   created_at: string;
 };

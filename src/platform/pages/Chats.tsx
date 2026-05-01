@@ -20,6 +20,7 @@ type LoadMessagesMode = 'replace' | 'silent-merge' | 'prepend-history' | 'append
 const CHAT_PAGE_SIZE = 50;
 const MESSAGE_FALLBACK_WINDOW_MS = 15_000;
 const PENDING_MATCH_WINDOW_MS = 15_000;
+const OWN_API_RECONCILIATION_WINDOW_MS = 120_000;
 
 const AVATAR_TONES = [
   'platform-avatar-tone-0',
@@ -99,6 +100,10 @@ function normalizeAuthorName(value?: string) {
   return (value || '').trim().toLowerCase();
 }
 
+function normalizeMessageText(value?: string) {
+  return (value || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+}
+
 function messageTimestamp(value?: string) {
   if (!value) return 0;
   const timestamp = new Date(value).getTime();
@@ -127,7 +132,7 @@ function statusRank(status?: ThreadMessage['status']) {
 
 function isFallbackDuplicate(a: ThreadMessage, b: ThreadMessage, windowMs = MESSAGE_FALLBACK_WINDOW_MS) {
   if (a.is_my_msg !== b.is_my_msg) return false;
-  if (a.text !== b.text) return false;
+  if (normalizeMessageText(a.text) !== normalizeMessageText(b.text)) return false;
   if (!a.is_my_msg && normalizeAuthorName(a.author_name) !== normalizeAuthorName(b.author_name)) {
     return false;
   }
@@ -197,6 +202,20 @@ function mergeThreadMessages(current: ThreadMessage[], incoming: ThreadMessage[]
       continue;
     }
 
+    if ((mode === 'replace' || mode === 'silent-merge') && candidate.row_id != null && candidate.is_my_msg) {
+      const uniqueOwnCandidate = findUniqueRecentOwnEphemeralCandidate(baseline, candidate);
+      if (uniqueOwnCandidate) {
+        const uniqueOwnCandidateIndex = baseline.findIndex(existing => existing === uniqueOwnCandidate);
+        if (uniqueOwnCandidateIndex >= 0) {
+          baseline[uniqueOwnCandidateIndex] = choosePreferredMessage(
+            baseline[uniqueOwnCandidateIndex],
+            candidate,
+          );
+          continue;
+        }
+      }
+    }
+
     const fallbackIndex = baseline.findIndex(existing => isFallbackDuplicate(existing, candidate));
     if (fallbackIndex >= 0) {
       baseline[fallbackIndex] = choosePreferredMessage(baseline[fallbackIndex], candidate);
@@ -216,15 +235,41 @@ function getOldestRowId(rows: ThreadMessage[]): number | null {
   return null;
 }
 
+function findUniqueRecentOwnEphemeralCandidate(
+  rows: ThreadMessage[],
+  incoming: ThreadMessage,
+  windowMs = OWN_API_RECONCILIATION_WINDOW_MS,
+): ThreadMessage | null {
+  if (!incoming.is_my_msg) return null;
+  const normalizedText = normalizeMessageText(incoming.text);
+  if (!normalizedText) return null;
+  const targetTime = messageTimestamp(incoming.created_at) || Date.now();
+  const matches = rows.filter(row => {
+    if (!row.is_my_msg) return false;
+    if (normalizeMessageText(row.text) !== normalizedText) return false;
+
+    const lacksStrongServerIdentity = row.row_id == null || (row.funpay_message_id ?? 0) <= 0;
+    if (!lacksStrongServerIdentity) return false;
+
+    const rowTime = messageTimestamp(row.created_at);
+    if (!rowTime || Math.abs(targetTime - rowTime) > windowMs) return false;
+    return true;
+  });
+
+  if (matches.length !== 1) return null;
+  return matches[0];
+}
+
 function findRecentOwnPendingCandidate(rows: ThreadMessage[], text: string, createdAt?: string): ThreadMessage | null {
   const targetTime = messageTimestamp(createdAt) || Date.now();
+  const normalizedText = normalizeMessageText(text);
   let match: ThreadMessage | null = null;
 
   for (const row of rows) {
     if (!row.is_my_msg) continue;
     if (row.status !== 'pending') continue;
     if ((row.funpay_message_id ?? 0) > 0) continue;
-    if (row.text !== text) continue;
+    if (normalizeMessageText(row.text) !== normalizedText) continue;
     const rowTime = messageTimestamp(row.created_at);
     if (!rowTime || Math.abs(targetTime - rowTime) > PENDING_MATCH_WINDOW_MS) continue;
     if (!match || rowTime > messageTimestamp(match.created_at)) {
