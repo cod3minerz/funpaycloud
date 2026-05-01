@@ -4,17 +4,22 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'motion/react';
 import { Check, CheckCheck, Loader2, SendHorizontal, SearchX, MessageSquareQuote, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from '@/app/components/ui/utils';
 import { accountsApi, ApiAccount, ApiChat, ApiMessage, chatsApi, createAccountWebSocket, SendMessageResponse } from '@/lib/api';
 import { sanitizeInput } from '@/lib/sanitize';
 import { EmptyState, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard } from '@/platform/components/primitives';
 
 type ChatRow = ApiChat & { unread_count: number };
-type ThreadMessage = ApiMessage;
+type ThreadMessage = ApiMessage & { row_id?: number; source?: string | null };
 type AccountScope = 'all' | number;
 type ThreadRenderItem =
   | { type: 'separator'; key: string; label: string }
   | { type: 'message'; key: string; message: ThreadMessage; grouped: boolean };
+
+type LoadMessagesMode = 'replace' | 'silent-merge' | 'prepend-history' | 'append-live';
+
+const CHAT_PAGE_SIZE = 50;
+const MESSAGE_FALLBACK_WINDOW_MS = 15_000;
+const PENDING_MATCH_WINDOW_MS = 15_000;
 
 const AVATAR_TONES = [
   'platform-avatar-tone-0',
@@ -43,6 +48,11 @@ function moveChatToTop(chats: ChatRow[], nodeID: string, accountID?: number) {
     return [chat, ...updated];
   }
   return chats;
+}
+
+function isChatMatch(chat: ChatRow | null | undefined, nodeID: string, accountID: number) {
+  if (!chat) return false;
+  return chat.node_id === nodeID && (chat.funpay_account_id ?? 0) === accountID;
 }
 
 function formatTime(value?: string) {
@@ -80,8 +90,182 @@ function formatDateSeparator(value?: string) {
 function toThreadMessages(rows: ApiMessage[]): ThreadMessage[] {
   return rows.map(msg => ({
     ...msg,
+    row_id: msg.id,
     status: msg.status || (msg.is_my_msg ? 'delivered' : undefined),
   }));
+}
+
+function normalizeAuthorName(value?: string) {
+  return (value || '').trim().toLowerCase();
+}
+
+function messageTimestamp(value?: string) {
+  if (!value) return 0;
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function getMessageClientKey(message: ThreadMessage): string | null {
+  if (message.temp_id) return `temp:${message.temp_id}`;
+  if (message.funpay_message_id) return `fp:${message.funpay_message_id}`;
+  if (message.row_id) return `row:${message.row_id}`;
+  return null;
+}
+
+function statusRank(status?: ThreadMessage['status']) {
+  switch (status) {
+    case 'delivered':
+      return 3;
+    case 'pending':
+      return 2;
+    case 'failed':
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+function isFallbackDuplicate(a: ThreadMessage, b: ThreadMessage, windowMs = MESSAGE_FALLBACK_WINDOW_MS) {
+  if (a.is_my_msg !== b.is_my_msg) return false;
+  if (a.text !== b.text) return false;
+  if (!a.is_my_msg && normalizeAuthorName(a.author_name) !== normalizeAuthorName(b.author_name)) {
+    return false;
+  }
+  const aTime = messageTimestamp(a.created_at);
+  const bTime = messageTimestamp(b.created_at);
+  if (!aTime || !bTime) return false;
+  return Math.abs(aTime - bTime) <= windowMs;
+}
+
+function choosePreferredMessage(current: ThreadMessage, incoming: ThreadMessage): ThreadMessage {
+  const next: ThreadMessage = {
+    ...current,
+    ...incoming,
+    row_id: incoming.row_id ?? current.row_id,
+    temp_id: incoming.temp_id ?? current.temp_id,
+    funpay_message_id: incoming.funpay_message_id ?? current.funpay_message_id,
+    chat_id: incoming.chat_id ?? current.chat_id,
+    author_id: incoming.author_id ?? current.author_id,
+    author_name: incoming.author_name || current.author_name,
+    text: incoming.text || current.text,
+    is_my_msg: incoming.is_my_msg ?? current.is_my_msg,
+    source: incoming.source ?? current.source,
+  };
+
+  if (statusRank(current.status) > statusRank(incoming.status)) {
+    next.status = current.status;
+  } else {
+    next.status = incoming.status ?? current.status;
+  }
+
+  if (messageTimestamp(current.created_at) > messageTimestamp(incoming.created_at)) {
+    next.created_at = current.created_at;
+  } else if (!incoming.created_at) {
+    next.created_at = current.created_at;
+  }
+
+  return next;
+}
+
+function sortThreadMessages(rows: ThreadMessage[]) {
+  return [...rows].sort((a, b) => {
+    const timeDiff = messageTimestamp(a.created_at) - messageTimestamp(b.created_at);
+    if (timeDiff !== 0) return timeDiff;
+    const rowDiff = (a.row_id ?? Number.MAX_SAFE_INTEGER) - (b.row_id ?? Number.MAX_SAFE_INTEGER);
+    if (rowDiff !== 0) return rowDiff;
+    const tempDiff = (a.temp_id ?? Number.MAX_SAFE_INTEGER) - (b.temp_id ?? Number.MAX_SAFE_INTEGER);
+    if (tempDiff !== 0) return tempDiff;
+    return (a.funpay_message_id ?? Number.MAX_SAFE_INTEGER) - (b.funpay_message_id ?? Number.MAX_SAFE_INTEGER);
+  });
+}
+
+function mergeThreadMessages(current: ThreadMessage[], incoming: ThreadMessage[], mode: LoadMessagesMode): ThreadMessage[] {
+  const baseline = mode === 'replace' ? [] : [...current];
+
+  for (const candidate of incoming) {
+    const keyedIndex = baseline.findIndex(existing => {
+      if (candidate.temp_id && existing.temp_id === candidate.temp_id) return true;
+      if (candidate.funpay_message_id && existing.funpay_message_id === candidate.funpay_message_id) return true;
+      if (candidate.row_id && existing.row_id === candidate.row_id) return true;
+      const existingKey = getMessageClientKey(existing);
+      const candidateKey = getMessageClientKey(candidate);
+      return existingKey !== null && candidateKey !== null && existingKey === candidateKey;
+    });
+
+    if (keyedIndex >= 0) {
+      baseline[keyedIndex] = choosePreferredMessage(baseline[keyedIndex], candidate);
+      continue;
+    }
+
+    const fallbackIndex = baseline.findIndex(existing => isFallbackDuplicate(existing, candidate));
+    if (fallbackIndex >= 0) {
+      baseline[fallbackIndex] = choosePreferredMessage(baseline[fallbackIndex], candidate);
+      continue;
+    }
+
+    baseline.push(candidate);
+  }
+
+  return sortThreadMessages(baseline);
+}
+
+function getOldestRowId(rows: ThreadMessage[]): number | null {
+  for (const row of rows) {
+    if (row.row_id) return row.row_id;
+  }
+  return null;
+}
+
+function findRecentOwnPendingCandidate(rows: ThreadMessage[], text: string, createdAt?: string): ThreadMessage | null {
+  const targetTime = messageTimestamp(createdAt) || Date.now();
+  let match: ThreadMessage | null = null;
+
+  for (const row of rows) {
+    if (!row.is_my_msg) continue;
+    if (row.status !== 'pending') continue;
+    if ((row.funpay_message_id ?? 0) > 0) continue;
+    if (row.text !== text) continue;
+    const rowTime = messageTimestamp(row.created_at);
+    if (!rowTime || Math.abs(targetTime - rowTime) > PENDING_MATCH_WINDOW_MS) continue;
+    if (!match || rowTime > messageTimestamp(match.created_at)) {
+      match = row;
+    }
+  }
+
+  return match;
+}
+
+function updateChatRows(
+  chats: ChatRow[],
+  params: {
+    nodeID: string;
+    accountID: number;
+    withUser?: string;
+    lastMessage?: string;
+    updatedAt?: string;
+    unread?: boolean;
+    isOpened: boolean;
+  },
+) {
+  let found = false;
+  const updated = chats.map(chat => {
+    if (!isChatMatch(chat, params.nodeID, params.accountID)) return chat;
+    found = true;
+    const unread = params.isOpened ? false : Boolean(params.unread);
+    return {
+      ...chat,
+      with_user: params.withUser || chat.with_user,
+      last_message: params.lastMessage ?? chat.last_message,
+      updated_at: params.updatedAt || chat.updated_at,
+      unread,
+      unread_count: unread ? Math.max(chat.unread_count, 1) : 0,
+    };
+  });
+
+  return {
+    found,
+    rows: found ? moveChatToTop(updated, params.nodeID, params.accountID) : chats,
+  };
 }
 
 export default function Chats() {
@@ -93,6 +277,10 @@ export default function Chats() {
   const [selectedChatID, setSelectedChatID] = useState<number | null>(null);
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [refreshingMessages, setRefreshingMessages] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [oldestMessageId, setOldestMessageId] = useState<number | null>(null);
   const [messagesError, setMessagesError] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [sending, setSending] = useState(false);
@@ -105,9 +293,15 @@ export default function Chats() {
   const wsResyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const threadScrollRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  const chatsRef = useRef<ChatRow[]>([]);
+  const messagesRef = useRef<ThreadMessage[]>([]);
+  const loadingMoreRef = useRef(false);
   const selectedChatRef = useRef<ChatRow | null>(null);
   const messageLoadSeqRef = useRef(0);
   const silentResyncInFlightRef = useRef(false);
+  const lastMessagesLoadRef = useRef<{ chatID: number; at: number } | null>(null);
+  const threadScrollHeightBeforePrependRef = useRef<number | null>(null);
+  const threadScrollTopBeforePrependRef = useRef<number | null>(null);
   const loadChatsRef = useRef<(scope: AccountScope, preserveSelection: boolean) => Promise<number | null>>(
     async () => null,
   );
@@ -152,7 +346,14 @@ export default function Chats() {
 
       items.push({
         type: 'message',
-        key: `msg-${message.temp_id ?? message.id}-${message.created_at}-${index}`,
+        key:
+          message.row_id != null
+            ? `row:${message.row_id}`
+            : message.temp_id != null
+              ? `temp:${message.temp_id}`
+              : message.funpay_message_id != null
+                ? `fp:${message.funpay_message_id}`
+                : `msg-${message.id}-${message.created_at}-${index}`,
         message,
         grouped,
       });
@@ -161,6 +362,14 @@ export default function Chats() {
     });
 
     return items;
+  }, [messages]);
+
+  useEffect(() => {
+    chatsRef.current = chats;
+  }, [chats]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
   }, [messages]);
 
   useEffect(() => {
@@ -182,37 +391,106 @@ export default function Chats() {
   }, []);
 
   const loadMessages = useCallback(
-    async (chatID: number, options?: { silent?: boolean }) => {
-      const requestID = ++messageLoadSeqRef.current;
-      const silent = Boolean(options?.silent);
+    async (
+      chatID: number,
+      options?: { silent?: boolean; beforeId?: number; mode?: LoadMessagesMode },
+    ) => {
+      const mode = options?.mode ?? (options?.silent ? 'silent-merge' : 'replace');
+      const beforeId = options?.beforeId ?? 0;
+      const shouldTrackSequence = mode !== 'prepend-history';
+      const requestID = shouldTrackSequence ? ++messageLoadSeqRef.current : messageLoadSeqRef.current;
 
-      if (!silent) {
+      if (mode === 'replace') {
+        lastMessagesLoadRef.current = { chatID, at: Date.now() };
         setMessages([]);
+        setMessagesError(null);
+        setRefreshingMessages(false);
+        setLoadingMore(false);
+        setLoadingMessages(true);
+        setOldestMessageId(null);
+        setHasMoreMessages(false);
+      } else if (mode === 'silent-merge') {
+        lastMessagesLoadRef.current = { chatID, at: Date.now() };
+        setRefreshingMessages(true);
+        setMessagesError(null);
+      } else {
+        if (!beforeId) return;
+        if (loadingMoreRef.current) return;
+        loadingMoreRef.current = true;
+        const node = threadScrollRef.current;
+        threadScrollHeightBeforePrependRef.current = node?.scrollHeight ?? null;
+        threadScrollTopBeforePrependRef.current = node?.scrollTop ?? null;
+        setLoadingMore(true);
       }
-      setMessagesError(null);
-      setLoadingMessages(true);
 
       try {
-        const rows = await chatsApi.messages(chatID, 50);
-        if (requestID !== messageLoadSeqRef.current) return;
+        const rows = await chatsApi.messages(chatID, CHAT_PAGE_SIZE, beforeId);
+        if (selectedChatRef.current?.id !== chatID && mode === 'prepend-history') {
+          return;
+        }
+        if (shouldTrackSequence && requestID !== messageLoadSeqRef.current) return;
 
         const safeRows = Array.isArray(rows) ? rows : [];
-        setMessages(toThreadMessages(safeRows));
-        setChats(prev =>
-          prev.map(chat => (chat.id === chatID ? { ...chat, unread: false, unread_count: 0 } : chat)),
-        );
-        requestAnimationFrame(scrollThreadToBottom);
+        const nextRows = toThreadMessages(safeRows);
+
+        if (mode === 'replace') {
+          const merged = mergeThreadMessages([], nextRows, 'replace');
+          setMessages(merged);
+          setOldestMessageId(getOldestRowId(merged));
+          setHasMoreMessages(safeRows.length === CHAT_PAGE_SIZE && getOldestRowId(merged) != null);
+          lastMessagesLoadRef.current = { chatID, at: Date.now() };
+          setChats(prev =>
+            prev.map(chat => (chat.id === chatID ? { ...chat, unread: false, unread_count: 0 } : chat)),
+          );
+          requestAnimationFrame(scrollThreadToBottom);
+          return;
+        }
+
+        if (mode === 'silent-merge') {
+          const merged = mergeThreadMessages(messagesRef.current, nextRows, 'silent-merge');
+          setMessages(merged);
+          setOldestMessageId(getOldestRowId(merged));
+          lastMessagesLoadRef.current = { chatID, at: Date.now() };
+          setChats(prev =>
+            prev.map(chat => (chat.id === chatID ? { ...chat, unread: false, unread_count: 0 } : chat)),
+          );
+          return;
+        }
+
+        const merged = mergeThreadMessages(messagesRef.current, nextRows, 'prepend-history');
+        setMessages(merged);
+        setOldestMessageId(getOldestRowId(merged));
+        setHasMoreMessages(safeRows.length === CHAT_PAGE_SIZE && safeRows.length > 0);
       } catch (err) {
-        if (requestID !== messageLoadSeqRef.current) return;
+        if (shouldTrackSequence && requestID !== messageLoadSeqRef.current) return;
         const message = err instanceof Error ? err.message : 'Не удалось загрузить сообщения';
-        setMessagesError(message);
-        if (!silent) {
+        if (mode === 'replace') {
+          setMessagesError(message);
           setMessages([]);
           toast.error(message);
         }
       } finally {
-        if (requestID === messageLoadSeqRef.current) {
-          setLoadingMessages(false);
+        if (mode === 'replace') {
+          if (!shouldTrackSequence || requestID === messageLoadSeqRef.current) {
+            setLoadingMessages(false);
+          }
+        } else if (mode === 'silent-merge') {
+          if (!shouldTrackSequence || requestID === messageLoadSeqRef.current) {
+            setRefreshingMessages(false);
+          }
+        } else {
+          loadingMoreRef.current = false;
+          setLoadingMore(false);
+          requestAnimationFrame(() => {
+            const node = threadScrollRef.current;
+            const previousHeight = threadScrollHeightBeforePrependRef.current;
+            const previousTop = threadScrollTopBeforePrependRef.current;
+            if (!node || previousHeight == null || previousTop == null) return;
+            const delta = node.scrollHeight - previousHeight;
+            node.scrollTop = previousTop + delta;
+            threadScrollHeightBeforePrependRef.current = null;
+            threadScrollTopBeforePrependRef.current = null;
+          });
         }
       }
     },
@@ -295,10 +573,12 @@ export default function Chats() {
     async (chat: ChatRow) => {
       setSelectedChatID(chat.id);
       setMessagesError(null);
+      setOldestMessageId(null);
+      setHasMoreMessages(false);
       setChats(prev =>
         prev.map(row => (row.id === chat.id ? { ...row, unread: false, unread_count: 0 } : row)),
       );
-      await loadMessages(chat.id);
+      await loadMessages(chat.id, { mode: 'replace' });
       requestAnimationFrame(scrollThreadToBottom);
     },
     [loadMessages, scrollThreadToBottom],
@@ -316,19 +596,12 @@ export default function Chats() {
       setSelectedChatID(null);
 
       try {
-        const rows = await accountsApi.list();
-        if (cancelled) return;
-
-        const safeAccounts = Array.isArray(rows) ? rows : [];
-        setAccounts(safeAccounts);
         setAccountScope('all');
-
-        if (safeAccounts.length === 0) {
-          return;
-        }
-
-        await loadChats('all', false);
+        const nextSelected = await loadChats('all', false);
         if (cancelled) return;
+        if (nextSelected) {
+          await loadMessages(nextSelected, { mode: 'replace' });
+        }
 
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Ошибка загрузки чатов';
@@ -353,11 +626,10 @@ export default function Chats() {
     if (silentResyncInFlightRef.current) return;
     silentResyncInFlightRef.current = true;
     try {
-      const currentSelected = selectedChatRef.current?.id ?? null;
       const nextSelected = await loadChatsRef.current(accountScope, true);
-      const target = currentSelected && nextSelected === currentSelected ? currentSelected : nextSelected;
+      const target = nextSelected ?? selectedChatRef.current?.id;
       if (target) {
-        await loadMessages(target, { silent: true });
+        await loadMessages(target, { silent: true, mode: 'silent-merge' });
       }
     } catch {
       // no-op
@@ -410,10 +682,15 @@ export default function Chats() {
         clearTimeout(wsResyncTimerRef.current);
       }
       wsResyncTimerRef.current = setTimeout(() => {
+        const selectedID = selectedChatRef.current?.id ?? null;
+        const lastLoad = lastMessagesLoadRef.current;
+        if (selectedID && lastLoad && lastLoad.chatID === selectedID && Date.now() - lastLoad.at < 1500) {
+          return;
+        }
         void loadChatsRef.current(accountScope, true).then(nextSelected => {
-          const selectedID = selectedChatRef.current?.id ?? nextSelected;
-          if (selectedID) {
-            void loadMessages(selectedID, { silent: true });
+          const target = nextSelected ?? selectedChatRef.current?.id;
+          if (target) {
+            void loadMessages(target, { silent: true, mode: 'silent-merge' });
           }
         });
       }, 120);
@@ -426,23 +703,43 @@ export default function Chats() {
       try {
         ws = await createAccountWebSocket(accountID, event => {
           const eventAccountID = Number(event.data.account_id ?? accountID);
+          const nodeID = String(event.data.node_id ?? event.data.chat_node_id ?? '');
+          const openedChat = selectedChatRef.current;
+          const isOpened = nodeID ? isChatMatch(openedChat, nodeID, eventAccountID) : false;
+          const openedChatID = isOpened && openedChat ? openedChat.id : 0;
 
           if (event.type === 'pong') {
+            return;
+          }
+
+          if (event.type === 'chat_updated') {
+            if (!nodeID) return;
+            const chatExists = chatsRef.current.some(chat => isChatMatch(chat, nodeID, eventAccountID));
+            setChats(prev =>
+              updateChatRows(prev, {
+                nodeID,
+                accountID: eventAccountID,
+                withUser: String(event.data.with_user ?? ''),
+                lastMessage: String(event.data.last_message ?? event.data.text ?? ''),
+                updatedAt: String(event.data.updated_at ?? event.data.created_at ?? new Date().toISOString()),
+                unread: Boolean(event.data.unread),
+                isOpened,
+              }).rows,
+            );
+            if (!chatExists) {
+              void loadChatsRef.current(accountScope, true);
+            }
             return;
           }
 
           if (event.type === 'message_confirmed') {
             const tempID = Number(event.data.temp_id ?? 0);
             const realID = Number(event.data.real_funpay_message_id ?? 0);
-            if (!tempID) return;
+            if (!tempID || !isOpened) return;
 
             setMessages(prev =>
               prev.map(message => {
-                const selectedAccountID = selectedChatRef.current?.funpay_account_id ?? 0;
-                if (selectedAccountID !== eventAccountID) return message;
-
-                const msgTempID = Number(message.temp_id ?? message.id);
-                if (msgTempID !== tempID) return message;
+                if (Number(message.temp_id ?? 0) !== tempID) return message;
                 return {
                   ...message,
                   id: realID || message.id,
@@ -456,8 +753,6 @@ export default function Chats() {
           }
 
           if (event.type !== 'new_message' && event.type !== 'message_sent') return;
-
-          const nodeID = String(event.data.node_id ?? event.data.chat_node_id ?? '');
           if (!nodeID) return;
 
           const text = String(event.data.text ?? '');
@@ -468,73 +763,79 @@ export default function Chats() {
           const incomingID = Number(event.data.id ?? event.data.funpay_message_id ?? 0);
           const isMyMsg = Boolean(event.data.is_my_msg);
           const status = String(event.data.status ?? (isMyMsg ? 'pending' : 'delivered'));
+          const chatExists = chatsRef.current.some(chat => isChatMatch(chat, nodeID, eventAccountID));
 
-          let found = false;
-          let isOpened = false;
-          let targetChatID = 0;
+          setChats(prev =>
+            updateChatRows(prev, {
+              nodeID,
+              accountID: eventAccountID,
+              withUser,
+              lastMessage: text,
+              updatedAt: createdAt,
+              unread: !isMyMsg,
+              isOpened,
+            }).rows,
+          );
 
-          setChats(prev => {
-            const updated = prev.map(chat => {
-              const chatAccountID = chat.funpay_account_id ?? 0;
-              if (chat.node_id !== nodeID || chatAccountID !== eventAccountID) return chat;
+          if (!chatExists) {
+            void loadChatsRef.current(accountScope, true);
+            return;
+          }
+          if (!isOpened || openedChatID === 0) return;
 
-              found = true;
-              targetChatID = chat.id;
-              isOpened =
-                selectedChatRef.current?.node_id === nodeID &&
-                (selectedChatRef.current?.funpay_account_id ?? 0) === eventAccountID;
-
-              const unread = isOpened ? false : !isMyMsg;
-              return {
-                ...chat,
-                with_user: withUser || chat.with_user,
-                last_message: text,
-                updated_at: createdAt,
-                unread,
-                unread_count: unread ? chat.unread_count + 1 : 0,
-              };
-            });
-
-            if (!found) {
-              void loadChatsRef.current(accountScope, true);
-              return prev;
-            }
-            return moveChatToTop(updated, nodeID, eventAccountID);
-          });
-
-          if (!found || !isOpened || targetChatID === 0) return;
+          const nextMessage: ThreadMessage = {
+            id: incomingID || tempID || Date.now(),
+            temp_id: tempID || undefined,
+            funpay_message_id:
+              Number(event.data.real_funpay_message_id ?? event.data.funpay_message_id ?? event.data.id ?? 0) ||
+              undefined,
+            chat_id: openedChatID,
+            author_id: Number(event.data.author_id ?? 0) || undefined,
+            author_name: authorName || (isMyMsg ? 'Вы' : withUser || openedChat?.with_user || 'Пользователь'),
+            text,
+            is_my_msg: isMyMsg,
+            created_at: createdAt,
+            status: isMyMsg ? (status as ThreadMessage['status']) : 'delivered',
+            source: typeof event.data.source === 'string' ? event.data.source : null,
+          };
 
           setMessages(prev => {
-            const duplicate = prev.some(message => {
-              if (incomingID > 0) {
-                if ((message.funpay_message_id ?? 0) === incomingID) return true;
-                if (message.id === incomingID) return true;
-              }
-              if (tempID > 0 && (message.temp_id ?? 0) === tempID) return true;
-              return (
-                message.is_my_msg === isMyMsg &&
-                (message.author_name || '').trim() === authorName.trim() &&
-                message.text === text &&
-                message.created_at === createdAt
-              );
-            });
-            if (duplicate) return prev;
-
-            const nextMessage: ThreadMessage = {
-              id: incomingID || tempID || Date.now(),
-              temp_id: tempID || undefined,
-              funpay_message_id:
-                Number(event.data.real_funpay_message_id ?? event.data.funpay_message_id ?? event.data.id ?? 0) ||
-                undefined,
-              chat_id: targetChatID,
-              author_id: Number(event.data.author_id ?? 0),
-              author_name: authorName,
-              text,
-              is_my_msg: isMyMsg,
-              created_at: createdAt,
-              status: isMyMsg ? (status as ThreadMessage['status']) : 'delivered',
+            const replaceAt = (predicate: (message: ThreadMessage) => boolean) => {
+              const index = prev.findIndex(predicate);
+              if (index < 0) return null;
+              const updated = [...prev];
+              updated[index] = choosePreferredMessage(updated[index], nextMessage);
+              return sortThreadMessages(updated);
             };
-            return [...prev, nextMessage];
+
+            if (event.type === 'message_sent') {
+              const byTemp = tempID ? replaceAt(message => Number(message.temp_id ?? 0) === tempID) : null;
+              if (byTemp) return byTemp;
+
+              const candidate = findRecentOwnPendingCandidate(prev, text, createdAt);
+              if (candidate) {
+                return replaceAt(message => message === candidate) ?? prev;
+              }
+
+              return mergeThreadMessages(prev, [nextMessage], 'append-live');
+            }
+
+            if (isMyMsg) {
+              const byTemp = tempID ? replaceAt(message => Number(message.temp_id ?? 0) === tempID) : null;
+              if (byTemp) return byTemp;
+
+              const byFunpay = incomingID
+                ? replaceAt(message => Number(message.funpay_message_id ?? 0) === incomingID)
+                : null;
+              if (byFunpay) return byFunpay;
+
+              const candidate = findRecentOwnPendingCandidate(prev, text, createdAt);
+              if (candidate) {
+                return replaceAt(message => message === candidate) ?? prev;
+              }
+            }
+
+            return mergeThreadMessages(prev, [nextMessage], 'append-live');
           });
 
           requestAnimationFrame(scrollThreadToBottom);
@@ -634,12 +935,19 @@ export default function Chats() {
     setAccountScope(nextScope);
     setSelectedChatID(null);
     setMessages([]);
+    setOldestMessageId(null);
+    setHasMoreMessages(false);
     setMessagesError(null);
     setLoading(true);
     setLoadError(null);
 
     try {
-      await loadChats(nextScope, false);
+      const nextSelected = await loadChats(nextScope, false);
+      if (nextSelected) {
+        await loadMessages(nextSelected, { mode: 'replace' });
+      } else {
+        setMessages([]);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Ошибка загрузки чатов';
       setLoadError(message);
@@ -648,6 +956,20 @@ export default function Chats() {
       setLoading(false);
     }
   }
+
+  const loadOlderMessages = useCallback(async () => {
+    const chat = selectedChatRef.current;
+    if (!chat) return;
+    if (oldestMessageId == null || !hasMoreMessages || loadingMessages || loadingMoreRef.current) return;
+    await loadMessages(chat.id, { beforeId: oldestMessageId, mode: 'prepend-history' });
+  }, [hasMoreMessages, loadMessages, loadingMessages, oldestMessageId]);
+
+  const handleThreadScroll = useCallback(() => {
+    const node = threadScrollRef.current;
+    if (!node) return;
+    if (node.scrollTop > 80) return;
+    void loadOlderMessages();
+  }, [loadOlderMessages]);
 
   async function sendMessage() {
     if (!selectedChat) return;
@@ -667,19 +989,21 @@ export default function Chats() {
     const optimisticID = -Date.now();
     const previousLastMessage = selectedChat.last_message;
     const previousUpdatedAt = selectedChat.updated_at;
+    const optimisticAuthorName = accounts.find(account => account.id === targetAccountID)?.username || 'Вы';
     const optimistic: ThreadMessage = {
       id: optimisticID,
       temp_id: optimisticID,
       chat_id: selectedChat.id,
       author_id: 0,
-      author_name: 'Вы',
+      author_name: optimisticAuthorName,
       text,
       is_my_msg: true,
       created_at: nowISO,
       status: 'pending',
+      source: 'manual',
     };
 
-    setMessages(prev => [...prev, optimistic]);
+    setMessages(prev => mergeThreadMessages(prev, [optimistic], 'append-live'));
     setChats(prev =>
       moveChatToTop(
         prev.map(chat =>
@@ -706,7 +1030,7 @@ export default function Chats() {
 
       setMessages(prev =>
         prev.map(message =>
-          message.id === optimisticID
+          message.id === optimisticID || message.temp_id === optimisticID
             ? {
                 ...message,
                 id: pendingTempID,
@@ -717,6 +1041,7 @@ export default function Chats() {
             : message,
         ),
       );
+      lastMessagesLoadRef.current = { chatID: selectedChat.id, at: Date.now() };
 
       setChats(prev =>
         moveChatToTop(
@@ -731,7 +1056,16 @@ export default function Chats() {
         ),
       );
     } catch (err) {
-      setMessages(prev => prev.filter(message => message.id !== optimisticID));
+      setMessages(prev =>
+        prev.filter(
+          message =>
+            !(
+              (message.id === optimisticID || message.temp_id === optimisticID) &&
+              !message.funpay_message_id &&
+              !message.row_id
+            ),
+        ),
+      );
       setChats(prev =>
         sortChatsByUpdatedAt(
           prev.map(chat =>
@@ -869,8 +1203,8 @@ export default function Chats() {
                   </header>
 
                   <div className="platform-thread-messages">
-                    <div ref={threadScrollRef} className="platform-thread-messages-scroll">
-                      {loadingMessages ? (
+                    <div ref={threadScrollRef} className="platform-thread-messages-scroll" onScroll={handleThreadScroll}>
+                      {loadingMessages && messages.length === 0 ? (
                         <div className="space-y-3 py-2">
                           <div className="platform-skeleton-line-muted h-14 w-[72%] animate-pulse rounded" />
                           <div className="platform-skeleton-line-accent h-14 w-[56%] animate-pulse rounded" />
