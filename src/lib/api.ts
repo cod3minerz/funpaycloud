@@ -497,11 +497,13 @@ export type ApiMessage = {
   chat_id?: number;
   temp_id?: number;
   funpay_message_id?: number;
+  cursor_message_id?: number | null;
   author_id?: number;
   author_name: string;
   text: string;
   is_my_msg: boolean;
   source?: string | null;
+  ingest_kind?: string | null;
   status?: 'pending' | 'delivered' | 'failed';
   created_at: string;
 };

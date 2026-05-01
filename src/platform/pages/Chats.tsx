@@ -9,7 +9,11 @@ import { sanitizeInput } from '@/lib/sanitize';
 import { EmptyState, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard } from '@/platform/components/primitives';
 
 type ChatRow = ApiChat & { unread_count: number };
-type ThreadMessage = ApiMessage & { row_id?: number; source?: string | null };
+type ThreadMessage = ApiMessage & {
+  row_id?: number;
+  source?: string | null;
+  optimistic_sort_anchor?: number;
+};
 type AccountScope = 'all' | number;
 type ThreadRenderItem =
   | { type: 'separator'; key: string; label: string }
@@ -21,6 +25,7 @@ const CHAT_PAGE_SIZE = 50;
 const MESSAGE_FALLBACK_WINDOW_MS = 15_000;
 const PENDING_MATCH_WINDOW_MS = 15_000;
 const OWN_API_RECONCILIATION_WINDOW_MS = 120_000;
+const MAX_AUTHORITATIVE_FUNPAY_MESSAGE_ID = 10_000_000_000;
 
 const AVATAR_TONES = [
   'platform-avatar-tone-0',
@@ -93,6 +98,12 @@ function toThreadMessages(rows: ApiMessage[]): ThreadMessage[] {
     ...msg,
     row_id: msg.id,
     status: msg.status || (msg.is_my_msg ? 'delivered' : undefined),
+    optimistic_sort_anchor:
+      msg.temp_id && msg.temp_id < 0
+        ? Math.abs(msg.temp_id)
+        : msg.funpay_message_id && msg.funpay_message_id < 0
+          ? Math.abs(msg.funpay_message_id)
+          : undefined,
   }));
 }
 
@@ -108,6 +119,40 @@ function messageTimestamp(value?: string) {
   if (!value) return 0;
   const timestamp = new Date(value).getTime();
   return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function messageBand(message: ThreadMessage) {
+  if ((message.cursor_message_id ?? 0) > 0) return 1;
+  if (
+    message.status === 'pending' ||
+    message.status === 'failed' ||
+    (message.source ?? '') !== '' ||
+    (message.ingest_kind ?? '') === 'live'
+  ) {
+    return 2;
+  }
+  return 0;
+}
+
+function getServerChronologyKey(message: ThreadMessage) {
+  if ((message.cursor_message_id ?? 0) > 0) return Number(message.cursor_message_id);
+  if ((message.funpay_message_id ?? 0) > 0 && Number(message.funpay_message_id) <= MAX_AUTHORITATIVE_FUNPAY_MESSAGE_ID) {
+    return Number(message.funpay_message_id);
+  }
+  return null;
+}
+
+function getManualChronologyKey(message: ThreadMessage) {
+  if (typeof message.optimistic_sort_anchor === 'number' && message.optimistic_sort_anchor > 0) {
+    return message.optimistic_sort_anchor;
+  }
+  if ((message.temp_id ?? 0) < 0) return Math.abs(Number(message.temp_id));
+  if ((message.funpay_message_id ?? 0) < 0) return Math.abs(Number(message.funpay_message_id));
+  return null;
+}
+
+function getFallbackChronologyKey(message: ThreadMessage) {
+  return getManualChronologyKey(message) ?? messageTimestamp(message.created_at);
 }
 
 function getMessageClientKey(message: ThreadMessage): string | null {
@@ -149,12 +194,15 @@ function choosePreferredMessage(current: ThreadMessage, incoming: ThreadMessage)
     row_id: incoming.row_id ?? current.row_id,
     temp_id: incoming.temp_id ?? current.temp_id,
     funpay_message_id: incoming.funpay_message_id ?? current.funpay_message_id,
+    cursor_message_id: incoming.cursor_message_id ?? current.cursor_message_id,
     chat_id: incoming.chat_id ?? current.chat_id,
     author_id: incoming.author_id ?? current.author_id,
     author_name: incoming.author_name || current.author_name,
     text: incoming.text || current.text,
     is_my_msg: incoming.is_my_msg ?? current.is_my_msg,
     source: incoming.source ?? current.source,
+    ingest_kind: incoming.ingest_kind ?? current.ingest_kind,
+    optimistic_sort_anchor: current.optimistic_sort_anchor ?? incoming.optimistic_sort_anchor,
   };
 
   if (statusRank(current.status) > statusRank(incoming.status)) {
@@ -163,9 +211,7 @@ function choosePreferredMessage(current: ThreadMessage, incoming: ThreadMessage)
     next.status = incoming.status ?? current.status;
   }
 
-  if (messageTimestamp(current.created_at) > messageTimestamp(incoming.created_at)) {
-    next.created_at = current.created_at;
-  } else if (!incoming.created_at) {
+  if (!incoming.created_at) {
     next.created_at = current.created_at;
   }
 
@@ -174,6 +220,21 @@ function choosePreferredMessage(current: ThreadMessage, incoming: ThreadMessage)
 
 function sortThreadMessages(rows: ThreadMessage[]) {
   return [...rows].sort((a, b) => {
+    const bandDiff = messageBand(a) - messageBand(b);
+    if (bandDiff !== 0) return bandDiff;
+
+    const aServerKey = getServerChronologyKey(a);
+    const bServerKey = getServerChronologyKey(b);
+    if (aServerKey != null || bServerKey != null) {
+      if (aServerKey == null) return 1;
+      if (bServerKey == null) return -1;
+      if (aServerKey !== bServerKey) return aServerKey - bServerKey;
+    }
+
+    const aFallbackKey = getFallbackChronologyKey(a);
+    const bFallbackKey = getFallbackChronologyKey(b);
+    if (aFallbackKey !== bFallbackKey) return aFallbackKey - bFallbackKey;
+
     const timeDiff = messageTimestamp(a.created_at) - messageTimestamp(b.created_at);
     if (timeDiff !== 0) return timeDiff;
     const rowDiff = (a.row_id ?? Number.MAX_SAFE_INTEGER) - (b.row_id ?? Number.MAX_SAFE_INTEGER);
@@ -444,16 +505,19 @@ export default function Chats() {
       const beforeId = options?.beforeId ?? 0;
       const shouldTrackSequence = mode !== 'prepend-history';
       const requestID = shouldTrackSequence ? ++messageLoadSeqRef.current : messageLoadSeqRef.current;
+      const preserveCurrentThread = selectedChatRef.current?.id === chatID && messagesRef.current.length > 0;
 
       if (mode === 'replace') {
         lastMessagesLoadRef.current = { chatID, at: Date.now() };
-        setMessages([]);
         setMessagesError(null);
         setRefreshingMessages(false);
         setLoadingMore(false);
         setLoadingMessages(true);
-        setOldestMessageId(null);
-        setHasMoreMessages(false);
+        if (!preserveCurrentThread) {
+          setMessages([]);
+          setOldestMessageId(null);
+          setHasMoreMessages(false);
+        }
       } else if (mode === 'silent-merge') {
         lastMessagesLoadRef.current = { chatID, at: Date.now() };
         setRefreshingMessages(true);
@@ -476,7 +540,10 @@ export default function Chats() {
         if (shouldTrackSequence && requestID !== messageLoadSeqRef.current) return;
 
         const safeRows = Array.isArray(rows) ? rows : [];
-        const nextRows = toThreadMessages(safeRows);
+        const nextRows = toThreadMessages(safeRows).map(message => ({
+          ...message,
+          chat_id: message.chat_id ?? chatID,
+        }));
 
         if (mode === 'replace') {
           const merged = mergeThreadMessages([], nextRows, 'replace');
@@ -492,6 +559,9 @@ export default function Chats() {
         }
 
         if (mode === 'silent-merge') {
+          if (nextRows.length === 0 && messagesRef.current.length > 0) {
+            return;
+          }
           const merged = mergeThreadMessages(messagesRef.current, nextRows, 'silent-merge');
           setMessages(merged);
           setOldestMessageId(getOldestRowId(merged));
@@ -511,7 +581,9 @@ export default function Chats() {
         const message = err instanceof Error ? err.message : 'Не удалось загрузить сообщения';
         if (mode === 'replace') {
           setMessagesError(message);
-          setMessages([]);
+          if (!preserveCurrentThread) {
+            setMessages([]);
+          }
           toast.error(message);
         }
       } finally {
@@ -790,6 +862,11 @@ export default function Chats() {
                   id: realID || message.id,
                   temp_id: tempID,
                   funpay_message_id: realID || message.funpay_message_id,
+                  cursor_message_id:
+                    realID > 0 && realID <= MAX_AUTHORITATIVE_FUNPAY_MESSAGE_ID
+                      ? realID
+                      : message.cursor_message_id,
+                  ingest_kind: message.ingest_kind ?? 'live',
                   status: 'delivered',
                 };
               }),
@@ -806,6 +883,9 @@ export default function Chats() {
           const createdAt = String(event.data.created_at ?? new Date().toISOString());
           const tempID = Number(event.data.temp_id ?? 0);
           const incomingID = Number(event.data.id ?? event.data.funpay_message_id ?? 0);
+          const realFunpayMessageID = Number(
+            event.data.real_funpay_message_id ?? event.data.funpay_message_id ?? event.data.id ?? 0,
+          );
           const isMyMsg = Boolean(event.data.is_my_msg);
           const status = String(event.data.status ?? (isMyMsg ? 'pending' : 'delivered'));
           const chatExists = chatsRef.current.some(chat => isChatMatch(chat, nodeID, eventAccountID));
@@ -831,9 +911,11 @@ export default function Chats() {
           const nextMessage: ThreadMessage = {
             id: incomingID || tempID || Date.now(),
             temp_id: tempID || undefined,
-            funpay_message_id:
-              Number(event.data.real_funpay_message_id ?? event.data.funpay_message_id ?? event.data.id ?? 0) ||
-              undefined,
+            funpay_message_id: realFunpayMessageID || undefined,
+            cursor_message_id:
+              realFunpayMessageID > 0 && realFunpayMessageID <= MAX_AUTHORITATIVE_FUNPAY_MESSAGE_ID
+                ? realFunpayMessageID
+                : undefined,
             chat_id: openedChatID,
             author_id: Number(event.data.author_id ?? 0) || undefined,
             author_name: authorName || (isMyMsg ? 'Вы' : withUser || openedChat?.with_user || 'Пользователь'),
@@ -842,6 +924,7 @@ export default function Chats() {
             created_at: createdAt,
             status: isMyMsg ? (status as ThreadMessage['status']) : 'delivered',
             source: typeof event.data.source === 'string' ? event.data.source : null,
+            ingest_kind: event.type === 'new_message' ? 'live' : null,
           };
 
           setMessages(prev => {
@@ -1046,6 +1129,7 @@ export default function Chats() {
       created_at: nowISO,
       status: 'pending',
       source: 'manual',
+      optimistic_sort_anchor: Date.now(),
     };
 
     setMessages(prev => mergeThreadMessages(prev, [optimistic], 'append-live'));
