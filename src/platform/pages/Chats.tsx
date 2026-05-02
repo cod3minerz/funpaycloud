@@ -209,8 +209,12 @@ function findMergeMatchIndex(rows: ThreadMessage[], candidate: ThreadMessage, mo
 }
 
 function isLocalTailMessage(message: ThreadMessage) {
-  if (message.row_id == null) return true;
   if (message.status === 'pending' || message.status === 'failed') return true;
+  if (message.row_id == null) {
+    if (!message.is_my_msg) return true;
+    if (message.temp_id != null) return true;
+    return false;
+  }
   return false;
 }
 
@@ -801,8 +805,8 @@ export default function Chats() {
       if (selectedChatRef.current?.id !== chatID) {
         return;
       }
-      void loadMessages(chatID, { mode: 'replace' });
-    }, 250);
+      void loadMessages(chatID, { silent: true, mode: 'silent-merge' });
+    }, 400);
   }, [loadMessages]);
 
   useEffect(() => {
