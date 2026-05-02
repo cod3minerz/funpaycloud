@@ -25,6 +25,7 @@ const CHAT_PAGE_SIZE = 50;
 const MESSAGE_FALLBACK_WINDOW_MS = 15_000;
 const PENDING_MATCH_WINDOW_MS = 15_000;
 const OWN_API_RECONCILIATION_WINDOW_MS = 120_000;
+const LOCAL_TAIL_PRESERVE_WINDOW_MS = 180_000;
 const MAX_AUTHORITATIVE_FUNPAY_MESSAGE_ID = 10_000_000_000;
 
 const AVATAR_TONES = [
@@ -211,8 +212,11 @@ function findMergeMatchIndex(rows: ThreadMessage[], candidate: ThreadMessage, mo
 function isLocalTailMessage(message: ThreadMessage) {
   if (message.status === 'pending' || message.status === 'failed') return true;
   if (message.row_id == null) {
-    if (!message.is_my_msg) return true;
-    if (message.temp_id != null) return true;
+    const ageMs = Date.now() - messageTimestamp(message.created_at);
+    const withinPreserveWindow =
+      ageMs >= 0 && ageMs <= LOCAL_TAIL_PRESERVE_WINDOW_MS;
+    if (!message.is_my_msg) return withinPreserveWindow;
+    if (message.temp_id != null) return withinPreserveWindow;
     return false;
   }
   return false;
