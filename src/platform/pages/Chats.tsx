@@ -262,6 +262,36 @@ function mergeLatestPageIntoThread(current: ThreadMessage[], latestPageRows: Thr
   return [...olderPrefix, ...mergeThreadMessages(latestPage, localTail, 'append-live')];
 }
 
+function mergeLatestTailIntoPaginatedThread(current: ThreadMessage[], latestPageRows: ThreadMessage[]): ThreadMessage[] {
+  const latestPage = mergeThreadMessages([], latestPageRows, 'replace');
+  if (current.length === 0) {
+    return latestPage;
+  }
+
+  const updated = [...current];
+  let lastMatchedLatestIndex = -1;
+
+  latestPage.forEach((candidate, latestIndex) => {
+    const matchIndex = findMergeMatchIndex(updated, candidate, 'silent-merge');
+    if (matchIndex < 0) {
+      return;
+    }
+    updated[matchIndex] = choosePreferredMessage(updated[matchIndex], candidate);
+    lastMatchedLatestIndex = latestIndex;
+  });
+
+  if (lastMatchedLatestIndex < 0) {
+    return updated;
+  }
+
+  const missingTail = latestPage.slice(lastMatchedLatestIndex + 1);
+  if (missingTail.length === 0) {
+    return updated;
+  }
+
+  return mergeThreadMessages(updated, missingTail, 'append-live');
+}
+
 function getOldestRowId(rows: ThreadMessage[]): number | null {
   for (const row of rows) {
     if (row.row_id) return row.row_id;
@@ -514,7 +544,7 @@ export default function Chats() {
         if (shouldTrackSequence && requestID !== messageLoadSeqRef.current) return;
 
         const safeRows = Array.isArray(rows) ? rows : [];
-        const nextRows = toThreadMessages(safeRows).map(message => ({
+        let nextRows = toThreadMessages(safeRows).map(message => ({
           ...message,
           chat_id: message.chat_id ?? chatID,
         }));
@@ -534,13 +564,12 @@ export default function Chats() {
         }
 
         if (mode === 'silent-merge') {
-          if (hasPrependedHistoryRef.current) {
-            return;
-          }
           if (nextRows.length === 0 && messagesRef.current.length > 0) {
             return;
           }
-          const merged = mergeLatestPageIntoThread(messagesRef.current, nextRows);
+          const merged = hasPrependedHistoryRef.current
+            ? mergeLatestTailIntoPaginatedThread(messagesRef.current, nextRows)
+            : mergeLatestPageIntoThread(messagesRef.current, nextRows);
           setMessages(merged);
           setOldestMessageId(getOldestRowId(merged));
           lastMessagesLoadRef.current = { chatID, at: Date.now() };
@@ -548,6 +577,16 @@ export default function Chats() {
             prev.map(chat => (chat.id === chatID ? { ...chat, unread: false, unread_count: 0 } : chat)),
           );
           return;
+        }
+
+        if (mode === 'prepend-history' && messagesRef.current.length > 0) {
+          const earliestCurrentTime = messageTimestamp(messagesRef.current[0]?.created_at);
+          if (earliestCurrentTime > 0) {
+            nextRows = nextRows.filter(row => {
+              const rowTime = messageTimestamp(row.created_at);
+              return rowTime === 0 || rowTime <= earliestCurrentTime;
+            });
+          }
         }
 
         const merged = mergeThreadMessages(messagesRef.current, nextRows, 'prepend-history');
