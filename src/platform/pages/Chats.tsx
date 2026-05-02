@@ -407,6 +407,7 @@ export default function Chats() {
   const heartbeatTimersRef = useRef<Map<number, ReturnType<typeof setInterval>>>(new Map());
   const socketsRef = useRef<Map<number, WebSocket>>(new Map());
   const wsResyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const liveNormalizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const threadScrollRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const chatsRef = useRef<ChatRow[]>([]);
@@ -792,6 +793,18 @@ export default function Chats() {
     }
   }, [accountScope, loadMessages]);
 
+  const scheduleOpenedChatNormalization = useCallback((chatID: number) => {
+    if (liveNormalizeTimerRef.current) {
+      clearTimeout(liveNormalizeTimerRef.current);
+    }
+    liveNormalizeTimerRef.current = setTimeout(() => {
+      if (selectedChatRef.current?.id !== chatID) {
+        return;
+      }
+      void loadMessages(chatID, { mode: 'replace' });
+    }, 250);
+  }, [loadMessages]);
+
   useEffect(() => {
     if (accounts.length === 0) return;
 
@@ -908,6 +921,7 @@ export default function Chats() {
                 };
               }),
             );
+            scheduleOpenedChatNormalization(openedChatID);
             return;
           }
 
@@ -1014,6 +1028,7 @@ export default function Chats() {
           });
 
           requestAnimationFrame(scrollThreadToBottom);
+          scheduleOpenedChatNormalization(openedChatID);
         });
       } catch {
         if (cancelled) return;
@@ -1085,8 +1100,12 @@ export default function Chats() {
         clearTimeout(wsResyncTimerRef.current);
         wsResyncTimerRef.current = null;
       }
+      if (liveNormalizeTimerRef.current) {
+        clearTimeout(liveNormalizeTimerRef.current);
+        liveNormalizeTimerRef.current = null;
+      }
     };
-  }, [accountScope, accounts, loadMessages, scrollThreadToBottom]);
+  }, [accountScope, accounts, loadMessages, scheduleOpenedChatNormalization, scrollThreadToBottom]);
 
   const filteredChats = useMemo(() => {
     const query = search.trim().toLowerCase();
