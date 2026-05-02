@@ -209,11 +209,8 @@ function findMergeMatchIndex(rows: ThreadMessage[], candidate: ThreadMessage, mo
 }
 
 function isLocalTailMessage(message: ThreadMessage) {
-  if ((message.ingest_kind ?? '') === 'live') return true;
+  if (message.row_id == null) return true;
   if (message.status === 'pending' || message.status === 'failed') return true;
-  if ((message.source ?? '') !== '') return true;
-  if ((message.temp_id ?? 0) < 0) return true;
-  if ((message.funpay_message_id ?? 0) < 0) return true;
   return false;
 }
 
