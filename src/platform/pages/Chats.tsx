@@ -379,6 +379,7 @@ export default function Chats() {
   const messageLoadSeqRef = useRef(0);
   const silentResyncInFlightRef = useRef(false);
   const lastMessagesLoadRef = useRef<{ chatID: number; at: number } | null>(null);
+  const hasPrependedHistoryRef = useRef(false);
   const threadScrollHeightBeforePrependRef = useRef<number | null>(null);
   const threadScrollTopBeforePrependRef = useRef<number | null>(null);
   const loadChatsRef = useRef<(scope: AccountScope, preserveSelection: boolean) => Promise<number | null>>(
@@ -520,6 +521,7 @@ export default function Chats() {
 
         if (mode === 'replace') {
           const merged = mergeThreadMessages([], nextRows, 'replace');
+          hasPrependedHistoryRef.current = false;
           setMessages(merged);
           setOldestMessageId(getOldestRowId(merged));
           setHasMoreMessages(safeRows.length === CHAT_PAGE_SIZE && getOldestRowId(merged) != null);
@@ -532,6 +534,9 @@ export default function Chats() {
         }
 
         if (mode === 'silent-merge') {
+          if (hasPrependedHistoryRef.current) {
+            return;
+          }
           if (nextRows.length === 0 && messagesRef.current.length > 0) {
             return;
           }
@@ -546,6 +551,9 @@ export default function Chats() {
         }
 
         const merged = mergeThreadMessages(messagesRef.current, nextRows, 'prepend-history');
+        if (nextRows.length > 0) {
+          hasPrependedHistoryRef.current = true;
+        }
         setMessages(merged);
         setOldestMessageId(getOldestRowId(merged));
         setHasMoreMessages(safeRows.length === CHAT_PAGE_SIZE && safeRows.length > 0);
@@ -663,6 +671,7 @@ export default function Chats() {
     async (chat: ChatRow) => {
       setSelectedChatID(chat.id);
       setMessagesError(null);
+      hasPrependedHistoryRef.current = false;
       setOldestMessageId(null);
       setHasMoreMessages(false);
       setChats(prev =>
@@ -682,6 +691,7 @@ export default function Chats() {
       setLoadError(null);
       setMessagesError(null);
       setMessages([]);
+      hasPrependedHistoryRef.current = false;
       setChats([]);
       setSelectedChatID(null);
 
@@ -1036,6 +1046,7 @@ export default function Chats() {
     setAccountScope(nextScope);
     setSelectedChatID(null);
     setMessages([]);
+    hasPrependedHistoryRef.current = false;
     setOldestMessageId(null);
     setHasMoreMessages(false);
     setMessagesError(null);
