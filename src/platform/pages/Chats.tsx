@@ -974,6 +974,11 @@ export default function Chats() {
                 return replaceAt(message => message === candidate) ?? prev;
               }
 
+              const uniqueOwnEphemeral = findUniqueRecentOwnEphemeralCandidate(prev, nextMessage);
+              if (uniqueOwnEphemeral) {
+                return replaceAt(message => message === uniqueOwnEphemeral) ?? prev;
+              }
+
               return mergeThreadMessages(prev, [nextMessage], 'append-live');
             }
 
@@ -989,6 +994,11 @@ export default function Chats() {
               const candidate = findRecentOwnPendingCandidate(prev, text, createdAt);
               if (candidate) {
                 return replaceAt(message => message === candidate) ?? prev;
+              }
+
+              const uniqueOwnEphemeral = findUniqueRecentOwnEphemeralCandidate(prev, nextMessage);
+              if (uniqueOwnEphemeral) {
+                return replaceAt(message => message === uniqueOwnEphemeral) ?? prev;
               }
             }
 
