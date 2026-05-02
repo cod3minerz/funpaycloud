@@ -184,42 +184,47 @@ function choosePreferredMessage(current: ThreadMessage, incoming: ThreadMessage)
   return next;
 }
 
+function findMergeMatchIndex(rows: ThreadMessage[], candidate: ThreadMessage, mode: LoadMessagesMode): number {
+  const keyedIndex = rows.findIndex(existing => {
+    if (candidate.temp_id && existing.temp_id === candidate.temp_id) return true;
+    if (candidate.funpay_message_id && existing.funpay_message_id === candidate.funpay_message_id) return true;
+    if (candidate.row_id && existing.row_id === candidate.row_id) return true;
+    const existingKey = getMessageClientKey(existing);
+    const candidateKey = getMessageClientKey(candidate);
+    return existingKey !== null && candidateKey !== null && existingKey === candidateKey;
+  });
+  if (keyedIndex >= 0) return keyedIndex;
+
+  if ((mode === 'replace' || mode === 'silent-merge') && candidate.row_id != null && candidate.is_my_msg) {
+    const uniqueOwnCandidate = findUniqueRecentOwnEphemeralCandidate(rows, candidate);
+    if (uniqueOwnCandidate) {
+      const uniqueOwnCandidateIndex = rows.findIndex(existing => existing === uniqueOwnCandidate);
+      if (uniqueOwnCandidateIndex >= 0) {
+        return uniqueOwnCandidateIndex;
+      }
+    }
+  }
+
+  return rows.findIndex(existing => isFallbackDuplicate(existing, candidate));
+}
+
+function isLocalTailMessage(message: ThreadMessage) {
+  if ((message.ingest_kind ?? '') === 'live') return true;
+  if (message.status === 'pending' || message.status === 'failed') return true;
+  if ((message.source ?? '') !== '') return true;
+  if ((message.temp_id ?? 0) < 0) return true;
+  if ((message.funpay_message_id ?? 0) < 0) return true;
+  return false;
+}
+
 function mergeThreadMessages(current: ThreadMessage[], incoming: ThreadMessage[], mode: LoadMessagesMode): ThreadMessage[] {
   const baseline = mode === 'replace' ? [] : [...current];
   const prependBuffer: ThreadMessage[] = [];
 
   for (const candidate of incoming) {
-    const keyedIndex = baseline.findIndex(existing => {
-      if (candidate.temp_id && existing.temp_id === candidate.temp_id) return true;
-      if (candidate.funpay_message_id && existing.funpay_message_id === candidate.funpay_message_id) return true;
-      if (candidate.row_id && existing.row_id === candidate.row_id) return true;
-      const existingKey = getMessageClientKey(existing);
-      const candidateKey = getMessageClientKey(candidate);
-      return existingKey !== null && candidateKey !== null && existingKey === candidateKey;
-    });
-
-    if (keyedIndex >= 0) {
-      baseline[keyedIndex] = choosePreferredMessage(baseline[keyedIndex], candidate);
-      continue;
-    }
-
-    if ((mode === 'replace' || mode === 'silent-merge') && candidate.row_id != null && candidate.is_my_msg) {
-      const uniqueOwnCandidate = findUniqueRecentOwnEphemeralCandidate(baseline, candidate);
-      if (uniqueOwnCandidate) {
-        const uniqueOwnCandidateIndex = baseline.findIndex(existing => existing === uniqueOwnCandidate);
-        if (uniqueOwnCandidateIndex >= 0) {
-          baseline[uniqueOwnCandidateIndex] = choosePreferredMessage(
-            baseline[uniqueOwnCandidateIndex],
-            candidate,
-          );
-          continue;
-        }
-      }
-    }
-
-    const fallbackIndex = baseline.findIndex(existing => isFallbackDuplicate(existing, candidate));
-    if (fallbackIndex >= 0) {
-      baseline[fallbackIndex] = choosePreferredMessage(baseline[fallbackIndex], candidate);
+    const matchIndex = findMergeMatchIndex(baseline, candidate, mode);
+    if (matchIndex >= 0) {
+      baseline[matchIndex] = choosePreferredMessage(baseline[matchIndex], candidate);
       continue;
     }
 
@@ -234,6 +239,30 @@ function mergeThreadMessages(current: ThreadMessage[], incoming: ThreadMessage[]
     return [...prependBuffer, ...baseline];
   }
   return baseline;
+}
+
+function mergeLatestPageIntoThread(current: ThreadMessage[], latestPageRows: ThreadMessage[]): ThreadMessage[] {
+  const latestPage = mergeThreadMessages([], latestPageRows, 'replace');
+  if (current.length === 0) {
+    return latestPage;
+  }
+
+  const olderPrefix: ThreadMessage[] = [];
+  const localTail: ThreadMessage[] = [];
+
+  for (const row of current) {
+    const coveredByLatestPage = latestPage.some(candidate => findMergeMatchIndex([row], candidate, 'silent-merge') === 0);
+    if (coveredByLatestPage) {
+      continue;
+    }
+    if (isLocalTailMessage(row)) {
+      localTail.push(row);
+      continue;
+    }
+    olderPrefix.push(row);
+  }
+
+  return [...olderPrefix, ...mergeThreadMessages(latestPage, localTail, 'append-live')];
 }
 
 function getOldestRowId(rows: ThreadMessage[]): number | null {
@@ -509,7 +538,7 @@ export default function Chats() {
           if (nextRows.length === 0 && messagesRef.current.length > 0) {
             return;
           }
-          const merged = mergeThreadMessages(messagesRef.current, nextRows, 'silent-merge');
+          const merged = mergeLatestPageIntoThread(messagesRef.current, nextRows);
           setMessages(merged);
           setOldestMessageId(getOldestRowId(merged));
           lastMessagesLoadRef.current = { chatID, at: Date.now() };
