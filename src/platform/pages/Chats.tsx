@@ -1022,6 +1022,8 @@ export default function Chats() {
               if (uniqueOwnEphemeral) {
                 return replaceAt(message => message === uniqueOwnEphemeral) ?? prev;
               }
+
+              return prev;
             }
 
             return mergeThreadMessages(prev, [nextMessage], 'append-live');
