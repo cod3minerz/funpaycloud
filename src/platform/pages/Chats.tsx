@@ -268,28 +268,35 @@ function mergeLatestTailIntoPaginatedThread(current: ThreadMessage[], latestPage
     return latestPage;
   }
 
-  const updated = [...current];
-  let lastMatchedLatestIndex = -1;
+  const latestWindowStart = messageTimestamp(latestPage[0]?.created_at);
+  const latestWindowEnd = messageTimestamp(latestPage[latestPage.length - 1]?.created_at);
+  const olderPrefix: ThreadMessage[] = [];
+  const newerTail: ThreadMessage[] = [];
+  const localTail: ThreadMessage[] = [];
 
-  latestPage.forEach((candidate, latestIndex) => {
-    const matchIndex = findMergeMatchIndex(updated, candidate, 'silent-merge');
-    if (matchIndex < 0) {
-      return;
+  for (const row of current) {
+    const coveredByLatestPage = latestPage.some(candidate => findMergeMatchIndex([row], candidate, 'silent-merge') === 0);
+    if (coveredByLatestPage) {
+      continue;
     }
-    updated[matchIndex] = choosePreferredMessage(updated[matchIndex], candidate);
-    lastMatchedLatestIndex = latestIndex;
-  });
 
-  if (lastMatchedLatestIndex < 0) {
-    return updated;
+    if (isLocalTailMessage(row)) {
+      localTail.push(row);
+      continue;
+    }
+
+    const rowTime = messageTimestamp(row.created_at);
+    if (latestWindowStart > 0 && rowTime > 0 && rowTime < latestWindowStart) {
+      olderPrefix.push(row);
+      continue;
+    }
+
+    if (latestWindowEnd > 0 && rowTime > 0 && rowTime > latestWindowEnd) {
+      newerTail.push(row);
+    }
   }
 
-  const missingTail = latestPage.slice(lastMatchedLatestIndex + 1);
-  if (missingTail.length === 0) {
-    return updated;
-  }
-
-  return mergeThreadMessages(updated, missingTail, 'append-live');
+  return [...olderPrefix, ...mergeThreadMessages(latestPage, [...newerTail, ...localTail], 'append-live')];
 }
 
 function getOldestRowId(rows: ThreadMessage[]): number | null {
