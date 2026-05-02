@@ -121,40 +121,6 @@ function messageTimestamp(value?: string) {
   return Number.isNaN(timestamp) ? 0 : timestamp;
 }
 
-function messageBand(message: ThreadMessage) {
-  if ((message.cursor_message_id ?? 0) > 0) return 1;
-  if (
-    message.status === 'pending' ||
-    message.status === 'failed' ||
-    (message.source ?? '') !== '' ||
-    (message.ingest_kind ?? '') === 'live'
-  ) {
-    return 2;
-  }
-  return 0;
-}
-
-function getServerChronologyKey(message: ThreadMessage) {
-  if ((message.cursor_message_id ?? 0) > 0) return Number(message.cursor_message_id);
-  if ((message.funpay_message_id ?? 0) > 0 && Number(message.funpay_message_id) <= MAX_AUTHORITATIVE_FUNPAY_MESSAGE_ID) {
-    return Number(message.funpay_message_id);
-  }
-  return null;
-}
-
-function getManualChronologyKey(message: ThreadMessage) {
-  if (typeof message.optimistic_sort_anchor === 'number' && message.optimistic_sort_anchor > 0) {
-    return message.optimistic_sort_anchor;
-  }
-  if ((message.temp_id ?? 0) < 0) return Math.abs(Number(message.temp_id));
-  if ((message.funpay_message_id ?? 0) < 0) return Math.abs(Number(message.funpay_message_id));
-  return null;
-}
-
-function getFallbackChronologyKey(message: ThreadMessage) {
-  return getManualChronologyKey(message) ?? messageTimestamp(message.created_at);
-}
-
 function getMessageClientKey(message: ThreadMessage): string | null {
   if (message.temp_id) return `temp:${message.temp_id}`;
   if (message.funpay_message_id) return `fp:${message.funpay_message_id}`;
@@ -218,35 +184,9 @@ function choosePreferredMessage(current: ThreadMessage, incoming: ThreadMessage)
   return next;
 }
 
-function sortThreadMessages(rows: ThreadMessage[]) {
-  return [...rows].sort((a, b) => {
-    const bandDiff = messageBand(a) - messageBand(b);
-    if (bandDiff !== 0) return bandDiff;
-
-    const aServerKey = getServerChronologyKey(a);
-    const bServerKey = getServerChronologyKey(b);
-    if (aServerKey != null || bServerKey != null) {
-      if (aServerKey == null) return 1;
-      if (bServerKey == null) return -1;
-      if (aServerKey !== bServerKey) return aServerKey - bServerKey;
-    }
-
-    const aFallbackKey = getFallbackChronologyKey(a);
-    const bFallbackKey = getFallbackChronologyKey(b);
-    if (aFallbackKey !== bFallbackKey) return aFallbackKey - bFallbackKey;
-
-    const timeDiff = messageTimestamp(a.created_at) - messageTimestamp(b.created_at);
-    if (timeDiff !== 0) return timeDiff;
-    const rowDiff = (a.row_id ?? Number.MAX_SAFE_INTEGER) - (b.row_id ?? Number.MAX_SAFE_INTEGER);
-    if (rowDiff !== 0) return rowDiff;
-    const tempDiff = (a.temp_id ?? Number.MAX_SAFE_INTEGER) - (b.temp_id ?? Number.MAX_SAFE_INTEGER);
-    if (tempDiff !== 0) return tempDiff;
-    return (a.funpay_message_id ?? Number.MAX_SAFE_INTEGER) - (b.funpay_message_id ?? Number.MAX_SAFE_INTEGER);
-  });
-}
-
 function mergeThreadMessages(current: ThreadMessage[], incoming: ThreadMessage[], mode: LoadMessagesMode): ThreadMessage[] {
   const baseline = mode === 'replace' ? [] : [...current];
+  const prependBuffer: ThreadMessage[] = [];
 
   for (const candidate of incoming) {
     const keyedIndex = baseline.findIndex(existing => {
@@ -283,10 +223,17 @@ function mergeThreadMessages(current: ThreadMessage[], incoming: ThreadMessage[]
       continue;
     }
 
-    baseline.push(candidate);
+    if (mode === 'prepend-history') {
+      prependBuffer.push(candidate);
+    } else {
+      baseline.push(candidate);
+    }
   }
 
-  return sortThreadMessages(baseline);
+  if (mode === 'prepend-history') {
+    return [...prependBuffer, ...baseline];
+  }
+  return baseline;
 }
 
 function getOldestRowId(rows: ThreadMessage[]): number | null {
@@ -933,7 +880,7 @@ export default function Chats() {
               if (index < 0) return null;
               const updated = [...prev];
               updated[index] = choosePreferredMessage(updated[index], nextMessage);
-              return sortThreadMessages(updated);
+              return updated;
             };
 
             if (event.type === 'message_sent') {
