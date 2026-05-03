@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { Search } from 'lucide-react';
+import { Search } from '@/app/components/icons';
 import { useEffect, useMemo, useState } from 'react';
 import type { BlogPostSummary } from '@/lib/blog-types';
 import { formatDate, slugifyCategory } from '@/lib/blog-types';

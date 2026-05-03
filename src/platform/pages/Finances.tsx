@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Download, Filter, Loader2, TrendingUp, Wallet } from 'lucide-react';
+import { Download, Filter, Loader2, TrendingUp, Wallet } from '@/app/components/icons';
 import { toast } from 'sonner';
 import { accountsApi, ApiAccount, financesApi, FinancesData } from '@/lib/api';
 import {

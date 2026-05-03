@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { AlertTriangle, Download, Loader2, Plus, Save, Trash2, Upload, XCircle, SearchX, MousePointerClick, PackageOpen } from 'lucide-react';
+import { AlertTriangle, Download, Loader2, Plus, Save, Trash2, Upload, XCircle, SearchX, MousePointerClick, PackageOpen } from '@/app/components/icons';
 import { toast } from 'sonner';
 import { Switch } from '@/app/components/ui/switch';
 import { accountsApi, ApiAccount, ApiWarehouseItem, ApiWarehouseLot, warehouseApi } from '@/lib/api';

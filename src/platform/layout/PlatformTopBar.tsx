@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, CreditCard, LifeBuoy, LogOut, Moon, PanelLeft, Settings, Sun, Ticket } from 'lucide-react';
+import { ChevronDown, CreditCard, LifeBuoy, LogOut, Moon, PanelLeft, Settings, Sun, Ticket } from '@/app/components/icons';
 import { settingsApi, type ProfileData } from '@/lib/api';
 import { logout } from '@/lib/auth';
 import {

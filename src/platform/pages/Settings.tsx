@@ -16,7 +16,7 @@ import {
   ShoppingBag,
   Zap,
   type LucideIcon,
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { toast } from 'sonner';
 import {
   ApiError,

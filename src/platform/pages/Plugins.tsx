@@ -16,7 +16,7 @@ import {
   Wrench,
   Zap,
   type LucideIcon,
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { toast } from 'sonner';
 import { accountsApi, ApiAccount, ApiPlugin, pluginsApi } from '@/lib/api';
 import {

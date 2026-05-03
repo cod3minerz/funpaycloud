@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Plus, Ticket, XCircle } from 'lucide-react';
+import { Loader2, Plus, Ticket, XCircle } from '@/app/components/icons';
 import { adminApi, AdminPromoCode } from '@/lib/api';
 
 type ValidityPreset = 'day' | 'week' | 'month' | 'custom';

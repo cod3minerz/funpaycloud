@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Activity, Ban, LayoutDashboard, LogOut, Logs, PlayCircle, Users, Network, Ticket, MonitorSmartphone } from 'lucide-react';
+import { Activity, Ban, LayoutDashboard, LogOut, Logs, PlayCircle, Users, Network, Ticket, MonitorSmartphone } from '@/app/components/icons';
 import { clearAdminToken } from '@/lib/auth';
 import { adminApi } from '@/lib/api';
 
@@ -53,7 +53,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       : 'text-slate-300 hover:bg-slate-800/70 hover:text-white'
                   }`}
                 >
-                  <Icon size={16} />
+                  <Icon size={16} active={active} />
                   <span>{item.label}</span>
                 </Link>
               );

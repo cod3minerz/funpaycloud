@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowUpCircle, Loader2, Pencil, Plus, Power, Trash2, SearchX } from 'lucide-react';
+import { ArrowUpCircle, Loader2, Pencil, Plus, Power, Trash2, SearchX } from '@/app/components/icons';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { accountsApi, ApiAccount, ApiLot, lotsApi } from '@/lib/api';

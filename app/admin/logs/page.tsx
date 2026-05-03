@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Download } from 'lucide-react';
+import { Download } from '@/app/components/icons';
 import { adminApi, AdminLog } from '@/lib/api';
 
 type LevelFilter = '' | 'info' | 'warning' | 'error';
