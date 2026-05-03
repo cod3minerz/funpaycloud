@@ -1,4 +1,4 @@
-import { Zap } from 'lucide-react';
+import { Zap } from '@/shared/streamline/icons';
 import Button from './Button';
 
 export default function LandingHero() {

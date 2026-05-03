@@ -7,7 +7,7 @@ import {
   Crown,
   LifeBuoy,
   X,
-} from 'lucide-react';
+} from '@/shared/streamline/icons';
 import { BrandLogo } from '@/app/components/BrandLogo';
 import { TelegramMark, VkMark } from '@/platform/components/SocialMarks';
 import { settingsApi } from '@/lib/api';
@@ -32,6 +32,7 @@ type NavItem = {
   icon: StreamlineNavIconName;
   label: string;
   path: string;
+  beta?: boolean;
 };
 
 const navGroups: Array<{ title: string; items: NavItem[] }> = [
@@ -39,7 +40,7 @@ const navGroups: Array<{ title: string; items: NavItem[] }> = [
     title: 'Операции',
     items: [
       { icon: 'home', label: 'Главная', path: '/platform/dashboard' },
-      { icon: 'chats', label: 'Чаты', path: '/platform/chats' },
+      { icon: 'chats', label: 'Чаты', path: '/platform/chats', beta: true },
       { icon: 'orders', label: 'Заказы', path: '/platform/orders' },
       { icon: 'lots', label: 'Лоты', path: '/platform/lots' },
       { icon: 'warehouse', label: 'Склад', path: '/platform/warehouse' },
@@ -133,7 +134,7 @@ export default function Sidebar({
         {navGroups.map(group => (
           <div key={group.title}>
             {!collapsed && <div className="platform-nav-section">{group.title}</div>}
-            {group.items.map(({ icon, label, path }) => {
+            {group.items.map(({ icon, label, path, beta }) => {
               const isActive = pathname === path;
               const isAIItem = path === '/platform/ai-assistant';
               return (
@@ -151,7 +152,12 @@ export default function Sidebar({
                     size={16}
                     className="platform-nav-streamline-icon"
                   />
-                  {!collapsed && <span className={isAIItem ? `platform-ai-nav-label${isActive ? ' active' : ''}` : undefined}>{label}</span>}
+                  {!collapsed && (
+                    <>
+                      <span className={isAIItem ? `platform-ai-nav-label${isActive ? ' active' : ''}` : undefined}>{label}</span>
+                      {beta && <span className="platform-nav-beta-badge">Beta</span>}
+                    </>
+                  )}
                 </Link>
               );
             })}

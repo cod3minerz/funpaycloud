@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { Loader2, Search, Send, SearchX } from 'lucide-react';
+import { Loader2, Search, Send, SearchX } from '@/shared/streamline/icons';
 import { toast } from 'sonner';
 import { accountsApi, ApiAccount, ApiOrder, ordersApi } from '@/lib/api';
 import { DataTableWrap, EmptyState, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard, ToolbarRow } from '@/platform/components/primitives';

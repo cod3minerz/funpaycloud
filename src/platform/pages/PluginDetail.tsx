@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
-import { ArrowLeft, Loader2, RefreshCw, Save, Zap } from 'lucide-react';
+import { ArrowLeft, Loader2, RefreshCw, Save, Zap } from '@/shared/streamline/icons';
 import { toast } from 'sonner';
 import { Switch } from '@/app/components/ui/switch';
 import {

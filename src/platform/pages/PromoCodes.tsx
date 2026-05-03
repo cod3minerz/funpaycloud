@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { CheckCircle2, Gift, Loader2, Sparkles, Ticket } from 'lucide-react';
+import { CheckCircle2, Gift, Loader2, Sparkles, Ticket } from '@/shared/streamline/icons';
 import { toast } from 'sonner';
 import { promoApi, PromoRedemptionItem, PromoRedeemResult } from '@/lib/api';
 import {

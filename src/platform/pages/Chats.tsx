@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { Check, CheckCheck, Loader2, SendHorizontal, SearchX, MessageSquareQuote, MessageCircle } from 'lucide-react';
+import { Check, CheckCheck, HelpCircle, Loader2, RefreshCw, SendHorizontal, SearchX, MessageSquareQuote, MessageCircle } from '@/shared/streamline/icons';
 import { toast } from 'sonner';
 import { accountsApi, ApiAccount, ApiChat, ApiMessage, chatsApi, createAccountWebSocket, SendMessageResponse } from '@/lib/api';
 import { sanitizeInput } from '@/lib/sanitize';
@@ -1428,7 +1428,22 @@ export default function Chats() {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
       <PageShell>
         <PageHeader>
-          <PageTitle title="Чаты" subtitle="История и сообщения в реальном времени по аккаунту." />
+          <div className="platform-chat-title-wrap">
+            <PageTitle title="Чаты" subtitle="История и сообщения в реальном времени по аккаунту." />
+            <div className="platform-chat-beta-wrap">
+              <div className="platform-chat-beta-badge" tabIndex={0}>
+                <span>Beta</span>
+                <HelpCircle size={13} />
+                <div className="platform-chat-beta-tooltip" role="tooltip">
+                  <p>Функционал чатов нестабилен, возможны баги. Если столкнулись с проблемой, рекомендуется перезагрузить страницу.</p>
+                  <button type="button" onClick={() => window.location.reload()} aria-label="Обновить страницу">
+                    <RefreshCw size={13} />
+                    <span>Обновить страницу</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </PageHeader>
 
         {loading ? (

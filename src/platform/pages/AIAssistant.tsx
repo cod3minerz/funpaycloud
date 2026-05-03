@@ -12,7 +12,7 @@ import {
   Send,
   Sparkles,
   Trash2,
-} from 'lucide-react';
+} from '@/shared/streamline/icons';
 import { toast } from 'sonner';
 import { aiApi, accountsApi, ApiAccount, ApiScenario, scenariosApi } from '@/lib/api';
 import { PageHeader, PageShell, PageTitle } from '@/platform/components/primitives';

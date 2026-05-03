@@ -9,7 +9,7 @@ import {
   Loader2,
   MessageCircle,
   Send,
-} from 'lucide-react';
+} from '@/shared/streamline/icons';
 import { toast } from 'sonner';
 import { ApiChat, ApiOrder, dashboardApi, DashboardData } from '@/lib/api';
 import { PageHeader, PageShell, PageTitle, RequestErrorState } from '@/platform/components/primitives';

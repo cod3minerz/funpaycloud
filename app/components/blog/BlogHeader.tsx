@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { Menu, X } from 'lucide-react';
+import { Menu, X } from '@/shared/streamline/icons';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
