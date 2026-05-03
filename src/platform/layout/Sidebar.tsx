@@ -1,24 +1,12 @@
 'use client';
 
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  CircleDollarSign,
   Crown,
-  Home,
   LifeBuoy,
-  MessageSquare,
-  ShoppingCart,
-  Tag,
-  Package,
-  BarChart2,
-  Sparkles,
-  Puzzle,
-  Wallet,
-  Users,
   X,
-  Workflow,
 } from 'lucide-react';
 import { BrandLogo } from '@/app/components/BrandLogo';
 import { TelegramMark, VkMark } from '@/platform/components/SocialMarks';
@@ -30,6 +18,7 @@ import {
   normalizePlanId,
   readCurrentPlanId,
 } from '@/shared/subscriptions';
+import { StreamlineNavIcon, type StreamlineNavIconName } from './StreamlineNavIcon';
 
 type SidebarProps = {
   mobile?: boolean;
@@ -39,27 +28,33 @@ type SidebarProps = {
   theme?: 'light' | 'dark';
 };
 
-const navGroups = [
+type NavItem = {
+  icon: StreamlineNavIconName;
+  label: string;
+  path: string;
+};
+
+const navGroups: Array<{ title: string; items: NavItem[] }> = [
   {
     title: 'Операции',
     items: [
-      { icon: Home, label: 'Главная', path: '/platform/dashboard' },
-      { icon: MessageSquare, label: 'Чаты', path: '/platform/chats' },
-      { icon: ShoppingCart, label: 'Заказы', path: '/platform/orders' },
-      { icon: Tag, label: 'Лоты', path: '/platform/lots' },
-      { icon: Package, label: 'Склад', path: '/platform/warehouse' },
+      { icon: 'home', label: 'Главная', path: '/platform/dashboard' },
+      { icon: 'chats', label: 'Чаты', path: '/platform/chats' },
+      { icon: 'orders', label: 'Заказы', path: '/platform/orders' },
+      { icon: 'lots', label: 'Лоты', path: '/platform/lots' },
+      { icon: 'warehouse', label: 'Склад', path: '/platform/warehouse' },
     ],
   },
   {
     title: 'Управление',
     items: [
-      { icon: Users, label: 'Аккаунты', path: '/platform/accounts' },
-      { icon: Workflow, label: 'Конструктор', path: '/platform/constructor' },
-      { icon: BarChart2, label: 'Аналитика', path: '/platform/analytics' },
-      { icon: AISidebarIcon, label: 'AI-Ассистент', path: '/platform/ai-assistant' },
-      { icon: Puzzle, label: 'Плагины', path: '/platform/plugins' },
-      { icon: Wallet, label: 'Финансы', path: '/platform/finances' },
-      { icon: CircleDollarSign, label: 'Реферальная система', path: '/platform/referrals' },
+      { icon: 'accounts', label: 'Аккаунты', path: '/platform/accounts' },
+      { icon: 'constructor', label: 'Конструктор', path: '/platform/constructor' },
+      { icon: 'analytics', label: 'Аналитика', path: '/platform/analytics' },
+      { icon: 'ai', label: 'AI-Ассистент', path: '/platform/ai-assistant' },
+      { icon: 'plugins', label: 'Плагины', path: '/platform/plugins' },
+      { icon: 'finances', label: 'Финансы', path: '/platform/finances' },
+      { icon: 'referrals', label: 'Реферальная система', path: '/platform/referrals' },
     ],
   },
 ];
@@ -69,26 +64,6 @@ const mobileTopLinks = [
   { label: 'Группа ВКонтакте', href: '#', icon: <VkMark size={16} /> },
   { label: 'Поддержка', href: '#', icon: <LifeBuoy size={16} /> },
 ] as const;
-
-function AISidebarIcon({ size = 16 }: { size?: number }) {
-  const gradientID = `ai-gradient-${useId().replace(/:/g, '')}`;
-  return (
-    <span className="inline-flex items-center justify-center" aria-hidden>
-      <svg width="0" height="0" focusable="false" aria-hidden>
-        <defs>
-          <linearGradient id={gradientID} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="var(--pf-accent)" />
-            <stop offset="100%" stopColor="var(--pf-accent-2)" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <Sparkles
-        size={size}
-        stroke={`url(#${gradientID})`}
-      />
-    </span>
-  );
-}
 
 export default function Sidebar({
   mobile = false,
@@ -158,7 +133,7 @@ export default function Sidebar({
         {navGroups.map(group => (
           <div key={group.title}>
             {!collapsed && <div className="platform-nav-section">{group.title}</div>}
-            {group.items.map(({ icon: Icon, label, path }) => {
+            {group.items.map(({ icon, label, path }) => {
               const isActive = pathname === path;
               const isAIItem = path === '/platform/ai-assistant';
               return (
@@ -170,7 +145,12 @@ export default function Sidebar({
                   title={collapsed ? label : undefined}
                   aria-current={isActive ? 'page' : undefined}
                 >
-                  <Icon size={16} />
+                  <StreamlineNavIcon
+                    name={icon}
+                    active={isActive}
+                    size={16}
+                    className="platform-nav-streamline-icon"
+                  />
                   {!collapsed && <span className={isAIItem ? `platform-ai-nav-label${isActive ? ' active' : ''}` : undefined}>{label}</span>}
                 </Link>
               );

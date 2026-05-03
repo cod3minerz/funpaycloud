@@ -730,6 +730,20 @@ body[data-platform-theme] {
   justify-content: center;
 }
 
+.platform-nav-streamline-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 16px;
+  color: inherit;
+}
+
+.platform-nav-streamline-icon svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
 .platform-nav-section {
   padding: 12px 8px 6px;
   font-size: 10px;
