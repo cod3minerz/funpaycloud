@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { Menu, X } from '@/app/components/icons';
+import { Menu, X } from 'lucide-react';
 import type { MouseEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import Button from './Button';

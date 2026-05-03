@@ -22,7 +22,7 @@ const config: NextConfig = {
   pageExtensions: ['ts', 'tsx', 'md', 'mdx'],
   productionBrowserSourceMaps: false,
   experimental: {
-    optimizePackageImports: ['recharts'],
+    optimizePackageImports: ['lucide-react', 'recharts'],
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',

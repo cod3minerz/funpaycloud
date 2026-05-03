@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Bug, Package, Users } from '@/app/components/icons';
+import { AlertTriangle, Bug, Package, Users } from 'lucide-react';
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { adminApi, AdminChatRuntime, AdminLog, AdminMetric, AdminStats } from '@/lib/api';
 

@@ -1,15 +1,25 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  CircleDollarSign,
   Crown,
+  Home,
   LifeBuoy,
-  StreamlineIcon,
-  StreamlineNavIcons,
+  MessageSquare,
+  ShoppingCart,
+  Tag,
+  Package,
+  BarChart2,
+  Sparkles,
+  Puzzle,
+  Wallet,
+  Users,
   X,
-} from '@/app/components/icons';
+  Workflow,
+} from 'lucide-react';
 import { BrandLogo } from '@/app/components/BrandLogo';
 import { TelegramMark, VkMark } from '@/platform/components/SocialMarks';
 import { settingsApi } from '@/lib/api';
@@ -33,23 +43,23 @@ const navGroups = [
   {
     title: 'Операции',
     items: [
-      { icon: StreamlineNavIcons.home, label: 'Главная', path: '/platform/dashboard' },
-      { icon: StreamlineNavIcons.chats, label: 'Чаты', path: '/platform/chats' },
-      { icon: StreamlineNavIcons.orders, label: 'Заказы', path: '/platform/orders' },
-      { icon: StreamlineNavIcons.lots, label: 'Лоты', path: '/platform/lots' },
-      { icon: StreamlineNavIcons.warehouse, label: 'Склад', path: '/platform/warehouse' },
+      { icon: Home, label: 'Главная', path: '/platform/dashboard' },
+      { icon: MessageSquare, label: 'Чаты', path: '/platform/chats' },
+      { icon: ShoppingCart, label: 'Заказы', path: '/platform/orders' },
+      { icon: Tag, label: 'Лоты', path: '/platform/lots' },
+      { icon: Package, label: 'Склад', path: '/platform/warehouse' },
     ],
   },
   {
     title: 'Управление',
     items: [
-      { icon: StreamlineNavIcons.accounts, label: 'Аккаунты', path: '/platform/accounts' },
-      { icon: StreamlineNavIcons.constructor, label: 'Конструктор', path: '/platform/constructor' },
-      { icon: StreamlineNavIcons.analytics, label: 'Аналитика', path: '/platform/analytics' },
+      { icon: Users, label: 'Аккаунты', path: '/platform/accounts' },
+      { icon: Workflow, label: 'Конструктор', path: '/platform/constructor' },
+      { icon: BarChart2, label: 'Аналитика', path: '/platform/analytics' },
       { icon: AISidebarIcon, label: 'AI-Ассистент', path: '/platform/ai-assistant' },
-      { icon: StreamlineNavIcons.plugins, label: 'Плагины', path: '/platform/plugins' },
-      { icon: StreamlineNavIcons.finances, label: 'Финансы', path: '/platform/finances' },
-      { icon: StreamlineNavIcons.referrals, label: 'Реферальная система', path: '/platform/referrals' },
+      { icon: Puzzle, label: 'Плагины', path: '/platform/plugins' },
+      { icon: Wallet, label: 'Финансы', path: '/platform/finances' },
+      { icon: CircleDollarSign, label: 'Реферальная система', path: '/platform/referrals' },
     ],
   },
 ];
@@ -60,14 +70,22 @@ const mobileTopLinks = [
   { label: 'Поддержка', href: '#', icon: <LifeBuoy size={16} /> },
 ] as const;
 
-function AISidebarIcon({ size = 16, 'aria-current': ariaCurrent }: { size?: number; 'aria-current'?: string }) {
-  const isActive = ariaCurrent === 'page';
+function AISidebarIcon({ size = 16 }: { size?: number }) {
+  const gradientID = `ai-gradient-${useId().replace(/:/g, '')}`;
   return (
-    <span
-      className="inline-flex items-center justify-center text-[var(--pf-accent)]"
-      aria-hidden
-    >
-      <StreamlineIcon name="ai-technology-spark" active={isActive} size={size} />
+    <span className="inline-flex items-center justify-center" aria-hidden>
+      <svg width="0" height="0" focusable="false" aria-hidden>
+        <defs>
+          <linearGradient id={gradientID} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="var(--pf-accent)" />
+            <stop offset="100%" stopColor="var(--pf-accent-2)" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <Sparkles
+        size={size}
+        stroke={`url(#${gradientID})`}
+      />
     </span>
   );
 }
@@ -152,7 +170,7 @@ export default function Sidebar({
                   title={collapsed ? label : undefined}
                   aria-current={isActive ? 'page' : undefined}
                 >
-                  <Icon size={16} aria-current={isActive ? 'page' : undefined} />
+                  <Icon size={16} />
                   {!collapsed && <span className={isAIItem ? `platform-ai-nav-label${isActive ? ' active' : ''}` : undefined}>{label}</span>}
                 </Link>
               );

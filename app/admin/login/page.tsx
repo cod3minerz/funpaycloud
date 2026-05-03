@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck } from '@/app/components/icons';
+import { ShieldCheck } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
 export default function AdminLoginPage() {

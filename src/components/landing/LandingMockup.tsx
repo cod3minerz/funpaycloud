@@ -14,7 +14,7 @@ import {
   ShoppingCart,
   Sparkles,
   Tags,
-} from '@/app/components/icons';
+} from 'lucide-react';
 
 type MockNodeID = 'message' | 'ai' | 'telegram';
 

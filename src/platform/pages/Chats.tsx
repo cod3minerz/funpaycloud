@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { Check, CheckCheck, Loader2, SendHorizontal, SearchX, MessageSquareQuote, MessageCircle } from '@/app/components/icons';
+import { Check, CheckCheck, Loader2, SendHorizontal, SearchX, MessageSquareQuote, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { accountsApi, ApiAccount, ApiChat, ApiMessage, chatsApi, createAccountWebSocket, SendMessageResponse } from '@/lib/api';
 import { sanitizeInput } from '@/lib/sanitize';

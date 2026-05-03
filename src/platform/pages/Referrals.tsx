@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { Copy, Link2, Loader2, Share2, Users, Wallet, Percent } from '@/app/components/icons';
+import { Copy, Link2, Loader2, Share2, Users, Wallet, Percent } from 'lucide-react';
 import { toast } from 'sonner';
 import { settingsApi } from '@/lib/api';
 import {

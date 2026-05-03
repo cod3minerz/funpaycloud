@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { X } from '@/app/components/icons';
+import { X } from 'lucide-react';
 import { BlogTrackedCtaLink } from './BlogTrackedCtaLink';
 import { trackBlogEvent } from './trackBlogEvent';
 import type { BlogCtaConfig } from '@/lib/blog-cta';

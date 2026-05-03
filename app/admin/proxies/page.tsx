@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Loader2, Plus } from '@/app/components/icons';
+import { Loader2, Plus } from 'lucide-react';
 import { adminApi, AdminSharedProxy } from '@/lib/api';
 
 type FormState = {

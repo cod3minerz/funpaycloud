@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Loader2 } from '@/app/components/icons';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { analyticsApi, AnalyticsData, authApi } from '@/lib/api';
 import { DataTableWrap, KpiCard, KpiGrid, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard, ToolbarRow } from '@/platform/components/primitives';

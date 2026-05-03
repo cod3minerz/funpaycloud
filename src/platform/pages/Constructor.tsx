@@ -22,7 +22,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { accountsApi, scenariosApi, ApiAccount, ApiScenario, ApiScenarioLog } from '@/lib/api';
-import { Loader2, Save, Plus, GitMerge, Workflow, Zap, Play, Copy, Trash2, Bot, ChevronUp, Check, Settings, History, X, Clock } from '@/app/components/icons';
+import { Loader2, Save, Plus, GitMerge, Workflow, Zap, Play, Copy, Trash2, Bot, ChevronUp, Check, Settings, History, X, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 

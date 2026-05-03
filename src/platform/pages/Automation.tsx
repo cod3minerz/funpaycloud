@@ -14,7 +14,7 @@ import {
   Trash2,
   User,
   Zap,
-} from '@/app/components/icons';
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { Switch } from '@/app/components/ui/switch';

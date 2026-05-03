@@ -18,7 +18,7 @@ import {
   ShieldCheck,
   Square,
   Trash2,
-} from '@/app/components/icons';
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { Sheet, SheetContent } from '@/app/components/ui/sheet';

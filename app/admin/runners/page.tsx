@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Play, Square, SquareStack } from '@/app/components/icons';
+import { Play, Square, SquareStack } from 'lucide-react';
 import { adminApi, AdminRunner } from '@/lib/api';
 
 function StateBadge({ active }: { active: boolean }) {

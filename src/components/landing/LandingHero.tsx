@@ -1,4 +1,4 @@
-import { Zap } from '@/app/components/icons';
+import { Zap } from 'lucide-react';
 import Button from './Button';
 
 export default function LandingHero() {
