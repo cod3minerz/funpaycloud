@@ -13,6 +13,14 @@ type ThreadMessage = ApiMessage & {
   row_id?: number;
   source?: string | null;
   optimistic_sort_anchor?: number;
+  local_send_token?: string;
+};
+type LocalSendEntry = {
+  token: string;
+  optimisticID: number;
+  tempID?: number;
+  text: string;
+  sentAt: number;
 };
 type AccountScope = 'all' | number;
 type ThreadRenderItem =
@@ -170,6 +178,10 @@ function choosePreferredMessage(current: ThreadMessage, incoming: ThreadMessage)
     source: incoming.source ?? current.source,
     ingest_kind: incoming.ingest_kind ?? current.ingest_kind,
     optimistic_sort_anchor: current.optimistic_sort_anchor ?? incoming.optimistic_sort_anchor,
+    local_send_token:
+      incoming.row_id != null || current.row_id != null
+        ? undefined
+        : current.local_send_token ?? incoming.local_send_token,
   };
 
   if (statusRank(current.status) > statusRank(incoming.status)) {
@@ -216,7 +228,7 @@ function isLocalTailMessage(message: ThreadMessage) {
     const withinPreserveWindow =
       ageMs >= 0 && ageMs <= LOCAL_TAIL_PRESERVE_WINDOW_MS;
     if (!message.is_my_msg) return withinPreserveWindow;
-    if (message.temp_id != null) return withinPreserveWindow;
+    if (message.local_send_token) return withinPreserveWindow;
     return false;
   }
   return false;
@@ -325,6 +337,7 @@ function findUniqueRecentOwnEphemeralCandidate(
   const targetTime = messageTimestamp(incoming.created_at) || Date.now();
   const matches = rows.filter(row => {
     if (!row.is_my_msg) return false;
+    if (!row.local_send_token) return false;
     if (normalizeMessageText(row.text) !== normalizedText) return false;
 
     const lacksStrongServerIdentity = row.row_id == null || (row.funpay_message_id ?? 0) <= 0;
@@ -339,13 +352,20 @@ function findUniqueRecentOwnEphemeralCandidate(
   return matches[0];
 }
 
-function findRecentOwnPendingCandidate(rows: ThreadMessage[], text: string, createdAt?: string): ThreadMessage | null {
+function findRecentOwnPendingCandidate(
+  rows: ThreadMessage[],
+  text: string,
+  createdAt?: string,
+  localSendToken?: string | null,
+): ThreadMessage | null {
   const targetTime = messageTimestamp(createdAt) || Date.now();
   const normalizedText = normalizeMessageText(text);
   let match: ThreadMessage | null = null;
 
   for (const row of rows) {
     if (!row.is_my_msg) continue;
+    if (!row.local_send_token) continue;
+    if (localSendToken && row.local_send_token !== localSendToken) continue;
     if (row.status !== 'pending') continue;
     if ((row.funpay_message_id ?? 0) > 0) continue;
     if (normalizeMessageText(row.text) !== normalizedText) continue;
@@ -416,6 +436,7 @@ export default function Chats() {
   const socketsRef = useRef<Map<number, WebSocket>>(new Map());
   const wsResyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const liveNormalizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recentLocalSendsRef = useRef<Map<number, Map<string, LocalSendEntry>>>(new Map());
   const threadScrollRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const chatsRef = useRef<ChatRow[]>([]);
@@ -507,6 +528,81 @@ export default function Chats() {
     if (!node) return;
     node.scrollTop = node.scrollHeight;
   }, []);
+
+  const pruneRecentLocalSends = useCallback((chatID?: number) => {
+    const now = Date.now();
+    const pruneMap = (entryMap: Map<string, LocalSendEntry>) => {
+      for (const [token, entry] of entryMap.entries()) {
+        if (now - entry.sentAt > LOCAL_TAIL_PRESERVE_WINDOW_MS) {
+          entryMap.delete(token);
+        }
+      }
+    };
+
+    if (typeof chatID === 'number') {
+      const entryMap = recentLocalSendsRef.current.get(chatID);
+      if (!entryMap) return;
+      pruneMap(entryMap);
+      if (entryMap.size === 0) {
+        recentLocalSendsRef.current.delete(chatID);
+      }
+      return;
+    }
+
+    for (const [entryChatID, entryMap] of recentLocalSendsRef.current.entries()) {
+      pruneMap(entryMap);
+      if (entryMap.size === 0) {
+        recentLocalSendsRef.current.delete(entryChatID);
+      }
+    }
+  }, []);
+
+  const rememberLocalSend = useCallback((chatID: number, entry: LocalSendEntry) => {
+    pruneRecentLocalSends(chatID);
+    const entryMap = recentLocalSendsRef.current.get(chatID) ?? new Map<string, LocalSendEntry>();
+    entryMap.set(entry.token, entry);
+    recentLocalSendsRef.current.set(chatID, entryMap);
+  }, [pruneRecentLocalSends]);
+
+  const updateLocalSend = useCallback((chatID: number, token: string, patch: Partial<LocalSendEntry>) => {
+    const entryMap = recentLocalSendsRef.current.get(chatID);
+    const entry = entryMap?.get(token);
+    if (!entryMap || !entry) return;
+    entryMap.set(token, { ...entry, ...patch });
+  }, []);
+
+  const forgetLocalSend = useCallback((chatID: number, token?: string | null) => {
+    if (!token) return;
+    const entryMap = recentLocalSendsRef.current.get(chatID);
+    if (!entryMap) return;
+    entryMap.delete(token);
+    if (entryMap.size === 0) {
+      recentLocalSendsRef.current.delete(chatID);
+    }
+  }, []);
+
+  const resolveRecentLocalSend = useCallback((chatID: number, tempID: number, text: string, createdAt?: string) => {
+    pruneRecentLocalSends(chatID);
+    const entryMap = recentLocalSendsRef.current.get(chatID);
+    if (!entryMap || entryMap.size === 0) return null;
+
+    if (tempID) {
+      for (const entry of entryMap.values()) {
+        if (entry.tempID === tempID) {
+          return entry;
+        }
+      }
+    }
+
+    const normalizedText = normalizeMessageText(text);
+    const targetTime = messageTimestamp(createdAt) || Date.now();
+    const matches = Array.from(entryMap.values()).filter(entry => {
+      if (normalizeMessageText(entry.text) !== normalizedText) return false;
+      return Math.abs(targetTime - entry.sentAt) <= OWN_API_RECONCILIATION_WINDOW_MS;
+    });
+    if (matches.length !== 1) return null;
+    return matches[0];
+  }, [pruneRecentLocalSends]);
 
   const resizeComposer = useCallback((node?: HTMLTextAreaElement | null) => {
     const target = node ?? composerRef.current;
@@ -999,7 +1095,15 @@ export default function Chats() {
               const byTemp = tempID ? replaceAt(message => Number(message.temp_id ?? 0) === tempID) : null;
               if (byTemp) return byTemp;
 
-              const candidate = findRecentOwnPendingCandidate(prev, text, createdAt);
+              const localSend = resolveRecentLocalSend(openedChatID, tempID, text, createdAt);
+              if (localSend) {
+                const byToken = replaceAt(message => message.local_send_token === localSend.token);
+                if (byToken) {
+                  return byToken;
+                }
+              }
+
+              const candidate = findRecentOwnPendingCandidate(prev, text, createdAt, localSend?.token);
               if (candidate) {
                 return replaceAt(message => message === candidate) ?? prev;
               }
@@ -1009,7 +1113,7 @@ export default function Chats() {
                 return replaceAt(message => message === uniqueOwnEphemeral) ?? prev;
               }
 
-              return mergeThreadMessages(prev, [nextMessage], 'append-live');
+              return prev;
             }
 
             if (isMyMsg) {
@@ -1021,7 +1125,8 @@ export default function Chats() {
                 : null;
               if (byFunpay) return byFunpay;
 
-              const candidate = findRecentOwnPendingCandidate(prev, text, createdAt);
+              const localSend = resolveRecentLocalSend(openedChatID, tempID, text, createdAt);
+              const candidate = findRecentOwnPendingCandidate(prev, text, createdAt, localSend?.token);
               if (candidate) {
                 return replaceAt(message => message === candidate) ?? prev;
               }
@@ -1192,6 +1297,7 @@ export default function Chats() {
     setSending(true);
     const nowISO = new Date().toISOString();
     const optimisticID = -Date.now();
+    const localSendToken = `send:${selectedChat.id}:${Math.abs(optimisticID)}`;
     const previousLastMessage = selectedChat.last_message;
     const previousUpdatedAt = selectedChat.updated_at;
     const optimisticAuthorName = accounts.find(account => account.id === targetAccountID)?.username || 'Вы';
@@ -1207,7 +1313,15 @@ export default function Chats() {
       status: 'pending',
       source: 'manual',
       optimistic_sort_anchor: Date.now(),
+      local_send_token: localSendToken,
     };
+
+    rememberLocalSend(selectedChat.id, {
+      token: localSendToken,
+      optimisticID,
+      text,
+      sentAt: messageTimestamp(nowISO) || Date.now(),
+    });
 
     setMessages(prev => mergeThreadMessages(prev, [optimistic], 'append-live'));
     setChats(prev =>
@@ -1247,6 +1361,10 @@ export default function Chats() {
             : message,
         ),
       );
+      updateLocalSend(selectedChat.id, localSendToken, {
+        tempID: pendingTempID,
+        sentAt: messageTimestamp(pendingTime) || Date.now(),
+      });
       lastMessagesLoadRef.current = { chatID: selectedChat.id, at: Date.now() };
 
       setChats(prev =>
@@ -1262,6 +1380,7 @@ export default function Chats() {
         ),
       );
     } catch (err) {
+      forgetLocalSend(selectedChat.id, localSendToken);
       setMessages(prev =>
         prev.filter(
           message =>

@@ -354,6 +354,83 @@ test('send flow: pending -> delivered, without loadMessages call after send', as
   await expect(outgoingRow.locator('[aria-label="Доставлено"]')).toBeVisible();
 });
 
+test('message_sent with known temp_id updates existing pending row without duplicate bubble', async ({ page }) => {
+  await bootstrapChatPage(page);
+
+  await page.goto('/platform/chats');
+  await expect(page.getByRole('heading', { name: 'Чаты' })).toBeVisible();
+  await expect.poll(async () => (await readState(page)).historyRequests, { timeout: 20000 }).toBeGreaterThan(0);
+  await expect(page.getByText('Подгружаем ваши чаты с FunPay...')).toBeHidden({ timeout: 20000 });
+
+  const firstChat = page.locator('.platform-chat-row').first();
+  await firstChat.click();
+  await expect.poll(async () => (await readState(page)).messagesRequests).toBeGreaterThan(0);
+
+  const composer = page.getByPlaceholder('Введите сообщение...');
+  await composer.fill('Только один bubble');
+  await composer.press('Enter');
+
+  const pendingMessage = (await readState(page)).messages.find((msg: any) => msg.text === 'Только один bubble' && msg.status === 'pending');
+  expect(pendingMessage).toBeTruthy();
+  const tempID = Number(pendingMessage?.temp_id ?? pendingMessage?.id);
+
+  await page.evaluate(
+    ({ chatID, nodeID, tempID }) => {
+      (window as any).__chatTest.emit('message_sent', {
+        account_id: 8,
+        chat_id: chatID,
+        node_id: nodeID,
+        temp_id: tempID,
+        text: 'Только один bubble',
+        is_my_msg: true,
+        source: 'manual',
+        status: 'pending',
+        author_name: 'tonminerz',
+        created_at: new Date().toISOString(),
+      });
+    },
+    {
+      chatID: 5,
+      nodeID: '252535735',
+      tempID,
+    },
+  );
+
+  const outgoingRow = page.locator('.platform-message-row.outgoing').filter({ hasText: 'Только один bubble' });
+  await expect(outgoingRow).toHaveCount(1);
+});
+
+test('message_sent with unknown temp_id does not create stray own bubble', async ({ page }) => {
+  await bootstrapChatPage(page);
+
+  await page.goto('/platform/chats');
+  await expect(page.getByRole('heading', { name: 'Чаты' })).toBeVisible();
+  await expect.poll(async () => (await readState(page)).historyRequests, { timeout: 20000 }).toBeGreaterThan(0);
+  await expect(page.getByText('Подгружаем ваши чаты с FunPay...')).toBeHidden({ timeout: 20000 });
+
+  const firstChat = page.locator('.platform-chat-row').first();
+  await firstChat.click();
+  await expect.poll(async () => (await readState(page)).messagesRequests).toBeGreaterThan(0);
+
+  await page.evaluate(() => {
+    (window as any).__chatTest.emit('message_sent', {
+      account_id: 8,
+      chat_id: 5,
+      node_id: '252535735',
+      temp_id: -909090,
+      text: 'Призрак',
+      is_my_msg: true,
+      source: 'manual',
+      status: 'pending',
+      author_name: 'tonminerz',
+      created_at: new Date().toISOString(),
+    });
+  });
+
+  await page.waitForTimeout(600);
+  await expect(page.locator('.platform-message-row.outgoing').filter({ hasText: 'Призрак' })).toHaveCount(0);
+});
+
 test('ws reconnect + visibility refresh trigger catch-up reload', async ({ page }) => {
   await bootstrapChatPage(page);
 
