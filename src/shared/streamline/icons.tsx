@@ -1,4 +1,21 @@
 import * as React from 'react';
+import {
+  ArrowLeft as LucideArrowLeft,
+  ArrowRight as LucideArrowRight,
+  ArrowUpCircle as LucideArrowUpCircle,
+  ChevronDown as LucideChevronDown,
+  ChevronLeft as LucideChevronLeft,
+  ChevronRight as LucideChevronRight,
+  ChevronUp as LucideChevronUp,
+  Download as LucideDownload,
+  LogIn as LucideLogIn,
+  LogOut as LucideLogOut,
+  RefreshCw as LucideRefreshCw,
+  RotateCcw as LucideRotateCcw,
+  Send as LucideSend,
+  SendHorizontal as LucideSendHorizontal,
+  Upload as LucideUpload,
+} from 'lucide-react';
 
 export type StreamlineIconProps = React.SVGProps<SVGSVGElement> & {
   size?: number | string;
@@ -941,9 +958,9 @@ function createStreamlineIcon(name: keyof typeof iconDefinitions): LucideIcon {
 export const Activity = createStreamlineIcon('Activity');
 export const AlertCircle = createStreamlineIcon('AlertCircle');
 export const AlertTriangle = createStreamlineIcon('AlertTriangle');
-export const ArrowLeft = createStreamlineIcon('ArrowLeft');
-export const ArrowRight = createStreamlineIcon('ArrowRight');
-export const ArrowUpCircle = createStreamlineIcon('ArrowUpCircle');
+export const ArrowLeft = LucideArrowLeft;
+export const ArrowRight = LucideArrowRight;
+export const ArrowUpCircle = LucideArrowUpCircle;
 export const BadgeDollarSign = createStreamlineIcon('BadgeDollarSign');
 export const BarChart2 = createStreamlineIcon('BarChart2');
 export const BarChart3 = createStreamlineIcon('BarChart3');
@@ -957,14 +974,14 @@ export const Check = createStreamlineIcon('Check');
 export const CheckCheck = createStreamlineIcon('CheckCheck');
 export const CheckCircle2 = createStreamlineIcon('CheckCircle2');
 export const CheckIcon = createStreamlineIcon('CheckIcon');
-export const ChevronDown = createStreamlineIcon('ChevronDown');
-export const ChevronDownIcon = createStreamlineIcon('ChevronDownIcon');
-export const ChevronLeft = createStreamlineIcon('ChevronLeft');
-export const ChevronLeftIcon = createStreamlineIcon('ChevronLeftIcon');
-export const ChevronRight = createStreamlineIcon('ChevronRight');
-export const ChevronRightIcon = createStreamlineIcon('ChevronRightIcon');
-export const ChevronUp = createStreamlineIcon('ChevronUp');
-export const ChevronUpIcon = createStreamlineIcon('ChevronUpIcon');
+export const ChevronDown = LucideChevronDown;
+export const ChevronDownIcon = LucideChevronDown;
+export const ChevronLeft = LucideChevronLeft;
+export const ChevronLeftIcon = LucideChevronLeft;
+export const ChevronRight = LucideChevronRight;
+export const ChevronRightIcon = LucideChevronRight;
+export const ChevronUp = LucideChevronUp;
+export const ChevronUpIcon = LucideChevronUp;
 export const CircleCheck = createStreamlineIcon('CircleCheck');
 export const CircleDashed = createStreamlineIcon('CircleDashed');
 export const CircleIcon = createStreamlineIcon('CircleIcon');
@@ -972,7 +989,7 @@ export const Clock = createStreamlineIcon('Clock');
 export const Copy = createStreamlineIcon('Copy');
 export const CreditCard = createStreamlineIcon('CreditCard');
 export const Crown = createStreamlineIcon('Crown');
-export const Download = createStreamlineIcon('Download');
+export const Download = LucideDownload;
 export const Edit2 = createStreamlineIcon('Edit2');
 export const Eye = createStreamlineIcon('Eye');
 export const EyeOff = createStreamlineIcon('EyeOff');
@@ -993,8 +1010,8 @@ export const Lightbulb = createStreamlineIcon('Lightbulb');
 export const Link2 = createStreamlineIcon('Link2');
 export const Loader2 = createStreamlineIcon('Loader2');
 export const Lock = createStreamlineIcon('Lock');
-export const LogIn = createStreamlineIcon('LogIn');
-export const LogOut = createStreamlineIcon('LogOut');
+export const LogIn = LucideLogIn;
+export const LogOut = LucideLogOut;
 export const Menu = createStreamlineIcon('Menu');
 export const MessageCircle = createStreamlineIcon('MessageCircle');
 export const MessageSquare = createStreamlineIcon('MessageSquare');
@@ -1015,14 +1032,14 @@ export const Percent = createStreamlineIcon('Percent');
 export const Play = createStreamlineIcon('Play');
 export const Plus = createStreamlineIcon('Plus');
 export const Power = createStreamlineIcon('Power');
-export const RefreshCw = createStreamlineIcon('RefreshCw');
-export const RotateCcw = createStreamlineIcon('RotateCcw');
+export const RefreshCw = LucideRefreshCw;
+export const RotateCcw = LucideRotateCcw;
 export const Save = createStreamlineIcon('Save');
 export const Search = createStreamlineIcon('Search');
 export const SearchIcon = createStreamlineIcon('SearchIcon');
 export const SearchX = createStreamlineIcon('SearchX');
-export const Send = createStreamlineIcon('Send');
-export const SendHorizontal = createStreamlineIcon('SendHorizontal');
+export const Send = LucideSend;
+export const SendHorizontal = LucideSendHorizontal;
 export const Settings = createStreamlineIcon('Settings');
 export const Settings2 = createStreamlineIcon('Settings2');
 export const Share2 = createStreamlineIcon('Share2');
@@ -1039,7 +1056,7 @@ export const Ticket = createStreamlineIcon('Ticket');
 export const Trash2 = createStreamlineIcon('Trash2');
 export const TrendingUp = createStreamlineIcon('TrendingUp');
 export const TriangleAlert = createStreamlineIcon('TriangleAlert');
-export const Upload = createStreamlineIcon('Upload');
+export const Upload = LucideUpload;
 export const User = createStreamlineIcon('User');
 export const Users = createStreamlineIcon('Users');
 export const Wallet = createStreamlineIcon('Wallet');
