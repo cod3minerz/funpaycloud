@@ -713,14 +713,6 @@ export default function Chats() {
       options?: { silent?: boolean; beforeId?: number; mode?: LoadMessagesMode },
     ) => {
       const mode = options?.mode ?? (options?.silent ? 'silent-merge' : 'replace');
-      if (
-        mode === 'silent-merge' &&
-        hasPrependedHistoryRef.current &&
-        selectedChatRef.current?.id === chatID &&
-        messagesRef.current.length > 0
-      ) {
-        return;
-      }
       const beforeId = options?.beforeId ?? 0;
       const shouldTrackSequence = mode !== 'prepend-history';
       const requestID = shouldTrackSequence ? ++messageLoadSeqRef.current : messageLoadSeqRef.current;
