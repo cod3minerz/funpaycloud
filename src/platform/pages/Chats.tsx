@@ -436,6 +436,7 @@ export default function Chats() {
   const socketsRef = useRef<Map<number, WebSocket>>(new Map());
   const wsResyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const liveNormalizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pageReloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recentLocalSendsRef = useRef<Map<number, Map<string, LocalSendEntry>>>(new Map());
   const threadScrollRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
@@ -527,6 +528,26 @@ export default function Chats() {
     const node = threadScrollRef.current;
     if (!node) return;
     node.scrollTop = node.scrollHeight;
+  }, []);
+
+  const schedulePageReload = useCallback((delayMs: number) => {
+    if (typeof window === 'undefined') return;
+    if (pageReloadTimerRef.current) {
+      clearTimeout(pageReloadTimerRef.current);
+    }
+    pageReloadTimerRef.current = setTimeout(() => {
+      pageReloadTimerRef.current = null;
+      window.location.reload();
+    }, delayMs);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (pageReloadTimerRef.current) {
+        clearTimeout(pageReloadTimerRef.current);
+        pageReloadTimerRef.current = null;
+      }
+    };
   }, []);
 
   const pruneRecentLocalSends = useCallback((chatID?: number) => {
@@ -1000,6 +1021,9 @@ export default function Chats() {
             if (!chatExists) {
               void loadChatsRef.current(accountScope, true);
             }
+            if (isOpened && Boolean(event.data.unread)) {
+              schedulePageReload(500);
+            }
             return;
           }
 
@@ -1144,6 +1168,9 @@ export default function Chats() {
 
           requestAnimationFrame(scrollThreadToBottom);
           scheduleOpenedChatNormalization(openedChatID);
+          if (!isMyMsg) {
+            schedulePageReload(500);
+          }
         });
       } catch {
         if (cancelled) return;
@@ -1220,7 +1247,7 @@ export default function Chats() {
         liveNormalizeTimerRef.current = null;
       }
     };
-  }, [accountScope, accounts, loadMessages, scheduleOpenedChatNormalization, scrollThreadToBottom]);
+  }, [accountScope, accounts, loadMessages, scheduleOpenedChatNormalization, schedulePageReload, scrollThreadToBottom]);
 
   const filteredChats = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -1379,6 +1406,7 @@ export default function Chats() {
           selectedChat.funpay_account_id,
         ),
       );
+      schedulePageReload(250);
     } catch (err) {
       forgetLocalSend(selectedChat.id, localSendToken);
       setMessages(prev =>
