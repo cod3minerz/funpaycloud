@@ -1126,7 +1126,9 @@ export default function Chats() {
                 };
               }),
             );
-            scheduleOpenedChatNormalization(openedChatID);
+            if (!hasPrependedHistoryRef.current) {
+              scheduleOpenedChatNormalization(openedChatID);
+            }
             return;
           }
 
@@ -1285,7 +1287,9 @@ export default function Chats() {
           });
 
           requestAnimationFrame(scrollThreadToBottom);
-          scheduleOpenedChatNormalization(openedChatID);
+          if (!hasPrependedHistoryRef.current || !isMyMsg) {
+            scheduleOpenedChatNormalization(openedChatID);
+          }
         });
       } catch {
         if (cancelled) return;
