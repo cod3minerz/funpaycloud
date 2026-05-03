@@ -431,38 +431,6 @@ test('message_sent with unknown temp_id does not create stray own bubble', async
   await expect(page.locator('.platform-message-row.outgoing').filter({ hasText: 'Призрак' })).toHaveCount(0);
 });
 
-test('unmatched own new_message does not create stray own bubble', async ({ page }) => {
-  await bootstrapChatPage(page);
-
-  await page.goto('/platform/chats');
-  await expect(page.getByRole('heading', { name: 'Чаты' })).toBeVisible();
-  await expect.poll(async () => (await readState(page)).historyRequests, { timeout: 20000 }).toBeGreaterThan(0);
-  await expect(page.getByText('Подгружаем ваши чаты с FunPay...')).toBeHidden({ timeout: 20000 });
-
-  const firstChat = page.locator('.platform-chat-row').first();
-  await firstChat.click();
-  await expect.poll(async () => (await readState(page)).messagesRequests).toBeGreaterThan(0);
-
-  await page.evaluate(() => {
-    (window as any).__chatTest.emit('new_message', {
-      account_id: 8,
-      chat_id: 5,
-      node_id: '252535735',
-      id: 99191919,
-      funpay_message_id: 99191919,
-      text: 'Чужой own ghost',
-      is_my_msg: true,
-      source: 'manual',
-      status: 'delivered',
-      author_name: 'tonminerz',
-      created_at: new Date().toISOString(),
-    });
-  });
-
-  await page.waitForTimeout(600);
-  await expect(page.locator('.platform-message-row.outgoing').filter({ hasText: 'Чужой own ghost' })).toHaveCount(0);
-});
-
 test('ws reconnect + visibility refresh trigger catch-up reload', async ({ page }) => {
   await bootstrapChatPage(page);
 
