@@ -12,6 +12,7 @@ import { sanitizeInput, validateEmail, validatePassword } from "@/lib/sanitize";
 
 const fieldClass =
   "auth-input h-12 w-full rounded-xl border border-[var(--line-2)] bg-[var(--bg)] px-4 text-[16px] font-medium text-[var(--ink)] placeholder:text-[var(--muted)] outline-none transition-all focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10";
+const OAUTH_API_BASE = (process.env.NEXT_PUBLIC_API_URL || "https://api.funpay.cloud").replace(/\/+$/, "");
 
 function strengthScore(password: string) {
   let score = 0;
@@ -68,6 +69,19 @@ export default function RegisterPage() {
     setReferralCode(stored);
   }, [searchParams]);
 
+  useEffect(() => {
+    const oauthError = (searchParams.get('oauth_error') || '').trim();
+    if (!oauthError) return;
+    toast.error(oauthError);
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      params.delete('oauth_error');
+      const query = params.toString();
+      const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}`;
+      window.history.replaceState({}, '', nextUrl);
+    }
+  }, [searchParams]);
+
   function validate(): boolean {
     const errors: { email?: string; password?: string; confirm?: string } = {};
     if (!validateEmail(email)) errors.email = "Введите корректный email";
@@ -102,6 +116,15 @@ export default function RegisterPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleGoogleRegister() {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams();
+    params.set("mode", "register");
+    if (referralCode) params.set("ref", referralCode);
+    if (promoCode.trim()) params.set("promo", promoCode.trim());
+    window.location.href = `${OAUTH_API_BASE}/api/auth/google/start?${params.toString()}`;
   }
 
   return (
@@ -198,6 +221,7 @@ export default function RegisterPage() {
 
           <button
             type="button"
+            onClick={handleGoogleRegister}
             className="auth-btn-secondary flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[var(--line-2)] bg-[var(--card)] hover:bg-[var(--bg)] active:scale-[0.98] transition-all text-[15px] font-bold text-[var(--ink)]"
           >
             <GoogleMark />

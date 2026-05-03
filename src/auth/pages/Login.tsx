@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2 } from '@/shared/streamline/icons';
@@ -11,6 +11,8 @@ import { sanitizeInput, validateEmail } from "@/lib/sanitize";
 
 const fieldClass =
   "auth-input h-12 w-full rounded-xl border border-[var(--line-2)] bg-[var(--bg)] px-4 text-[16px] font-medium text-[var(--ink)] placeholder:text-[var(--muted)] outline-none transition-all focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10";
+
+const OAUTH_API_BASE = (process.env.NEXT_PUBLIC_API_URL || "https://api.funpay.cloud").replace(/\/+$/, "");
 
 function GoogleMark() {
   return (
@@ -42,6 +44,19 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const oauthError = params.get("oauth_error");
+    if (oauthError) {
+      toast.error(oauthError);
+      params.delete("oauth_error");
+      const query = params.toString();
+      const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}`;
+      window.history.replaceState({}, "", nextUrl);
+    }
+  }, []);
+
   function validate(): boolean {
     const errors: { email?: string; password?: string } = {};
     if (!validateEmail(email)) errors.email = "Введите корректный email";
@@ -66,6 +81,11 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleGoogleLogin() {
+    if (typeof window === "undefined") return;
+    window.location.href = `${OAUTH_API_BASE}/api/auth/google/start?mode=login`;
   }
 
   return (
@@ -118,6 +138,7 @@ export default function LoginPage() {
 
           <button
             type="button"
+            onClick={handleGoogleLogin}
             className="auth-btn-secondary flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[var(--line-2)] bg-[var(--card)] hover:bg-[var(--bg)] active:scale-[0.98] transition-all text-[15px] font-bold text-[var(--ink)]"
           >
             <GoogleMark />
