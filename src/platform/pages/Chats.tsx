@@ -21,6 +21,9 @@ type LocalSendEntry = {
   tempID?: number;
   text: string;
   sentAt: number;
+  phase: 'optimistic' | 'acked' | 'reconciled';
+  rowID?: number;
+  funpayMessageID?: number;
 };
 type AccountScope = 'all' | number;
 type ThreadRenderItem =
@@ -28,6 +31,9 @@ type ThreadRenderItem =
   | { type: 'message'; key: string; message: ThreadMessage; grouped: boolean };
 
 type LoadMessagesMode = 'replace' | 'silent-merge' | 'prepend-history' | 'append-live';
+type MergeContext = {
+  isTrackedLocalSendToken?: (token?: string | null) => boolean;
+};
 
 const CHAT_PAGE_SIZE = 50;
 const MESSAGE_FALLBACK_WINDOW_MS = 15_000;
@@ -197,7 +203,12 @@ function choosePreferredMessage(current: ThreadMessage, incoming: ThreadMessage)
   return next;
 }
 
-function findMergeMatchIndex(rows: ThreadMessage[], candidate: ThreadMessage, mode: LoadMessagesMode): number {
+function findMergeMatchIndex(
+  rows: ThreadMessage[],
+  candidate: ThreadMessage,
+  mode: LoadMessagesMode,
+  mergeContext?: MergeContext,
+): number {
   const keyedIndex = rows.findIndex(existing => {
     if (candidate.temp_id && existing.temp_id === candidate.temp_id) return true;
     if (candidate.funpay_message_id && existing.funpay_message_id === candidate.funpay_message_id) return true;
@@ -209,7 +220,12 @@ function findMergeMatchIndex(rows: ThreadMessage[], candidate: ThreadMessage, mo
   if (keyedIndex >= 0) return keyedIndex;
 
   if ((mode === 'replace' || mode === 'silent-merge') && candidate.row_id != null && candidate.is_my_msg) {
-    const uniqueOwnCandidate = findUniqueRecentOwnEphemeralCandidate(rows, candidate);
+    const uniqueOwnCandidate = findUniqueRecentOwnEphemeralCandidate(
+      rows,
+      candidate,
+      OWN_API_RECONCILIATION_WINDOW_MS,
+      mergeContext,
+    );
     if (uniqueOwnCandidate) {
       const uniqueOwnCandidateIndex = rows.findIndex(existing => existing === uniqueOwnCandidate);
       if (uniqueOwnCandidateIndex >= 0) {
@@ -221,25 +237,38 @@ function findMergeMatchIndex(rows: ThreadMessage[], candidate: ThreadMessage, mo
   return rows.findIndex(existing => isFallbackDuplicate(existing, candidate));
 }
 
-function isLocalTailMessage(message: ThreadMessage) {
-  if (message.status === 'pending' || message.status === 'failed') return true;
-  if (message.row_id == null) {
-    const ageMs = Date.now() - messageTimestamp(message.created_at);
-    const withinPreserveWindow =
-      ageMs >= 0 && ageMs <= LOCAL_TAIL_PRESERVE_WINDOW_MS;
-    if (!message.is_my_msg) return withinPreserveWindow;
-    if (message.local_send_token) return withinPreserveWindow;
+function isLocalTailMessage(message: ThreadMessage, mergeContext?: MergeContext) {
+  if (message.row_id != null) return false;
+  const ageMs = Date.now() - messageTimestamp(message.created_at);
+  const withinPreserveWindow =
+    ageMs >= 0 && ageMs <= LOCAL_TAIL_PRESERVE_WINDOW_MS;
+  if (!withinPreserveWindow) return false;
+  if (!message.is_my_msg) return true;
+  if (!message.local_send_token) return false;
+  if (mergeContext?.isTrackedLocalSendToken && !mergeContext.isTrackedLocalSendToken(message.local_send_token)) {
     return false;
   }
-  return false;
+  return true;
 }
 
-function mergeThreadMessages(current: ThreadMessage[], incoming: ThreadMessage[], mode: LoadMessagesMode): ThreadMessage[] {
+function isStaleOwnTransientMessage(message: ThreadMessage, mergeContext?: MergeContext) {
+  if (!message.is_my_msg || message.row_id != null) return false;
+  if (!message.local_send_token) return true;
+  if (!mergeContext?.isTrackedLocalSendToken) return false;
+  return !mergeContext.isTrackedLocalSendToken(message.local_send_token);
+}
+
+function mergeThreadMessages(
+  current: ThreadMessage[],
+  incoming: ThreadMessage[],
+  mode: LoadMessagesMode,
+  mergeContext?: MergeContext,
+): ThreadMessage[] {
   const baseline = mode === 'replace' ? [] : [...current];
   const prependBuffer: ThreadMessage[] = [];
 
   for (const candidate of incoming) {
-    const matchIndex = findMergeMatchIndex(baseline, candidate, mode);
+    const matchIndex = findMergeMatchIndex(baseline, candidate, mode, mergeContext);
     if (matchIndex >= 0) {
       baseline[matchIndex] = choosePreferredMessage(baseline[matchIndex], candidate);
       continue;
@@ -258,8 +287,12 @@ function mergeThreadMessages(current: ThreadMessage[], incoming: ThreadMessage[]
   return baseline;
 }
 
-function mergeLatestPageIntoThread(current: ThreadMessage[], latestPageRows: ThreadMessage[]): ThreadMessage[] {
-  const latestPage = mergeThreadMessages([], latestPageRows, 'replace');
+function mergeLatestPageIntoThread(
+  current: ThreadMessage[],
+  latestPageRows: ThreadMessage[],
+  mergeContext?: MergeContext,
+): ThreadMessage[] {
+  const latestPage = mergeThreadMessages([], latestPageRows, 'replace', mergeContext);
   if (current.length === 0) {
     return latestPage;
   }
@@ -268,22 +301,31 @@ function mergeLatestPageIntoThread(current: ThreadMessage[], latestPageRows: Thr
   const localTail: ThreadMessage[] = [];
 
   for (const row of current) {
-    const coveredByLatestPage = latestPage.some(candidate => findMergeMatchIndex([row], candidate, 'silent-merge') === 0);
+    const coveredByLatestPage = latestPage.some(
+      candidate => findMergeMatchIndex([row], candidate, 'silent-merge', mergeContext) === 0,
+    );
     if (coveredByLatestPage) {
       continue;
     }
-    if (isLocalTailMessage(row)) {
+    if (isLocalTailMessage(row, mergeContext)) {
       localTail.push(row);
+      continue;
+    }
+    if (isStaleOwnTransientMessage(row, mergeContext)) {
       continue;
     }
     olderPrefix.push(row);
   }
 
-  return [...olderPrefix, ...mergeThreadMessages(latestPage, localTail, 'append-live')];
+  return [...olderPrefix, ...mergeThreadMessages(latestPage, localTail, 'append-live', mergeContext)];
 }
 
-function mergeLatestTailIntoPaginatedThread(current: ThreadMessage[], latestPageRows: ThreadMessage[]): ThreadMessage[] {
-  const latestPage = mergeThreadMessages([], latestPageRows, 'replace');
+function mergeLatestTailIntoPaginatedThread(
+  current: ThreadMessage[],
+  latestPageRows: ThreadMessage[],
+  mergeContext?: MergeContext,
+): ThreadMessage[] {
+  const latestPage = mergeThreadMessages([], latestPageRows, 'replace', mergeContext);
   if (current.length === 0) {
     return latestPage;
   }
@@ -295,13 +337,18 @@ function mergeLatestTailIntoPaginatedThread(current: ThreadMessage[], latestPage
   const localTail: ThreadMessage[] = [];
 
   for (const row of current) {
-    const coveredByLatestPage = latestPage.some(candidate => findMergeMatchIndex([row], candidate, 'silent-merge') === 0);
+    const coveredByLatestPage = latestPage.some(
+      candidate => findMergeMatchIndex([row], candidate, 'silent-merge', mergeContext) === 0,
+    );
     if (coveredByLatestPage) {
       continue;
     }
 
-    if (isLocalTailMessage(row)) {
+    if (isLocalTailMessage(row, mergeContext)) {
       localTail.push(row);
+      continue;
+    }
+    if (isStaleOwnTransientMessage(row, mergeContext)) {
       continue;
     }
 
@@ -316,7 +363,7 @@ function mergeLatestTailIntoPaginatedThread(current: ThreadMessage[], latestPage
     }
   }
 
-  return [...olderPrefix, ...mergeThreadMessages(latestPage, [...newerTail, ...localTail], 'append-live')];
+  return [...olderPrefix, ...mergeThreadMessages(latestPage, [...newerTail, ...localTail], 'append-live', mergeContext)];
 }
 
 function getOldestRowId(rows: ThreadMessage[]): number | null {
@@ -330,6 +377,7 @@ function findUniqueRecentOwnEphemeralCandidate(
   rows: ThreadMessage[],
   incoming: ThreadMessage,
   windowMs = OWN_API_RECONCILIATION_WINDOW_MS,
+  mergeContext?: MergeContext,
 ): ThreadMessage | null {
   if (!incoming.is_my_msg) return null;
   const normalizedText = normalizeMessageText(incoming.text);
@@ -338,6 +386,9 @@ function findUniqueRecentOwnEphemeralCandidate(
   const matches = rows.filter(row => {
     if (!row.is_my_msg) return false;
     if (!row.local_send_token) return false;
+    if (mergeContext?.isTrackedLocalSendToken && !mergeContext.isTrackedLocalSendToken(row.local_send_token)) {
+      return false;
+    }
     if (normalizeMessageText(row.text) !== normalizedText) return false;
 
     const lacksStrongServerIdentity = row.row_id == null || (row.funpay_message_id ?? 0) <= 0;
@@ -357,6 +408,7 @@ function findRecentOwnPendingCandidate(
   text: string,
   createdAt?: string,
   localSendToken?: string | null,
+  mergeContext?: MergeContext,
 ): ThreadMessage | null {
   const targetTime = messageTimestamp(createdAt) || Date.now();
   const normalizedText = normalizeMessageText(text);
@@ -365,6 +417,7 @@ function findRecentOwnPendingCandidate(
   for (const row of rows) {
     if (!row.is_my_msg) continue;
     if (!row.local_send_token) continue;
+    if (mergeContext?.isTrackedLocalSendToken && !mergeContext.isTrackedLocalSendToken(row.local_send_token)) continue;
     if (localSendToken && row.local_send_token !== localSendToken) continue;
     if (row.status !== 'pending') continue;
     if ((row.funpay_message_id ?? 0) > 0) continue;
@@ -588,6 +641,7 @@ export default function Chats() {
 
     if (tempID) {
       for (const entry of entryMap.values()) {
+        if (entry.phase === 'reconciled') continue;
         if (entry.tempID === tempID) {
           return entry;
         }
@@ -597,11 +651,52 @@ export default function Chats() {
     const normalizedText = normalizeMessageText(text);
     const targetTime = messageTimestamp(createdAt) || Date.now();
     const matches = Array.from(entryMap.values()).filter(entry => {
+      if (entry.phase === 'reconciled') return false;
       if (normalizeMessageText(entry.text) !== normalizedText) return false;
       return Math.abs(targetTime - entry.sentAt) <= OWN_API_RECONCILIATION_WINDOW_MS;
     });
     if (matches.length !== 1) return null;
     return matches[0];
+  }, [pruneRecentLocalSends]);
+
+  const isTrackedLocalSendToken = useCallback((chatID: number, token?: string | null) => {
+    if (!token) return false;
+    pruneRecentLocalSends(chatID);
+    const entry = recentLocalSendsRef.current.get(chatID)?.get(token);
+    return Boolean(entry && entry.phase !== 'reconciled');
+  }, [pruneRecentLocalSends]);
+
+  const settleLocalSendsWithRows = useCallback((chatID: number, rows: ThreadMessage[]) => {
+    pruneRecentLocalSends(chatID);
+    const entryMap = recentLocalSendsRef.current.get(chatID);
+    if (!entryMap || entryMap.size === 0) return;
+
+    for (const [token, entry] of entryMap.entries()) {
+      const matched = rows.find(row => {
+        if (!row.is_my_msg || row.row_id == null) return false;
+        if (row.local_send_token === token) return true;
+        if (entry.rowID && row.row_id === entry.rowID) return true;
+        if (entry.tempID && Number(row.temp_id ?? 0) === entry.tempID) return true;
+        if (entry.funpayMessageID && Number(row.funpay_message_id ?? 0) === entry.funpayMessageID) return true;
+        if (normalizeMessageText(row.text) !== normalizeMessageText(entry.text)) return false;
+        const rowTime = messageTimestamp(row.created_at);
+        if (!rowTime) return false;
+        return Math.abs(rowTime - entry.sentAt) <= OWN_API_RECONCILIATION_WINDOW_MS;
+      });
+      if (!matched) continue;
+      entryMap.set(token, {
+        ...entry,
+        phase: 'reconciled',
+        rowID: matched.row_id,
+        tempID: Number(matched.temp_id ?? 0) || entry.tempID,
+        funpayMessageID: Number(matched.funpay_message_id ?? 0) || entry.funpayMessageID,
+      });
+      entryMap.delete(token);
+    }
+
+    if (entryMap.size === 0) {
+      recentLocalSendsRef.current.delete(chatID);
+    }
   }, [pruneRecentLocalSends]);
 
   const resizeComposer = useCallback((node?: HTMLTextAreaElement | null) => {
@@ -668,9 +763,13 @@ export default function Chats() {
           ...message,
           chat_id: message.chat_id ?? chatID,
         }));
+        const mergeContext: MergeContext = {
+          isTrackedLocalSendToken: token => isTrackedLocalSendToken(chatID, token),
+        };
 
         if (mode === 'replace') {
-          const merged = mergeThreadMessages([], nextRows, 'replace');
+          const merged = mergeThreadMessages([], nextRows, 'replace', mergeContext);
+          settleLocalSendsWithRows(chatID, merged);
           hasPrependedHistoryRef.current = false;
           setMessages(merged);
           setOldestMessageId(getOldestRowId(merged));
@@ -688,8 +787,9 @@ export default function Chats() {
             return;
           }
           const merged = hasPrependedHistoryRef.current
-            ? mergeLatestTailIntoPaginatedThread(messagesRef.current, nextRows)
-            : mergeLatestPageIntoThread(messagesRef.current, nextRows);
+            ? mergeLatestTailIntoPaginatedThread(messagesRef.current, nextRows, mergeContext)
+            : mergeLatestPageIntoThread(messagesRef.current, nextRows, mergeContext);
+          settleLocalSendsWithRows(chatID, merged);
           setMessages(merged);
           setOldestMessageId(getOldestRowId(merged));
           lastMessagesLoadRef.current = { chatID, at: Date.now() };
@@ -709,10 +809,11 @@ export default function Chats() {
           }
         }
 
-        const merged = mergeThreadMessages(messagesRef.current, nextRows, 'prepend-history');
+        const merged = mergeThreadMessages(messagesRef.current, nextRows, 'prepend-history', mergeContext);
         if (nextRows.length > 0) {
           hasPrependedHistoryRef.current = true;
         }
+        settleLocalSendsWithRows(chatID, merged);
         setMessages(merged);
         setOldestMessageId(getOldestRowId(merged));
         setHasMoreMessages(safeRows.length === CHAT_PAGE_SIZE && safeRows.length > 0);
@@ -751,7 +852,7 @@ export default function Chats() {
         }
       }
     },
-    [scrollThreadToBottom],
+    [isTrackedLocalSendToken, scrollThreadToBottom, settleLocalSendsWithRows],
   );
 
   const loadChats = useCallback(
@@ -1007,6 +1108,14 @@ export default function Chats() {
             const tempID = Number(event.data.temp_id ?? 0);
             const realID = Number(event.data.real_funpay_message_id ?? 0);
             if (!tempID || !isOpened) return;
+            const localSend = resolveRecentLocalSend(openedChatID, tempID, '', String(event.data.created_at ?? ''));
+            if (localSend) {
+              updateLocalSend(openedChatID, localSend.token, {
+                phase: 'acked',
+                tempID,
+                funpayMessageID: realID || localSend.funpayMessageID,
+              });
+            }
 
             setMessages(prev =>
               prev.map(message => {
@@ -1044,6 +1153,9 @@ export default function Chats() {
           const isMyMsg = Boolean(event.data.is_my_msg);
           const status = String(event.data.status ?? (isMyMsg ? 'pending' : 'delivered'));
           const chatExists = chatsRef.current.some(chat => isChatMatch(chat, nodeID, eventAccountID));
+          const openedChatMergeContext: MergeContext = {
+            isTrackedLocalSendToken: token => isTrackedLocalSendToken(openedChatID, token),
+          };
 
           setChats(prev =>
             updateChatRows(prev, {
@@ -1092,10 +1204,17 @@ export default function Chats() {
             };
 
             if (event.type === 'message_sent') {
+              const localSend = resolveRecentLocalSend(openedChatID, tempID, text, createdAt);
+              if (localSend) {
+                updateLocalSend(openedChatID, localSend.token, {
+                  phase: 'acked',
+                  tempID: tempID || localSend.tempID,
+                  funpayMessageID: realFunpayMessageID || localSend.funpayMessageID,
+                  sentAt: messageTimestamp(createdAt) || localSend.sentAt,
+                });
+              }
               const byTemp = tempID ? replaceAt(message => Number(message.temp_id ?? 0) === tempID) : null;
               if (byTemp) return byTemp;
-
-              const localSend = resolveRecentLocalSend(openedChatID, tempID, text, createdAt);
               if (localSend) {
                 const byToken = replaceAt(message => message.local_send_token === localSend.token);
                 if (byToken) {
@@ -1103,12 +1222,23 @@ export default function Chats() {
                 }
               }
 
-              const candidate = findRecentOwnPendingCandidate(prev, text, createdAt, localSend?.token);
+              const candidate = findRecentOwnPendingCandidate(
+                prev,
+                text,
+                createdAt,
+                localSend?.token,
+                openedChatMergeContext,
+              );
               if (candidate) {
                 return replaceAt(message => message === candidate) ?? prev;
               }
 
-              const uniqueOwnEphemeral = findUniqueRecentOwnEphemeralCandidate(prev, nextMessage);
+              const uniqueOwnEphemeral = findUniqueRecentOwnEphemeralCandidate(
+                prev,
+                nextMessage,
+                OWN_API_RECONCILIATION_WINDOW_MS,
+                openedChatMergeContext,
+              );
               if (uniqueOwnEphemeral) {
                 return replaceAt(message => message === uniqueOwnEphemeral) ?? prev;
               }
@@ -1117,6 +1247,16 @@ export default function Chats() {
             }
 
             if (isMyMsg) {
+              const localSend = resolveRecentLocalSend(openedChatID, tempID, text, createdAt);
+              if (localSend) {
+                updateLocalSend(openedChatID, localSend.token, {
+                  phase: 'acked',
+                  tempID: tempID || localSend.tempID,
+                  funpayMessageID: realFunpayMessageID || localSend.funpayMessageID,
+                  sentAt: messageTimestamp(createdAt) || localSend.sentAt,
+                });
+              }
+
               const byTemp = tempID ? replaceAt(message => Number(message.temp_id ?? 0) === tempID) : null;
               if (byTemp) return byTemp;
 
@@ -1125,13 +1265,23 @@ export default function Chats() {
                 : null;
               if (byFunpay) return byFunpay;
 
-              const localSend = resolveRecentLocalSend(openedChatID, tempID, text, createdAt);
-              const candidate = findRecentOwnPendingCandidate(prev, text, createdAt, localSend?.token);
+              const candidate = findRecentOwnPendingCandidate(
+                prev,
+                text,
+                createdAt,
+                localSend?.token,
+                openedChatMergeContext,
+              );
               if (candidate) {
                 return replaceAt(message => message === candidate) ?? prev;
               }
 
-              const uniqueOwnEphemeral = findUniqueRecentOwnEphemeralCandidate(prev, nextMessage);
+              const uniqueOwnEphemeral = findUniqueRecentOwnEphemeralCandidate(
+                prev,
+                nextMessage,
+                OWN_API_RECONCILIATION_WINDOW_MS,
+                openedChatMergeContext,
+              );
               if (uniqueOwnEphemeral) {
                 return replaceAt(message => message === uniqueOwnEphemeral) ?? prev;
               }
@@ -1220,7 +1370,16 @@ export default function Chats() {
         liveNormalizeTimerRef.current = null;
       }
     };
-  }, [accountScope, accounts, loadMessages, scheduleOpenedChatNormalization, scrollThreadToBottom]);
+  }, [
+    accountScope,
+    accounts,
+    isTrackedLocalSendToken,
+    loadMessages,
+    resolveRecentLocalSend,
+    scheduleOpenedChatNormalization,
+    scrollThreadToBottom,
+    updateLocalSend,
+  ]);
 
   const filteredChats = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -1321,9 +1480,14 @@ export default function Chats() {
       optimisticID,
       text,
       sentAt: messageTimestamp(nowISO) || Date.now(),
+      phase: 'optimistic',
     });
 
-    setMessages(prev => mergeThreadMessages(prev, [optimistic], 'append-live'));
+    setMessages(prev =>
+      mergeThreadMessages(prev, [optimistic], 'append-live', {
+        isTrackedLocalSendToken: token => isTrackedLocalSendToken(selectedChat.id, token),
+      }),
+    );
     setChats(prev =>
       moveChatToTop(
         prev.map(chat =>
@@ -1364,6 +1528,7 @@ export default function Chats() {
       updateLocalSend(selectedChat.id, localSendToken, {
         tempID: pendingTempID,
         sentAt: messageTimestamp(pendingTime) || Date.now(),
+        phase: 'acked',
       });
       lastMessagesLoadRef.current = { chatID: selectedChat.id, at: Date.now() };
 
