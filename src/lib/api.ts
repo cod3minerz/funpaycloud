@@ -840,6 +840,17 @@ export type AITestResponse = {
   trace?: Array<Record<string, unknown>>;
 };
 
+export type AITestConfigOverride = {
+  tone?: string;
+  system_prompt?: string;
+  delay_seconds?: number;
+  show_ai_signature?: boolean;
+  faq?: Array<{
+    question: string;
+    answer: string;
+  }>;
+};
+
 export const settingsApi = {
   getProfile: () => apiRequest<ProfileData>('/api/settings/profile'),
   updateProfile: (data: { login: string; timezone?: string; telegram?: string }) =>
@@ -945,6 +956,7 @@ export const aiApi = {
     auto_mode: boolean;
     override_mode?: 'assistant' | 'constructor';
     scenario_id?: string;
+    config_override?: AITestConfigOverride;
   }) =>
     apiRequest<AITestResponse>('/api/ai/test-chat', {
       method: 'POST',

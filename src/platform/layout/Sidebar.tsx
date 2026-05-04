@@ -53,7 +53,7 @@ const navGroups: Array<{ title: string; items: NavItem[] }> = [
       { icon: 'constructor', label: 'Конструктор', path: '/platform/constructor' },
       { icon: 'analytics', label: 'Аналитика', path: '/platform/analytics' },
       { icon: 'ai', label: 'AI-Ассистент', path: '/platform/ai-assistant' },
-      { icon: 'ai', label: 'Тест-чат', path: '/platform/test-chat' },
+      { icon: 'aiChip', label: 'Тест-чат', path: '/platform/test-chat' },
       { icon: 'plugins', label: 'Плагины', path: '/platform/plugins' },
       { icon: 'finances', label: 'Финансы', path: '/platform/finances' },
       { icon: 'referrals', label: 'Реферальная система', path: '/platform/referrals' },

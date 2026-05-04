@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, Bot, RotateCcw, Send } from '@/shared/streamline/icons';
+import { AlertCircle, Bot, Plus, RotateCcw, Send, Trash2 } from '@/shared/streamline/icons';
 import { toast } from 'sonner';
 import { aiApi, accountsApi, ApiAccount, ApiScenario, scenariosApi } from '@/lib/api';
 import { PageHeader, PageShell, PageTitle } from '@/platform/components/primitives';
@@ -12,6 +12,12 @@ type MessageItem = {
   role: 'user' | 'ai';
   text: string;
   loading?: boolean;
+};
+
+type LocalFaqItem = {
+  id: string;
+  question: string;
+  answer: string;
 };
 
 const QUICK_MESSAGES = ['Есть ли товар в наличии?', 'Когда будет выдача?', 'Можно ли скидку?'];
@@ -31,6 +37,11 @@ export default function TestChatPage() {
   const [overrideMode, setOverrideMode] = useState<ChatMode>('assistant');
   const [selectedScenarioID, setSelectedScenarioID] = useState('');
   const [scenarios, setScenarios] = useState<ApiScenario[]>([]);
+  const [localTone, setLocalTone] = useState<'formal' | 'neutral' | 'friendly'>('neutral');
+  const [localDelaySeconds, setLocalDelaySeconds] = useState(3);
+  const [localPrompt, setLocalPrompt] = useState('');
+  const [localSignature, setLocalSignature] = useState(false);
+  const [localFaq, setLocalFaq] = useState<LocalFaqItem[]>([]);
 
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [input, setInput] = useState('');
@@ -85,7 +96,11 @@ export default function TestChatPage() {
   }, []);
 
   async function loadForAccount(accountID: number, cancelled = false) {
-    const [config, accountScenarios] = await Promise.all([aiApi.getConfig(accountID), scenariosApi.list(accountID)]);
+    const [config, accountScenarios, faqItems] = await Promise.all([
+      aiApi.getConfig(accountID),
+      scenariosApi.list(accountID),
+      aiApi.getFaq(accountID),
+    ]);
     if (cancelled) return;
 
     const mode: ChatMode = config.chat_mode === 'constructor' ? 'constructor' : 'assistant';
@@ -102,6 +117,19 @@ export default function TestChatPage() {
       const firstChatScenario = accountScenarios.find(item => item.trigger_type === 'chat_message');
       setSelectedScenarioID(firstChatScenario?.id || '');
     }
+
+    const normalizedTone = config.tone === 'formal' || config.tone === 'friendly' || config.tone === 'neutral' ? config.tone : 'neutral';
+    setLocalTone(normalizedTone);
+    setLocalDelaySeconds(typeof config.delay_seconds === 'number' ? config.delay_seconds : 3);
+    setLocalPrompt(config.system_prompt || '');
+    setLocalSignature(Boolean(config.show_ai_signature));
+    setLocalFaq(
+      faqItems.map(item => ({
+        id: `${item.id}`,
+        question: item.question || '',
+        answer: item.answer || '',
+      })),
+    );
 
     setMessages([]);
     setTrace([]);
@@ -141,6 +169,10 @@ export default function TestChatPage() {
     setTrace([]);
 
     try {
+      const localFaqPayload = localFaq
+        .map(item => ({ question: item.question.trim(), answer: item.answer.trim() }))
+        .filter(item => item.question.length > 0 && item.answer.length > 0);
+
       const response = await aiApi.testChat({
         account_id: selectedAccountID,
         message: text,
@@ -148,6 +180,16 @@ export default function TestChatPage() {
         auto_mode: autoMode,
         override_mode: autoMode ? undefined : overrideMode,
         scenario_id: !autoMode && overrideMode === 'constructor' ? selectedScenarioID : undefined,
+        config_override:
+          !autoMode && overrideMode === 'assistant'
+            ? {
+                tone: localTone,
+                system_prompt: localPrompt.trim(),
+                delay_seconds: localDelaySeconds,
+                show_ai_signature: localSignature,
+                faq: localFaqPayload,
+              }
+            : undefined,
       });
 
       setLastEffectiveMode((response.effective_mode === 'constructor' ? 'constructor' : 'assistant') as ChatMode);
@@ -178,6 +220,25 @@ export default function TestChatPage() {
     } finally {
       setTesting(false);
     }
+  }
+
+  function addLocalFaq() {
+    setLocalFaq(prev => [
+      ...prev,
+      {
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        question: '',
+        answer: '',
+      },
+    ]);
+  }
+
+  function updateLocalFaq(index: number, key: 'question' | 'answer', value: string) {
+    setLocalFaq(prev => prev.map((item, itemIndex) => (itemIndex === index ? { ...item, [key]: value } : item)));
+  }
+
+  function removeLocalFaq(index: number) {
+    setLocalFaq(prev => prev.filter((_, itemIndex) => itemIndex !== index));
   }
 
   return (
@@ -279,6 +340,115 @@ export default function TestChatPage() {
                         </option>
                       ))}
                     </select>
+                  </div>
+                )}
+
+                {overrideMode === 'assistant' && (
+                  <div className="mt-4 space-y-3 rounded-xl border border-[var(--pf-border)] bg-[var(--pf-surface-2)] p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--pf-text-dim)]">Локальные настройки теста</p>
+                    <p className="text-[11px] text-[var(--pf-text-dim)]">Эти параметры используются только в тест-чате и не меняют боевые настройки аккаунта.</p>
+
+                    <div>
+                      <label className="mb-1 block text-[11px] font-semibold text-[var(--pf-text-dim)]">Тон общения</label>
+                      <select
+                        value={localTone}
+                        onChange={event => setLocalTone(event.target.value as 'formal' | 'neutral' | 'friendly')}
+                        className="platform-select"
+                      >
+                        <option value="neutral">Нейтральный</option>
+                        <option value="formal">Официальный</option>
+                        <option value="friendly">Дружелюбный</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-[11px] font-semibold text-[var(--pf-text-dim)]">Задержка ответа: {localDelaySeconds}с</label>
+                      <input
+                        type="range"
+                        min={0}
+                        max={30}
+                        step={1}
+                        value={localDelaySeconds}
+                        onChange={event => setLocalDelaySeconds(Number(event.target.value))}
+                        className="w-full accent-[var(--pf-accent)]"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold text-[var(--pf-text-dim)]">Подпись ассистента</span>
+                      <button
+                        type="button"
+                        onClick={() => setLocalSignature(prev => !prev)}
+                        className={`relative flex h-6 w-11 flex-shrink-0 rounded-full transition-colors duration-200 ${
+                          localSignature ? 'bg-[var(--pf-accent)]' : 'bg-[var(--pf-surface-3)]'
+                        }`}
+                        aria-pressed={localSignature}
+                      >
+                        <span
+                          className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
+                            localSignature ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-[11px] font-semibold text-[var(--pf-text-dim)]">Инструкция для ИИ</label>
+                      <textarea
+                        value={localPrompt}
+                        onChange={event => setLocalPrompt(event.target.value)}
+                        rows={4}
+                        className="w-full rounded-xl border border-[var(--pf-border-strong)] bg-[var(--pf-elevated)] px-3 py-2 text-sm text-[var(--pf-text)] placeholder-[var(--pf-text-soft)] focus:border-[var(--pf-accent-soft-strong)] focus:outline-none"
+                        placeholder="Например: отвечай коротко, всегда уточняй логин перед выдачей..."
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-[var(--pf-text-dim)]">База знаний FAQ</span>
+                        <button
+                          type="button"
+                          onClick={addLocalFaq}
+                          className="inline-flex items-center gap-1 rounded-lg border border-[var(--pf-border)] px-2 py-1 text-[11px] text-[var(--pf-text-muted)] hover:border-[var(--pf-accent-soft-strong)] hover:text-[var(--pf-text)]"
+                        >
+                          <Plus size={11} />
+                          Добавить
+                        </button>
+                      </div>
+                      {localFaq.length === 0 ? (
+                        <p className="text-[11px] text-[var(--pf-text-dim)]">FAQ не добавлен. Ответы будут строиться только по инструкции и контексту лотов.</p>
+                      ) : (
+                        <div className="max-h-52 space-y-2 overflow-y-auto pr-1">
+                          {localFaq.map((item, index) => (
+                            <div key={item.id} className="rounded-lg border border-[var(--pf-border)] bg-[var(--pf-surface)] p-2">
+                              <div className="mb-2 flex justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => removeLocalFaq(index)}
+                                  className="inline-flex items-center gap-1 text-[11px] text-[var(--pf-text-dim)] hover:text-red-400"
+                                >
+                                  <Trash2 size={11} />
+                                  Удалить
+                                </button>
+                              </div>
+                              <input
+                                value={item.question}
+                                onChange={event => updateLocalFaq(index, 'question', event.target.value)}
+                                className="mb-2 w-full rounded-lg border border-[var(--pf-border-strong)] bg-[var(--pf-elevated)] px-2 py-1.5 text-xs text-[var(--pf-text)] focus:border-[var(--pf-accent-soft-strong)] focus:outline-none"
+                                placeholder="Вопрос"
+                              />
+                              <textarea
+                                value={item.answer}
+                                onChange={event => updateLocalFaq(index, 'answer', event.target.value)}
+                                rows={2}
+                                className="w-full rounded-lg border border-[var(--pf-border-strong)] bg-[var(--pf-elevated)] px-2 py-1.5 text-xs text-[var(--pf-text)] focus:border-[var(--pf-accent-soft-strong)] focus:outline-none"
+                                placeholder="Ответ"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </>
