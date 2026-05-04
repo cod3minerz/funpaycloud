@@ -1194,6 +1194,9 @@ export type AdminSharedProxy = {
   port: number;
   protocol: string;
   is_active: boolean;
+  health_state?: 'healthy' | 'degraded' | 'unhealthy' | string;
+  fail_count?: number;
+  last_error?: string;
   max_accounts: number;
   used_accounts: number;
   created_at: string;
@@ -1343,6 +1346,7 @@ export const adminApi = {
     password?: string;
     protocol?: 'HTTP' | 'HTTPS' | 'SOCKS5';
     max_accounts?: number;
+    expires_at?: string;
   }) =>
     adminApiRequest<AdminSharedProxy>('/admin-api/proxies/shared', {
       method: 'POST',

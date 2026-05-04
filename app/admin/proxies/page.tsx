@@ -10,6 +10,7 @@ type FormState = {
   username: string;
   password: string;
   protocol: 'HTTP' | 'HTTPS' | 'SOCKS5';
+  expiresAt: string;
 };
 
 const initialForm: FormState = {
@@ -18,7 +19,23 @@ const initialForm: FormState = {
   username: '',
   password: '',
   protocol: 'HTTP',
+  expiresAt: '',
 };
+
+function proxyStatus(item: AdminSharedProxy): { label: string; className: string } {
+  const expiresAt = item.expires_at ? new Date(item.expires_at) : null;
+  const isExpired = Boolean(expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now());
+  if (isExpired) {
+    return { label: 'Истёк', className: 'bg-red-500/15 text-red-300' };
+  }
+  if (!item.is_active || item.health_state === 'unhealthy') {
+    return { label: 'Недоступен', className: 'bg-slate-700 text-slate-300' };
+  }
+  if (item.health_state === 'degraded') {
+    return { label: 'Проблемы', className: 'bg-amber-500/15 text-amber-300' };
+  }
+  return { label: 'Активен', className: 'bg-emerald-500/15 text-emerald-300' };
+}
 
 export default function AdminProxiesPage() {
   const [items, setItems] = useState<AdminSharedProxy[]>([]);
@@ -54,12 +71,14 @@ export default function AdminProxiesPage() {
     setSaving(true);
     setError(null);
     try {
+      const expiresISO = form.expiresAt ? new Date(`${form.expiresAt}T23:59:59Z`).toISOString() : undefined;
       await adminApi.addSharedProxy({
         host,
         port,
         username: form.username.trim() || undefined,
         password: form.password.trim() || undefined,
         protocol: form.protocol,
+        expires_at: expiresISO,
       });
       setForm(initialForm);
       await load();
@@ -121,6 +140,12 @@ export default function AdminProxiesPage() {
             <option value="HTTPS">HTTPS</option>
             <option value="SOCKS5">SOCKS5</option>
           </select>
+          <input
+            type="date"
+            className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-500"
+            value={form.expiresAt}
+            onChange={event => setForm(prev => ({ ...prev, expiresAt: event.target.value }))}
+          />
         </div>
         <button
           type="button"
@@ -150,6 +175,7 @@ export default function AdminProxiesPage() {
                   <th className="pb-2 pr-3">Адрес</th>
                   <th className="pb-2 pr-3">Protocol</th>
                   <th className="pb-2 pr-3">Загрузка</th>
+                  <th className="pb-2 pr-3">Аренда до</th>
                   <th className="pb-2 pr-3">Статус</th>
                 </tr>
               </thead>
@@ -165,13 +191,19 @@ export default function AdminProxiesPage() {
                       {item.used_accounts}/{item.max_accounts}
                     </td>
                     <td className="py-2 pr-3">
+                      {item.expires_at ? new Date(item.expires_at).toLocaleString('ru-RU') : '—'}
+                    </td>
+                    <td className="py-2 pr-3">
+                      {(() => {
+                        const status = proxyStatus(item);
+                        return (
                       <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs ${
-                          item.is_active ? 'bg-emerald-500/15 text-emerald-300' : 'bg-slate-700 text-slate-300'
-                        }`}
+                            className={`inline-flex rounded-full px-2 py-0.5 text-xs ${status.className}`}
                       >
-                        {item.is_active ? 'Активен' : 'Неактивен'}
+                            {status.label}
                       </span>
+                        );
+                      })()}
                     </td>
                   </tr>
                 ))}
