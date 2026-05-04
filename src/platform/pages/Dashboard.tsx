@@ -98,8 +98,8 @@ const FEATURES: Feature[] = [
 
 const COMMUNITY_CARDS: CommunityCard[] = [
   {
-    title: 'Наш канал',
-    subtitle: 'Telegram',
+    title: 'Наш Telegram',
+    subtitle: 'Канал',
     description: 'Новости платформы, промокоды и обновления по ключевым функциям.',
     cta: 'Подписаться',
     href: 'https://t.me/funpaycloud',
@@ -109,7 +109,7 @@ const COMMUNITY_CARDS: CommunityCard[] = [
   },
   {
     title: 'Группа VK',
-    subtitle: 'ВКонтакте',
+    subtitle: 'Сообщество',
     description: 'Полезные посты, кейсы продавцов и живые обсуждения автоматизации.',
     cta: 'Вступить',
     href: 'https://vk.com/funpaycloud',
@@ -119,7 +119,7 @@ const COMMUNITY_CARDS: CommunityCard[] = [
   },
   {
     title: 'Поддержка',
-    subtitle: 'Telegram Support',
+    subtitle: 'Техподдержка',
     description: 'Если что-то сломалось — быстро поможем с настройкой и восстановлением.',
     cta: 'Написать',
     href: 'https://t.me/funpaycloud_support',
@@ -401,7 +401,7 @@ export default function Dashboard() {
                     href={card.href}
                     target="_blank"
                     rel="noreferrer"
-                    className="platform-dashboard-community-card-link inline-flex items-center gap-1.5 text-xs font-semibold transition-colors"
+                    className="platform-dashboard-community-card-link inline-flex items-center gap-1.5 transition-colors"
                   >
                     {card.cta}
                     <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />

@@ -242,30 +242,28 @@ export default function AIAssistant() {
       </PageHeader>
 
       <div className="mb-6 overflow-hidden rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-surface)] p-5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-[var(--pf-text-dim)]">Боевой режим автоответчика</p>
-            <p className="mt-1 text-[11px] text-[var(--pf-text-dim)]">Переключение сохраняется сразу и влияет на реальные ответы покупателям.</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-[var(--pf-text-dim)]">Выбор боевого режима</p>
+            <p className="mt-1 text-[11px] text-[var(--pf-text-dim)]">Переключение сохраняется сразу. Определяет, как отвечать покупателям при включенном автоответчике.</p>
           </div>
-          <div className="flex items-center gap-3">
-            <span className={`text-xs font-semibold ${assistantModeActive ? 'text-[var(--pf-text)]' : 'text-[var(--pf-text-dim)]'}`}>ИИ Бот</span>
+          <div className="flex items-center justify-center gap-6">
+            <span className={`text-lg font-semibold ${assistantModeActive ? 'text-[var(--pf-text)]' : 'text-[var(--pf-text-dim)]'}`}>ИИ Бот</span>
             <button
               type="button"
               disabled={!selectedAccountID || modeSaving}
               onClick={() => void persistMode(assistantModeActive ? 'constructor' : 'assistant')}
-              className={`relative flex h-6 w-11 flex-shrink-0 rounded-full transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${
-                constructorModeActive ? 'bg-gradient-to-r from-indigo-500 to-violet-500' : 'bg-[var(--pf-surface-3)]'
-              }`}
+              className="relative flex h-24 w-44 flex-shrink-0 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50"
               aria-pressed={constructorModeActive}
               aria-label="Переключить режим автоответчика"
             >
               <span
-                className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
-                  constructorModeActive ? 'translate-x-5' : 'translate-x-0'
+                className={`absolute left-2 top-2 h-20 w-20 rounded-full bg-white shadow transition-transform duration-200 ${
+                  constructorModeActive ? 'translate-x-[5.5rem]' : 'translate-x-0'
                 }`}
               />
             </button>
-            <span className={`text-xs font-semibold ${constructorModeActive ? 'text-[var(--pf-text)]' : 'text-[var(--pf-text-dim)]'}`}>Сценарии</span>
+            <span className={`text-lg font-semibold ${constructorModeActive ? 'text-[var(--pf-text)]' : 'text-[var(--pf-text-dim)]'}`}>Сценарии</span>
           </div>
         </div>
       </div>
@@ -285,12 +283,12 @@ export default function AIAssistant() {
               <div className="mb-3 flex items-center gap-2">
                 <span className={`h-1.5 w-1.5 rounded-full ${enabled ? 'animate-pulse bg-emerald-500' : 'bg-[var(--pf-surface-3)]'}`} />
                 <span className={`text-xs font-medium ${enabled ? 'text-emerald-700' : 'text-[var(--pf-text-dim)]'}`}>
-                  {loading ? 'Загрузка...' : enabled ? 'AI активен' : 'AI выключен'}
+                  {loading ? 'Загрузка...' : enabled ? 'Автоответчик активен' : 'Автоответчик выключен'}
                 </span>
               </div>
-              <h2 className="mb-1 text-xl font-bold text-[var(--pf-text)]">AI-Ассистент</h2>
+              <h2 className="mb-1 text-xl font-bold text-[var(--pf-text)]">Общий тумблер автоответчика</h2>
               <p className="text-xs text-[var(--pf-text-dim)]">
-                {enabled ? 'Отвечает покупателям автоматически от вашего имени' : 'Включите, чтобы бот отвечал покупателям автоматически'}
+                {enabled ? 'Включен для обоих режимов: ИИ Бот и Сценарии' : 'Выключает оба режима сразу: ИИ Бот и Сценарии'}
               </p>
             </div>
 
