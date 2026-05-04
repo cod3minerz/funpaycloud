@@ -758,7 +758,13 @@ export type ProfileData = {
   login?: string;
   email?: string;
   telegram?: string;
+  telegram_linked?: boolean;
+  telegram_id?: number | null;
   telegram_username?: string;
+  telegram_first_name?: string;
+  telegram_last_name?: string;
+  telegram_photo_url?: string;
+  telegram_notifications_enabled?: boolean;
   timezone?: string;
 };
 
@@ -782,8 +788,20 @@ export type NotificationSettings = {
 };
 
 export type TelegramLinkData = {
-  code: string;
-  link: string;
+  available: boolean;
+  bot_username?: string;
+  login_domain?: string;
+  linked?: boolean;
+};
+
+export type TelegramAuthPayload = {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+  auth_date: number;
+  hash: string;
 };
 
 export type PromoRedemptionItem = {
@@ -853,11 +871,20 @@ export const settingsApi = {
   getSubscription: () => apiRequest<SubscriptionData>('/api/settings/subscription'),
   getNotifications: () => apiRequest<NotificationSettings>('/api/settings/notifications'),
   updateNotifications: (data: NotificationSettings) =>
-    apiRequest('/api/settings/notifications', {
+    apiRequest<NotificationSettings>('/api/settings/notifications', {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
   getTelegramLink: () => apiRequest<TelegramLinkData>('/api/settings/telegram/link'),
+  linkTelegram: (data: TelegramAuthPayload) =>
+    apiRequest<{ linked: boolean }>('/api/telegram/link', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  unlinkTelegram: () =>
+    apiRequest<{ linked: boolean }>('/api/telegram/unlink', {
+      method: 'POST',
+    }),
   getReferral: () =>
     apiRequest<{ referral_code: string; referrals: Array<Record<string, unknown>>; total_earned: number }>(
       '/api/settings/referral',

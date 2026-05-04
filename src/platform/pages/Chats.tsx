@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
+import { useSearchParams } from 'next/navigation';
 import { Check, CheckCheck, Loader2, SendHorizontal, SearchX, MessageSquareQuote, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { accountsApi, ApiAccount, ApiChat, ApiMessage, chatsApi, createAccountWebSocket, SendMessageResponse } from '@/lib/api';
@@ -413,8 +414,22 @@ function updateChatRows(
 }
 
 export default function Chats() {
+  const searchParams = useSearchParams();
+  const requestedAccountID = useMemo(() => {
+    const raw = searchParams.get('account_id');
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }, [searchParams]);
+  const requestedChatID = useMemo(() => {
+    const raw = searchParams.get('chat_id');
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }, [searchParams]);
+
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
-  const [accountScope, setAccountScope] = useState<AccountScope>('all');
+  const [accountScope, setAccountScope] = useState<AccountScope>(requestedAccountID ?? 'all');
   const [chats, setChats] = useState<ChatRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -436,6 +451,10 @@ export default function Chats() {
   const socketsRef = useRef<Map<number, WebSocket>>(new Map());
   const wsResyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const liveNormalizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const routeTargetRef = useRef<{ accountID: number | null; chatID: number | null }>({
+    accountID: requestedAccountID,
+    chatID: requestedChatID,
+  });
   const recentLocalSendsRef = useRef<Map<number, Map<string, LocalSendEntry>>>(new Map());
   const threadScrollRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
@@ -522,6 +541,13 @@ export default function Chats() {
   useEffect(() => {
     selectedChatRef.current = selectedChat;
   }, [selectedChat]);
+
+  useEffect(() => {
+    routeTargetRef.current = { accountID: requestedAccountID, chatID: requestedChatID };
+    if (requestedAccountID && requestedAccountID !== accountScope) {
+      setAccountScope(requestedAccountID);
+    }
+  }, [accountScope, requestedAccountID, requestedChatID]);
 
   const scrollThreadToBottom = useCallback(() => {
     const node = threadScrollRef.current;
@@ -806,8 +832,18 @@ export default function Chats() {
       }
 
       const currentSelected = selectedChatRef.current;
+      const routeTarget = routeTargetRef.current;
+      const requestedChat =
+        routeTarget.chatID != null
+          ? nextChats.find(chat => {
+              if (chat.id !== routeTarget.chatID) return false;
+              if (routeTarget.accountID == null) return true;
+              return (chat.funpay_account_id ?? 0) === routeTarget.accountID;
+            }) || null
+          : null;
       const nextSelected =
-        preserveSelection &&
+        requestedChat?.id ??
+        (preserveSelection &&
         currentSelected &&
         nextChats.some(
           chat =>
@@ -815,7 +851,12 @@ export default function Chats() {
             (chat.funpay_account_id ?? 0) === (currentSelected.funpay_account_id ?? 0),
         )
           ? currentSelected.id
-          : nextChats[0].id;
+          : nextChats[0].id);
+
+      if (requestedChat) {
+        routeTargetRef.current = { accountID: null, chatID: null };
+      }
+
       setSelectedChatID(nextSelected);
       return nextSelected;
     },
