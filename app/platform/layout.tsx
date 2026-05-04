@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { AlertTriangle, CreditCard, KeyRound, Lock, LogOut, Ticket } from 'lucide-react';
+import { AlertTriangle, CreditCard, KeyRound, Lock, LogOut, Ticket } from '@/shared/streamline/icons';
 import Sidebar from '@/platform/layout/Sidebar';
 import PlatformTopBar from '@/platform/layout/PlatformTopBar';
 import { accountsApi, authApi } from '@/lib/api';

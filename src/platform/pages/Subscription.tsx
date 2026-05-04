@@ -9,7 +9,7 @@ import {
   RefreshCw,
   Shield,
   X,
-} from 'lucide-react';
+} from '@/shared/streamline/icons';
 import { toast } from 'sonner';
 import { accountsApi, settingsApi, type SubscriptionData } from '@/lib/api';
 import {

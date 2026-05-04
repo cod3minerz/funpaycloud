@@ -854,6 +854,19 @@ export type AITestResponse = {
   remaining_limit: number;
   used_messages?: number;
   limit_messages?: number;
+  effective_mode?: 'assistant' | 'constructor' | string;
+  trace?: Array<Record<string, unknown>>;
+};
+
+export type AITestConfigOverride = {
+  tone?: string;
+  system_prompt?: string;
+  delay_seconds?: number;
+  show_ai_signature?: boolean;
+  faq?: Array<{
+    question: string;
+    answer: string;
+  }>;
 };
 
 export const settingsApi = {
@@ -926,6 +939,17 @@ export const aiApi = {
       method: 'PUT',
       body: JSON.stringify(payload),
     }),
+  updateMode: (
+    accountId: number | string,
+    payload: {
+      chat_mode: 'assistant' | 'constructor';
+      constructor_scenario_id?: string;
+    },
+  ) =>
+    apiRequest<AIConfig>(`/api/ai/config/${accountId}/mode`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
   getFaq: (accountId: number | string) =>
     apiRequest<AIFaqItem[]>(`/api/ai/faq/${accountId}`),
   addFaq: (accountId: number | string, payload: { question: string; answer: string }) =>
@@ -948,6 +972,20 @@ export const aiApi = {
     };
   }) =>
     apiRequest<AITestResponse>('/api/ai/test', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      timeoutMs: 30000,
+    }),
+  testChat: (payload: {
+    account_id: number;
+    message: string;
+    history: AITestHistoryItem[];
+    auto_mode: boolean;
+    override_mode?: 'assistant' | 'constructor';
+    scenario_id?: string;
+    config_override?: AITestConfigOverride;
+  }) =>
+    apiRequest<AITestResponse>('/api/ai/test-chat', {
       method: 'POST',
       body: JSON.stringify(payload),
       timeoutMs: 30000,
@@ -1183,6 +1221,9 @@ export type AdminSharedProxy = {
   port: number;
   protocol: string;
   is_active: boolean;
+  health_state?: 'healthy' | 'degraded' | 'unhealthy' | string;
+  fail_count?: number;
+  last_error?: string;
   max_accounts: number;
   used_accounts: number;
   created_at: string;
@@ -1332,6 +1373,7 @@ export const adminApi = {
     password?: string;
     protocol?: 'HTTP' | 'HTTPS' | 'SOCKS5';
     max_accounts?: number;
+    expires_at?: string;
   }) =>
     adminApiRequest<AdminSharedProxy>('/admin-api/proxies/shared', {
       method: 'POST',

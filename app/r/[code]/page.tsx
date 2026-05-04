@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { Loader2 } from '@/shared/streamline/icons';
 import { storeReferralCode } from '@/lib/referral';
 
 export default function ReferralRedirectPage() {
