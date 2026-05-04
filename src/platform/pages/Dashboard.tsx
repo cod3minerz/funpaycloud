@@ -2,13 +2,12 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   ArrowRight,
   BookOpen,
   FileText,
   Loader2,
-  MessageCircle,
-  Send,
 } from '@/shared/streamline/icons';
 import { toast } from 'sonner';
 import { ApiChat, ApiOrder, dashboardApi, DashboardData } from '@/lib/api';
@@ -33,6 +32,17 @@ type Banner = {
 type Feature = {
   title: string;
   desc: string;
+};
+
+type CommunityCard = {
+  title: string;
+  subtitle: string;
+  description: string;
+  cta: string;
+  href: string;
+  imageSrc: string;
+  imageAlt: string;
+  variant: 'telegram' | 'vk' | 'support';
 };
 
 const BANNERS: Banner[] = [
@@ -84,6 +94,39 @@ const FEATURES: Feature[] = [
   { title: 'Автоподнятие лотов', desc: 'По расписанию или вручную' },
   { title: 'AI автоответы', desc: 'Нейронка отвечает 24/7' },
   { title: 'Автовыдача товаров', desc: 'Мгновенно после оплаты' },
+];
+
+const COMMUNITY_CARDS: CommunityCard[] = [
+  {
+    title: 'Наш канал',
+    subtitle: 'Telegram',
+    description: 'Новости платформы, промокоды и обновления по ключевым функциям.',
+    cta: 'Подписаться',
+    href: 'https://t.me/funpaycloud',
+    imageSrc: '/illustrations/community/tg_icon.png',
+    imageAlt: 'Иконка Telegram',
+    variant: 'telegram',
+  },
+  {
+    title: 'Группа VK',
+    subtitle: 'ВКонтакте',
+    description: 'Полезные посты, кейсы продавцов и живые обсуждения автоматизации.',
+    cta: 'Вступить',
+    href: 'https://vk.com/funpaycloud',
+    imageSrc: '/illustrations/community/vk_icon.png',
+    imageAlt: 'Иконка ВКонтакте',
+    variant: 'vk',
+  },
+  {
+    title: 'Поддержка',
+    subtitle: 'Telegram Support',
+    description: 'Если что-то сломалось — быстро поможем с настройкой и восстановлением.',
+    cta: 'Написать',
+    href: 'https://t.me/funpaycloud_support',
+    imageSrc: '/illustrations/community/sup_icon.png',
+    imageAlt: 'Иконка поддержки',
+    variant: 'support',
+  },
 ];
 
 function parseISO(value?: string | null): Date | null {
@@ -345,81 +388,37 @@ export default function Dashboard() {
           </section>
 
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <article className="platform-dashboard-community-telegram group relative overflow-hidden rounded-2xl p-5 transition-all hover:-translate-y-1 hover:shadow-lg shadow-sm border border-[var(--pf-border)]">
-              <div className="platform-dashboard-community-telegram-decor absolute -right-4 -top-4 h-20 w-20 rounded-full opacity-50" />
-
-              <div className="mb-3 flex items-start gap-3 relative z-10">
-                <div className="platform-dashboard-community-telegram-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm">
-                  <Send size={18} className="platform-dashboard-community-telegram-icon-fg" />
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-[var(--pf-text)]">Telegram канал</div>
-                  <div className="mt-0.5 text-xs text-[var(--pf-text-muted)]">2 400 подписчиков</div>
-                </div>
-              </div>
-
-              <p className="mb-4 text-xs text-[var(--pf-text-dim)] relative z-10">Новости платформы, обновления и эксклюзивные советы</p>
-              <a
-                href="https://t.me/funpaycloud"
-                target="_blank"
-                rel="noreferrer"
-                className="platform-dashboard-community-telegram-link inline-flex items-center gap-1.5 text-xs font-semibold transition-colors relative z-10"
+            {COMMUNITY_CARDS.map(card => (
+              <article
+                key={card.title}
+                className={`platform-dashboard-community-card platform-dashboard-community-card--${card.variant} group`}
               >
-                Подписаться
-                <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
-              </a>
-            </article>
-
-            <article className="platform-dashboard-community-vk group rounded-2xl p-5 transition-all hover:-translate-y-1 hover:shadow-lg shadow-sm border border-[var(--pf-border)] relative overflow-hidden">
-              <div className="mb-3 flex items-start gap-3 relative z-10">
-                <div className="platform-dashboard-community-vk-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold shadow-sm">
-                  VK
+                <div className="platform-dashboard-community-card-content">
+                  <p className="platform-dashboard-community-card-subtitle">{card.subtitle}</p>
+                  <h3 className="platform-dashboard-community-card-title">{card.title}</h3>
+                  <p className="platform-dashboard-community-card-description">{card.description}</p>
+                  <a
+                    href={card.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="platform-dashboard-community-card-link inline-flex items-center gap-1.5 text-xs font-semibold transition-colors"
+                  >
+                    {card.cta}
+                    <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
+                  </a>
                 </div>
-                <div>
-                  <div className="text-sm font-bold text-[var(--pf-text)]">Группа ВКонтакте</div>
-                  <div className="mt-0.5 text-xs text-[var(--pf-text-muted)]">Кейсы и обсуждения продавцов</div>
+
+                <div className={`platform-dashboard-community-card-illustration ${card.variant === 'support' ? 'platform-dashboard-community-card-illustration-support' : ''}`}>
+                  <Image
+                    src={card.imageSrc}
+                    alt={card.imageAlt}
+                    width={164}
+                    height={164}
+                    className="platform-dashboard-community-card-image"
+                  />
                 </div>
-              </div>
-
-              <p className="mb-4 text-xs text-[var(--pf-text-dim)] relative z-10">Разборы ниш, связки и реальные результаты участников сообщества</p>
-              <a
-                href="https://vk.com/funpaycloud"
-                target="_blank"
-                rel="noreferrer"
-                className="platform-dashboard-community-vk-link inline-flex items-center gap-1.5 text-xs font-semibold transition-colors relative z-10"
-              >
-                Вступить
-                <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
-              </a>
-            </article>
-
-            <article className="group rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-transparent p-5 transition-all hover:-translate-y-1 hover:border-emerald-500/30 hover:shadow-lg shadow-sm sm:col-span-2 xl:col-span-1">
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 shadow-sm">
-                    <MessageCircle size={18} className="text-emerald-700" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-[var(--pf-text)]">Поддержка</div>
-                    <div className="mt-0.5 text-xs text-[var(--pf-text-muted)]">Поможем с настройкой и ошибками</div>
-                  </div>
-                </div>
-                <span className="inline-flex items-center rounded-full border border-emerald-600/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 backdrop-blur-sm">
-                  ~ 30 мин
-                </span>
-              </div>
-
-              <p className="mb-4 text-xs text-[var(--pf-text-dim)]">Если что-то сломалось — команда на связи и помогает восстановить поток продаж.</p>
-              <a
-                href="https://t.me/funpaycloud_support"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 transition-colors group-hover:text-emerald-800"
-              >
-                Написать
-                <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
-              </a>
-            </article>
+              </article>
+            ))}
           </section>
 
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
