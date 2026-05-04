@@ -427,7 +427,12 @@ export default function Accounts() {
       const message = err instanceof Error ? err.message : 'Не удалось подключить прокси';
       setProxyConnectError(message);
       toast.error(message);
-      if (message.toLowerCase().includes('заняты')) {
+      const normalized = message.toLowerCase();
+      if (
+        normalized.includes('заняты') ||
+        normalized.includes('нет доступных рабочих бесплатных прокси') ||
+        normalized.includes('нет доступных бесплатных прокси')
+      ) {
         setProxySupportURL('https://t.me/funpaycloud_support');
       }
     } finally {
