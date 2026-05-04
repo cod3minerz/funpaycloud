@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import {
   BarChart2,
   Bell,
@@ -24,9 +25,11 @@ import {
   type NotificationSettings,
   type ProfileData,
   type SubscriptionData,
+  type TelegramAuthPayload,
   type TelegramLinkData,
 } from '@/lib/api';
 import { validatePassword } from '@/lib/sanitize';
+import { TelegramLoginWidget } from '@/platform/components/TelegramLoginWidget';
 import { PageHeader, PageShell, PageTitle, RequestErrorState } from '@/platform/components/primitives';
 
 type NotificationItem = {
@@ -77,6 +80,17 @@ function getPasswordStrength(password: string): number {
   return score;
 }
 
+function normalizeNotificationSettings(data: NotificationSettings): NotificationSettings {
+  return {
+    enabled: Boolean(data.enabled),
+    new_order: Boolean(data.new_order),
+    new_message: Boolean(data.new_message),
+    login: Boolean(data.login),
+    weekly_report: Boolean(data.weekly_report),
+    subscription: Boolean(data.subscription),
+  };
+}
+
 function Toggle({ checked, onChange, disabled, compact = false }: { checked: boolean; onChange: () => void; disabled?: boolean; compact?: boolean }) {
   return (
     <button
@@ -106,17 +120,22 @@ export default function Settings() {
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
 
   const [notifications, setNotifications] = useState<NotificationSettings>({
-    enabled: true,
-    new_order: true,
-    new_message: true,
-    login: true,
+    enabled: false,
+    new_order: false,
+    new_message: false,
+    login: false,
     weekly_report: false,
-    subscription: true,
+    subscription: false,
   });
-  const [notificationsUnavailable, setNotificationsUnavailable] = useState(false);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
+  const [notificationsSaving, setNotificationsSaving] = useState(false);
 
   const [telegramLink, setTelegramLink] = useState<TelegramLinkData | null>(null);
-  const [telegramUnavailable, setTelegramUnavailable] = useState(false);
+  const [telegramLinkLoading, setTelegramLinkLoading] = useState(true);
+  const [telegramConfigError, setTelegramConfigError] = useState<string | null>(null);
+  const [telegramDialogOpen, setTelegramDialogOpen] = useState(false);
+  const [telegramLinking, setTelegramLinking] = useState(false);
+  const [telegramUnlinking, setTelegramUnlinking] = useState(false);
 
   const [showOld, setShowOld] = useState(false);
   const [showNew, setShowNew] = useState(false);
@@ -126,6 +145,24 @@ export default function Settings() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
+
+  async function refreshTelegramState() {
+    const [nextProfile, nextNotifications] = await Promise.all([
+      settingsApi.getProfile(),
+      settingsApi.getNotifications(),
+    ]);
+    setProfile(nextProfile);
+    setNotifications(normalizeNotificationSettings(nextNotifications));
+
+    try {
+      const nextLink = await settingsApi.getTelegramLink();
+      setTelegramLink(nextLink);
+      setTelegramConfigError(null);
+    } catch (err) {
+      setTelegramLink(null);
+      setTelegramConfigError(err instanceof Error ? err.message : 'Telegram временно недоступен');
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -164,22 +201,21 @@ export default function Settings() {
       .getNotifications()
       .then(data => {
         if (cancelled) return;
+        setNotifications(normalizeNotificationSettings(data));
+      })
+      .catch(() => {
+        if (cancelled) return;
         setNotifications({
-          enabled: Boolean(data.enabled),
-          new_order: Boolean(data.new_order),
-          new_message: Boolean(data.new_message),
-          login: Boolean(data.login),
-          weekly_report: Boolean(data.weekly_report),
-          subscription: Boolean(data.subscription),
+          enabled: false,
+          new_order: false,
+          new_message: false,
+          login: false,
+          weekly_report: false,
+          subscription: false,
         });
       })
-      .catch(err => {
-        if (cancelled) return;
-        if (err instanceof ApiError && err.status === 404) {
-          setNotificationsUnavailable(true);
-          return;
-        }
-        setNotificationsUnavailable(true);
+      .finally(() => {
+        if (!cancelled) setNotificationsLoading(false);
       });
 
     settingsApi
@@ -187,14 +223,15 @@ export default function Settings() {
       .then(data => {
         if (cancelled) return;
         setTelegramLink(data);
+        setTelegramConfigError(null);
       })
       .catch(err => {
         if (cancelled) return;
-        if (err instanceof ApiError && err.status === 404) {
-          setTelegramUnavailable(true);
-          return;
-        }
-        setTelegramUnavailable(true);
+        setTelegramLink(null);
+        setTelegramConfigError(err instanceof Error ? err.message : 'Telegram временно недоступен');
+      })
+      .finally(() => {
+        if (!cancelled) setTelegramLinkLoading(false);
       });
 
     return () => {
@@ -219,9 +256,13 @@ export default function Settings() {
   const leftDays = daysLeft(expiresAt);
   const progressPercent = leftDays === null ? 100 : Math.min(100, Math.max(0, Math.round((leftDays / 30) * 100)));
 
-  const telegramUsernameRaw = String(profile?.telegram_username ?? profile?.telegram ?? '').trim();
+  const telegramUsernameRaw = String(profile?.telegram_username ?? '').trim();
   const telegramUsername = telegramUsernameRaw ? (telegramUsernameRaw.startsWith('@') ? telegramUsernameRaw : `@${telegramUsernameRaw}`) : '';
-  const telegramLinked = Boolean(telegramUsername);
+  const telegramLinked = Boolean(profile?.telegram_linked || profile?.telegram_id);
+  const telegramDisplayName = [profile?.telegram_first_name, profile?.telegram_last_name].filter(Boolean).join(' ').trim();
+  const telegramWidgetAvailable = Boolean(telegramLink?.available && telegramLink?.bot_username);
+  const telegramTemporarilyUnavailable = !telegramLinked && !telegramLinkLoading && !telegramWidgetAvailable;
+  const telegramNotificationsLocked = !telegramLinked || notificationsLoading || notificationsSaving;
 
   async function handleChangePassword() {
     const check = validatePassword(newPassword);
@@ -249,18 +290,49 @@ export default function Settings() {
   }
 
   async function persistNotifications(nextState: NotificationSettings) {
+    const previousState = notifications;
     setNotifications(nextState);
-    if (notificationsUnavailable) return;
+    setNotificationsSaving(true);
 
     try {
-      await settingsApi.updateNotifications(nextState);
+      const savedState = await settingsApi.updateNotifications(nextState);
+      setNotifications(normalizeNotificationSettings(savedState));
     } catch (err) {
-      if (err instanceof ApiError && err.status === 404) {
-        setNotificationsUnavailable(true);
-        toast.info('Сохранение уведомлений скоро будет доступно');
-        return;
-      }
+      setNotifications(previousState);
       toast.error(err instanceof Error ? err.message : 'Не удалось сохранить настройки уведомлений');
+    } finally {
+      setNotificationsSaving(false);
+    }
+  }
+
+  async function handleTelegramAuth(payload: TelegramAuthPayload) {
+    if (telegramLinking) return;
+
+    setTelegramLinking(true);
+    try {
+      await settingsApi.linkTelegram(payload);
+      await refreshTelegramState();
+      setTelegramDialogOpen(false);
+      toast.success('Telegram аккаунт успешно привязан');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Не удалось привязать Telegram аккаунт');
+    } finally {
+      setTelegramLinking(false);
+    }
+  }
+
+  async function handleTelegramUnlink() {
+    if (telegramUnlinking) return;
+
+    setTelegramUnlinking(true);
+    try {
+      await settingsApi.unlinkTelegram();
+      await refreshTelegramState();
+      toast.success('Telegram аккаунт отвязан');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Не удалось отвязать Telegram аккаунт');
+    } finally {
+      setTelegramUnlinking(false);
     }
   }
 
@@ -490,11 +562,6 @@ export default function Settings() {
               <h2 className="text-sm font-semibold text-[var(--pf-text)]">Telegram уведомления</h2>
               <p className="text-xs text-[var(--pf-text-dim)]">Получайте важные события в Telegram</p>
             </div>
-            {(telegramUnavailable || notificationsUnavailable) ? (
-              <span className="ml-auto rounded-full border border-[var(--pf-border)] bg-[var(--pf-surface-2)] px-2 py-0.5 text-[10px] text-[var(--pf-text-dim)]">
-                Скоро
-              </span>
-            ) : null}
           </div>
 
           <div className="mb-4 rounded-xl border border-[var(--pf-border)] bg-[var(--pf-surface)] p-6">
@@ -505,58 +572,58 @@ export default function Settings() {
 
               <div className="flex-1">
                 <div className="mb-0.5 text-sm font-medium text-[var(--pf-text)]">
-                  {telegramLinked ? 'Telegram аккаунт уже привязан' : 'Привяжите Telegram аккаунт'}
+                  {telegramLinked ? 'Telegram аккаунт привязан' : 'Привяжите Telegram аккаунт'}
                 </div>
                 <div className="text-xs text-[var(--pf-text-dim)]">
-                  {telegramUnavailable
-                    ? 'Интеграция Telegram в процессе запуска. Скоро станет доступна.'
-                    : 'Нажмите кнопку и напишите боту /start с вашим кодом'}
+                  {telegramLinked
+                    ? 'Уведомления будут приходить в ваш Telegram.'
+                    : 'Подключите Telegram, чтобы получать важные уведомления от сайта.'}
                 </div>
+                {telegramUsername ? (
+                  <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-[var(--pf-elevated)] px-2.5 py-1 text-[11px] font-medium text-[var(--pf-text)]">
+                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    {telegramUsername}
+                  </div>
+                ) : telegramLinked && telegramDisplayName ? (
+                  <div className="mt-2 text-[11px] text-[var(--pf-text-dim)]">{telegramDisplayName}</div>
+                ) : null}
+                {telegramTemporarilyUnavailable ? (
+                  <div className="mt-2 text-[11px] text-red-400">
+                    {telegramConfigError || 'Подключение Telegram временно недоступно.'}
+                  </div>
+                ) : null}
               </div>
 
-              {telegramUnavailable ? (
+              {telegramLinked ? (
                 <button
                   type="button"
-                  disabled
-                  className="platform-btn-secondary flex-shrink-0 opacity-70"
+                  onClick={handleTelegramUnlink}
+                  disabled={telegramUnlinking}
+                  className="platform-btn-secondary flex-shrink-0"
                 >
-                  Скоро
+                  {telegramUnlinking ? 'Отвязываем...' : 'Отвязать Telegram'}
                 </button>
               ) : (
-                <a
-                  href={telegramLink?.link || 'https://t.me/funpaycloud_bot'}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="platform-btn-primary flex flex-shrink-0 items-center gap-2"
-                >
-                  <Send size={12} />
-                  Открыть бота
-                </a>
-              )}
-            </div>
-
-            {telegramLinked ? (
-              <div className="mt-3 flex items-center gap-2 border-t border-[var(--pf-border)] pt-3">
-                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                <span className="text-xs text-[var(--pf-text-dim)]">
-                  Привязан: <span className="text-[var(--pf-text)] font-medium">{telegramUsername}</span>
-                </span>
                 <button
                   type="button"
-                  onClick={() => toast.info('Отвязка Telegram скоро появится')}
-                  className="ml-auto text-[10px] text-red-500 transition-colors hover:text-red-700"
+                  onClick={() => setTelegramDialogOpen(true)}
+                  disabled={!telegramWidgetAvailable || telegramLinkLoading}
+                  className="platform-btn-primary flex flex-shrink-0 items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Отвязать
+                  <Send size={12} />
+                  Войти через Telegram
                 </button>
-              </div>
-            ) : null}
+              )}
+            </div>
           </div>
 
           <div className="overflow-hidden rounded-xl border border-[var(--pf-border)] bg-[var(--pf-surface)]">
             <div className="flex items-center justify-between border-b border-[var(--pf-border)] p-4">
               <div>
                 <div className="text-sm font-medium text-[var(--pf-text)]">Уведомления в Telegram</div>
-                <div className="mt-0.5 text-xs text-[var(--pf-text-dim)]">Включить или выключить все</div>
+                <div className="mt-0.5 text-xs text-[var(--pf-text-dim)]">
+                  {telegramLinked ? 'Включить или выключить все' : 'Сначала привяжите Telegram аккаунт'}
+                </div>
               </div>
               <Toggle
                 checked={notifications.enabled}
@@ -564,13 +631,13 @@ export default function Settings() {
                   const nextState = { ...notifications, enabled: !notifications.enabled };
                   void persistNotifications(nextState);
                 }}
-                disabled={notificationsUnavailable}
+                disabled={telegramNotificationsLocked}
               />
             </div>
 
             {NOTIFICATION_ITEMS.map((item, index) => {
               const Icon = item.icon;
-              const disabledByMaster = !notifications.enabled || notificationsUnavailable;
+              const disabledByMaster = telegramNotificationsLocked || !notifications.enabled;
               return (
                 <div
                   key={item.key}
@@ -600,6 +667,38 @@ export default function Settings() {
           </div>
         </section>
       </div>
+
+      <Dialog open={telegramDialogOpen} onOpenChange={setTelegramDialogOpen}>
+        <DialogContent className="platform-dialog-content sm:max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle>Войти через Telegram</DialogTitle>
+            <DialogDescription className="text-[var(--pf-text-dim)]">
+              Подтвердите вход через Telegram, чтобы привязать аккаунт и разрешить боту отправлять уведомления.
+            </DialogDescription>
+          </DialogHeader>
+
+          {telegramWidgetAvailable && telegramLink?.bot_username ? (
+            <div className="space-y-3">
+              <TelegramLoginWidget
+                botUsername={telegramLink.bot_username}
+                onAuth={user => {
+                  void handleTelegramAuth(user);
+                }}
+              />
+              {telegramLinking ? (
+                <div className="flex items-center justify-center gap-2 text-xs text-[var(--pf-text-dim)]">
+                  <Loader2 size={14} className="animate-spin" />
+                  Проверяем данные Telegram и привязываем аккаунт...
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-[var(--pf-border)] bg-[var(--pf-elevated)] p-4 text-sm text-[var(--pf-text-dim)]">
+              Telegram Login Widget сейчас недоступен. Проверьте настройки интеграции и попробуйте снова.
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </PageShell>
   );
 }

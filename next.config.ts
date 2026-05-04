@@ -16,6 +16,7 @@ const scriptSrc = [
   'https://www.googletagmanager.com',
   'https://mc.yandex.ru',
   'https://yastatic.net',
+  'https://telegram.org',
 ].join(' ');
 
 const config: NextConfig = {
@@ -40,7 +41,7 @@ const config: NextConfig = {
           {
             key: 'Content-Security-Policy',
             value:
-              `default-src 'self'; script-src ${scriptSrc}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https: wss: https://mc.yandex.ru; frame-ancestors 'none'; base-uri 'self'; object-src 'none'`,
+              `default-src 'self'; script-src ${scriptSrc}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https: wss: https://mc.yandex.ru https://oauth.telegram.org; frame-src 'self' https://telegram.org https://oauth.telegram.org; frame-ancestors 'none'; base-uri 'self'; object-src 'none'`,
           },
         ],
       },
