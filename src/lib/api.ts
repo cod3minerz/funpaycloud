@@ -836,6 +836,8 @@ export type AITestResponse = {
   remaining_limit: number;
   used_messages?: number;
   limit_messages?: number;
+  effective_mode?: 'assistant' | 'constructor' | string;
+  trace?: Array<Record<string, unknown>>;
 };
 
 export const settingsApi = {
@@ -899,6 +901,17 @@ export const aiApi = {
       method: 'PUT',
       body: JSON.stringify(payload),
     }),
+  updateMode: (
+    accountId: number | string,
+    payload: {
+      chat_mode: 'assistant' | 'constructor';
+      constructor_scenario_id?: string;
+    },
+  ) =>
+    apiRequest<AIConfig>(`/api/ai/config/${accountId}/mode`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
   getFaq: (accountId: number | string) =>
     apiRequest<AIFaqItem[]>(`/api/ai/faq/${accountId}`),
   addFaq: (accountId: number | string, payload: { question: string; answer: string }) =>
@@ -921,6 +934,19 @@ export const aiApi = {
     };
   }) =>
     apiRequest<AITestResponse>('/api/ai/test', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      timeoutMs: 30000,
+    }),
+  testChat: (payload: {
+    account_id: number;
+    message: string;
+    history: AITestHistoryItem[];
+    auto_mode: boolean;
+    override_mode?: 'assistant' | 'constructor';
+    scenario_id?: string;
+  }) =>
+    apiRequest<AITestResponse>('/api/ai/test-chat', {
       method: 'POST',
       body: JSON.stringify(payload),
       timeoutMs: 30000,
