@@ -789,6 +789,7 @@ export type NotificationSettings = {
 
 export type TelegramLinkData = {
   available: boolean;
+  bot_id?: number;
   bot_username?: string;
   login_domain?: string;
   linked?: boolean;

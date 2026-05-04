@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import {
   BarChart2,
   Bell,
@@ -29,8 +28,70 @@ import {
   type TelegramLinkData,
 } from '@/lib/api';
 import { validatePassword } from '@/lib/sanitize';
-import { TelegramLoginWidget } from '@/platform/components/TelegramLoginWidget';
 import { PageHeader, PageShell, PageTitle, RequestErrorState } from '@/platform/components/primitives';
+
+declare global {
+  interface Window {
+    Telegram?: {
+      Login?: {
+        auth: (
+          options: { bot_id: number; request_access?: string; lang?: string },
+          callback: (user: TelegramAuthPayload | false) => void,
+        ) => void;
+      };
+    };
+  }
+}
+
+let telegramLoginScriptPromise: Promise<void> | null = null;
+
+function isTelegramLoginReady() {
+  return typeof window !== 'undefined' && typeof window.Telegram?.Login?.auth === 'function';
+}
+
+function loadTelegramLoginScript(): Promise<void> {
+  if (typeof document === 'undefined') {
+    return Promise.resolve();
+  }
+  if (isTelegramLoginReady()) {
+    return Promise.resolve();
+  }
+  if (telegramLoginScriptPromise) {
+    return telegramLoginScriptPromise;
+  }
+
+  telegramLoginScriptPromise = new Promise((resolve, reject) => {
+    const finish = () => {
+      if (isTelegramLoginReady()) {
+        resolve();
+      } else {
+        telegramLoginScriptPromise = null;
+        reject(new Error('Не удалось инициализировать Telegram вход'));
+      }
+    };
+
+    const fail = () => {
+      telegramLoginScriptPromise = null;
+      reject(new Error('Не удалось загрузить Telegram Login'));
+    };
+
+    const existing = document.getElementById('telegram-login-script') as HTMLScriptElement | null;
+    if (existing) {
+      window.setTimeout(finish, 0);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'telegram-login-script';
+    script.async = true;
+    script.src = 'https://telegram.org/js/telegram-widget.js?22';
+    script.onload = finish;
+    script.onerror = fail;
+    document.head.appendChild(script);
+  });
+
+  return telegramLoginScriptPromise;
+}
 
 type NotificationItem = {
   key: keyof NotificationSettings;
@@ -133,7 +194,10 @@ export default function Settings() {
   const [telegramLink, setTelegramLink] = useState<TelegramLinkData | null>(null);
   const [telegramLinkLoading, setTelegramLinkLoading] = useState(true);
   const [telegramConfigError, setTelegramConfigError] = useState<string | null>(null);
-  const [telegramDialogOpen, setTelegramDialogOpen] = useState(false);
+  const [telegramLoginError, setTelegramLoginError] = useState<string | null>(null);
+  const [telegramScriptLoading, setTelegramScriptLoading] = useState(false);
+  const [telegramScriptReady, setTelegramScriptReady] = useState(false);
+  const [telegramAuthStarting, setTelegramAuthStarting] = useState(false);
   const [telegramLinking, setTelegramLinking] = useState(false);
   const [telegramUnlinking, setTelegramUnlinking] = useState(false);
 
@@ -260,8 +324,8 @@ export default function Settings() {
   const telegramUsername = telegramUsernameRaw ? (telegramUsernameRaw.startsWith('@') ? telegramUsernameRaw : `@${telegramUsernameRaw}`) : '';
   const telegramLinked = Boolean(profile?.telegram_linked || profile?.telegram_id);
   const telegramDisplayName = [profile?.telegram_first_name, profile?.telegram_last_name].filter(Boolean).join(' ').trim();
-  const telegramWidgetAvailable = Boolean(telegramLink?.available && telegramLink?.bot_username);
-  const telegramTemporarilyUnavailable = !telegramLinked && !telegramLinkLoading && !telegramWidgetAvailable;
+  const telegramLoginAvailable = Boolean(telegramLink?.available && telegramLink?.bot_id && telegramLink?.bot_username);
+  const telegramTemporarilyUnavailable = !telegramLinked && !telegramLinkLoading && !telegramLoginAvailable;
   const telegramNotificationsLocked = !telegramLinked || notificationsLoading || notificationsSaving;
 
   async function handleChangePassword() {
@@ -312,12 +376,90 @@ export default function Settings() {
     try {
       await settingsApi.linkTelegram(payload);
       await refreshTelegramState();
-      setTelegramDialogOpen(false);
       toast.success('Telegram аккаунт успешно привязан');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Не удалось привязать Telegram аккаунт');
     } finally {
       setTelegramLinking(false);
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!telegramLoginAvailable) {
+      setTelegramScriptReady(false);
+      setTelegramScriptLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setTelegramScriptLoading(true);
+    setTelegramLoginError(null);
+
+    loadTelegramLoginScript()
+      .then(() => {
+        if (cancelled) return;
+        setTelegramScriptReady(true);
+      })
+      .catch(err => {
+        if (cancelled) return;
+        setTelegramScriptReady(false);
+        setTelegramLoginError(err instanceof Error ? err.message : 'Не удалось загрузить Telegram вход');
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setTelegramScriptLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [telegramLoginAvailable]);
+
+  function handleTelegramLoginStart() {
+    if (!telegramLink?.bot_id) {
+      toast.error('Telegram вход сейчас недоступен');
+      return;
+    }
+    if (!telegramScriptReady) {
+      toast.info('Подготавливаем вход через Telegram, попробуйте ещё раз через секунду');
+      return;
+    }
+
+    const login = window.Telegram?.Login;
+    if (typeof login?.auth !== 'function') {
+      setTelegramLoginError('Не удалось инициализировать Telegram вход');
+      toast.error('Не удалось инициализировать Telegram вход');
+      return;
+    }
+
+    setTelegramAuthStarting(true);
+    setTelegramLoginError(null);
+
+    try {
+      login.auth(
+        {
+          bot_id: telegramLink.bot_id,
+          request_access: 'write',
+          lang: 'ru',
+        },
+        user => {
+          setTelegramAuthStarting(false);
+          if (!user) {
+            toast.info('Вход через Telegram отменён');
+            return;
+          }
+          void handleTelegramAuth(user);
+        },
+      );
+    } catch (err) {
+      setTelegramAuthStarting(false);
+      const message = err instanceof Error ? err.message : 'Не удалось открыть Telegram вход';
+      setTelegramLoginError(message);
+      toast.error(message);
     }
   }
 
@@ -591,6 +733,8 @@ export default function Settings() {
                   <div className="mt-2 text-[11px] text-red-400">
                     {telegramConfigError || 'Подключение Telegram временно недоступно.'}
                   </div>
+                ) : telegramLoginError ? (
+                  <div className="mt-2 text-[11px] text-red-400">{telegramLoginError}</div>
                 ) : null}
               </div>
 
@@ -606,12 +750,22 @@ export default function Settings() {
               ) : (
                 <button
                   type="button"
-                  onClick={() => setTelegramDialogOpen(true)}
-                  disabled={!telegramWidgetAvailable || telegramLinkLoading}
+                  onClick={handleTelegramLoginStart}
+                  disabled={!telegramLoginAvailable || telegramLinkLoading || telegramScriptLoading || telegramAuthStarting || telegramLinking}
                   className="platform-btn-primary flex flex-shrink-0 items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <Send size={12} />
-                  Войти через Telegram
+                  {telegramScriptLoading || telegramAuthStarting || telegramLinking ? (
+                    <Loader2 size={12} className="animate-spin" />
+                  ) : (
+                    <Send size={12} />
+                  )}
+                  {telegramScriptLoading
+                    ? 'Готовим Telegram...'
+                    : telegramAuthStarting
+                      ? 'Открываем Telegram...'
+                      : telegramLinking
+                        ? 'Привязываем...'
+                        : 'Войти через Telegram'}
                 </button>
               )}
             </div>
@@ -667,38 +821,6 @@ export default function Settings() {
           </div>
         </section>
       </div>
-
-      <Dialog open={telegramDialogOpen} onOpenChange={setTelegramDialogOpen}>
-        <DialogContent className="platform-dialog-content sm:max-w-[460px]">
-          <DialogHeader>
-            <DialogTitle>Войти через Telegram</DialogTitle>
-            <DialogDescription className="text-[var(--pf-text-dim)]">
-              Подтвердите вход через Telegram, чтобы привязать аккаунт и разрешить боту отправлять уведомления.
-            </DialogDescription>
-          </DialogHeader>
-
-          {telegramWidgetAvailable && telegramLink?.bot_username ? (
-            <div className="space-y-3">
-              <TelegramLoginWidget
-                botUsername={telegramLink.bot_username}
-                onAuth={user => {
-                  void handleTelegramAuth(user);
-                }}
-              />
-              {telegramLinking ? (
-                <div className="flex items-center justify-center gap-2 text-xs text-[var(--pf-text-dim)]">
-                  <Loader2 size={14} className="animate-spin" />
-                  Проверяем данные Telegram и привязываем аккаунт...
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-[var(--pf-border)] bg-[var(--pf-elevated)] p-4 text-sm text-[var(--pf-text-dim)]">
-              Telegram Login Widget сейчас недоступен. Проверьте настройки интеграции и попробуйте снова.
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </PageShell>
   );
 }
