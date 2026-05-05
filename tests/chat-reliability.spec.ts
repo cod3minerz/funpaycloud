@@ -45,6 +45,7 @@ async function bootstrapChatPage(page: Page) {
       historyRequests: number;
       messagesRequests: number;
       sendRequests: number;
+      lastTempID: number;
     } = {
       accountID: 8,
       chatID: 5,
@@ -75,6 +76,7 @@ async function bootstrapChatPage(page: Page) {
       historyRequests: 0,
       messagesRequests: 0,
       sendRequests: 0,
+      lastTempID: 0,
     };
 
     const envelope = (data: unknown, status = 200) =>
@@ -130,6 +132,7 @@ async function bootstrapChatPage(page: Page) {
 
         const tempID = -(Date.now() + state.sendRequests);
         const createdAt = new Date().toISOString();
+        state.lastTempID = tempID;
 
         state.messages.push({
           id: tempID,
@@ -169,6 +172,7 @@ async function bootstrapChatPage(page: Page) {
           email: 'qa@test.local',
           is_verified: true,
           plan: 'trial',
+          accounts_count: 1,
         });
       }
 
@@ -319,17 +323,15 @@ test('send flow: pending -> delivered, without loadMessages call after send', as
   await composer.fill('Надежность чата');
   await composer.press('Enter');
 
-  const outgoingRow = page.locator('.platform-message-row.outgoing').filter({ hasText: 'Надежность чата' });
+  const outgoingRow = page.locator('.platform-chat-message-outgoing').filter({ hasText: 'Надежность чата' });
   await expect(outgoingRow).toHaveCount(1);
   await expect(outgoingRow.locator('[aria-label="Отправлено"]')).toBeVisible();
 
   await page.waitForTimeout(400);
   expect((await readState(page)).messagesRequests).toBe(beforeSendMessageLoads);
 
-  const pendingMessage = (await readState(page)).messages.find((msg: any) => msg.text === 'Надежность чата' && msg.status === 'pending');
-  expect(pendingMessage).toBeTruthy();
-
-  const tempID = Number(pendingMessage?.temp_id ?? pendingMessage?.id);
+  await expect.poll(async () => Number((await readState(page)).lastTempID ?? 0)).toBeLessThan(0);
+  const tempID = Number((await readState(page)).lastTempID);
   const realID = 99281234;
 
   await page.evaluate(
@@ -370,9 +372,8 @@ test('message_sent with known temp_id updates existing pending row without dupli
   await composer.fill('Только один bubble');
   await composer.press('Enter');
 
-  const pendingMessage = (await readState(page)).messages.find((msg: any) => msg.text === 'Только один bubble' && msg.status === 'pending');
-  expect(pendingMessage).toBeTruthy();
-  const tempID = Number(pendingMessage?.temp_id ?? pendingMessage?.id);
+  await expect.poll(async () => Number((await readState(page)).lastTempID ?? 0)).toBeLessThan(0);
+  const tempID = Number((await readState(page)).lastTempID);
 
   await page.evaluate(
     ({ chatID, nodeID, tempID }) => {
@@ -396,7 +397,7 @@ test('message_sent with known temp_id updates existing pending row without dupli
     },
   );
 
-  const outgoingRow = page.locator('.platform-message-row.outgoing').filter({ hasText: 'Только один bubble' });
+  const outgoingRow = page.locator('.platform-chat-message-outgoing').filter({ hasText: 'Только один bubble' });
   await expect(outgoingRow).toHaveCount(1);
 });
 
@@ -428,7 +429,7 @@ test('message_sent with unknown temp_id does not create stray own bubble', async
   });
 
   await page.waitForTimeout(600);
-  await expect(page.locator('.platform-message-row.outgoing').filter({ hasText: 'Призрак' })).toHaveCount(0);
+  await expect(page.locator('.platform-chat-message-outgoing').filter({ hasText: 'Призрак' })).toHaveCount(0);
 });
 
 test('ws reconnect + visibility refresh trigger catch-up reload', async ({ page }) => {
