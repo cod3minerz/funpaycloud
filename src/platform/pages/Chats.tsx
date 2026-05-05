@@ -228,7 +228,7 @@ function isLocalTailMessage(message: ThreadMessage) {
     const ageMs = Date.now() - messageTimestamp(message.created_at);
     const withinPreserveWindow =
       ageMs >= 0 && ageMs <= LOCAL_TAIL_PRESERVE_WINDOW_MS;
-    if (!message.is_my_msg) return withinPreserveWindow;
+    if (!message.is_my_msg) return false;
     if (message.local_send_token) return withinPreserveWindow;
     return false;
   }
@@ -277,6 +277,9 @@ function mergeLatestPageIntoThread(current: ThreadMessage[], latestPageRows: Thr
       localTail.push(row);
       continue;
     }
+    if (row.row_id == null) {
+      continue;
+    }
     olderPrefix.push(row);
   }
 
@@ -303,6 +306,9 @@ function mergeLatestTailIntoPaginatedThread(current: ThreadMessage[], latestPage
 
     if (isLocalTailMessage(row)) {
       localTail.push(row);
+      continue;
+    }
+    if (row.row_id == null) {
       continue;
     }
 

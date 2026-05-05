@@ -432,6 +432,39 @@ test('message_sent with unknown temp_id does not create stray own bubble', async
   await expect(page.locator('.platform-chat-message-outgoing').filter({ hasText: 'Призрак' })).toHaveCount(0);
 });
 
+test('incoming ws ghost that is absent in API self-heals without full refresh', async ({ page }) => {
+  await bootstrapChatPage(page);
+
+  await page.goto('/platform/chats');
+  await expect(page.getByRole('heading', { name: 'Чаты' })).toBeVisible();
+  await expect.poll(async () => (await readState(page)).historyRequests, { timeout: 20000 }).toBeGreaterThan(0);
+  await expect(page.getByText('Подгружаем ваши чаты с FunPay...')).toBeHidden({ timeout: 20000 });
+
+  const firstChat = page.locator('.platform-chat-row').first();
+  await firstChat.click();
+  await expect.poll(async () => (await readState(page)).messagesRequests).toBeGreaterThan(0);
+  const beforeNormalizationLoads = (await readState(page)).messagesRequests;
+
+  await page.evaluate(() => {
+    (window as any).__chatTest.emit('new_message', {
+      account_id: 8,
+      chat_id: 5,
+      node_id: '252535735',
+      id: 880001,
+      funpay_message_id: 880001,
+      text: 'Старый призрак',
+      is_my_msg: false,
+      author_name: 'DigitalRush',
+      with_user: 'DigitalRush',
+      created_at: new Date().toISOString(),
+    });
+  });
+
+  await expect.poll(async () => (await readState(page)).messagesRequests, { timeout: 5000 }).toBeGreaterThan(beforeNormalizationLoads);
+  const incomingRow = page.locator('.platform-thread-messages-scroll').getByText('Старый призрак');
+  await expect(incomingRow).toHaveCount(0);
+});
+
 test('ws reconnect + visibility refresh trigger catch-up reload', async ({ page }) => {
   await bootstrapChatPage(page);
 
