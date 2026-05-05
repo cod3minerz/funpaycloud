@@ -6,8 +6,8 @@ import { usePathname } from 'next/navigation';
 import {
   Crown,
   LifeBuoy,
-  X,
 } from '@/shared/streamline/icons';
+import { X } from 'lucide-react';
 import { BrandLogo } from '@/app/components/BrandLogo';
 import { TelegramMark, VkMark } from '@/platform/components/SocialMarks';
 import { settingsApi } from '@/lib/api';
@@ -53,7 +53,7 @@ const navGroups: Array<{ title: string; items: NavItem[] }> = [
       { icon: 'constructor', label: 'Конструктор', path: '/platform/constructor' },
       { icon: 'analytics', label: 'Аналитика', path: '/platform/analytics' },
       { icon: 'ai', label: 'AI-Ассистент', path: '/platform/ai-assistant' },
-      { icon: 'aiChip', label: 'Тест-чат', path: '/platform/test-chat' },
+      { icon: 'aiChipRobot', label: 'Тест-чат', path: '/platform/test-chat' },
       { icon: 'plugins', label: 'Плагины', path: '/platform/plugins' },
       { icon: 'finances', label: 'Финансы', path: '/platform/finances' },
       { icon: 'referrals', label: 'Реферальная система', path: '/platform/referrals' },

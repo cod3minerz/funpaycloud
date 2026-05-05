@@ -279,55 +279,57 @@ export default function Finances() {
         </SectionCard>
 
         <SectionCard>
-          <ToolbarRow>
-            <div className="inline-flex items-center gap-2 text-[13px] text-[var(--pf-text-muted)]">
-              <Filter size={14} />
-              Фильтры
+          <ToolbarRow className="platform-finances-toolbar">
+            <div className="platform-finances-toolbar-main">
+              <div className="inline-flex items-center gap-2 text-[13px] text-[var(--pf-text-muted)]">
+                <Filter size={14} />
+                Фильтры
+              </div>
+
+              <button
+                className={showFilters ? 'platform-btn-primary platform-finances-mobile-toggle' : 'platform-btn-secondary platform-finances-mobile-toggle'}
+                onClick={() => setShowFilters(prev => !prev)}
+              >
+                {showFilters ? 'Скрыть' : 'Показать'}
+              </button>
+
+              <div className="platform-finances-desktop-filters">
+                <select
+                  className="platform-select platform-finances-filter-select"
+                  value={accountFilter}
+                  onChange={event => setAccountFilter(event.target.value)}
+                >
+                  <option value="all">Все аккаунты</option>
+                  {accounts.map(account => (
+                    <option key={account.id} value={account.id}>
+                      {account.username || `ID ${account.id}`}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  className="platform-select platform-finances-filter-select"
+                  value={typeFilter}
+                  onChange={event => setTypeFilter(event.target.value)}
+                >
+                  <option value="all">Все операции</option>
+                  <option value="sale">Продажи</option>
+                  <option value="withdrawal">Выводы</option>
+                  <option value="refund">Возвраты</option>
+                  <option value="fee">Комиссии</option>
+                </select>
+              </div>
             </div>
 
-            <button
-              className={showFilters ? 'platform-btn-primary md:hidden' : 'platform-btn-secondary md:hidden'}
-              onClick={() => setShowFilters(prev => !prev)}
-            >
-              {showFilters ? 'Скрыть' : 'Показать'}
-            </button>
-
-            <div className="hidden md:flex md:flex-wrap md:items-center md:gap-2">
-              <select
-                className="platform-select w-full md:w-auto md:min-w-[220px]"
-                value={accountFilter}
-                onChange={event => setAccountFilter(event.target.value)}
-              >
-                <option value="all">Все аккаунты</option>
-                {accounts.map(account => (
-                  <option key={account.id} value={account.id}>
-                    {account.username || `ID ${account.id}`}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                className="platform-select w-full md:w-auto md:min-w-[220px]"
-                value={typeFilter}
-                onChange={event => setTypeFilter(event.target.value)}
-              >
-                <option value="all">Все операции</option>
-                <option value="sale">Продажи</option>
-                <option value="withdrawal">Выводы</option>
-                <option value="refund">Возвраты</option>
-                <option value="fee">Комиссии</option>
-              </select>
-            </div>
-
-            <button className="platform-btn-secondary" onClick={handleExport}>
+            <button className="platform-btn-secondary platform-finances-export" onClick={handleExport}>
               <Download size={14} /> Экспорт CSV
             </button>
           </ToolbarRow>
 
           {showFilters && (
-            <ToolbarRow className="mt-2 md:hidden">
+            <ToolbarRow className="mt-2 platform-finances-mobile-filters">
               <select
-                className="platform-select w-full md:w-auto md:min-w-[220px]"
+                className="platform-select w-full"
                 value={accountFilter}
                 onChange={event => setAccountFilter(event.target.value)}
               >
@@ -340,7 +342,7 @@ export default function Finances() {
               </select>
 
               <select
-                className="platform-select w-full md:w-auto md:min-w-[220px]"
+                className="platform-select w-full"
                 value={typeFilter}
                 onChange={event => setTypeFilter(event.target.value)}
               >

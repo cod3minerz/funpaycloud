@@ -5,7 +5,6 @@ import {
   BarChart2,
   Bell,
   Bot,
-  CreditCard,
   Eye,
   EyeOff,
   Loader2,
@@ -14,7 +13,6 @@ import {
   Send,
   Shield,
   ShoppingBag,
-  Zap,
   type LucideIcon,
 } from '@/shared/streamline/icons';
 import { toast } from 'sonner';
@@ -23,7 +21,6 @@ import {
   settingsApi,
   type NotificationSettings,
   type ProfileData,
-  type SubscriptionData,
   type TelegramAuthPayload,
   type TelegramLinkData,
 } from '@/lib/api';
@@ -108,30 +105,6 @@ const NOTIFICATION_ITEMS: NotificationItem[] = [
   { key: 'subscription', label: 'Подписка истекает', desc: 'За 3 дня до окончания', icon: Bell },
 ];
 
-const PLAN_META: Record<string, { title: string; limits: string }> = {
-  trial: { title: 'Триал', limits: '1 аккаунт · 7 дней аналитики · Базовые функции' },
-  lite: { title: 'Лайт', limits: '2 аккаунта · 14 дней аналитики · Базовые плагины' },
-  pro: { title: 'Профи', limits: '5 аккаунтов · 30 дней аналитики · Базовые плагины' },
-  ultra: { title: 'Ultra', limits: '10 аккаунтов · 90 дней аналитики · Все плагины' },
-  start: { title: 'Старт', limits: '1 аккаунт · Базовые функции · Стартовый пакет' },
-  team: { title: 'Командный', limits: '10 аккаунтов · Расширенная аналитика · VIP плагины' },
-};
-
-function formatDate(value?: string | null): string {
-  if (!value) return '—';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '—';
-  return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
-}
-
-function daysLeft(value?: string | null): number | null {
-  if (!value) return null;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  const diff = d.getTime() - Date.now();
-  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-}
-
 function getPasswordStrength(password: string): number {
   let score = 0;
   if (password.length >= 8) score += 1;
@@ -177,9 +150,6 @@ export default function Settings() {
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
 
-  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
-  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
-
   const [notifications, setNotifications] = useState<NotificationSettings>({
     enabled: false,
     new_order: false,
@@ -199,7 +169,6 @@ export default function Settings() {
   const [telegramScriptReady, setTelegramScriptReady] = useState(false);
   const [telegramAuthStarting, setTelegramAuthStarting] = useState(false);
   const [telegramLinking, setTelegramLinking] = useState(false);
-  const [telegramUnlinking, setTelegramUnlinking] = useState(false);
 
   const [showOld, setShowOld] = useState(false);
   const [showNew, setShowNew] = useState(false);
@@ -245,20 +214,6 @@ export default function Settings() {
       })
       .finally(() => {
         if (!cancelled) setProfileLoading(false);
-      });
-
-    settingsApi
-      .getSubscription()
-      .then(data => {
-        if (cancelled) return;
-        setSubscription(data);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setSubscription(null);
-      })
-      .finally(() => {
-        if (!cancelled) setSubscriptionLoading(false);
       });
 
     settingsApi
@@ -314,13 +269,7 @@ export default function Settings() {
     return { label: 'Надёжный пароль', color: 'bg-emerald-500', textColor: 'text-emerald-600' };
   }, [passwordStrength]);
 
-  const planId = String(subscription?.plan || 'pro').toLowerCase();
-  const planMeta = PLAN_META[planId] ?? { title: 'Профи', limits: '5 аккаунтов · 30 дней аналитики · Базовые плагины' };
-  const expiresAt = subscription?.expires_at ?? null;
-  const leftDays = daysLeft(expiresAt);
-  const progressPercent = leftDays === null ? 100 : Math.min(100, Math.max(0, Math.round((leftDays / 30) * 100)));
-
-  const telegramUsernameRaw = String(profile?.telegram_username ?? '').trim();
+  const telegramUsernameRaw = String(profile?.telegram_username ?? profile?.telegram ?? '').trim();
   const telegramUsername = telegramUsernameRaw ? (telegramUsernameRaw.startsWith('@') ? telegramUsernameRaw : `@${telegramUsernameRaw}`) : '';
   const telegramLinked = Boolean(profile?.telegram_linked || profile?.telegram_id);
   const telegramDisplayName = [profile?.telegram_first_name, profile?.telegram_last_name].filter(Boolean).join(' ').trim();
@@ -463,26 +412,11 @@ export default function Settings() {
     }
   }
 
-  async function handleTelegramUnlink() {
-    if (telegramUnlinking) return;
-
-    setTelegramUnlinking(true);
-    try {
-      await settingsApi.unlinkTelegram();
-      await refreshTelegramState();
-      toast.success('Telegram аккаунт отвязан');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Не удалось отвязать Telegram аккаунт');
-    } finally {
-      setTelegramUnlinking(false);
-    }
-  }
-
   if (profileLoading) {
     return (
       <PageShell>
         <PageHeader>
-          <PageTitle title="Настройки" subtitle="Управляйте безопасностью, подпиской и уведомлениями" />
+          <PageTitle title="Настройки" subtitle="Управляйте безопасностью и уведомлениями" />
         </PageHeader>
         <div className="flex items-center justify-center py-16">
           <Loader2 size={28} className="animate-spin text-[var(--pf-accent)]" />
@@ -495,7 +429,7 @@ export default function Settings() {
     return (
       <PageShell>
         <PageHeader>
-          <PageTitle title="Настройки" subtitle="Управляйте безопасностью, подпиской и уведомлениями" />
+          <PageTitle title="Настройки" subtitle="Управляйте безопасностью и уведомлениями" />
         </PageHeader>
         <div className="rounded-xl border border-[var(--pf-border)] bg-[var(--pf-surface)] p-4">
           <RequestErrorState
@@ -512,7 +446,7 @@ export default function Settings() {
       <PageHeader>
         <PageTitle
           title="Настройки"
-          subtitle="Безопасность аккаунта, подписка и Telegram-уведомления в одном месте"
+          subtitle="Безопасность аккаунта и Telegram-уведомления в одном месте"
         />
       </PageHeader>
 
@@ -630,73 +564,6 @@ export default function Settings() {
 
         <section>
           <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
-              <CreditCard size={16} className="text-amber-600" />
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold text-[var(--pf-text)]">Подписка</h2>
-              <p className="text-xs text-[var(--pf-text-dim)]">Тариф и управление оплатой</p>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-[var(--pf-border)] bg-[var(--pf-surface)] p-6">
-            <div className="flex flex-col items-start justify-between gap-5 lg:flex-row lg:items-start">
-              <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--pf-accent-soft)]">
-                  <Zap size={20} className="text-[var(--pf-accent)]" />
-                </div>
-                <div>
-                  <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <span className="text-base font-bold text-[var(--pf-text)]">{planMeta.title}</span>
-                    <span className="rounded-full bg-[var(--pf-accent-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--pf-accent)]">
-                      АКТИВНА
-                    </span>
-                  </div>
-                  <div className="text-xs text-[var(--pf-text-dim)]">
-                    {subscriptionLoading ? 'Проверяем подписку...' : (
-                      <>Действует до <span className="text-[var(--pf-text-muted)]">{formatDate(expiresAt)}</span></>
-                    )}
-                  </div>
-                  <div className="mt-0.5 text-xs text-[var(--pf-text-dim)]">{planMeta.limits}</div>
-                </div>
-              </div>
-
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row lg:w-auto">
-                <button
-                  type="button"
-                  onClick={() => toast.info('Продление будет доступно в ближайшем обновлении')}
-                  className="platform-btn-secondary w-full sm:w-auto"
-                >
-                  Продлить
-                </button>
-                <button
-                  type="button"
-                  onClick={() => toast.info('Апгрейд тарифа скоро будет доступен')}
-                  className="platform-btn-primary w-full sm:w-auto"
-                >
-                  ↑ Ultra
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-5 border-t border-[var(--pf-border)] pt-5">
-              <div className="mb-1.5 flex justify-between text-[10px] text-[var(--pf-text-dim)]">
-                <span>{leftDays === null ? 'Без ограничения по времени' : `Осталось ${leftDays} дн.`}</span>
-                <span>{leftDays === null ? '∞' : 'из 30'}</span>
-              </div>
-              <div className="h-1 overflow-hidden rounded-full bg-[var(--pf-surface-3)]">
-                <progress className="platform-ai-progress normal h-full w-full rounded-full" value={progressPercent} max={100} />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <div className="my-8 flex items-center gap-4">
-          <div className="h-px flex-1 bg-[var(--pf-border)]" />
-        </div>
-
-        <section>
-          <div className="mb-6 flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--pf-accent-soft)]">
               <Send size={16} className="text-[var(--pf-accent)]" />
             </div>
@@ -738,16 +605,7 @@ export default function Settings() {
                 ) : null}
               </div>
 
-              {telegramLinked ? (
-                <button
-                  type="button"
-                  onClick={handleTelegramUnlink}
-                  disabled={telegramUnlinking}
-                  className="platform-btn-secondary flex-shrink-0"
-                >
-                  {telegramUnlinking ? 'Отвязываем...' : 'Отвязать Telegram'}
-                </button>
-              ) : (
+              {!telegramLinked ? (
                 <button
                   type="button"
                   onClick={handleTelegramLoginStart}
@@ -767,7 +625,7 @@ export default function Settings() {
                         ? 'Привязываем...'
                         : 'Войти через Telegram'}
                 </button>
-              )}
+              ) : null}
             </div>
           </div>
 

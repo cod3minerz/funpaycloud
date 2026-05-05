@@ -8,8 +8,8 @@ import {
   Loader2,
   RefreshCw,
   Shield,
-  X,
 } from '@/shared/streamline/icons';
+import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { accountsApi, settingsApi, type SubscriptionData } from '@/lib/api';
 import {
