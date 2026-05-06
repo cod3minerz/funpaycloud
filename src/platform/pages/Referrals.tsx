@@ -128,7 +128,7 @@ export default function Referrals() {
         </SectionCard>
 
         {/* 2. KPI cards */}
-        <KpiGrid>
+        <KpiGrid className="platform-referrals-kpi-grid">
           <KpiCard>
             <div className="flex items-center justify-between gap-2">
               <span className="platform-kpi-meta">Приглашено</span>

@@ -11,7 +11,7 @@ import {
 } from '@/shared/streamline/icons';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
-import { accountsApi, settingsApi, type SubscriptionData } from '@/lib/api';
+import { accountsApi, billingApi, settingsApi, type SubscriptionData } from '@/lib/api';
 import {
   type CanonicalPlanId,
   getPlanLabel,
@@ -54,7 +54,7 @@ function formatDate(value?: string | null): string {
 function getDaysLeft(subscription: SubscriptionData | null): number | null {
   if (!subscription) return null;
   if (typeof subscription.days_left === 'number' && Number.isFinite(subscription.days_left)) {
-    return Math.max(0, Math.round(subscription.days_left));
+    return Math.max(0, Math.ceil(subscription.days_left));
   }
 
   if (!subscription.expires_at) return null;
@@ -93,6 +93,7 @@ export default function SubscriptionPage() {
   const [accountsUsed, setAccountsUsed] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -143,9 +144,38 @@ export default function SubscriptionPage() {
   const planLimit = PLAN_LIMITS[currentPlanId];
   const accountLimitText = Number.isFinite(planLimit.accounts) ? String(planLimit.accounts) : '∞';
 
-  const statusLabel = active ? (currentPlanId === 'trial' ? 'Пробный период' : 'Активная подписка') : 'Подписка истекла';
+  const statusLabel = useMemo(() => {
+    switch (subscription?.subscription_status) {
+      case 'expired_trial':
+      case 'expired_paid':
+        return 'Подписка истекла';
+      case 'active_paid':
+        return 'Активная подписка';
+      default:
+        return currentPlanId === 'trial' && active ? 'Пробный период' : active ? 'Активная подписка' : 'Подписка истекла';
+    }
+  }, [subscription?.subscription_status, currentPlanId, active]);
 
   const heroCtaLabel = active ? 'Продлить на месяц' : 'Выбрать тариф';
+
+  async function handleCreateCheckout(plan: 'lite' | 'pro' | 'ultra', periodDays = 30) {
+    try {
+      setCheckoutLoading(plan);
+      const result = await billingApi.createSubscriptionPayment({
+        plan,
+        period_days: periodDays,
+        provider: 'manual',
+      });
+      toast.success(`Заявка на оплату создана: #${result.payment_id}. Переходим к оплате...`);
+      if (result.checkout_url) {
+        window.location.assign(result.checkout_url);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Не удалось создать платеж');
+    } finally {
+      setCheckoutLoading(null);
+    }
+  }
 
   if (loading) {
     return (
@@ -268,10 +298,10 @@ export default function SubscriptionPage() {
 
               <button
                 type="button"
-                onClick={() => toast.info('Оплата появится в следующем обновлении')}
+                onClick={() => handleCreateCheckout(currentPlanId === 'trial' ? 'lite' : currentPlanId)}
                 className="platform-btn-secondary col-span-2 mt-1 sm:col-span-1 sm:mt-0 sm:justify-self-end lg:ml-auto"
               >
-                {heroCtaLabel}
+                {checkoutLoading ? 'Создаем платеж...' : heroCtaLabel}
               </button>
             </div>
           </div>
@@ -335,7 +365,7 @@ export default function SubscriptionPage() {
                   <button
                     type="button"
                     disabled={isCurrent}
-                    onClick={() => toast.info('Оплата будет доступна в ближайшем релизе')}
+                    onClick={() => handleCreateCheckout(plan.id, annual ? 365 : 30)}
                     className={`mb-6 h-11 w-full rounded-xl text-sm font-semibold transition-all ${
                       isCurrent
                         ? 'cursor-default border border-emerald-400/40 bg-emerald-500/15 text-emerald-300'
@@ -346,7 +376,7 @@ export default function SubscriptionPage() {
                             : 'border border-[var(--pf-border-strong)] bg-[var(--pf-surface-2)] text-[var(--pf-text-muted)] hover:border-[var(--pf-accent-soft-strong)] hover:text-[var(--pf-text)]'
                     }`}
                   >
-                    {isCurrent ? 'Текущий тариф' : plan.cta}
+                    {isCurrent ? 'Текущий тариф' : checkoutLoading === plan.id ? 'Создаем...' : plan.cta}
                   </button>
 
                   <ul className="space-y-3">

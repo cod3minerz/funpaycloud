@@ -62,7 +62,14 @@ const aiChipRobotSvg: StreamlineNavSvgSet = {
     "<svg xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 14 14\" id=\"Ai-Chip-Robot--Streamline-Flex\" height=\"14\" width=\"14\"><g fill=\"currentColor\"><path d=\"M6.25 1.5a.75.75 0 0 1 1.5 0v.5h1.636A2.114 2.114 0 0 1 11.5 4.114V5.75h.5a.75.75 0 0 1 0 1.5h-.5v1.636A2.114 2.114 0 0 1 9.386 11H7.75v.5a.75.75 0 0 1-1.5 0V11H4.614A2.114 2.114 0 0 1 2.5 8.886V7.25H2a.75.75 0 0 1 0-1.5h.5V4.114A2.114 2.114 0 0 1 4.614 2H6.25z\"/><path d=\"M4.614 3.5A.614.614 0 0 0 4 4.114v4.772c0 .34.275.614.614.614h4.772A.614.614 0 0 0 10 8.886V4.114a.614.614 0 0 0-.614-.614zM5.15 4.95a.85.85 0 1 1 0 1.7a.85.85 0 0 1 0-1.7Zm3.7.85a.85.85 0 1 0-1.7 0a.85.85 0 0 0 1.7 0Zm.1 2.25a.35.35 0 0 0-.32-.5H5.37a.35.35 0 0 0-.32.5c.19.45.63.75 1.1.75h1.7c.47 0 .91-.3 1.1-.75Z\"/></g></svg>",
 };
 
-export type StreamlineNavIconName = keyof typeof streamlineNavSvg | 'aiChipRobot';
+const cubeSolidSvg: StreamlineNavSvgSet = {
+  remix:
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 14 14\" id=\"Cube-3d--Streamline-Flex-Remix\" height=\"14\" width=\"14\"><path fill=\"currentColor\" fill-rule=\"evenodd\" d=\"M6.671.168a.75.75 0 0 1 .658 0l5.5 2.75A.75.75 0 0 1 13.25 3.6v6.8a.75.75 0 0 1-.421.682l-5.5 2.75a.75.75 0 0 1-.658 0l-5.5-2.75a.75.75 0 0 1-.421-.682V3.6a.75.75 0 0 1 .421-.682Zm.329 1.51L3.184 3.586L7 5.494l3.816-1.908zM2.25 4.814V9.93l4 2V6.814zm5.5 7.116 4-2V4.814l-4 2z\" clip-rule=\"evenodd\"/></svg>",
+  solid:
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 14 14\" id=\"Cube-3d--Streamline-Flex\" height=\"14\" width=\"14\"><path fill=\"currentColor\" fill-rule=\"evenodd\" d=\"M6.664.152a.75.75 0 0 1 .672 0l5.5 2.75A.75.75 0 0 1 13.25 3.6v6.8a.75.75 0 0 1-.414.698l-5.5 2.75a.75.75 0 0 1-.672 0l-5.5-2.75a.75.75 0 0 1-.414-.698V3.6a.75.75 0 0 1 .414-.698zm.336 1.51L3.183 3.57L7 5.478l3.817-1.908zM2.25 4.798V9.93l4 2V6.798zm5.5 7.132l4-2V4.798l-4 2z\" clip-rule=\"evenodd\"/></svg>",
+};
+
+export type StreamlineNavIconName = keyof typeof streamlineNavSvg | 'aiChipRobot' | 'cubeSolid';
 
 type StreamlineNavIconProps = {
   name: StreamlineNavIconName;
@@ -72,7 +79,11 @@ type StreamlineNavIconProps = {
 };
 
 export function StreamlineNavIcon({ name, active = false, size = 16, className }: StreamlineNavIconProps) {
-  const svgSet = name === 'aiChipRobot' ? aiChipRobotSvg : streamlineNavSvg[name];
+  const svgSet = name === 'aiChipRobot'
+    ? aiChipRobotSvg
+    : name === 'cubeSolid'
+      ? cubeSolidSvg
+      : streamlineNavSvg[name];
   const svg = svgSet[active ? 'solid' : 'remix'];
 
   return (

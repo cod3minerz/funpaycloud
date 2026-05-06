@@ -250,6 +250,7 @@ export type AuthMeData = {
   id: number;
   email: string;
   plan: string;
+  subscription_status?: 'active_trial' | 'active_paid' | 'expired_trial' | 'expired_paid' | string;
   trial_expires_at?: string | null;
   trial_expired?: boolean;
   subscription_expires_at?: string | null;
@@ -770,6 +771,7 @@ export type ProfileData = {
 
 export type SubscriptionData = {
   plan?: string;
+  subscription_status?: 'active_trial' | 'active_paid' | 'expired_trial' | 'expired_paid' | string;
   expires_at?: string | null;
   days_left?: number | null;
   trial_expired?: boolean;
@@ -1048,6 +1050,46 @@ export type FinancesData = {
   }>;
 };
 
+export type SubscriptionPaymentHistoryItem = {
+  id: number;
+  user_id: number;
+  amount: number;
+  currency: string;
+  type: 'subscription' | string;
+  plan: string;
+  period_days: number;
+  provider: string;
+  provider_payment_id: string;
+  payment_id: string;
+  status: 'pending' | 'paid' | 'failed' | 'refunded' | 'canceled' | string;
+  created_at: string;
+  paid_at?: string | null;
+  failed_at?: string | null;
+};
+
+export type CreateSubscriptionPaymentResponse = {
+  payment_id: number;
+  status: string;
+  plan: string;
+  period_days: number;
+  amount: number;
+  currency: string;
+  checkout_url: string;
+  idempotency_key: string;
+};
+
+export type SubscriptionCheckoutStatus = {
+  id: number;
+  status: string;
+  plan: string;
+  period_days: number;
+  amount: number;
+  currency: string;
+  created_at: string;
+  paid_at?: string | null;
+  failed_at?: string | null;
+};
+
 export const financesApi = {
   get: (params: { account_id?: number | string; limit?: number } = {}) => {
     const query = new URLSearchParams();
@@ -1055,6 +1097,23 @@ export const financesApi = {
     if (params.limit !== undefined) query.set('limit', String(params.limit));
     return apiRequest<FinancesData>(`/api/finances?${query.toString()}`);
   },
+};
+
+export const billingApi = {
+  listSubscriptionHistory: (limit = 50) =>
+    apiRequest<{ items: SubscriptionPaymentHistoryItem[] }>(`/api/billing/subscriptions/history?limit=${limit}`),
+  createSubscriptionPayment: (payload: {
+    plan: 'lite' | 'pro' | 'ultra';
+    period_days?: number;
+    idempotency_key?: string;
+    provider?: string;
+  }) =>
+    apiRequest<CreateSubscriptionPaymentResponse>('/api/billing/subscriptions/create-payment', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getCheckoutStatus: (paymentId: number | string) =>
+    apiRequest<SubscriptionCheckoutStatus>(`/api/billing/subscriptions/checkout-status/${paymentId}`),
 };
 
 // ── Warehouse ─────────────────────────────────────────────────────────────────

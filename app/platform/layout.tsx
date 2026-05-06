@@ -71,7 +71,7 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
         if (cancelled) return;
         setSubscriptionLocked(Boolean(profile.subscription_expired || profile.trial_expired));
         if (typeof profile.subscription_days_left === 'number' && Number.isFinite(profile.subscription_days_left)) {
-          setSubscriptionDaysLeft(Math.max(0, Math.round(profile.subscription_days_left)));
+          setSubscriptionDaysLeft(Math.max(0, Math.ceil(profile.subscription_days_left)));
         } else {
           setSubscriptionDaysLeft(null);
         }
@@ -95,8 +95,7 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
 
   const lockAllowedPath =
     pathname === '/platform/subscription' ||
-    pathname === '/platform/promo-codes' ||
-    pathname === '/platform/settings';
+    pathname === '/platform/promo-codes';
 
   const zeroAccountLocked = accessChecked && !subscriptionLocked && accountsCount === 0;
   const showRenewBanner =

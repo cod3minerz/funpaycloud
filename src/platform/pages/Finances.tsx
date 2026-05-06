@@ -5,7 +5,14 @@ import { motion } from 'motion/react';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Download, Filter, Loader2, TrendingUp, Wallet } from '@/shared/streamline/icons';
 import { toast } from 'sonner';
-import { accountsApi, ApiAccount, financesApi, FinancesData } from '@/lib/api';
+import {
+  accountsApi,
+  ApiAccount,
+  billingApi,
+  FinancesData,
+  financesApi,
+  SubscriptionPaymentHistoryItem,
+} from '@/lib/api';
 import {
   DataTableWrap,
   EmptyState,
@@ -20,6 +27,7 @@ import {
 } from '@/platform/components/primitives';
 
 type Tx = FinancesData['transactions'][number];
+type BillingTx = SubscriptionPaymentHistoryItem;
 
 const typeLabelMap: Record<string, string> = {
   sale: 'Продажа',
@@ -78,6 +86,8 @@ export default function Finances() {
   const [showFilters, setShowFilters] = useState(false);
   const [showExportAlert, setShowExportAlert] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [datasetView, setDatasetView] = useState<'operations' | 'subscriptions'>('operations');
+  const [subscriptionTxs, setSubscriptionTxs] = useState<BillingTx[]>([]);
   const [data, setData] = useState<FinancesData>({
     total_revenue: 0,
     total_orders: 0,
@@ -96,16 +106,32 @@ export default function Finances() {
     let cancelled = false;
     setLoading(true);
     setLoadError(null);
-    financesApi
-      .get({ account_id: accountFilter === 'all' ? undefined : Number(accountFilter), limit: 500 })
-      .then(response => {
+    Promise.allSettled([
+      financesApi.get({ account_id: accountFilter === 'all' ? undefined : Number(accountFilter), limit: 500 }),
+      billingApi.listSubscriptionHistory(200),
+    ])
+      .then(results => {
         if (cancelled) return;
-        setData({
-          total_revenue: Number(response.total_revenue || 0),
-          total_orders: Number(response.total_orders || 0),
-          accounts_count: Number(response.accounts_count || 0),
-          transactions: Array.isArray(response.transactions) ? response.transactions : [],
-        });
+        const [financesResult, billingResult] = results;
+
+        if (financesResult.status === 'fulfilled') {
+          const response = financesResult.value;
+          setData({
+            total_revenue: Number(response.total_revenue || 0),
+            total_orders: Number(response.total_orders || 0),
+            accounts_count: Number(response.accounts_count || 0),
+            transactions: Array.isArray(response.transactions) ? response.transactions : [],
+          });
+        } else {
+          setData({ total_revenue: 0, total_orders: 0, accounts_count: 0, transactions: [] });
+          throw financesResult.reason;
+        }
+
+        if (billingResult.status === 'fulfilled') {
+          setSubscriptionTxs(Array.isArray(billingResult.value.items) ? billingResult.value.items : []);
+        } else {
+          setSubscriptionTxs([]);
+        }
       })
       .catch(err => {
         if (!cancelled) {
@@ -113,6 +139,7 @@ export default function Finances() {
           setLoadError(message);
           toast.error(message);
           setData({ total_revenue: 0, total_orders: 0, accounts_count: 0, transactions: [] });
+          setSubscriptionTxs([]);
         }
       })
       .finally(() => {
@@ -296,6 +323,15 @@ export default function Finances() {
               <div className="platform-finances-desktop-filters">
                 <select
                   className="platform-select platform-finances-filter-select"
+                  value={datasetView}
+                  onChange={event => setDatasetView(event.target.value as 'operations' | 'subscriptions')}
+                >
+                  <option value="operations">Операционные транзакции</option>
+                  <option value="subscriptions">Подписки</option>
+                </select>
+
+                <select
+                  className="platform-select platform-finances-filter-select"
                   value={accountFilter}
                   onChange={event => setAccountFilter(event.target.value)}
                 >
@@ -328,6 +364,15 @@ export default function Finances() {
 
           {showFilters && (
             <ToolbarRow className="mt-2 platform-finances-mobile-filters">
+              <select
+                className="platform-select w-full"
+                value={datasetView}
+                onChange={event => setDatasetView(event.target.value as 'operations' | 'subscriptions')}
+              >
+                <option value="operations">Операционные транзакции</option>
+                <option value="subscriptions">Подписки</option>
+              </select>
+
               <select
                 className="platform-select w-full"
                 value={accountFilter}
@@ -365,46 +410,87 @@ export default function Finances() {
             <RequestErrorState message={loadError} onRetry={() => setReloadKey(prev => prev + 1)} />
           ) : (
             <>
-              <div className="platform-desktop-table">
-                <DataTableWrap className="tablet-dense-scroll">
-                  <table className="platform-table min-w-[760px]">
-                    <thead>
-                      <tr>
-                        <th>Дата</th>
-                        <th>Тип</th>
-                        <th>Описание</th>
-                        <th className="platform-col-tablet-hide">Аккаунт</th>
-                        <th className="text-right">Сумма</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredTxs.map(tx => {
-                        const isPositive = tx.type === 'sale';
-                        const amountSign = isPositive ? '+' : '-';
-                        return (
-                          <tr key={`${tx.id}-${tx.date}`}>
-                            <td className="whitespace-nowrap">{fmtDate(tx.date)}</td>
-                            <td>
-                              <span
-                                className={`platform-chip platform-finance-chip !min-h-[22px] !text-[11px] ${typeChipClassMap[tx.type] || 'platform-finance-chip-fee'}`}
-                              >
-                                {typeLabelMap[tx.type] || tx.type}
-                              </span>
-                            </td>
-                            <td>{tx.description || '—'}</td>
-                            <td className="platform-col-tablet-hide">{tx.account_username || `ID ${tx.funpay_account_id}`}</td>
-                            <td className={`text-right font-bold ${isPositive ? 'text-[var(--pf-success)]' : 'text-[var(--pf-danger)]'}`}>
-                              {amountSign}{Math.abs(Number(tx.amount || 0)).toLocaleString('ru-RU')} ₽
-                            </td>
+              {datasetView === 'operations' ? (
+                <>
+                  <div className="platform-desktop-table">
+                    <DataTableWrap className="tablet-dense-scroll">
+                      <table className="platform-table min-w-[760px]">
+                        <thead>
+                          <tr>
+                            <th>Дата</th>
+                            <th>Тип</th>
+                            <th>Описание</th>
+                            <th className="platform-col-tablet-hide">Аккаунт</th>
+                            <th className="text-right">Сумма</th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </DataTableWrap>
-              </div>
-
-              {filteredTxs.length === 0 && <EmptyState>Операции по текущим фильтрам не найдены.</EmptyState>}
+                        </thead>
+                        <tbody>
+                          {filteredTxs.map(tx => {
+                            const isPositive = tx.type === 'sale';
+                            const amountSign = isPositive ? '+' : '-';
+                            return (
+                              <tr key={`${tx.id}-${tx.date}`}>
+                                <td className="whitespace-nowrap">{fmtDate(tx.date)}</td>
+                                <td>
+                                  <span
+                                    className={`platform-chip platform-finance-chip !min-h-[22px] !text-[11px] ${typeChipClassMap[tx.type] || 'platform-finance-chip-fee'}`}
+                                  >
+                                    {typeLabelMap[tx.type] || tx.type}
+                                  </span>
+                                </td>
+                                <td>{tx.description || '—'}</td>
+                                <td className="platform-col-tablet-hide">{tx.account_username || `ID ${tx.funpay_account_id}`}</td>
+                                <td className={`text-right font-bold ${isPositive ? 'text-[var(--pf-success)]' : 'text-[var(--pf-danger)]'}`}>
+                                  {amountSign}{Math.abs(Number(tx.amount || 0)).toLocaleString('ru-RU')} ₽
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </DataTableWrap>
+                  </div>
+                  {filteredTxs.length === 0 && <EmptyState>Операции по текущим фильтрам не найдены.</EmptyState>}
+                </>
+              ) : (
+                <>
+                  <div className="platform-desktop-table">
+                    <DataTableWrap className="tablet-dense-scroll">
+                      <table className="platform-table min-w-[760px]">
+                        <thead>
+                          <tr>
+                            <th>Дата</th>
+                            <th>Статус</th>
+                            <th>План</th>
+                            <th>Период</th>
+                            <th>Провайдер</th>
+                            <th className="text-right">Сумма</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {subscriptionTxs.map(tx => (
+                            <tr key={`sub-${tx.id}-${tx.created_at}`}>
+                              <td className="whitespace-nowrap">{fmtDate(tx.created_at)}</td>
+                              <td>
+                                <span className="platform-chip platform-finance-chip !min-h-[22px] !text-[11px]">
+                                  {tx.status}
+                                </span>
+                              </td>
+                              <td className="uppercase">{tx.plan || '—'}</td>
+                              <td>{tx.period_days} дн.</td>
+                              <td>{tx.provider || 'manual'}</td>
+                              <td className="text-right font-bold text-[var(--pf-text)]">
+                                {Number(tx.amount || 0).toLocaleString('ru-RU')} {tx.currency || 'RUB'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </DataTableWrap>
+                  </div>
+                  {subscriptionTxs.length === 0 && <EmptyState>Подписочные транзакции пока отсутствуют.</EmptyState>}
+                </>
+              )}
             </>
           )}
         </SectionCard>

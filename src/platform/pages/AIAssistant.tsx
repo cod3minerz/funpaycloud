@@ -241,36 +241,36 @@ export default function AIAssistant() {
         <PageTitle title="AI-Ассистент" subtitle="Боевые настройки автоответчика для покупателей" />
       </PageHeader>
 
-      <div className="mb-6 overflow-hidden rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-surface)] p-5">
-        <div className="flex flex-col gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-[var(--pf-text-dim)]">Выбор боевого режима</p>
-            <p className="mt-1 text-[11px] text-[var(--pf-text-dim)]">Переключение сохраняется сразу. Определяет, как отвечать покупателям при включенном автоответчике.</p>
-          </div>
-          <div className="flex items-center justify-center gap-4">
-            <span className={`text-base font-semibold ${assistantModeActive ? 'text-[var(--pf-text)]' : 'text-[var(--pf-text-dim)]'}`}>ИИ Бот</span>
-            <button
-              type="button"
-              disabled={!selectedAccountID || modeSaving}
-              onClick={() => void persistMode(assistantModeActive ? 'constructor' : 'assistant')}
-              className="relative flex h-8 w-14 flex-shrink-0 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50"
-              aria-pressed={constructorModeActive}
-              aria-label="Переключить режим автоответчика"
-            >
-              <span
-                className={`absolute left-1 top-1 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200 ${
-                  constructorModeActive ? 'translate-x-6' : 'translate-x-0'
-                }`}
-              />
-            </button>
-            <span className={`text-base font-semibold ${constructorModeActive ? 'text-[var(--pf-text)]' : 'text-[var(--pf-text-dim)]'}`}>Сценарии</span>
-          </div>
-        </div>
-      </div>
-
       <div className="grid gap-6">
         {/* Status + usage banner */}
         <div className={`relative overflow-hidden rounded-2xl border p-6 ${enabled ? 'platform-ai-hero-enabled' : 'platform-ai-hero-disabled'}`}>
+          <div className="relative mb-5 border-b border-[var(--pf-border)] pb-5">
+            <div className="flex flex-col gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-[var(--pf-text-dim)]">Выбор боевого режима</p>
+                <p className="mt-1 text-[11px] text-[var(--pf-text-dim)]">Переключение сохраняется сразу и влияет на боевые ответы покупателям.</p>
+              </div>
+              <div className="flex items-center justify-center gap-4">
+                <span className={`text-base font-semibold ${assistantModeActive ? 'text-[var(--pf-text)]' : 'text-[var(--pf-text-dim)]'}`}>ИИ Бот</span>
+                <button
+                  type="button"
+                  disabled={!selectedAccountID || modeSaving}
+                  onClick={() => void persistMode(assistantModeActive ? 'constructor' : 'assistant')}
+                  className="relative flex h-8 w-14 flex-shrink-0 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-pressed={constructorModeActive}
+                  aria-label="Переключить режим автоответчика"
+                >
+                  <span
+                    className={`absolute left-1 top-1 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200 ${
+                      constructorModeActive ? 'translate-x-6' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+                <span className={`text-base font-semibold ${constructorModeActive ? 'text-[var(--pf-text)]' : 'text-[var(--pf-text-dim)]'}`}>Сценарии</span>
+              </div>
+            </div>
+          </div>
+
           {enabled && (
             <>
               <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-violet-500/10 blur-2xl" />
