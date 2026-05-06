@@ -803,7 +803,7 @@ body[data-platform-theme] {
 .platform-nav-item.active {
   color: var(--pf-text);
   background: color-mix(in srgb, var(--pf-accent) 16%, var(--pf-surface-2));
-  border-color: color-mix(in srgb, var(--pf-accent) 42%, var(--pf-border-strong));
+  border-color: transparent;
   font-weight: 700;
 }
 
@@ -860,7 +860,7 @@ body[data-platform-theme='dark'] .platform-nav-item-referrals.active {
 .platform-scope[data-theme='dark'] .platform-nav-item.active,
 body[data-platform-theme='dark'] .platform-nav-item.active {
   color: #ffffff;
-  border-color: rgba(130, 128, 255, 0.44);
+  border-color: transparent;
   background: color-mix(in srgb, var(--pf-accent) 22%, var(--pf-surface-2));
 }
 
