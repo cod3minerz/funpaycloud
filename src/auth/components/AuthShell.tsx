@@ -42,11 +42,11 @@ export function AuthShell({ title, subtitle, children }: AuthShellProps) {
           <div className="auth-legal border-t border-[var(--line)] px-5 py-3 sm:px-6 sm:py-3.5">
             <p className="text-center text-[13px] leading-relaxed text-[var(--muted)]">
               Продолжая, вы принимаете{" "}
-              <a href="/legal/terms-of-service" className="font-semibold text-[var(--ink-2)] transition-colors hover:text-[var(--accent)]">
+              <a href="/legal/terms" className="font-semibold text-[var(--ink-2)] transition-colors hover:text-[var(--accent)]">
                 Условия
               </a>{" "}
               и{" "}
-              <a href="/legal/privacy-policy" className="font-semibold text-[var(--ink-2)] transition-colors hover:text-[var(--accent)]">
+              <a href="/legal/privacy" className="font-semibold text-[var(--ink-2)] transition-colors hover:text-[var(--accent)]">
                 Политику конфиденциальности
               </a>.
             </p>

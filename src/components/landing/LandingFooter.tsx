@@ -46,11 +46,8 @@ export default function LandingFooter() {
               <li><a href="/#features">О нас</a></li>
               <li><a href="/blog">Блог</a></li>
               <li><a href="mailto:partners@funpay.cloud">Партнёрство</a></li>
-              <li><a href="/legal/privacy-policy">Политика конфиденциальности</a></li>
-              <li><a href="/legal/terms-of-service">Условия использования</a></li>
-              <li><a href="/legal/disclaimer">Отказ от ответственности</a></li>
-              <li><a href="/legal/personal-data-consent">Согласие на обработку данных</a></li>
-              <li><a href="/legal/cookie-policy">Политика cookie</a></li>
+              <li><a href="/legal/privacy">Политика конфиденциальности и ПДн</a></li>
+              <li><a href="/legal/terms">Условия использования и оферта</a></li>
             </ul>
           </div>
         </div>

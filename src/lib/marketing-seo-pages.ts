@@ -471,7 +471,7 @@ export const SEO_PAGE_CONFIGS: SeoPageConfig[] = [
       { title: 'Стабильность в продакшене', text: 'Мониторинг и автоматические процессы восстановления помогают поддерживать непрерывную работу.' },
     ],
     faq: [],
-    ctaPrimary: { href: '/legal/privacy-policy', label: 'Политика обработки данных' },
+    ctaPrimary: { href: '/legal/privacy', label: 'Политика обработки данных' },
     ctaSecondary: { href: '/auth/register', label: 'Запустить безопасный контур' },
     relatedLinks: [
       { href: '/cloud-funpay-bot', label: 'Почему облако стабильнее' },
@@ -497,7 +497,7 @@ export const SEO_PAGE_CONFIGS: SeoPageConfig[] = [
     ctaSecondary: { href: '/blog', label: 'Читать обновления' },
     relatedLinks: [
       { href: '/security', label: 'Безопасность платформы' },
-      { href: '/legal/disclaimer', label: 'Отказ от ответственности' },
+      { href: '/legal/terms', label: 'Условия и ограничения' },
     ],
   },
   {
@@ -585,12 +585,8 @@ export const SEO_PAGE_CONFIGS: SeoPageConfig[] = [
         title: 'Юридические страницы',
         text: 'Официальные документы и пользовательские условия.',
         bullets: [
-          '/legal',
-          '/legal/privacy-policy',
-          '/legal/terms-of-service',
-          '/legal/disclaimer',
-          '/legal/personal-data-consent',
-          '/legal/cookie-policy',
+          '/legal/privacy',
+          '/legal/terms',
         ],
       },
     ],
@@ -599,7 +595,7 @@ export const SEO_PAGE_CONFIGS: SeoPageConfig[] = [
     ctaSecondary: { href: '/', label: 'На главную' },
     relatedLinks: [
       { href: '/blog', label: 'Блог FunPay Cloud' },
-      { href: '/legal', label: 'Юридический раздел' },
+      { href: '/legal/privacy', label: 'Юридический раздел' },
       { href: '/funpay-automation', label: 'Автоматизация FunPay' },
     ],
   },

@@ -50,6 +50,36 @@ const config: NextConfig = {
   async redirects() {
     return [
       {
+        source: '/legal',
+        destination: '/legal/privacy',
+        permanent: true,
+      },
+      {
+        source: '/legal/privacy-policy',
+        destination: '/legal/privacy',
+        permanent: true,
+      },
+      {
+        source: '/legal/personal-data-consent',
+        destination: '/legal/privacy',
+        permanent: true,
+      },
+      {
+        source: '/legal/terms-of-service',
+        destination: '/legal/terms',
+        permanent: true,
+      },
+      {
+        source: '/legal/disclaimer',
+        destination: '/legal/terms',
+        permanent: true,
+      },
+      {
+        source: '/legal/cookie-policy',
+        destination: '/legal/terms',
+        permanent: true,
+      },
+      {
         source: '/platform2',
         destination: '/platform/dashboard',
         permanent: true,

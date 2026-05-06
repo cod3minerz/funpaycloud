@@ -1,31 +1,25 @@
 'use client';
 
-import Lenis from 'lenis';
 import { useEffect } from 'react';
 
 export default function SmoothScroll() {
   useEffect(() => {
-    // Only on desktop — mobile has native momentum scroll that feels better
-    if (window.matchMedia('(pointer: coarse)').matches) return;
-
-    const lenis = new Lenis({
-      duration: 1.2,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-      wheelMultiplier: 0.9,
-      touchMultiplier: 0,
-    });
-
-    let raf: number;
-    function tick(time: number) {
-      lenis.raf(time);
-      raf = requestAnimationFrame(tick);
+    // Use native smooth scrolling to avoid RAF jank on heavy landing layers.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return;
     }
-    raf = requestAnimationFrame(tick);
+
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlBehavior = html.style.scrollBehavior;
+    const prevBodyBehavior = body.style.scrollBehavior;
+
+    html.style.scrollBehavior = 'smooth';
+    body.style.scrollBehavior = 'smooth';
 
     return () => {
-      cancelAnimationFrame(raf);
-      lenis.destroy();
+      html.style.scrollBehavior = prevHtmlBehavior;
+      body.style.scrollBehavior = prevBodyBehavior;
     };
   }, []);
 

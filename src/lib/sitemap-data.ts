@@ -11,12 +11,8 @@ export type SitemapEntry = {
 export const BASE_URL = 'https://funpay.cloud';
 
 const LEGAL_PATHS = [
-  '/legal',
-  '/legal/privacy-policy',
-  '/legal/terms-of-service',
-  '/legal/disclaimer',
-  '/legal/personal-data-consent',
-  '/legal/cookie-policy',
+  '/legal/privacy',
+  '/legal/terms',
 ] as const;
 
 function formatIsoDate(value: Date): string {
