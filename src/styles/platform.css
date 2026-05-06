@@ -1306,16 +1306,17 @@ body[data-platform-theme='dark'] .platform-nav-item.active {
 }
 
 .platform-finances-toolbar-main {
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr);
+  display: flex;
   align-items: center;
+  flex-wrap: nowrap;
   gap: 10px;
   min-width: 0;
 }
 
 .platform-finances-desktop-filters {
+  margin-left: auto;
   display: grid;
-  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  grid-template-columns: repeat(3, minmax(180px, 220px));
   gap: 10px;
   min-width: 0;
 }
@@ -1328,6 +1329,7 @@ body[data-platform-theme='dark'] .platform-nav-item.active {
 .platform-finances-export {
   white-space: nowrap;
   flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .platform-finances-mobile-toggle,
@@ -2725,6 +2727,10 @@ body[data-platform-theme='dark'] .platform-proxy-card {
   color: var(--pf-text) !important;
   opacity: 1 !important;
   box-shadow: var(--pf-shadow-card) !important;
+}
+
+.platform-orders-pagination [data-slot="pagination-link"] {
+  min-width: 38px;
 }
 
 .platform-dialog-content .platform-input,

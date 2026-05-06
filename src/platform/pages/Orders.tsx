@@ -5,6 +5,15 @@ import { motion } from 'motion/react';
 import { Loader2, Search, Send, SearchX } from '@/shared/streamline/icons';
 import { toast } from 'sonner';
 import { accountsApi, ApiAccount, ApiOrder, ordersApi } from '@/lib/api';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/app/components/ui/pagination';
 import { DataTableWrap, EmptyState, PageHeader, PageShell, PageTitle, RequestErrorState, SectionCard, ToolbarRow } from '@/platform/components/primitives';
 
 const STATUS_NUM_LABEL: Record<number, string> = {
@@ -14,6 +23,23 @@ const STATUS_NUM_LABEL: Record<number, string> = {
 };
 
 const PAGE_SIZE = 10;
+
+function buildPageWindow(currentPage: number, totalPages: number): Array<number | 'ellipsis'> {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, idx) => idx + 1);
+  }
+
+  const pages: Array<number | 'ellipsis'> = [1];
+  const start = Math.max(2, currentPage - 1);
+  const end = Math.min(totalPages - 1, currentPage + 1);
+
+  if (start > 2) pages.push('ellipsis');
+  for (let page = start; page <= end; page += 1) pages.push(page);
+  if (end < totalPages - 1) pages.push('ellipsis');
+
+  pages.push(totalPages);
+  return pages;
+}
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -209,13 +235,72 @@ export default function Orders() {
                   По текущим фильтрам нет подходящих заказов. Попробуйте изменить параметры поиска.
                 </EmptyState>
               )}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--pf-border)] px-4 py-3">
-                <span className="platform-kpi-meta">Всего: {total}</span>
-                <div className="inline-flex items-center gap-2">
-                  <button className="platform-btn-secondary" onClick={() => setPage(prev => Math.max(1, prev - 1))} disabled={page === 1}>Назад</button>
-                  <span className="platform-chip">{page} / {totalPages}</span>
-                  <button className="platform-btn-secondary" onClick={() => setPage(prev => Math.min(totalPages, prev + 1))} disabled={page === totalPages}>Вперёд</button>
-                </div>
+              <div className="border-t border-[var(--pf-border)] px-4 py-3">
+                <Pagination className="platform-orders-pagination">
+                  <div className="hidden sm:block">
+                    <p className="text-sm text-[var(--pf-text-muted)]">
+                      Показано{' '}
+                      <span className="font-semibold text-[var(--pf-text)]">{Math.min((page - 1) * PAGE_SIZE + 1, total)}</span>
+                      {' '}–{' '}
+                      <span className="font-semibold text-[var(--pf-text)]">{Math.min(page * PAGE_SIZE, total)}</span>
+                      {' '}из{' '}
+                      <span className="font-semibold text-[var(--pf-text)]">{total}</span>
+                    </p>
+                  </div>
+
+                  <div className="flex w-full flex-1 justify-between sm:hidden">
+                    <button className="platform-btn-secondary" onClick={() => setPage(prev => Math.max(1, prev - 1))} disabled={page === 1}>
+                      Назад
+                    </button>
+                    <button className="platform-btn-secondary" onClick={() => setPage(prev => Math.min(totalPages, prev + 1))} disabled={page === totalPages}>
+                      Вперёд
+                    </button>
+                  </div>
+
+                  <div className="hidden sm:flex sm:items-center sm:gap-2">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            setPage(prev => Math.max(1, prev - 1));
+                          }}
+                          className={page === 1 ? 'pointer-events-none opacity-50' : undefined}
+                        />
+                      </PaginationItem>
+                      {buildPageWindow(page, totalPages).map((item, index) => (
+                        <PaginationItem key={`${item}-${index}`}>
+                          {item === 'ellipsis' ? (
+                            <PaginationEllipsis />
+                          ) : (
+                            <PaginationLink
+                              href="#"
+                              isActive={item === page}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                setPage(item);
+                              }}
+                            >
+                              {item}
+                            </PaginationLink>
+                          )}
+                        </PaginationItem>
+                      ))}
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            setPage(prev => Math.min(totalPages, prev + 1));
+                          }}
+                          className={page === totalPages ? 'pointer-events-none opacity-50' : undefined}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                    <span className="platform-chip whitespace-nowrap">{page} / {totalPages}</span>
+                  </div>
+                </Pagination>
               </div>
             </>
           )}
