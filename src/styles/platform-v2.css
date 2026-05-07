@@ -1,0 +1,285 @@
+.platform-v2-scope {
+  --pv2-primary: #5d87ff;
+  --pv2-primary-emphasis: #4f73d9;
+  --pv2-secondary: #49beff;
+  --pv2-success: #13deb9;
+  --pv2-warning: #f6b51e;
+  --pv2-danger: #ef4444;
+  --pv2-shadow-soft: 0 10px 28px -18px rgba(93, 135, 255, 0.36);
+  --pv2-shadow-card: 0 18px 46px -26px rgba(25, 39, 63, 0.45);
+  --pv2-shell-bg: linear-gradient(180deg, #f8fbff 0%, #f2f6fd 100%);
+
+  --pf-bg: #f5f8fc;
+  --pf-bg-soft: #f0f4fb;
+  --pf-surface: #ffffff;
+  --pf-surface-2: #f7f9fe;
+  --pf-surface-3: #edf2fb;
+  --pf-elevated: #ffffff;
+  --pf-bg-translucent: rgba(245, 248, 252, 0.9);
+  --pf-bg-translucent-strong: rgba(245, 248, 252, 0.96);
+
+  --pf-border: #dfe5ef;
+  --pf-border-strong: #c8d2e2;
+
+  --pf-text: #1c2536;
+  --pf-text-muted: #5a6a85;
+  --pf-text-dim: #7c8fac;
+  --pf-text-soft: #9ba9c1;
+
+  --pf-accent: var(--pv2-primary);
+  --pf-accent-2: var(--pv2-primary-emphasis);
+  --pf-accent-hover: #4a6ed1;
+  --pf-accent-soft: color-mix(in oklab, var(--pv2-primary) 16%, transparent);
+  --pf-accent-soft-strong: color-mix(in oklab, var(--pv2-primary) 28%, transparent);
+
+  --pf-success: var(--pv2-success);
+  --pf-warning: var(--pv2-warning);
+  --pf-danger: var(--pv2-danger);
+
+  --pf-shadow-soft: var(--pv2-shadow-soft);
+  --pf-shadow-card: var(--pv2-shadow-card);
+  --pf-shadow-elevated: 0 26px 70px -36px rgba(25, 39, 63, 0.55);
+
+  --pf-control-h: 40px;
+  --pf-radius-sm: 12px;
+  --pf-radius-md: 14px;
+  --pf-radius-lg: 18px;
+  --pf-radius-xl: 24px;
+  --pf-card-padding: 22px;
+}
+
+.platform-v2-scope[data-theme='dark'],
+body[data-platform-theme='dark'] .platform-v2-scope {
+  --pv2-shell-bg: radial-gradient(140% 160% at 0% 0%, rgba(93, 135, 255, 0.14) 0%, transparent 54%), #111827;
+
+  --pf-bg: #111827;
+  --pf-bg-soft: #0f1a2d;
+  --pf-surface: #17233a;
+  --pf-surface-2: #1d2b45;
+  --pf-surface-3: #253653;
+  --pf-elevated: #101d31;
+  --pf-bg-translucent: rgba(17, 24, 39, 0.9);
+  --pf-bg-translucent-strong: rgba(17, 24, 39, 0.96);
+
+  --pf-border: rgba(223, 229, 239, 0.16);
+  --pf-border-strong: rgba(223, 229, 239, 0.32);
+
+  --pf-text: #f8fafc;
+  --pf-text-muted: #d3def1;
+  --pf-text-dim: #a9bad3;
+  --pf-text-soft: #8fa2c2;
+
+  --pf-accent: #76a3ff;
+  --pf-accent-2: #5d87ff;
+  --pf-accent-hover: #90b3ff;
+  --pf-accent-soft: rgba(93, 135, 255, 0.24);
+  --pf-accent-soft-strong: rgba(93, 135, 255, 0.4);
+
+  --pf-shadow-soft: 0 10px 30px -22px rgba(4, 10, 22, 0.86);
+  --pf-shadow-card: 0 22px 56px -34px rgba(2, 7, 18, 0.92);
+  --pf-shadow-elevated: 0 30px 80px -40px rgba(2, 7, 18, 0.95);
+}
+
+.platform-v2-scope {
+  background: var(--pv2-shell-bg);
+}
+
+.platform-v2-scope .platform-main-scroll {
+  padding-top: 10px;
+}
+
+.platform-v2-scope .platform-topbar-header,
+.platform-v2-scope .platform-topbar {
+  border-bottom: 1px solid color-mix(in oklab, var(--pf-border) 84%, transparent);
+  backdrop-filter: blur(18px) saturate(130%);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+}
+
+.platform-v2-scope .platform-sidebar {
+  background: color-mix(in oklab, var(--pf-surface) 92%, transparent);
+  border-right: 1px solid color-mix(in oklab, var(--pf-border) 90%, transparent);
+}
+
+.platform-v2-scope .platform-sidebar-logo,
+.platform-v2-scope .platform-sidebar-footer {
+  border-color: color-mix(in oklab, var(--pf-border) 90%, transparent);
+}
+
+.platform-v2-scope .platform-nav-item {
+  border-radius: 12px;
+  border-color: transparent;
+  min-height: 40px;
+  font-weight: 600;
+}
+
+.platform-v2-scope .platform-nav-item:hover {
+  border-color: color-mix(in oklab, var(--pf-accent) 26%, var(--pf-border));
+  background: color-mix(in oklab, var(--pf-accent) 7%, var(--pf-surface-2));
+  color: var(--pf-text);
+}
+
+.platform-v2-scope .platform-nav-item.active {
+  background: linear-gradient(135deg, color-mix(in oklab, var(--pf-accent) 28%, transparent), color-mix(in oklab, var(--pf-accent-2) 22%, transparent));
+  border-color: color-mix(in oklab, var(--pf-accent) 38%, transparent);
+  color: var(--pf-text);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--pf-accent) 18%, transparent);
+}
+
+.platform-v2-scope .platform-nav-item.active .platform-nav-streamline-icon {
+  color: var(--pf-accent);
+}
+
+.platform-v2-scope .platform-subscription-card {
+  border-color: color-mix(in oklab, var(--pf-accent) 32%, transparent);
+  background: linear-gradient(145deg, color-mix(in oklab, var(--pf-accent) 10%, transparent) 0%, color-mix(in oklab, var(--pf-surface) 96%, transparent) 100%);
+}
+
+.platform-v2-scope .platform-card,
+.platform-v2-scope .platform-panel {
+  border-color: color-mix(in oklab, var(--pf-border) 88%, transparent);
+  box-shadow: var(--pf-shadow-card);
+}
+
+.platform-v2-scope .platform-panel {
+  background: linear-gradient(180deg, color-mix(in oklab, var(--pf-surface-2) 88%, transparent), var(--pf-surface-2));
+}
+
+.platform-v2-scope .platform-page-title {
+  letter-spacing: -0.024em;
+}
+
+.platform-v2-scope .platform-kpi-card::after {
+  height: 3px;
+  background: linear-gradient(90deg, var(--pf-accent) 0%, color-mix(in oklab, var(--pf-accent) 20%, transparent) 100%);
+}
+
+.platform-v2-scope .platform-input,
+.platform-v2-scope .platform-select,
+.platform-v2-scope .platform-textarea,
+.platform-v2-scope .platform-search,
+.platform-v2-scope input,
+.platform-v2-scope select,
+.platform-v2-scope textarea {
+  border-radius: 12px;
+}
+
+.platform-v2-scope .platform-input,
+.platform-v2-scope .platform-select,
+.platform-v2-scope .platform-textarea {
+  background: color-mix(in oklab, var(--pf-elevated) 95%, transparent);
+  border-color: color-mix(in oklab, var(--pf-border-strong) 82%, transparent);
+}
+
+.platform-v2-scope .platform-input:focus,
+.platform-v2-scope .platform-select:focus,
+.platform-v2-scope .platform-textarea:focus {
+  border-color: color-mix(in oklab, var(--pf-accent) 70%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--pf-accent) 18%, transparent);
+}
+
+.platform-v2-scope .platform-btn-primary,
+.platform-v2-scope .btn-gradient,
+.platform-v2-scope .platform-v2-btn[data-variant='default'] {
+  border-color: color-mix(in oklab, var(--pf-accent) 80%, transparent);
+  background: linear-gradient(135deg, var(--pf-accent) 0%, var(--pf-accent-2) 100%);
+  box-shadow: 0 10px 26px -16px color-mix(in oklab, var(--pf-accent) 64%, transparent);
+}
+
+.platform-v2-scope .platform-btn-primary:hover,
+.platform-v2-scope .btn-gradient:hover,
+.platform-v2-scope .platform-v2-btn[data-variant='default']:hover {
+  filter: brightness(1.03);
+  transform: translateY(-1px);
+}
+
+.platform-v2-scope .platform-btn-secondary,
+.platform-v2-scope .btn-secondary,
+.platform-v2-scope .platform-v2-btn[data-variant='outline'] {
+  border-color: color-mix(in oklab, var(--pf-border-strong) 84%, transparent);
+  background: color-mix(in oklab, var(--pf-elevated) 96%, transparent);
+  color: var(--pf-text-muted);
+}
+
+.platform-v2-scope .platform-btn-secondary:hover,
+.platform-v2-scope .btn-secondary:hover,
+.platform-v2-scope .platform-v2-btn[data-variant='outline']:hover {
+  background: color-mix(in oklab, var(--pf-accent) 8%, var(--pf-surface));
+  border-color: color-mix(in oklab, var(--pf-accent) 36%, var(--pf-border-strong));
+  color: var(--pf-text);
+}
+
+.platform-v2-scope table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.platform-v2-scope thead th {
+  background: linear-gradient(180deg, color-mix(in oklab, var(--pf-surface-2) 92%, transparent), color-mix(in oklab, var(--pf-surface-2) 78%, transparent));
+  border-bottom: 1px solid color-mix(in oklab, var(--pf-border) 88%, transparent);
+  color: var(--pf-text-dim);
+  font-weight: 700;
+}
+
+.platform-v2-scope tbody tr {
+  background: color-mix(in oklab, var(--pf-surface) 96%, transparent);
+}
+
+.platform-v2-scope tbody tr:hover {
+  background: color-mix(in oklab, var(--pf-accent) 5%, var(--pf-surface));
+}
+
+.platform-v2-scope .platform-table-wrap {
+  border-radius: 14px;
+}
+
+.platform-v2-scope .platform-dialog-content,
+.platform-v2-scope [data-slot='dialog-content'] {
+  border-radius: 18px !important;
+  border-color: color-mix(in oklab, var(--pf-border-strong) 86%, transparent) !important;
+  background: color-mix(in oklab, var(--pf-surface-overlay) 96%, transparent) !important;
+}
+
+.platform-v2-scope .platform-topbar-dropdown {
+  border-radius: 14px !important;
+  border-color: color-mix(in oklab, var(--pf-border) 88%, transparent) !important;
+}
+
+.platform-v2-scope .platform-chip {
+  border-radius: 999px;
+  border-color: color-mix(in oklab, var(--pf-border) 88%, transparent);
+  background: color-mix(in oklab, var(--pf-surface-3) 82%, transparent);
+}
+
+.platform-v2-scope .platform-empty,
+.platform-v2-scope [class*='platform-alert-'] {
+  border-radius: 14px;
+}
+
+@media (max-width: 1279px) {
+  .platform-v2-scope .platform-main-scroll {
+    padding-inline: 14px;
+  }
+}
+
+@media (max-width: 767px) {
+  .platform-v2-scope .platform-topbar-header,
+  .platform-v2-scope .platform-topbar {
+    min-height: 56px;
+    height: 56px;
+  }
+
+  .platform-v2-scope .platform-page {
+    gap: 14px;
+  }
+
+  .platform-v2-scope .platform-card,
+  .platform-v2-scope .platform-panel {
+    border-radius: 14px;
+    padding: 16px;
+  }
+
+  .platform-v2-scope .platform-nav-item {
+    min-height: 42px;
+    padding-inline: 12px;
+  }
+}

@@ -19,3 +19,14 @@ Run e2e reliability scenarios for chats:
 ## Frontend Design System
 
 - Main guide: `docs/FRONTEND_DESIGN_SYSTEM.md`
+
+## Platform v2 feature flag
+
+For staged `/platform` migration, the v2 route group is available at `/platform-v2/*`.
+
+Enable automatic routing to v2 with one env flag:
+
+- `PLATFORM_V2_ENABLED=true`
+- or `NEXT_PUBLIC_PLATFORM_V2_ENABLED=true`
+
+When enabled, `/platform/*` requests are redirected to `/platform-v2/*` in middleware/proxy.

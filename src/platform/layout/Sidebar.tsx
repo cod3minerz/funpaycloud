@@ -26,6 +26,7 @@ type SidebarProps = {
   onClose?: () => void;
   collapsed?: boolean;
   theme?: 'light' | 'dark';
+  basePath?: '/platform' | '/platform-v2';
 };
 
 type NavItem = {
@@ -73,6 +74,7 @@ export default function Sidebar({
   onClose,
   collapsed = false,
   theme = 'light',
+  basePath = '/platform',
 }: SidebarProps) {
   const pathname = usePathname();
   const [currentPlanId, setCurrentPlanId] = useState(() => normalizePlanId(DEFAULT_PLAN_ID));
@@ -112,6 +114,8 @@ export default function Sidebar({
     ? `platform-sidebar platform-mobile-sidebar ${open ? 'open' : ''}`
     : `platform-sidebar platform-desktop-sidebar${collapsed ? ' collapsed' : ''}`;
 
+  const resolvePath = (path: string) => path.replace('/platform', basePath);
+
   return (
     <aside className={asideClass} aria-label="Навигация платформы">
       <div className="platform-sidebar-logo">
@@ -136,12 +140,13 @@ export default function Sidebar({
           <div key={group.title}>
             {!collapsed && <div className="platform-nav-section">{group.title}</div>}
             {group.items.map(({ icon, label, path, beta }) => {
-              const isActive = pathname === path;
-              const isAIItem = path === '/platform/ai-assistant';
+              const resolvedPath = resolvePath(path);
+              const isActive = pathname === resolvedPath || pathname.startsWith(`${resolvedPath}/`);
+              const isAIItem = resolvedPath.endsWith('/ai-assistant');
               return (
                 <Link
-                  key={path}
-                  href={path}
+                  key={resolvedPath}
+                  href={resolvedPath}
                   className={`platform-nav-item${isActive ? ' active' : ''}`}
                   onClick={onClose}
                   title={collapsed ? label : undefined}

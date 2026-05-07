@@ -20,6 +20,7 @@ type PlatformTopBarProps = {
   onToggleSidebarCollapse: () => void;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
+  basePath?: '/platform' | '/platform-v2';
 };
 
 export default function PlatformTopBar({
@@ -28,6 +29,7 @@ export default function PlatformTopBar({
   onToggleSidebarCollapse,
   theme,
   onToggleTheme,
+  basePath = '/platform',
 }: PlatformTopBarProps) {
   const router = useRouter();
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -129,7 +131,7 @@ export default function PlatformTopBar({
                 className="cursor-pointer text-[var(--pf-text)] focus:bg-[var(--pf-accent-soft)] focus:text-[var(--pf-text)]"
                 onSelect={event => {
                   event.preventDefault();
-                  router.push('/platform/settings');
+                  router.push(`${basePath}/settings`);
                 }}
               >
                 <Settings size={14} className="mr-2" />
@@ -140,7 +142,7 @@ export default function PlatformTopBar({
                 className="cursor-pointer text-[var(--pf-text)] focus:bg-[var(--pf-accent-soft)] focus:text-[var(--pf-text)]"
                 onSelect={event => {
                   event.preventDefault();
-                  router.push('/platform/subscription');
+                  router.push(`${basePath}/subscription`);
                 }}
               >
                 <CreditCard size={14} className="mr-2" />
@@ -151,7 +153,7 @@ export default function PlatformTopBar({
                 className="cursor-pointer text-[var(--pf-text)] focus:bg-[var(--pf-accent-soft)] focus:text-[var(--pf-text)]"
                 onSelect={event => {
                   event.preventDefault();
-                  router.push('/platform/promo-codes');
+                  router.push(`${basePath}/promo-codes`);
                 }}
               >
                 <Ticket size={14} className="mr-2" />
