@@ -28,6 +28,7 @@ export default function Lots() {
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [lots, setLots] = useState<ApiLot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [raisingIDs, setRaisingIDs] = useState<Set<string>>(new Set());
   const [savingIDs, setSavingIDs] = useState<Set<string>>(new Set());
@@ -56,8 +57,9 @@ export default function Lots() {
   const [editActive, setEditActive] = useState(true);
   const [updating, setUpdating] = useState(false);
 
-  async function loadLots() {
+  async function loadLots(refresh = false) {
     setLoading(true);
+    setRefreshing(refresh);
     setLoadError(null);
     try {
       const accs = await accountsApi.list();
@@ -69,7 +71,9 @@ export default function Lots() {
         : safeAccs.filter(acc => String(acc.id) === accountFilter);
 
       const collected: ApiLot[] = [];
-      const perAccount = await Promise.allSettled(targetAccounts.map(acc => lotsApi.listByAccount(acc.id)));
+      const perAccount = await Promise.allSettled(
+        targetAccounts.map(acc => lotsApi.listByAccount(acc.id, { refresh })),
+      );
       for (let i = 0; i < perAccount.length; i += 1) {
         const result = perAccount[i];
         const account = targetAccounts[i];
@@ -95,11 +99,12 @@ export default function Lots() {
       toast.error(message);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }
 
   useEffect(() => {
-    void loadLots();
+    void loadLots(accountFilter !== 'all');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reloadKey, accountFilter]);
 
@@ -281,23 +286,32 @@ export default function Lots() {
       <PageShell>
         <PageHeader>
           <PageTitle title="Лоты" />
-          <button
-            className="platform-btn-primary"
-            onClick={() => {
-              if (accounts.length === 0) {
-                toast.error('Сначала добавьте аккаунт');
-                return;
-              }
-              if (accountFilter !== 'all') {
-                setCreateAccountID(Number(accountFilter));
-              } else if (!createAccountID && accounts[0]) {
-                setCreateAccountID(accounts[0].id);
-              }
-              setCreateOpen(true);
-            }}
-          >
-            <Plus size={14} /> Создать лот
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              className="platform-btn-secondary"
+              onClick={() => void loadLots(true)}
+              disabled={loading || refreshing}
+            >
+              {refreshing ? <Loader2 size={14} className="animate-spin" /> : 'Обновить с FunPay'}
+            </button>
+            <button
+              className="platform-btn-primary"
+              onClick={() => {
+                if (accounts.length === 0) {
+                  toast.error('Сначала добавьте аккаунт');
+                  return;
+                }
+                if (accountFilter !== 'all') {
+                  setCreateAccountID(Number(accountFilter));
+                } else if (!createAccountID && accounts[0]) {
+                  setCreateAccountID(accounts[0].id);
+                }
+                setCreateOpen(true);
+              }}
+            >
+              <Plus size={14} /> Создать лот
+            </button>
+          </div>
         </PageHeader>
 
         <SectionCard>

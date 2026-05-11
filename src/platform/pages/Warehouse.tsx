@@ -5,7 +5,7 @@ import { motion } from 'motion/react';
 import { AlertTriangle, Download, Loader2, Plus, Save, Trash2, Upload, XCircle, SearchX, MousePointerClick, PackageOpen } from '@/shared/streamline/icons';
 import { toast } from 'sonner';
 import { Switch } from '@/app/components/ui/switch';
-import { accountsApi, ApiAccount, ApiWarehouseItem, ApiWarehouseLot, warehouseApi } from '@/lib/api';
+import { accountsApi, ApiAccount, ApiWarehouseItem, ApiWarehouseLot, lotsApi, warehouseApi } from '@/lib/api';
 import {
   DataTableWrap,
   EmptyState,
@@ -77,6 +77,15 @@ function getNodeTypeLabel(nodeType?: string) {
   return nodeType || '—';
 }
 
+function getLotAvailableCount(lot?: ApiWarehouseLot | null) {
+  if (!lot) return 0;
+  const stockAvailable = Array.isArray(lot.stock_items)
+    ? lot.stock_items.filter(item => item.status === 'available').length
+    : 0;
+  const lotAmount = typeof lot.amount === 'number' && !Number.isNaN(lot.amount) ? lot.amount : 0;
+  return Math.max(stockAvailable, lotAmount);
+}
+
 export default function Warehouse() {
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [accountFilter, setAccountFilter] = useState<string>('all');
@@ -99,6 +108,7 @@ export default function Warehouse() {
   const [templateDraft, setTemplateDraft] = useState('');
   const [autoDeliveryDraft, setAutoDeliveryDraft] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [deletingLot, setDeletingLot] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -152,6 +162,13 @@ export default function Warehouse() {
       setSelectedLotDetails(normalizeWarehouseLot(row));
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Ошибка загрузки карточки лота';
+      if (message.toLowerCase().includes('лот не найден')) {
+        toast.error('Лот больше не найден на FunPay. Обновляю список.');
+        await loadLots(accountFilter, true);
+        setSelectedLotDetails(null);
+        setDetailsError(null);
+        return;
+      }
       setDetailsError(message);
       setSelectedLotDetails(normalizeWarehouseLot(lot));
     } finally {
@@ -210,7 +227,7 @@ export default function Warehouse() {
   }, [selectedLot]);
 
   const available = useMemo(
-    () => (selectedLot ? selectedLot.stock_items.filter(item => item.status === 'available').length : 0),
+    () => getLotAvailableCount(selectedLot),
     [selectedLot],
   );
 
@@ -262,6 +279,23 @@ export default function Warehouse() {
       toast.error(err instanceof Error ? err.message : 'Ошибка сохранения настроек');
     } finally {
       setSavingSettings(false);
+    }
+  }
+
+  async function removeSelectedLot() {
+    if (!selectedLot) return;
+    if (!window.confirm(`Удалить лот «${selectedLot.title}»?`)) return;
+
+    setDeletingLot(true);
+    try {
+      await lotsApi.delete(selectedLot.funpay_account_id, selectedLot.lot_id);
+      toast.success('Лот удалён');
+      setSelectedLotDetails(null);
+      await loadLots(accountFilter, true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка удаления лота');
+    } finally {
+      setDeletingLot(false);
     }
   }
 
@@ -401,7 +435,7 @@ export default function Warehouse() {
             ) : (
               <div className="grid max-h-[640px] overflow-y-auto">
                 {lots.map(lot => {
-                  const lotAvailable = lot.stock_items.filter(item => item.status === 'available').length;
+                  const lotAvailable = getLotAvailableCount(lot);
                   const isActive = selectedLotId === lot.id;
                   return (
                     <button
@@ -503,6 +537,9 @@ export default function Warehouse() {
                       </button>
                       <button className="platform-btn-secondary" onClick={exportDelivered}>
                         <Download size={14} /> Скачать выданные
+                      </button>
+                      <button className="platform-btn-secondary" onClick={() => void removeSelectedLot()} disabled={deletingLot}>
+                        {deletingLot ? <Loader2 size={14} className="animate-spin" /> : <><Trash2 size={14} /> Удалить лот</>}
                       </button>
                     </div>
                   </ToolbarRow>

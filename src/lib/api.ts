@@ -452,8 +452,12 @@ export type ApiLot = {
 };
 
 export const lotsApi = {
-  listByAccount: (accountId: number | string) =>
-    apiRequest<ApiLot[]>(`/api/accounts/${accountId}/lots`),
+  listByAccount: (accountId: number | string, options?: { refresh?: boolean }) => {
+    const query = new URLSearchParams();
+    if (options?.refresh) query.set('refresh', '1');
+    const suffix = query.toString();
+    return apiRequest<ApiLot[]>(`/api/accounts/${accountId}/lots${suffix ? `?${suffix}` : ''}`);
+  },
   categories: (accountId: number | string) =>
     apiRequest<Array<{
       game_id: number;
