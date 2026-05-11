@@ -93,6 +93,11 @@ export default function LandingPricing() {
           </button>
         </div>
 
+        <div className="pricing-one-order">
+          <span className="pricing-one-order-icon">💡</span>
+          <span>Один пропущенный заказ в среднем стоит <strong>~400 ₽</strong>. Тариф Lite — <strong>149 ₽/мес</strong>. Нужна одна продажа, чтобы сервис окупился. Остальное — чистая прибыль.</span>
+        </div>
+
         <div className="plans">
           {plans.map((plan) => (
             <div key={plan.title} className={`plan ${plan.variant === 'pro' ? 'pro' : ''}`}>

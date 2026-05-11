@@ -5,13 +5,13 @@ export default function LandingCTA() {
     <section className="final">
       <div className="wrap">
         <span className="eyebrow">
-          <span className="dot" /> 7 дней бесплатно, карта не нужна
+          <span className="dot" /> Пока ты читаешь — конкуренты уже автоматизировались
         </span>
-        <h2>Хватит выдавать товары руками</h2>
-        <p>Дай системе делать рутину. Запусти FunPay Cloud за 10 минут и начни управлять магазином — а не обслуживать его.</p>
+        <h2>Твой магазин теряет деньги прямо сейчас</h2>
+        <p>Каждый пропущенный заказ, каждая ночь без поднятий, каждый ручной ответ — это слитая выручка. Запусти FunPay Cloud за 10 минут и останови потери.</p>
         <div className="hero-ctas">
           <Button variant="accent" size="lg" href="/auth/register">
-            Создать аккаунт бесплатно →
+            Запустить бесплатно — 7 дней →
           </Button>
           <Button variant="outline" size="lg" href="#how">
             Смотреть как работает

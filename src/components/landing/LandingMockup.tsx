@@ -3,262 +3,223 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Activity,
+  ArrowRight,
   BarChart3,
   Bot,
   Boxes,
   Cable,
-  CircleDashed,
+  CheckCircle,
+  Filter,
   FolderKanban,
   MessageSquare,
+  Package,
   Send,
   ShoppingCart,
   Sparkles,
-  Tags,
-} from '@/shared/streamline/icons';
+  Tag,
+  Zap,
+} from 'lucide-react';
 
-type MockNodeID = 'message' | 'ai' | 'telegram';
+type NodeID = 'trigger' | 'filter' | 'ai' | 'deliver' | 'notify';
+type Pos = { x: number; y: number };
+type DragState = { id: NodeID; ox: number; oy: number } | null;
 
-type NodePosition = {
-  x: number;
-  y: number;
+const NODE_W = 200;
+const NODE_H = 82;
+
+const DESKTOP_POS: Record<NodeID, Pos> = {
+  trigger:  { x: 20,  y: 60  },
+  filter:   { x: 260, y: 20  },
+  ai:       { x: 260, y: 148 },
+  deliver:  { x: 500, y: 20  },
+  notify:   { x: 500, y: 148 },
 };
 
-type DragState = {
-  id: MockNodeID;
-  offsetX: number;
-  offsetY: number;
-} | null;
-
-const DESKTOP_NODE_WIDTH = 206;
-const DESKTOP_NODE_HEIGHT = 86;
-const COMPACT_NODE_WIDTH = 154;
-const COMPACT_NODE_HEIGHT = 74;
-
-const DESKTOP_POSITIONS: Record<MockNodeID, NodePosition> = {
-  message: { x: 34, y: 78 },
-  ai: { x: 298, y: 66 },
-  telegram: { x: 560, y: 158 },
-};
-
-const SIDEBAR_ITEMS = [
-  { icon: BarChart3, label: 'Главная' },
-  { icon: ShoppingCart, label: 'Заказы' },
-  { icon: MessageSquare, label: 'Чаты', badge: '31' },
-  { icon: Tags, label: 'Лоты' },
-  { icon: Boxes, label: 'Склад' },
+const EDGES: [NodeID, NodeID][] = [
+  ['trigger', 'filter'],
+  ['trigger', 'ai'],
+  ['filter',  'deliver'],
+  ['ai',      'notify'],
 ];
 
-const MANAGEMENT_ITEMS = [
-  { icon: Activity, label: 'Аналитика' },
-  { icon: FolderKanban, label: 'Конструктор', active: true },
-  { icon: CircleDashed, label: 'Статус системы' },
+const NODES: { id: NodeID; title: string; sub: string; color: string; Icon: React.ElementType }[] = [
+  { id: 'trigger',  title: 'Новое сообщение',     sub: 'Событие: chat_message',         color: 'node-blue',   Icon: MessageSquare },
+  { id: 'filter',   title: 'Фильтр по словам',    sub: 'содержит: «беру», «покупаю»',   color: 'node-orange', Icon: Filter },
+  { id: 'ai',       title: 'ИИ-ассистент',         sub: 'Ответить по инструкции',        color: 'node-purple', Icon: Bot },
+  { id: 'deliver',  title: 'Автовыдача товара',    sub: 'Отправить ключ из склада',      color: 'node-green',  Icon: Package },
+  { id: 'notify',   title: 'Telegram-уведомление', sub: 'Уведомить об ИИ-ответе',        color: 'node-teal',   Icon: Send },
 ];
 
-const NODES = [
-  {
-    id: 'message' as const,
-    title: 'Новое сообщение',
-    subtitle: 'chat_message',
-    accent: 'is-blue',
-    icon: MessageSquare,
-  },
-  {
-    id: 'ai' as const,
-    title: 'ИИ-ассистент',
-    subtitle: 'Короткий ответ по инструкции',
-    accent: 'is-purple',
-    icon: Bot,
-  },
-  {
-    id: 'telegram' as const,
-    title: 'Отправить в Telegram',
-    subtitle: 'Уведомить о важном диалоге',
-    accent: 'is-green',
-    icon: Send,
-  },
+const NAV = [
+  { Icon: BarChart3,     label: 'Главная' },
+  { Icon: ShoppingCart,  label: 'Заказы' },
+  { Icon: MessageSquare, label: 'Чаты', badge: '8' },
+  { Icon: Tag,           label: 'Лоты' },
+  { Icon: Boxes,         label: 'Склад' },
 ];
+const NAV2 = [
+  { Icon: Activity,      label: 'Аналитика' },
+  { Icon: FolderKanban,  label: 'Конструктор', active: true },
+  { Icon: Zap,           label: 'Автоматизация' },
+];
+
+function edgePath(from: Pos, to: Pos, nw: number, nh: number) {
+  const x1 = from.x + nw;
+  const y1 = from.y + nh / 2;
+  const x2 = to.x;
+  const y2 = to.y + nh / 2;
+  const cx = (x1 + x2) / 2;
+  return `M ${x1} ${y1} C ${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}`;
+}
 
 export default function LandingMockup() {
-  const [positions, setPositions] = useState<Record<MockNodeID, NodePosition>>(DESKTOP_POSITIONS);
-  const [isCompact, setIsCompact] = useState(false);
-  const [dragState, setDragState] = useState<DragState>(null);
-  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const [positions, setPositions] = useState<Record<NodeID, Pos>>(DESKTOP_POS);
+  const [compact, setCompact] = useState(false);
+  const [drag, setDrag] = useState<DragState>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
 
-  const nodeWidth = isCompact ? COMPACT_NODE_WIDTH : DESKTOP_NODE_WIDTH;
-  const nodeHeight = isCompact ? COMPACT_NODE_HEIGHT : DESKTOP_NODE_HEIGHT;
-
-  const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
-
-  const getCompactPositions = (canvasWidth: number): Record<MockNodeID, NodePosition> => {
-    const center = (canvasWidth - nodeWidth) / 2;
-    return {
-      message: { x: center - 34, y: 26 },
-      ai: { x: center, y: 102 },
-      telegram: { x: center + 34, y: 178 },
-    };
-  };
-
-  const fitToCanvas = (source: Record<MockNodeID, NodePosition>, width: number, height: number) => {
-    const next = { ...source };
-    (Object.keys(next) as MockNodeID[]).forEach((id) => {
-      next[id] = {
-        x: clamp(next[id].x, 12, width - nodeWidth - 12),
-        y: clamp(next[id].y, 12, height - nodeHeight - 12),
-      };
-    });
-    return next;
-  };
+  const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const media = window.matchMedia('(max-width: 768px)');
-    const syncMode = () => setIsCompact(media.matches);
-    syncMode();
-    media.addEventListener('change', syncMode);
-    return () => media.removeEventListener('change', syncMode);
+    const mq = window.matchMedia('(max-width: 680px)');
+    const sync = () => setCompact(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
   }, []);
 
   useEffect(() => {
-    const syncBounds = () => {
-      if (!canvasRef.current) return;
-      const rect = canvasRef.current.getBoundingClientRect();
-      setPositions((current) => {
-        const base = isCompact ? getCompactPositions(rect.width) : current;
-        return fitToCanvas(base, rect.width, rect.height);
+    if (compact || !canvasRef.current) return;
+    const { width, height } = canvasRef.current.getBoundingClientRect();
+    setPositions((p) => {
+      const next = { ...p } as Record<NodeID, Pos>;
+      (Object.keys(next) as NodeID[]).forEach((id) => {
+        next[id] = {
+          x: clamp(next[id].x, 8, width - NODE_W - 8),
+          y: clamp(next[id].y, 8, height - NODE_H - 8),
+        };
       });
-    };
-
-    syncBounds();
-    window.addEventListener('resize', syncBounds);
-    return () => window.removeEventListener('resize', syncBounds);
-  }, [isCompact, nodeWidth, nodeHeight]);
+      return next;
+    });
+  }, [compact]);
 
   useEffect(() => {
-    if (!dragState) return;
-
-    const onPointerMove = (event: PointerEvent) => {
+    if (!drag) return;
+    const move = (e: PointerEvent) => {
       if (!canvasRef.current) return;
-      const rect = canvasRef.current.getBoundingClientRect();
-      const nextX = event.clientX - rect.left - dragState.offsetX;
-      const nextY = event.clientY - rect.top - dragState.offsetY;
-
-      const clampedX = clamp(nextX, 12, rect.width - nodeWidth - 12);
-      const clampedY = clamp(nextY, 12, rect.height - nodeHeight - 12);
-
-      setPositions((current) => ({
-        ...current,
-        [dragState.id]: { x: clampedX, y: clampedY },
+      const r = canvasRef.current.getBoundingClientRect();
+      setPositions((p) => ({
+        ...p,
+        [drag.id]: {
+          x: clamp(e.clientX - r.left - drag.ox, 8, r.width - NODE_W - 8),
+          y: clamp(e.clientY - r.top - drag.oy, 8, r.height - NODE_H - 8),
+        },
       }));
     };
-
-    const onPointerUp = () => setDragState(null);
-
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp, { once: true });
-
-    return () => {
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
-    };
-  }, [dragState, nodeHeight, nodeWidth]);
-
-  const handlePointerDown = (id: MockNodeID, event: React.PointerEvent<HTMLDivElement>) => {
-    if (isCompact) return;
-    if (event.button !== 0) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    setDragState({
-      id,
-      offsetX: event.clientX - rect.left,
-      offsetY: event.clientY - rect.top,
-    });
-  };
-
-  const messageCenterX = positions.message.x + nodeWidth;
-  const messageCenterY = positions.message.y + nodeHeight / 2;
-  const aiCenterX = positions.ai.x;
-  const aiCenterY = positions.ai.y + nodeHeight / 2;
-
-  const aiOutX = positions.ai.x + nodeWidth;
-  const aiOutY = positions.ai.y + nodeHeight / 2;
-  const tgInX = positions.telegram.x;
-  const tgInY = positions.telegram.y + nodeHeight / 2;
+    const up = () => setDrag(null);
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up, { once: true });
+    return () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+  }, [drag]);
 
   return (
     <div className="wrap">
       <div className="mock-frame">
+        {/* browser chrome */}
         <div className="mock-top">
-          <div className="dots">
-            <i />
-            <i />
-            <i />
-          </div>
-          <div className="url mono">funpay.cloud - самый быстрый облачный сервис</div>
+          <div className="dots"><i /><i /><i /></div>
+          <div className="url mono">funpay.cloud/constructor</div>
           <div className="mono mock-version">v2.4.1</div>
         </div>
 
         <div className="mock-body">
+          {/* sidebar */}
           <aside className="mock-side">
             <div className="side-title">Операции</div>
-            {SIDEBAR_ITEMS.map((item) => (
+            {NAV.map((item) => (
               <div key={item.label} className="side-item">
-                <item.icon size={14} className="ico" />
+                <item.Icon size={14} className="ico" />
                 {item.label}
-                {item.badge ? <span className="badge">{item.badge}</span> : null}
+                {item.badge && <span className="badge">{item.badge}</span>}
               </div>
             ))}
             <div className="side-title side-title-gap">Управление</div>
-            {MANAGEMENT_ITEMS.map((item) => (
-              <div key={item.label} className={`side-item ${item.active ? 'active' : ''}`}>
-                <item.icon size={14} className="ico" />
+            {NAV2.map((item) => (
+              <div key={item.label} className={`side-item${item.active ? ' active' : ''}`}>
+                <item.Icon size={14} className="ico" />
                 {item.label}
               </div>
             ))}
           </aside>
 
+          {/* main */}
           <div className="mock-main constructor-main">
             <div className="mock-head">
               <h3>Конструктор сценариев</h3>
-              <span className="period mono">режим демо</span>
+              <span className="period mono">5 узлов · 4 связи</span>
             </div>
 
-            <div className="mock-constructor-canvas" ref={canvasRef}>
-              <svg className="mock-constructor-lines" viewBox="0 0 1000 420" preserveAspectRatio="none">
-                <path
-                  d={`M ${messageCenterX} ${messageCenterY} C ${messageCenterX + 70} ${messageCenterY}, ${aiCenterX - 70} ${aiCenterY}, ${aiCenterX} ${aiCenterY}`}
-                />
-                <path
-                  d={`M ${aiOutX} ${aiOutY} C ${aiOutX + 70} ${aiOutY}, ${tgInX - 70} ${tgInY}, ${tgInX} ${tgInY}`}
-                />
-              </svg>
-
-              {NODES.map((node) => {
-                const Icon = node.icon;
-                const pos = positions[node.id];
-                return (
-                  <div
-                    key={node.id}
-                    className={`mock-flow-node ${node.accent} ${isCompact ? 'is-compact' : ''}`}
-                    style={{ left: pos.x, top: pos.y, width: nodeWidth, minHeight: nodeHeight }}
-                    onPointerDown={(event) => handlePointerDown(node.id, event)}
-                  >
-                    <div className="mock-flow-node-head">
-                      <Icon size={14} />
-                      <span>{node.title}</span>
+            {/* desktop: draggable canvas */}
+            {!compact && (
+              <div className="mock-constructor-canvas" ref={canvasRef}>
+                <svg className="mock-constructor-lines" viewBox="0 0 1000 360" preserveAspectRatio="none">
+                  {EDGES.map(([a, b]) => (
+                    <path key={`${a}-${b}`} d={edgePath(positions[a], positions[b], NODE_W, NODE_H)} />
+                  ))}
+                </svg>
+                {NODES.map((n) => {
+                  const pos = positions[n.id];
+                  return (
+                    <div
+                      key={n.id}
+                      className={`mock-flow-node ${n.color}`}
+                      style={{ left: pos.x, top: pos.y, width: NODE_W, minHeight: NODE_H }}
+                      onPointerDown={(e) => {
+                        if (e.button !== 0) return;
+                        const r = e.currentTarget.getBoundingClientRect();
+                        setDrag({ id: n.id, ox: e.clientX - r.left, oy: e.clientY - r.top });
+                        e.currentTarget.setPointerCapture(e.pointerId);
+                      }}
+                    >
+                      <div className="mock-flow-node-head">
+                        <n.Icon size={13} />
+                        <span>{n.title}</span>
+                      </div>
+                      <div className="mock-flow-node-sub">{n.sub}</div>
                     </div>
-                    <div className="mock-flow-node-sub">{node.subtitle}</div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+                <div className="mock-constructor-tip">
+                  <Sparkles size={12} />
+                  Перетаскивайте узлы, чтобы почувствовать механику
+                </div>
+                <div className="mock-constructor-brand">
+                  <Cable size={11} /> FLOW
+                </div>
+              </div>
+            )}
 
-              <div className="mock-constructor-tip">
-                <Sparkles size={13} />
-                {isCompact ? 'Демо конструктора в режиме просмотра' : 'Перетаскивайте узлы, чтобы почувствовать механику конструктора'}
+            {/* mobile: static vertical flow */}
+            {compact && (
+              <div className="mock-flow-mobile">
+                {NODES.map((n, i) => (
+                  <React.Fragment key={n.id}>
+                    <div className={`mfn ${n.color}`}>
+                      <div className="mfn-head">
+                        <n.Icon size={13} />
+                        <span>{n.title}</span>
+                      </div>
+                      <div className="mfn-sub">{n.sub}</div>
+                    </div>
+                    {i < NODES.length - 1 && (
+                      <div className="mock-flow-mobile-arrow">
+                        <ArrowRight size={12} />
+                      </div>
+                    )}
+                  </React.Fragment>
+                ))}
               </div>
-              <div className="mock-constructor-brand">
-                <Cable size={12} />
-                Flow
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
