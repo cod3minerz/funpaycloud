@@ -441,10 +441,14 @@ export type ApiLot = {
   category_name: string;
   category_id?: number;
   node_id?: number;
+  node_type?: 'lots' | 'chips' | string;
   image_url?: string;
+  external_url?: string;
+  edit_url?: string;
   amount?: number;
   price: number;
   is_active: boolean;
+  params?: ApiLotParam[];
 };
 
 export const lotsApi = {
@@ -1125,22 +1129,45 @@ export type ApiWarehouseItem = {
   delivered_at?: string;
 };
 
+export type ApiLotParam = {
+  label: string;
+  value: string;
+};
+
 export type ApiWarehouseLot = {
   id: number;
   funpay_account_id: number;
   account_username: string;
   lot_id: string;
   title: string;
+  description?: string;
+  currency?: string;
+  category_name?: string;
+  category_id?: number;
+  node_id?: number;
+  node_type?: 'lots' | 'chips' | string;
+  image_url?: string;
+  external_url?: string;
+  edit_url?: string;
+  params?: ApiLotParam[];
+  amount?: number;
+  price?: number;
+  is_active?: boolean;
   auto_delivery_enabled: boolean;
   auto_delivery_template: string;
   stock_items: ApiWarehouseItem[];
 };
 
 export const warehouseApi = {
-  list: (account_id?: number | string) => {
-    const query = account_id !== undefined ? `?account_id=${account_id}` : '';
-    return apiRequest<ApiWarehouseLot[]>(`/api/warehouse/lots${query}`);
+  list: (account_id?: number | string, options?: { refresh?: boolean }) => {
+    const query = new URLSearchParams();
+    if (account_id !== undefined) query.set('account_id', String(account_id));
+    if (options?.refresh) query.set('refresh', '1');
+    const suffix = query.toString();
+    return apiRequest<ApiWarehouseLot[]>(`/api/warehouse/lots${suffix ? `?${suffix}` : ''}`);
   },
+  details: (accountId: number | string, lotId: number | string) =>
+    apiRequest<ApiWarehouseLot>(`/api/accounts/${accountId}/lots/${lotId}`),
   addItems: (warehouseLotID: number | string, items: string[]) =>
     apiRequest(`/api/warehouse/lots/${warehouseLotID}/items`, {
       method: 'POST',

@@ -32,13 +32,63 @@ function csvEscape(value: string | number) {
   return stringified;
 }
 
+function normalizeWarehouseLot(row: ApiWarehouseLot): ApiWarehouseLot {
+  return {
+    ...row,
+    stock_items: Array.isArray(row.stock_items) ? row.stock_items : [],
+    auto_delivery_template: row.auto_delivery_template || '',
+    account_username: row.account_username || `ID ${row.funpay_account_id}`,
+    description: row.description || '',
+    currency: row.currency || 'RUB',
+    category_name: row.category_name || '',
+    node_type: row.node_type || 'lots',
+    image_url: row.image_url || '',
+    external_url: row.external_url || '',
+    edit_url: row.edit_url || '',
+    params: Array.isArray(row.params) ? row.params : [],
+  };
+}
+
+function formatMoney(price?: number, currency?: string) {
+  if (typeof price !== 'number' || Number.isNaN(price)) return '—';
+
+  const units: Record<string, string> = {
+    RUB: '₽',
+    USD: '$',
+    EUR: '€',
+    USDT: 'USDT',
+  };
+  const unit = units[currency || 'RUB'] || currency || '';
+
+  return `${new Intl.NumberFormat('ru-RU', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(price)}${unit ? ` ${unit}` : ''}`;
+}
+
+function formatAmount(amount?: number) {
+  if (typeof amount !== 'number' || Number.isNaN(amount)) return '—';
+  return `${new Intl.NumberFormat('ru-RU').format(amount)} шт.`;
+}
+
+function getNodeTypeLabel(nodeType?: string) {
+  if (nodeType === 'chips') return 'Игровая валюта';
+  if (nodeType === 'lots') return 'Обычный лот';
+  return nodeType || '—';
+}
+
 export default function Warehouse() {
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [accountFilter, setAccountFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [lots, setLots] = useState<ApiWarehouseLot[]>([]);
   const [selectedLotId, setSelectedLotId] = useState<number | null>(null);
+  const [selectedLotDetails, setSelectedLotDetails] = useState<ApiWarehouseLot | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
+  const [detailReloadKey, setDetailReloadKey] = useState(0);
 
   const [addTab, setAddTab] = useState<'single' | 'list' | 'file'>('single');
   const [singleInput, setSingleInput] = useState('');
@@ -63,24 +113,20 @@ export default function Warehouse() {
     }
   }
 
-  async function loadLots(selectedAccount?: string) {
+  async function loadLots(selectedAccount?: string, refresh = false) {
     setLoading(true);
+    setRefreshing(refresh);
     setLoadError(null);
     try {
       const accountID = selectedAccount && selectedAccount !== 'all' ? Number(selectedAccount) : undefined;
-      const rows = await warehouseApi.list(accountID);
-      const safe = Array.isArray(rows)
-        ? rows.map(row => ({
-            ...row,
-            stock_items: Array.isArray(row.stock_items) ? row.stock_items : [],
-            auto_delivery_template: row.auto_delivery_template || '',
-            account_username: row.account_username || `ID ${row.funpay_account_id}`,
-          }))
-        : [];
+      const rows = await warehouseApi.list(accountID, { refresh });
+      const safe = Array.isArray(rows) ? rows.map(normalizeWarehouseLot) : [];
       setLots(safe);
 
       if (safe.length === 0) {
         setSelectedLotId(null);
+        setSelectedLotDetails(null);
+        setDetailsError(null);
         return;
       }
 
@@ -91,8 +137,25 @@ export default function Warehouse() {
       toast.error(message);
       setLots([]);
       setSelectedLotId(null);
+      setSelectedLotDetails(null);
     } finally {
       setLoading(false);
+      setRefreshing(false);
+    }
+  }
+
+  async function loadLotDetails(lot: ApiWarehouseLot) {
+    setDetailsLoading(true);
+    setDetailsError(null);
+    try {
+      const row = await warehouseApi.details(lot.funpay_account_id, lot.lot_id);
+      setSelectedLotDetails(normalizeWarehouseLot(row));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Ошибка загрузки карточки лота';
+      setDetailsError(message);
+      setSelectedLotDetails(normalizeWarehouseLot(lot));
+    } finally {
+      setDetailsLoading(false);
     }
   }
 
@@ -101,13 +164,40 @@ export default function Warehouse() {
   }, []);
 
   useEffect(() => {
-    loadLots(accountFilter);
+    void loadLots(accountFilter, accountFilter !== 'all');
   }, [accountFilter, reloadKey]);
 
-  const selectedLot = useMemo(
+  const selectedLotSummary = useMemo(
     () => lots.find(lot => lot.id === selectedLotId) ?? null,
     [lots, selectedLotId],
   );
+
+  useEffect(() => {
+    if (!selectedLotSummary) {
+      setSelectedLotDetails(null);
+      setDetailsError(null);
+      return;
+    }
+    void loadLotDetails(selectedLotSummary);
+  }, [selectedLotSummary?.id, detailReloadKey]);
+
+  const selectedLot = useMemo(() => {
+    if (!selectedLotSummary) return null;
+    if (
+      !selectedLotDetails ||
+      selectedLotDetails.id !== selectedLotSummary.id ||
+      selectedLotDetails.funpay_account_id !== selectedLotSummary.funpay_account_id
+    ) {
+      return selectedLotSummary;
+    }
+    return normalizeWarehouseLot({
+      ...selectedLotSummary,
+      ...selectedLotDetails,
+      stock_items: Array.isArray(selectedLotDetails.stock_items)
+        ? selectedLotDetails.stock_items
+        : selectedLotSummary.stock_items,
+    });
+  }, [selectedLotSummary, selectedLotDetails]);
 
   useEffect(() => {
     if (!selectedLot) {
@@ -148,6 +238,7 @@ export default function Warehouse() {
       setSingleInput('');
       setListInput('');
       await loadLots(accountFilter);
+      setDetailReloadKey(prev => prev + 1);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Ошибка пополнения склада');
     } finally {
@@ -166,6 +257,7 @@ export default function Warehouse() {
       });
       toast.success('Настройки авто-выдачи сохранены');
       await loadLots(accountFilter);
+      setDetailReloadKey(prev => prev + 1);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Ошибка сохранения настроек');
     } finally {
@@ -179,6 +271,7 @@ export default function Warehouse() {
       await warehouseApi.deleteStockItem(selectedLot.funpay_account_id, selectedLot.lot_id, index);
       toast.success('Позиция удалена');
       await loadLots(accountFilter);
+      setDetailReloadKey(prev => prev + 1);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Ошибка удаления позиции');
     }
@@ -257,6 +350,13 @@ export default function Warehouse() {
                 <option key={acc.id} value={acc.id}>{acc.username || `ID ${acc.id}`}</option>
               ))}
             </select>
+            <button
+              className="platform-btn-secondary"
+              onClick={() => void loadLots(accountFilter, true)}
+              disabled={loading || refreshing}
+            >
+              {refreshing ? <Loader2 size={14} className="animate-spin" /> : 'Обновить с FunPay'}
+            </button>
           </ToolbarRow>
         </SectionCard>
 
@@ -310,7 +410,10 @@ export default function Warehouse() {
                       onClick={() => setSelectedLotId(lot.id)}
                     >
                       <div className="text-[13px] font-semibold">{lot.title}</div>
-                      <div className="mt-1 text-[11px] text-[var(--pf-text-dim)]">{lot.account_username}</div>
+                      <div className="mt-1 text-[11px] text-[var(--pf-text-dim)]">
+                        {lot.account_username}
+                        {lot.category_name ? ` · ${lot.category_name}` : ''}
+                      </div>
                       <div className="mt-1 inline-flex items-center gap-2">
                         <span className={`platform-chip !min-h-[20px] !text-[10px] ${
                           lotAvailable < 1
@@ -321,6 +424,7 @@ export default function Warehouse() {
                         }`}>
                           {lotAvailable} доступно
                         </span>
+                        {lot.is_active === false && <span className="platform-chip !min-h-[20px] !text-[10px] !text-[var(--pf-danger)]">выкл</span>}
                         {lot.auto_delivery_enabled && <span className="platform-chip !min-h-[20px] !text-[10px]">авто</span>}
                       </div>
                     </button>
@@ -361,11 +465,115 @@ export default function Warehouse() {
                         Аккаунт: <strong>{selectedLot.account_username}</strong> · Доступно:{' '}
                         <strong className="text-[var(--pf-success)]">{available}</strong> · Выдано: <strong>{delivered}</strong>
                       </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        {selectedLot.category_name && <span className="platform-chip">{selectedLot.category_name}</span>}
+                        <span className="platform-chip">{getNodeTypeLabel(selectedLot.node_type)}</span>
+                        <span className={selectedLot.is_active === false ? 'badge-inactive' : 'badge-active'}>
+                          {selectedLot.is_active === false ? 'Неактивен' : 'Активен'}
+                        </span>
+                      </div>
                     </div>
-                    <button className="platform-btn-secondary" onClick={exportDelivered}>
-                      <Download size={14} /> Скачать выданные
-                    </button>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      {selectedLot.external_url && (
+                        <a
+                          href={selectedLot.external_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="platform-btn-secondary"
+                        >
+                          Открыть на FunPay
+                        </a>
+                      )}
+                      {selectedLot.edit_url && (
+                        <a
+                          href={selectedLot.edit_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="platform-btn-secondary"
+                        >
+                          Редактировать
+                        </a>
+                      )}
+                      <button
+                        className="platform-btn-secondary"
+                        onClick={() => setDetailReloadKey(prev => prev + 1)}
+                        disabled={detailsLoading}
+                      >
+                        {detailsLoading ? <Loader2 size={14} className="animate-spin" /> : 'Обновить карточку'}
+                      </button>
+                      <button className="platform-btn-secondary" onClick={exportDelivered}>
+                        <Download size={14} /> Скачать выданные
+                      </button>
+                    </div>
                   </ToolbarRow>
+                  {detailsLoading && (
+                    <div className="mt-3 text-[12px] text-[var(--pf-text-muted)]">
+                      Загружаем актуальные данные предложения с FunPay...
+                    </div>
+                  )}
+                  {detailsError && (
+                    <div className="platform-alert-warning mt-3 rounded-[10px] px-3 py-2 text-[13px] text-[var(--pf-text)]">
+                      {detailsError}
+                    </div>
+                  )}
+                </SectionCard>
+
+                <SectionCard>
+                  <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+                    <div className="grid gap-4">
+                      <div>
+                        <h3 className="m-0 text-[15px] font-bold">Карточка лота</h3>
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                          <div className="rounded-[12px] border border-[var(--pf-border)] bg-[var(--pf-surface-2)] p-3">
+                            <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--pf-text-dim)]">Цена</div>
+                            <div className="mt-1 text-[16px] font-semibold">{formatMoney(selectedLot.price, selectedLot.currency)}</div>
+                          </div>
+                          <div className="rounded-[12px] border border-[var(--pf-border)] bg-[var(--pf-surface-2)] p-3">
+                            <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--pf-text-dim)]">Наличие в лоте</div>
+                            <div className="mt-1 text-[16px] font-semibold">{formatAmount(selectedLot.amount)}</div>
+                          </div>
+                          <div className="rounded-[12px] border border-[var(--pf-border)] bg-[var(--pf-surface-2)] p-3">
+                            <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--pf-text-dim)]">Node</div>
+                            <div className="mt-1 text-[16px] font-semibold">{selectedLot.node_id || '—'}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 lg:grid-cols-2">
+                        <div className="rounded-[12px] border border-[var(--pf-border)] bg-[var(--pf-surface-2)] p-3">
+                          <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--pf-text-dim)]">Краткое описание</div>
+                          <div className="mt-2 text-[13px] leading-6">{selectedLot.title || '—'}</div>
+                        </div>
+                        <div className="rounded-[12px] border border-[var(--pf-border)] bg-[var(--pf-surface-2)] p-3">
+                          <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--pf-text-dim)]">Подробное описание</div>
+                          <div className="mt-2 whitespace-pre-wrap text-[13px] leading-6 text-[var(--pf-text)]">
+                            {selectedLot.description || 'Описание пока не заполнено или FunPay его не вернул.'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-[12px] border border-[var(--pf-border)] bg-[var(--pf-surface-2)] p-3">
+                      <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--pf-text-dim)]">Параметры предложения</div>
+                      {selectedLot.params && selectedLot.params.length > 0 ? (
+                        <div className="mt-3 grid gap-2">
+                          {selectedLot.params.map(param => (
+                            <div
+                              key={`${param.label}-${param.value}`}
+                              className="flex items-start justify-between gap-3 rounded-[10px] border border-[var(--pf-border)] bg-[var(--pf-surface)] px-3 py-2"
+                            >
+                              <span className="text-[12px] text-[var(--pf-text-muted)]">{param.label}</span>
+                              <strong className="text-right text-[13px]">{param.value}</strong>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="mt-3 text-[13px] text-[var(--pf-text-muted)]">
+                          Дополнительные параметры для этого лота не найдены.
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </SectionCard>
 
                 {available === 0 && (
