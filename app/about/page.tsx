@@ -34,6 +34,10 @@ export default function AboutPage() {
               <td><strong>ОГРНИП</strong></td>
               <td>326237500203594</td>
             </tr>
+            <tr>
+              <td><strong>Место нахождения</strong></td>
+              <td>г. Краснодар, Краснодарский край</td>
+            </tr>
           </tbody>
         </table>
       </section>
