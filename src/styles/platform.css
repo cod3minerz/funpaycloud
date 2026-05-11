@@ -17,11 +17,11 @@
   --pf-text-dim: #6B7280;
   --pf-text-soft: #9CA3AF;
 
-  --pf-accent: #6366F1;
-  --pf-accent-2: #4F46E5;
-  --pf-accent-hover: #4F46E5;
-  --pf-accent-soft: #E0E7FF;
-  --pf-accent-soft-strong: rgba(99, 102, 241, 0.28);
+  --pf-accent: #465fff;
+  --pf-accent-2: #3a52e0;
+  --pf-accent-hover: #3a52e0;
+  --pf-accent-soft: #e8eaff;
+  --pf-accent-soft-strong: rgba(70, 95, 255, 0.28);
 
   --pf-success: #10B981;
   --pf-warning: #FB923C;
@@ -87,11 +87,11 @@ body[data-platform-theme='dark'] {
   --pf-text-dim: #A8B3C4;
   --pf-text-soft: #8D97A8;
 
-  --pf-accent: #818CF8;
-  --pf-accent-2: #6366F1;
-  --pf-accent-hover: #A5B4FC;
-  --pf-accent-soft: rgba(99, 102, 241, 0.22);
-  --pf-accent-soft-strong: rgba(129, 140, 248, 0.42);
+  --pf-accent: #7a90ff;
+  --pf-accent-2: #465fff;
+  --pf-accent-hover: #a0aeff;
+  --pf-accent-soft: rgba(70, 95, 255, 0.22);
+  --pf-accent-soft-strong: rgba(122, 144, 255, 0.42);
 
   --pf-success: #2BC17E;
   --pf-warning: #F59E0B;
@@ -1915,7 +1915,7 @@ body[data-platform-theme='dark'] .platform-nav-item.active {
 .platform-avatar-tone-1 { background: #10b981; }
 .platform-avatar-tone-2 { background: #f59e0b; }
 .platform-avatar-tone-3 { background: #ef4444; }
-.platform-avatar-tone-4 { background: #8b5cf6; }
+.platform-avatar-tone-4 { background: #465fff; }
 .platform-avatar-tone-5 { background: #06b6d4; }
 .platform-avatar-tone-6 { background: #84cc16; }
 .platform-avatar-tone-7 { background: #f97316; }
@@ -2243,7 +2243,7 @@ body[data-platform-theme='dark'] .platform-proxy-card {
 .platform-ai-chat-user-bubble,
 .platform-ai-send-btn,
 .platform-ai-save-btn {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #465fff, #3a52e0);
 }
 
 .platform-ai-typing-dot:nth-child(1) { animation-delay: 0s; }
@@ -2277,7 +2277,7 @@ body[data-platform-theme='dark'] .platform-proxy-card {
 }
 
 .platform-ai-progress.normal::-webkit-progress-value {
-  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  background: linear-gradient(90deg, #465fff, #3a52e0);
   border-radius: 999px;
 }
 
@@ -2287,7 +2287,7 @@ body[data-platform-theme='dark'] .platform-proxy-card {
 }
 
 .platform-ai-progress.normal::-moz-progress-bar {
-  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  background: linear-gradient(90deg, #465fff, #3a52e0);
   border-radius: 999px;
 }
 

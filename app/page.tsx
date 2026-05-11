@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
+import LandingActivityMap from '@/components/landing/LandingActivityMap';
+import LandingCalculator from '@/components/landing/LandingCalculator';
 import LandingCTA from '@/components/landing/LandingCTA';
 import LandingComparison from '@/components/landing/LandingComparison';
+import LandingEncryption from '@/components/landing/LandingEncryption';
 import LandingFAQ from '@/components/landing/LandingFAQ';
 import LandingFeatures from '@/components/landing/LandingFeatures';
 import LandingFooter from '@/components/landing/LandingFooter';
@@ -8,9 +11,9 @@ import LandingHero from '@/components/landing/LandingHero';
 import LandingHowItWorks from '@/components/landing/LandingHowItWorks';
 import LandingMockup from '@/components/landing/LandingMockup';
 import LandingNav from '@/components/landing/LandingNav';
+import LandingNightStory from '@/components/landing/LandingNightStory';
 import LandingPricing from '@/components/landing/LandingPricing';
 import LandingProblem from '@/components/landing/LandingProblem';
-import LandingSocial from '@/components/landing/LandingSocial';
 import LandingUseCases from '@/components/landing/LandingUseCases';
 import SmoothScroll from '@/components/landing/SmoothScroll';
 
@@ -72,13 +75,16 @@ export default function HomePage() {
       />
       <LandingNav />
       <LandingHero />
-      <LandingMockup />
+      <LandingNightStory />
+      <LandingActivityMap />
       <LandingProblem />
+      <LandingMockup />
       <LandingFeatures />
       <LandingComparison />
       <LandingUseCases />
+      <LandingCalculator />
       <LandingHowItWorks />
-      <LandingSocial />
+      <LandingEncryption />
       <LandingPricing />
       <LandingFAQ />
       <LandingCTA />

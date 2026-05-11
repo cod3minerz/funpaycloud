@@ -86,8 +86,8 @@ export default function LandingNav({ homeAnchors = false }: LandingNavProps) {
           <Image
             src="/branding/logo_full_new.svg"
             alt="FunPay Cloud"
-            width={1223}
-            height={206}
+            width={479}
+            height={61}
             priority
             className="landing-logo-full"
           />
