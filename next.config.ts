@@ -109,9 +109,23 @@ const config: NextConfig = {
   turbopack: {
     resolveAlias: {
       '@': path.resolve(__dirname, 'src'),
+      '@iconify/react': path.resolve(__dirname, 'src/shims/iconify-react.tsx'),
+      'simplebar-react': path.resolve(__dirname, 'src/shims/simplebar-react.tsx'),
+      'simplebar-react/dist/simplebar.min.css': path.resolve(__dirname, 'src/shims/simplebar-react.css'),
+      'tailwind-sidebar': path.resolve(__dirname, 'src/shims/tailwind-sidebar.tsx'),
+      'tailwind-sidebar/styles.css': path.resolve(__dirname, 'src/shims/tailwind-sidebar.css'),
     },
   },
   webpack: (webpackConfig, { dev, isServer }) => {
+    webpackConfig.resolve = webpackConfig.resolve || {};
+    webpackConfig.resolve.alias = {
+      ...(webpackConfig.resolve.alias || {}),
+      '@iconify/react': path.resolve(__dirname, 'src/shims/iconify-react.tsx'),
+      'simplebar-react': path.resolve(__dirname, 'src/shims/simplebar-react.tsx'),
+      'simplebar-react/dist/simplebar.min.css': path.resolve(__dirname, 'src/shims/simplebar-react.css'),
+      'tailwind-sidebar': path.resolve(__dirname, 'src/shims/tailwind-sidebar.tsx'),
+      'tailwind-sidebar/styles.css': path.resolve(__dirname, 'src/shims/tailwind-sidebar.css'),
+    };
     if (!dev && !isServer && enableObfuscation) {
       webpackConfig.plugins.push(
         new WebpackObfuscator(

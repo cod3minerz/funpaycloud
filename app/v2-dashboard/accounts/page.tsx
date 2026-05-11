@@ -17,7 +17,7 @@ import {
   TableRow,
 } from '@/components/tailwind-admin/ui/table';
 import { Badge } from '@/components/tailwind-admin/ui/badge';
-import { Icon } from '@iconify/react';
+import { Icon } from '@/shims/iconify-react';
 
 // ✅ Захардкоженные данные (потом подключим API)
 const stats = {

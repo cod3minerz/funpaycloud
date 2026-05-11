@@ -13,6 +13,28 @@ function Calendar({
   showOutsideDays = true,
   ...props
 }: React.ComponentProps<typeof DayPicker>) {
+  const components = {
+    IconLeft: ({ className, ...iconProps }: React.ComponentProps<"svg">) => (
+      <ChevronLeft className={cn("size-4", className)} {...iconProps} />
+    ),
+    IconRight: ({ className, ...iconProps }: React.ComponentProps<"svg">) => (
+      <ChevronRight className={cn("size-4", className)} {...iconProps} />
+    ),
+    Chevron: ({
+      className,
+      orientation,
+      ...iconProps
+    }: React.ComponentProps<"svg"> & { orientation?: "left" | "right" }) => {
+      if (orientation === "left") {
+        return <ChevronLeft className={cn("size-4", className)} {...iconProps} />;
+      }
+      if (orientation === "right") {
+        return <ChevronRight className={cn("size-4", className)} {...iconProps} />;
+      }
+      return null;
+    },
+  } as unknown as React.ComponentProps<typeof DayPicker>["components"];
+
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
@@ -59,17 +81,7 @@ function Calendar({
         day_hidden: "invisible",
         ...classNames,
       }}
-      components={{
-        Chevron: ({ className, orientation, ...props }) => {
-          if (orientation === "left") {
-            return <ChevronLeft className={cn("size-4", className)} {...props} />;
-          }
-          if (orientation === "right") {
-            return <ChevronRight className={cn("size-4", className)} {...props} />;
-          }
-          return null;
-        },
-      }}
+      components={components}
       {...props}
     />
   );

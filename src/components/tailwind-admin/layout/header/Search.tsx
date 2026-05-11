@@ -1,9 +1,9 @@
 'use client'
 import { useState, useMemo } from 'react'
-import { Icon } from '@iconify/react'
+import { Icon } from '@/shims/iconify-react'
 import SidebarContent, { MenuItem, ChildItem } from '../sidebar/sidebaritems'
 
-import SimpleBar from 'simplebar-react'
+import SimpleBar from '@/shims/simplebar-react'
 import { Input } from '@/components/tailwind-admin/ui/input'
 import Link from 'next/link'
 

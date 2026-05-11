@@ -2,9 +2,9 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Icon } from '@iconify/react'
+import { Icon } from '@/shims/iconify-react'
 import * as profileData from './data'
-import SimpleBar from 'simplebar-react'
+import SimpleBar from '@/shims/simplebar-react'
 import { Button } from '@/components/tailwind-admin/ui/button'
 import {
   DropdownMenu,

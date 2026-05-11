@@ -1,10 +1,10 @@
 'use client'
 
-import { Icon } from '@iconify/react'
+import { Icon } from '@/shims/iconify-react'
 import Link from 'next/link'
 import * as MessagesData from './data'
-import SimpleBar from 'simplebar-react'
-import 'simplebar-react/dist/simplebar.min.css'
+import SimpleBar from '@/shims/simplebar-react'
+import '@/shims/simplebar-react.css'
 import {
   DropdownMenu,
   DropdownMenuTrigger,

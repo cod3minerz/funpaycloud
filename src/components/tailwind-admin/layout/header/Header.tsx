@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
-import { Icon } from "@iconify/react";
+import { Icon } from "@/shims/iconify-react";
 import Profile from "./Profile";
 import Notifications from "./Notifications";
 import SidebarLayout from "../sidebar/Sidebar";

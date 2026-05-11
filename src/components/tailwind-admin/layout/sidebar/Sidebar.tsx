@@ -3,8 +3,8 @@ import Image from 'next/image'
 import { useTheme } from 'next-themes'
 import { usePathname } from 'next/navigation'
 import SidebarContent from './sidebaritems'
-import SimpleBar from 'simplebar-react'
-import { Icon } from '@iconify/react'
+import SimpleBar from '@/shims/simplebar-react'
+import { Icon } from '@/shims/iconify-react'
 import FullLogo from '../shared/logo/FullLogo'
 import { Button } from '@/components/tailwind-admin/ui/button'
 import {
@@ -13,8 +13,8 @@ import {
   AMMenuItem,
   AMSidebar,
   AMSubmenu,
-} from 'tailwind-sidebar'
-import 'tailwind-sidebar/styles.css'
+} from '@/shims/tailwind-sidebar'
+import '@/shims/tailwind-sidebar.css'
 
 interface SidebarItemType {
   heading?: string

@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/tailwind-admin/ui/card';
 import { Button } from '@/components/tailwind-admin/ui/button';
-import { Icon } from '@iconify/react';
+import { Icon } from '@/shims/iconify-react';
 
 export default function DashboardV2() {
   return (
