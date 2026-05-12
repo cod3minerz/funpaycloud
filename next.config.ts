@@ -80,16 +80,6 @@ const config: NextConfig = {
         permanent: true,
       },
       {
-        source: '/platform2',
-        destination: '/platform/dashboard',
-        permanent: true,
-      },
-      {
-        source: '/platform2/:path*',
-        destination: '/platform/:path*',
-        permanent: true,
-      },
-      {
         source: '/blog/kak-ne-teryat-zakazy-nochyu-na-funpay',
         destination: '/blog/kak-sokratit-vremya-otveta-v-chatah-funpay',
         permanent: true,
