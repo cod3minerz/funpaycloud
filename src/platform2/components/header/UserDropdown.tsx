@@ -1,6 +1,5 @@
 "use client";
-import Link from "next/link";
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import {
@@ -15,26 +14,25 @@ import { authApi } from "@/lib/api";
 import { logout } from "@/lib/auth";
 
 const menuItems = [
-  { label: "Настройки", icon: Cog8ToothIcon, href: "/platform2/settings" },
-  { label: "Подписка", icon: CreditCardIcon, href: "/platform2/subscription" },
-  { label: "Промокоды", icon: TagIcon, href: "/platform2/promo-codes" },
-  { label: "Поддержка", icon: QuestionMarkCircleIcon, href: "/support" },
+  { label: "Настройки",  icon: Cog8ToothIcon,           href: "/platform2/settings" },
+  { label: "Подписка",   icon: CreditCardIcon,           href: "/platform2/subscription" },
+  { label: "Промокоды",  icon: TagIcon,                  href: "/platform2/promo-codes" },
+  { label: "Поддержка",  icon: QuestionMarkCircleIcon,   href: "/support" },
 ];
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
-  const [userName, setUserName] = useState("...");
+  const [userName, setUserName] = useState("Профиль");
   const [userEmail, setUserEmail] = useState("");
-  const [userInitials, setUserInitials] = useState("..");
 
   useEffect(() => {
-    authApi.me().then((profile) => {
-      const name = profile.email || "Пользователь";
-      setUserName(name.split("@")[0]);
-      setUserEmail(profile.email || "");
-      setUserInitials(name.slice(0, 2).toUpperCase());
+    authApi.me().then((p) => {
+      setUserEmail(p.email || "");
+      setUserName(p.email ? p.email.split("@")[0] : "Профиль");
     }).catch(() => {});
   }, []);
+
+  const userInitials = userName.slice(0, 2).toUpperCase();
 
   function toggleDropdown(e: React.MouseEvent<HTMLButtonElement>) {
     e.stopPropagation();
@@ -54,7 +52,7 @@ export default function UserDropdown() {
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-500 text-xs font-bold text-white">
           {userInitials}
         </span>
-        <span className="max-w-[80px] truncate">{userName.split("@")[0]}</span>
+        <span className="max-w-[80px] truncate">{userName}</span>
         <ChevronDownIcon
           className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
         />
@@ -67,9 +65,7 @@ export default function UserDropdown() {
       >
         {/* User info */}
         <div className="border-b border-gray-100 px-4 pb-3 pt-1 dark:border-gray-800">
-          <p className="font-semibold text-gray-800 dark:text-white">
-            {userName.split("@")[0]}
-          </p>
+          <p className="font-semibold text-gray-800 dark:text-white">{userName}</p>
           <p className="mt-0.5 text-xs text-gray-500">{userEmail}</p>
         </div>
 

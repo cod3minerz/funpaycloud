@@ -1,8 +1,9 @@
 "use client";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent } from "@/platform2/components/ui/card";
+import { Button } from "@/platform2/components/ui/button";
 import Icon from "@/platform2/icons";
-import { accountsApi, aiApi, scenariosApi, ApiAccount, AITestHistoryItem, ApiScenario } from "@/lib/api";
+import { aiApi, scenariosApi, accountsApi, AITestHistoryItem, ApiScenario, ApiAccount } from "@/lib/api";
 
 type TestMode = "bot" | "scenarios";
 
@@ -19,130 +20,134 @@ const suggestedQuestions = [
   "Можно ли скидку?",
 ];
 
-function nowTs() {
+function now() {
   return new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
 export default function TestChatPage() {
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
-  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+  const [account, setAccount] = useState<string>("");
   const [scenarios, setScenarios] = useState<ApiScenario[]>([]);
-  const [loadingAccounts, setLoadingAccounts] = useState(true);
-
   const [autoMode, setAutoMode] = useState(false);
   const [testMode, setTestMode] = useState<TestMode>("bot");
-  const [selectedScenarioId, setSelectedScenarioId] = useState("");
-
+  const [selectedScenario, setSelectedScenario] = useState("");
+  const [tone, setTone] = useState("Официальный");
+  const [delay, setDelay] = useState(10);
+  const [signature, setSignature] = useState(false);
+  const [instruction, setInstruction] = useState("");
+  const [newKbQ, setNewKbQ] = useState("");
+  const [newKbA, setNewKbA] = useState("");
+  const [addingKb, setAddingKb] = useState(false);
+  const [kbList, setKbList] = useState<{ question: string; answer: string }[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [error, setError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    accountsApi.list()
-      .then((rows) => {
-        const list = Array.isArray(rows) ? rows : [];
-        setAccounts(list);
-        if (list.length > 0) setSelectedAccountId(list[0].id);
-      })
-      .catch(() => {})
-      .finally(() => setLoadingAccounts(false));
-  }, []);
-
-  const loadScenarios = useCallback(async (accountId: number) => {
-    try {
-      const rows = await scenariosApi.list(accountId);
-      const list = Array.isArray(rows) ? rows : [];
-      setScenarios(list);
-      if (list.length > 0) setSelectedScenarioId(list[0].id);
-      else setSelectedScenarioId("");
-    } catch {
-      setScenarios([]);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (selectedAccountId !== null) {
-      setMessages([]);
-      loadScenarios(selectedAccountId);
-    }
-  }, [selectedAccountId, loadScenarios]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
+  useEffect(() => {
+    accountsApi.list().then((list) => {
+      setAccounts(list);
+      if (list.length > 0) setAccount(String(list[0].id));
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!account) return;
+    scenariosApi.list(account).then((list) => {
+      setScenarios(list);
+      if (list.length > 0) setSelectedScenario(list[0].id);
+    }).catch(() => {});
+    // Load AI config for tone/instruction defaults
+    aiApi.getConfig(account).then((cfg) => {
+      const toneMap: Record<string, string> = { formal: "Официальный", neutral: "Нейтральный", friendly: "Дружелюбный" };
+      setTone(toneMap[cfg.tone] ?? "Официальный");
+      setInstruction(cfg.system_prompt ?? "");
+      setSignature(cfg.show_ai_signature ?? false);
+      setDelay(cfg.delay_seconds ?? 10);
+    }).catch(() => {});
+    aiApi.getFaq(account).then((items) => {
+      setKbList(items.map((i) => ({ question: i.question, answer: i.answer })));
+    }).catch(() => {});
+  }, [account]);
+
   async function sendMessage(text: string) {
     const trimmed = text.trim();
-    if (!trimmed || isTyping || selectedAccountId === null) return;
-
-    const userMsg: Message = { id: Date.now().toString(), role: "buyer", text: trimmed, ts: nowTs() };
+    if (!trimmed || isTyping || !account) return;
+    const userMsg: Message = { id: Date.now().toString(), role: "buyer", text: trimmed, ts: now() };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsTyping(true);
-    setError("");
 
-    // Build history from existing messages
+    // Build history for API
     const history: AITestHistoryItem[] = messages.map((m) => ({
-      role: m.role === "buyer" ? "user" : "ai",
+      role: m.role === "buyer" ? "user" : "assistant",
       text: m.text,
     }));
 
+    const toneApiMap: Record<string, string> = { "Официальный": "formal", "Нейтральный": "neutral", "Дружелюбный": "friendly" };
+
     try {
-      const res = await aiApi.testChat({
-        account_id: selectedAccountId,
+      const resp = await aiApi.testChat({
+        account_id: Number(account),
         message: trimmed,
         history,
         auto_mode: autoMode,
-        override_mode: testMode === "bot" ? "assistant" : "constructor",
-        scenario_id: testMode === "scenarios" ? selectedScenarioId : undefined,
+        override_mode: testMode === "scenarios" ? "constructor" : "assistant",
+        scenario_id: testMode === "scenarios" ? selectedScenario : undefined,
+        config_override: testMode === "bot" ? {
+          tone: toneApiMap[tone] ?? "formal",
+          system_prompt: instruction,
+          show_ai_signature: signature,
+          faq: kbList,
+        } : undefined,
       });
       const botMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "bot",
-        text: res.reply,
-        ts: nowTs(),
+        text: resp.reply,
+        ts: now(),
       };
       setMessages((prev) => [...prev, botMsg]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Ошибка получения ответа");
+    } catch (e: unknown) {
+      const botMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "bot",
+        text: e instanceof Error ? e.message : "Ошибка. Попробуйте ещё раз.",
+        ts: now(),
+      };
+      setMessages((prev) => [...prev, botMsg]);
     } finally {
       setIsTyping(false);
     }
   }
 
-  const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
-
   return (
     <div className="flex h-[calc(100vh-5rem)] gap-5 overflow-hidden">
 
       {/* LEFT — settings */}
-      <div className="w-[320px] shrink-0 space-y-4 overflow-y-auto pr-1">
+      <div className="w-[360px] shrink-0 overflow-y-auto space-y-4 pr-1">
 
         {/* Account */}
         <Card>
-          <CardContent className="space-y-3 p-5">
+          <CardContent className="p-5 space-y-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Аккаунт</p>
-            {loadingAccounts ? (
-              <div className="h-10 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800" />
-            ) : (
-              <div className="relative">
-                <select
-                  value={selectedAccountId ?? ""}
-                  onChange={(e) => setSelectedAccountId(Number(e.target.value))}
-                  className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-10 text-sm text-gray-800 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                >
-                  {accounts.map((a) => (
-                    <option key={a.id} value={a.id}>{a.username}</option>
-                  ))}
-                </select>
-                <Icon name="chevron-down" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              </div>
-            )}
-            {selectedAccount && (
-              <p className="text-xs text-gray-400">Текущий аккаунт: {selectedAccount.username}</p>
-            )}
+            <div className="relative">
+              <select
+                value={account}
+                onChange={(e) => { setAccount(e.target.value); setMessages([]); }}
+                className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-10 text-sm text-gray-800 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              >
+                {accounts.map((a) => (
+                  <option key={a.id} value={String(a.id)}>{a.username ?? `#${a.id}`}</option>
+                ))}
+              </select>
+              <Icon name="chevron-down" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            </div>
+            <p className="text-xs text-gray-400">Текущий аккаунт: {accounts.find((a) => String(a.id) === account)?.username ?? account}</p>
           </CardContent>
         </Card>
 
@@ -152,7 +157,7 @@ export default function TestChatPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold text-gray-800 dark:text-white">Авто режим</p>
-                <p className="mt-0.5 text-xs text-gray-400">Использует боевые настройки аккаунта без override.</p>
+                <p className="mt-0.5 text-xs text-gray-400">Ручной override только для теста. Боевой режим не изменяется.</p>
               </div>
               <button
                 onClick={() => setAutoMode((v) => !v)}
@@ -165,65 +170,156 @@ export default function TestChatPage() {
         </Card>
 
         {/* Test mode */}
-        {!autoMode && (
-          <Card>
-            <CardContent className="space-y-4 p-5">
+        <Card>
+          <CardContent className="p-5 space-y-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Режим теста</p>
+              <p className="mt-1 font-bold text-gray-800 dark:text-white">
+                {testMode === "bot" ? "ИИ Бот" : "Сценарии"}
+              </p>
+              <p className="text-xs text-gray-400">Локальный режим теста</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setTestMode("bot")}
+                className={`flex-1 rounded-xl py-2 text-sm font-medium transition-colors ${
+                  testMode === "bot"
+                    ? "bg-brand-500 text-white"
+                    : "border border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400"
+                }`}
+              >
+                ИИ Бот
+              </button>
+              <button
+                onClick={() => setTestMode("scenarios")}
+                className={`flex-1 rounded-xl py-2 text-sm font-medium transition-colors ${
+                  testMode === "scenarios"
+                    ? "bg-brand-500 text-white"
+                    : "border border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400"
+                }`}
+              >
+                Сценарии
+              </button>
+            </div>
+
+            {testMode === "scenarios" ? (
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Режим теста</p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setTestMode("bot")}
-                  className={`flex-1 rounded-xl py-2 text-sm font-medium transition-colors ${
-                    testMode === "bot"
-                      ? "bg-brand-500 text-white"
-                      : "border border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400"
-                  }`}
-                >
-                  ИИ Бот
-                </button>
-                <button
-                  onClick={() => setTestMode("scenarios")}
-                  className={`flex-1 rounded-xl py-2 text-sm font-medium transition-colors ${
-                    testMode === "scenarios"
-                      ? "bg-brand-500 text-white"
-                      : "border border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400"
-                  }`}
-                >
-                  Сценарии
-                </button>
-              </div>
-
-              {testMode === "scenarios" && (
-                <div>
-                  <p className="mb-2 text-xs text-gray-500">Сценарий</p>
-                  {scenarios.length === 0 ? (
-                    <p className="text-xs text-gray-400">Нет доступных сценариев</p>
-                  ) : (
-                    <div className="relative">
-                      <select
-                        value={selectedScenarioId}
-                        onChange={(e) => setSelectedScenarioId(e.target.value)}
-                        className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-2.5 pl-4 pr-10 text-sm text-gray-800 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                      >
-                        {scenarios.map((s) => (
-                          <option key={s.id} value={s.id}>{s.name}</option>
-                        ))}
-                      </select>
-                      <Icon name="chevron-down" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                    </div>
-                  )}
+                <p className="mb-2 text-xs text-gray-500">Сценарий</p>
+                <div className="relative">
+                  <select
+                    value={selectedScenario}
+                    onChange={(e) => setSelectedScenario(e.target.value)}
+                    className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-2.5 pl-4 pr-10 text-sm text-gray-800 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                  >
+                    {scenarios.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                  <Icon name="chevron-down" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 </div>
-              )}
+              </div>
+            ) : (
+              <div className="space-y-3 rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Локальные настройки теста</p>
+                <p className="text-xs text-gray-400">Эти параметры используются только в тест-чате и не меняют боевые настройки аккаунта.</p>
 
-              {testMode === "bot" && (
-                <p className="text-xs text-gray-400">
-                  ИИ Бот использует настройки из раздела «AI-Ассистент» для данного аккаунта.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
+                {/* Tone */}
+                <div>
+                  <p className="mb-1.5 text-xs text-gray-500">Тон общения</p>
+                  <div className="relative">
+                    <select
+                      value={tone}
+                      onChange={(e) => setTone(e.target.value)}
+                      className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-2.5 pl-4 pr-10 text-sm text-gray-800 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                    >
+                      <option>Официальный</option>
+                      <option>Нейтральный</option>
+                      <option>Дружелюбный</option>
+                    </select>
+                    <Icon name="chevron-down" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  </div>
+                </div>
+
+                {/* Delay */}
+                <div>
+                  <div className="flex justify-between">
+                    <p className="text-xs text-gray-500">Задержка ответа: {delay}с</p>
+                  </div>
+                  <input
+                    type="range" min={0} max={30} value={delay}
+                    onChange={(e) => setDelay(Number(e.target.value))}
+                    className="mt-1.5 w-full accent-brand-500"
+                  />
+                </div>
+
+                {/* Signature */}
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-gray-500">Подпись ассистента</p>
+                  <button
+                    onClick={() => setSignature((v) => !v)}
+                    className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors ${signature ? "bg-brand-500" : "bg-gray-200 dark:bg-gray-700"}`}
+                  >
+                    <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${signature ? "translate-x-5" : "translate-x-1"}`} />
+                  </button>
+                </div>
+
+                {/* Instruction */}
+                <div>
+                  <p className="mb-1.5 text-xs text-gray-500">Инструкция для ИИ</p>
+                  <textarea
+                    value={instruction}
+                    onChange={(e) => setInstruction(e.target.value)}
+                    rows={4}
+                    className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                  />
+                </div>
+
+                {/* KB */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs text-gray-500">База знаний FAQ</p>
+                    <button
+                      onClick={() => setAddingKb(true)}
+                      className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600"
+                    >
+                      <Icon name="plus" className="h-3 w-3" />
+                      Добавить
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {kbList.map((e, i) => (
+                      <div key={i} className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+                        <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-100 dark:border-gray-800">
+                          <span className="text-xs text-gray-500 truncate">{e.question}</span>
+                          <button
+                            onClick={() => setKbList((prev) => prev.filter((_, j) => j !== i))}
+                            className="ml-2 flex items-center gap-0.5 text-xs text-error-500 hover:text-error-600"
+                          >
+                            <Icon name="trash" className="h-3 w-3" />
+                            Удалить
+                          </button>
+                        </div>
+                        <p className="px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300">{e.answer}</p>
+                      </div>
+                    ))}
+                    {addingKb && (
+                      <div className="space-y-1.5 rounded-lg border border-brand-300 bg-white p-2 dark:bg-gray-900">
+                        <input value={newKbQ} onChange={(e) => setNewKbQ(e.target.value)} placeholder="Вопрос"
+                          className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-xs outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+                        <textarea value={newKbA} onChange={(e) => setNewKbA(e.target.value)} placeholder="Ответ" rows={2}
+                          className="w-full resize-none rounded-lg border border-gray-200 px-2 py-1.5 text-xs outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+                        <div className="flex gap-1.5">
+                          <button onClick={() => { if (newKbQ && newKbA) { setKbList((p) => [...p, { question: newKbQ, answer: newKbA }]); setNewKbQ(""); setNewKbA(""); setAddingKb(false); } }}
+                            className="rounded-lg bg-brand-500 px-3 py-1 text-xs font-medium text-white">Сохранить</button>
+                          <button onClick={() => { setAddingKb(false); setNewKbQ(""); setNewKbA(""); }}
+                            className="rounded-lg border border-gray-200 px-3 py-1 text-xs text-gray-500 dark:border-gray-700">Отмена</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* RIGHT — chat */}
@@ -236,16 +332,17 @@ export default function TestChatPage() {
             </div>
             <div>
               <p className="font-semibold text-gray-800 dark:text-white">Тестовый диалог</p>
-              <p className="text-xs text-gray-400">Тест не влияет на боевой режим аккаунта</p>
+              <p className="text-xs text-gray-400">Режим теста не влияет на боевой режим аккаунта</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-400">Ответил:</span>
             <span className="rounded-full bg-brand-500/10 px-2.5 py-0.5 text-xs font-medium text-brand-600">
-              {autoMode ? "Авто" : testMode === "bot" ? "ИИ Бот" : "Сценарии"}
+              {testMode === "bot" ? "ИИ Бот" : "Сценарии"}
             </span>
             {messages.length > 0 && (
               <button
-                onClick={() => { setMessages([]); setError(""); }}
+                onClick={() => setMessages([])}
                 className="ml-2 text-xs text-gray-400 hover:text-gray-600"
               >
                 Очистить
@@ -270,8 +367,7 @@ export default function TestChatPage() {
                   <button
                     key={q}
                     onClick={() => sendMessage(q)}
-                    disabled={selectedAccountId === null}
-                    className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:border-brand-400 hover:bg-brand-500/5 hover:text-brand-600 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-left text-sm text-gray-700 hover:border-brand-400 hover:bg-brand-500/5 hover:text-brand-600 transition-colors dark:border-gray-700 dark:text-gray-300"
                   >
                     {q}
                   </button>
@@ -303,11 +399,6 @@ export default function TestChatPage() {
                   </div>
                 </div>
               )}
-              {error && (
-                <div className="rounded-xl bg-error-50 px-4 py-3 text-sm text-error-600 dark:bg-error-500/10 dark:text-error-400">
-                  {error}
-                </div>
-              )}
               <div ref={bottomRef} />
             </div>
           )}
@@ -321,12 +412,11 @@ export default function TestChatPage() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
               placeholder="Напишите сообщение покупателя..."
-              disabled={selectedAccountId === null || isTyping}
-              className="flex-1 bg-transparent text-sm text-gray-700 outline-none placeholder:text-gray-400 disabled:opacity-50 dark:text-gray-200"
+              className="flex-1 bg-transparent text-sm text-gray-700 outline-none placeholder:text-gray-400 dark:text-gray-200"
             />
             <button
               onClick={() => sendMessage(input)}
-              disabled={!input.trim() || isTyping || selectedAccountId === null}
+              disabled={!input.trim() || isTyping}
               className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-white transition-opacity hover:opacity-90 disabled:opacity-40"
             >
               <Icon name="paper-plane" className="h-4 w-4" />
@@ -334,6 +424,7 @@ export default function TestChatPage() {
           </div>
         </div>
       </Card>
+
     </div>
   );
 }

@@ -1,200 +1,290 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/platform2/components/ui/card";
-import { Button } from "@/platform2/components/ui/button";
-import Icon from "@/platform2/icons";
-import { settingsApi, ProfileData, NotificationSettings } from "@/lib/api";
+import { useState, useEffect } from "react";
+import { settingsApi, NotificationSettings } from "@/lib/api";
 import { logout } from "@/lib/auth";
+import { Card, CardContent } from "@/platform2/components/ui/card";
+import { Button } from "@/platform2/components/ui/button";
+import {
+  EyeIcon,
+  EyeSlashIcon,
+  LockClosedIcon,
+  PaperAirplaneIcon,
+  ShoppingBagIcon,
+  ChatBubbleLeftIcon,
+  ArrowRightEndOnRectangleIcon,
+  DocumentChartBarIcon,
+  BellAlertIcon,
+} from "@heroicons/react/24/outline";
 
-const inputCls =
-  "w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white";
+function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+  return (
+    <button
+      onClick={onChange}
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ${
+        checked ? "bg-brand-500" : "bg-gray-200 dark:bg-gray-700"
+      }`}
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+          checked ? "translate-x-6" : "translate-x-1"
+        }`}
+      />
+    </button>
+  );
+}
+
+function PasswordField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  hint,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  hint?: string;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div>
+      <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+        {label}
+      </label>
+      <div className="relative">
+        <input
+          type={show ? "text" : "password"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 pr-11 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+        />
+        <button
+          type="button"
+          onClick={() => setShow((s) => !s)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+        >
+          {show ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+        </button>
+      </div>
+      {hint && <p className="mt-1 text-xs text-gray-400">{hint}</p>}
+    </div>
+  );
+}
+
+const notifItems = [
+  {
+    key: "newOrder",
+    icon: ShoppingBagIcon,
+    label: "Новый заказ",
+    desc: "При получении нового заказа",
+  },
+  {
+    key: "newMessage",
+    icon: ChatBubbleLeftIcon,
+    label: "Новое сообщение",
+    desc: "При входящем сообщении в чате",
+  },
+  {
+    key: "login",
+    icon: ArrowRightEndOnRectangleIcon,
+    label: "Вход в аккаунт",
+    desc: "При авторизации на платформе",
+  },
+  {
+    key: "weeklyReport",
+    icon: DocumentChartBarIcon,
+    label: "Недельный отчёт",
+    desc: "Статистика продаж за неделю",
+  },
+  {
+    key: "subscriptionExpiry",
+    icon: BellAlertIcon,
+    label: "Подписка истекает",
+    desc: "За 3 дня до окончания",
+  },
+];
+
+type NotifKey = "all" | "newOrder" | "newMessage" | "login" | "weeklyReport" | "subscriptionExpiry";
 
 export default function SettingsPage() {
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [notifications, setNotifications] = useState<NotificationSettings | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [savingNotif, setSavingNotif] = useState(false);
-  const [profileMsg, setProfileMsg] = useState<{ text: string; ok: boolean } | null>(null);
-  const [notifMsg, setNotifMsg] = useState<{ text: string; ok: boolean } | null>(null);
-
-  const [login, setLogin] = useState("");
-  const [timezone, setTimezone] = useState("Europe/Moscow");
-  const [oldPwd, setOldPwd] = useState("");
+  const [currentPwd, setCurrentPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
-  const [savingPwd, setSavingPwd] = useState(false);
-  const [pwdMsg, setPwdMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [confirmPwd, setConfirmPwd] = useState("");
+  const [pwdSaved, setPwdSaved] = useState(false);
+  const [pwdError, setPwdError] = useState("");
 
+  const [notifs, setNotifs] = useState<Record<NotifKey, boolean>>({
+    all: false,
+    newOrder: false,
+    newMessage: false,
+    login: false,
+    weeklyReport: false,
+    subscriptionExpiry: false,
+  });
+
+  // Load notifications from API
   useEffect(() => {
-    Promise.all([settingsApi.getProfile(), settingsApi.getNotifications()])
-      .then(([prof, notif]) => {
-        setProfile(prof);
-        setLogin(prof.login ?? "");
-        setTimezone(prof.timezone ?? "Europe/Moscow");
-        setNotifications(notif);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    settingsApi.getNotifications().then((n: NotificationSettings) => {
+      setNotifs({
+        all: n.enabled ?? false,
+        newOrder: n.new_order ?? false,
+        newMessage: n.new_message ?? false,
+        login: n.login ?? false,
+        weeklyReport: n.weekly_report ?? false,
+        subscriptionExpiry: n.subscription ?? false,
+      });
+    }).catch(() => {});
   }, []);
 
-  async function saveProfile(e: React.FormEvent) {
-    e.preventDefault();
-    setSavingProfile(true);
-    setProfileMsg(null);
-    try {
-      await settingsApi.updateProfile({ login, timezone });
-      setProfileMsg({ text: "Профиль обновлён", ok: true });
-    } catch (err) {
-      setProfileMsg({ text: err instanceof Error ? err.message : "Ошибка", ok: false });
-    } finally {
-      setSavingProfile(false);
+  function toggleNotif(key: NotifKey) {
+    if (key === "all") {
+      const next = !notifs.all;
+      const updated = { all: next, newOrder: next, newMessage: next, login: next, weeklyReport: next, subscriptionExpiry: next };
+      setNotifs(updated);
+      settingsApi.updateNotifications({ enabled: next, new_order: next, new_message: next, login: next, weekly_report: next, subscription: next }).catch(() => {});
+    } else {
+      setNotifs((prev) => {
+        const updated = { ...prev, [key]: !prev[key] };
+        const anyOn = notifItems.some((n) => updated[n.key as NotifKey]);
+        const result = { ...updated, all: anyOn };
+        settingsApi.updateNotifications({ enabled: result.all, new_order: result.newOrder, new_message: result.newMessage, login: result.login, weekly_report: result.weeklyReport, subscription: result.subscriptionExpiry }).catch(() => {});
+        return result;
+      });
     }
   }
 
-  async function savePassword(e: React.FormEvent) {
-    e.preventDefault();
-    if (!oldPwd || !newPwd) return;
-    setSavingPwd(true);
-    setPwdMsg(null);
+  async function handleSavePassword() {
+    if (!currentPwd || !newPwd) return;
+    setPwdError("");
     try {
-      await settingsApi.updatePassword({ old_password: oldPwd, new_password: newPwd });
-      setPwdMsg({ text: "Пароль изменён", ok: true });
-      setOldPwd("");
+      await settingsApi.updatePassword({ old_password: currentPwd, new_password: newPwd });
+      setPwdSaved(true);
+      setTimeout(() => setPwdSaved(false), 2500);
+      setCurrentPwd("");
       setNewPwd("");
+      setConfirmPwd("");
     } catch (err) {
-      setPwdMsg({ text: err instanceof Error ? err.message : "Ошибка", ok: false });
-    } finally {
-      setSavingPwd(false);
+      setPwdError(err instanceof Error ? err.message : "Ошибка");
     }
   }
 
-  async function saveNotifications() {
-    if (!notifications) return;
-    setSavingNotif(true);
-    setNotifMsg(null);
-    try {
-      await settingsApi.updateNotifications(notifications);
-      setNotifMsg({ text: "Настройки уведомлений сохранены", ok: true });
-    } catch (err) {
-      setNotifMsg({ text: err instanceof Error ? err.message : "Ошибка", ok: false });
-    } finally {
-      setSavingNotif(false);
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
-      </div>
-    );
-  }
+  const canSave = newPwd.length >= 8 && newPwd === confirmPwd && currentPwd.length > 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-xl">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Настройки</h1>
 
-      {/* Profile */}
+      {/* Security */}
       <Card>
-        <CardHeader className="px-6 py-4">
-          <CardTitle className="text-base">Профиль</CardTitle>
-        </CardHeader>
-        <CardContent className="px-6 pb-6">
-          <form onSubmit={saveProfile} className="space-y-4">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
-              <input value={profile?.email ?? ""} disabled className={`${inputCls} opacity-60 cursor-not-allowed`} />
+        <CardContent className="p-6">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-error-500/10">
+              <LockClosedIcon className="h-5 w-5 text-error-500" />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Логин</label>
-              <input value={login} onChange={(e) => setLogin(e.target.value)} className={inputCls} placeholder="Логин" />
+              <p className="font-semibold text-gray-800 dark:text-white">Безопасность</p>
+              <p className="text-xs text-gray-400">Управление паролем аккаунта</p>
             </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Часовой пояс</label>
-              <input value={timezone} onChange={(e) => setTimezone(e.target.value)} className={inputCls} placeholder="Europe/Moscow" />
-            </div>
-            {profileMsg && <p className={`text-sm ${profileMsg.ok ? "text-success-600" : "text-error-500"}`}>{profileMsg.text}</p>}
-            <Button variant="primary" type="submit" disabled={savingProfile}>
-              {savingProfile ? "Сохранение..." : "Сохранить профиль"}
+          </div>
+
+          <div className="space-y-4">
+            <PasswordField
+              label="Текущий пароль"
+              value={currentPwd}
+              onChange={setCurrentPwd}
+            />
+            <PasswordField
+              label="Новый пароль"
+              value={newPwd}
+              onChange={setNewPwd}
+              placeholder="Введите новый пароль"
+              hint="Минимум 8 символов"
+            />
+            <PasswordField
+              label="Повторите новый пароль"
+              value={confirmPwd}
+              onChange={setConfirmPwd}
+              placeholder="Повторите пароль"
+            />
+          </div>
+
+          <div className="mt-5">
+            {pwdError && <p className="mb-3 text-sm text-error-500">{pwdError}</p>}
+            <Button
+              variant="primary"
+              className="w-full"
+              disabled={!canSave}
+              onClick={handleSavePassword}
+            >
+              {pwdSaved ? "Пароль сохранён ✓" : "Сменить пароль"}
             </Button>
-          </form>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Password */}
+      {/* Telegram notifications */}
       <Card>
-        <CardHeader className="px-6 py-4">
-          <CardTitle className="text-base">Смена пароля</CardTitle>
-        </CardHeader>
-        <CardContent className="px-6 pb-6">
-          <form onSubmit={savePassword} className="space-y-4">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Текущий пароль</label>
-              <input type="password" value={oldPwd} onChange={(e) => setOldPwd(e.target.value)} className={inputCls} />
+        <CardContent className="p-6">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500/10">
+              <PaperAirplaneIcon className="h-5 w-5 text-brand-500" />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Новый пароль</label>
-              <input type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} className={inputCls} />
+              <p className="font-semibold text-gray-800 dark:text-white">Telegram уведомления</p>
+              <p className="text-xs text-gray-400">Получайте важные события в Telegram</p>
             </div>
-            {pwdMsg && <p className={`text-sm ${pwdMsg.ok ? "text-success-600" : "text-error-500"}`}>{pwdMsg.text}</p>}
-            <Button variant="primary" type="submit" disabled={savingPwd || !oldPwd || !newPwd}>
-              {savingPwd ? "Сохранение..." : "Изменить пароль"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
 
-      {/* Notifications */}
-      {notifications && (
-        <Card>
-          <CardHeader className="px-6 py-4">
-            <CardTitle className="text-base">Telegram-уведомления</CardTitle>
-          </CardHeader>
-          <CardContent className="px-6 pb-6">
-            <div className="space-y-3">
-              {(
-                [
-                  { key: "enabled", label: "Уведомления включены" },
-                  { key: "new_order", label: "Новый заказ" },
-                  { key: "new_message", label: "Новое сообщение" },
-                  { key: "login", label: "Вход в аккаунт" },
-                  { key: "weekly_report", label: "Недельный отчёт" },
-                  { key: "subscription", label: "Подписка" },
-                ] as { key: keyof NotificationSettings; label: string }[]
-              ).map(({ key, label }) => (
-                <div key={key} className="flex items-center justify-between">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
-                  <button
-                    onClick={() => setNotifications((prev) => prev ? { ...prev, [key]: !prev[key] } : prev)}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                      notifications[key] ? "bg-brand-500" : "bg-gray-200 dark:bg-gray-700"
-                    }`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                      notifications[key] ? "translate-x-4" : "translate-x-0.5"
-                    }`} />
-                  </button>
+          {/* Linked account */}
+          <div className="mb-5 flex items-center gap-3 rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-500/10">
+              <PaperAirplaneIcon className="h-5 w-5 text-brand-500" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-gray-800 dark:text-white">
+                Telegram аккаунт привязан
+              </p>
+              <p className="text-xs text-gray-400">Уведомления будут приходить в ваш Telegram.</p>
+              <div className="mt-1 flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-success-500" />
+                <span className="text-xs font-medium text-success-600">@chroomes</span>
+              </div>
+            </div>
+            <button className="shrink-0 text-xs text-gray-400 hover:text-error-500 transition-colors">
+              Отвязать
+            </button>
+          </div>
+
+          {/* Master toggle */}
+          <div className="flex items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800">
+            <div>
+              <p className="text-sm font-semibold text-gray-800 dark:text-white">
+                Уведомления в Telegram
+              </p>
+              <p className="text-xs text-gray-400">Включить или выключить все</p>
+            </div>
+            <Toggle checked={notifs.all} onChange={() => toggleNotif("all")} />
+          </div>
+
+          {/* Individual toggles */}
+          <ul className="mt-4 space-y-0 divide-y divide-gray-50 dark:divide-gray-800">
+            {notifItems.map(({ key, icon: Icon, label, desc }) => (
+              <li key={key} className="flex items-center justify-between py-3.5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800">
+                    <Icon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-800 dark:text-white">{label}</p>
+                    <p className="text-xs text-gray-400">{desc}</p>
+                  </div>
                 </div>
-              ))}
-            </div>
-            {notifMsg && <p className={`mt-4 text-sm ${notifMsg.ok ? "text-success-600" : "text-error-500"}`}>{notifMsg.text}</p>}
-            <Button variant="primary" className="mt-4" onClick={saveNotifications} disabled={savingNotif}>
-              {savingNotif ? "Сохранение..." : "Сохранить уведомления"}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Sign out */}
-      <Card>
-        <CardContent className="p-5">
-          <button
-            onClick={() => logout()}
-            className="flex items-center gap-2 text-sm font-medium text-error-500 hover:text-error-600"
-          >
-            <Icon name="close" className="h-4 w-4" />
-            Выйти из аккаунта
-          </button>
+                <Toggle checked={notifs[key as NotifKey]} onChange={() => toggleNotif(key as NotifKey)} />
+              </li>
+            ))}
+          </ul>
         </CardContent>
       </Card>
     </div>

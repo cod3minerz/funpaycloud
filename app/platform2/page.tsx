@@ -1,5 +1,2 @@
-import { redirect } from 'next/navigation';
-
-export default function Platform2RootPage() {
-  redirect('/platform2/dashboard');
-}
+import { redirect } from "next/navigation";
+export default function Page() { redirect("/platform2/dashboard"); }

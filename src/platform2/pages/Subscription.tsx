@@ -1,196 +1,364 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/platform2/components/ui/card";
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/platform2/components/ui/card";
 import { Button } from "@/platform2/components/ui/button";
-import Icon from "@/platform2/icons";
-import { authApi, billingApi, AuthMeData, SubscriptionPaymentHistoryItem } from "@/lib/api";
+import {
+  CheckCircleIcon,
+  XMarkIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+} from "@heroicons/react/24/outline";
+import { authApi, billingApi, SubscriptionPaymentHistoryItem } from "@/lib/api";
 
-const PLANS = [
+const plans = [
   {
-    id: "lite" as const,
+    id: "lite",
     name: "Lite",
-    price: "299 ₽/мес",
-    features: ["1 аккаунт", "Автоподнятие", "Базовые уведомления"],
+    monthlyPrice: 149,
+    yearlyPrice: 119,
+    tagline: "Для старта",
+    features: [
+      "1 аккаунт FunPay",
+      "Автоподнятие лотов",
+      "Автовыдача товаров",
+      "Аналитика 7 дней",
+      "2 правила автоматизации",
+    ],
+    missing: ["Плагины", "AI автоответы", "Приоритетная поддержка"],
+    cta: "Выбрать Lite",
+    color: "gray",
   },
   {
-    id: "pro" as const,
+    id: "pro",
     name: "Pro",
-    price: "599 ₽/мес",
-    features: ["3 аккаунта", "AI-ассистент", "Автовыдача", "Аналитика"],
+    monthlyPrice: 299,
+    yearlyPrice: 239,
+    tagline: "Лучший выбор",
     popular: true,
+    features: [
+      "5 аккаунтов FunPay",
+      "Автоподнятие лотов",
+      "Автовыдача товаров",
+      "Аналитика 30 дней + CSV",
+      "10 правил автоматизации",
+      "Базовые плагины (20+)",
+      "AI ответы 500 msg/мес",
+      "Приоритетная поддержка",
+    ],
+    missing: [],
+    cta: "Текущий тариф",
+    color: "brand",
   },
   {
-    id: "ultra" as const,
+    id: "ultra",
     name: "Ultra",
-    price: "999 ₽/мес",
-    features: ["10 аккаунтов", "Все функции Pro", "Приоритетная поддержка", "API доступ"],
+    monthlyPrice: 599,
+    yearlyPrice: 479,
+    tagline: "Для масштаба",
+    features: [
+      "Безлимит аккаунтов",
+      "Всё из Pro",
+      "Аналитика без ограничений",
+      "Безлимит автоматизации",
+      "VIP плагины",
+      "AI ответы без лимита",
+      "Персональный менеджер",
+      "API доступ",
+    ],
+    missing: [],
+    cta: "Перейти на Ultra",
+    color: "violet",
   },
 ];
 
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Ожидание",
-  paid: "Оплачен",
-  failed: "Ошибка",
-  refunded: "Возврат",
-  canceled: "Отменён",
-};
-const STATUS_CLS: Record<string, string> = {
-  paid: "bg-success-500/10 text-success-600",
-  failed: "bg-error-500/10 text-error-500",
-  pending: "bg-warning-500/10 text-warning-600",
-  refunded: "bg-gray-100 text-gray-500",
-  canceled: "bg-gray-100 text-gray-500",
-};
+const comparisonRows = [
+  { label: "Аккаунты", lite: "1", pro: "5", ultra: "Безлимит" },
+  { label: "Аналитика", lite: "7 дней", pro: "30 дней + CSV", ultra: "Без ограничений" },
+  { label: "Автоматизация", lite: "2 правила", pro: "10 правил", ultra: "Без ограничений" },
+  { label: "Шаблоны сообщений", lite: "3", pro: "15", ultra: "Без ограничений" },
+  { label: "AI ответы", lite: "—", pro: "500 / мес", ultra: "Без лимита" },
+  { label: "Плагины", lite: "—", pro: "Базовые", ultra: "VIP + эксклюзив" },
+  { label: "Поддержка", lite: "Базовая", pro: "Приоритетная", ultra: "Персональная 24/7" },
+];
+
+// Circular progress ring
+function RingProgress({ percent }: { percent: number }) {
+  const r = 36;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - percent / 100);
+  return (
+    <div className="relative flex h-20 w-20 items-center justify-center">
+      <svg className="-rotate-90" width="80" height="80">
+        <circle cx="40" cy="40" r={r} fill="none" stroke="#e5e7eb" strokeWidth="6" />
+        <circle
+          cx="40" cy="40" r={r} fill="none"
+          stroke="#465fff" strokeWidth="6"
+          strokeDasharray={circ}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+        />
+      </svg>
+      <div className="absolute text-center">
+        <p className="text-base font-bold text-gray-900 dark:text-white leading-none">{percent}%</p>
+        <p className="text-[9px] text-gray-400 leading-tight">остаток</p>
+      </div>
+    </div>
+  );
+}
+
+// Toggle switch
+function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+  return (
+    <button
+      onClick={onChange}
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ${
+        checked ? "bg-brand-500" : "bg-gray-200 dark:bg-gray-700"
+      }`}
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+          checked ? "translate-x-6" : "translate-x-1"
+        }`}
+      />
+    </button>
+  );
+}
 
 export default function SubscriptionPage() {
-  const [profile, setProfile] = useState<AuthMeData | null>(null);
-  const [history, setHistory] = useState<SubscriptionPaymentHistoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [paying, setPaying] = useState<string | null>(null);
+  const [annual, setAnnual] = useState(false);
+  const [showComparison, setShowComparison] = useState(true);
+  const [currentPlan, setCurrentPlan] = useState("pro");
+  const [daysLeft, setDaysLeft] = useState<number | null>(null);
+  const [expiryStr, setExpiryStr] = useState("—");
+  const [periodPercent, setPeriodPercent] = useState(90);
+  const [purchasing, setPurchasing] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      authApi.me(),
-      billingApi.listSubscriptionHistory(20),
-    ])
-      .then(([p, h]) => {
-        setProfile(p);
-        setHistory(Array.isArray(h.items) ? h.items : []);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    authApi.me().then((me) => {
+      if (me.plan) setCurrentPlan(me.plan.toLowerCase());
+      if (me.subscription_days_left != null) setDaysLeft(me.subscription_days_left);
+      if (me.subscription_expires_at) {
+        setExpiryStr(new Date(me.subscription_expires_at).toLocaleDateString("ru-RU", {
+          day: "numeric", month: "long", year: "numeric",
+        }));
+        const total = 30;
+        const left = me.subscription_days_left ?? 0;
+        setPeriodPercent(Math.round((left / total) * 100));
+      }
+    }).catch(() => {});
   }, []);
 
-  async function handleSubscribe(plan: "lite" | "pro" | "ultra") {
-    setPaying(plan);
+  async function handleChoosePlan(planId: string) {
+    if (planId === currentPlan) return;
+    setPurchasing(planId);
     try {
-      const res = await billingApi.createSubscriptionPayment({ plan, period_days: 30 });
-      if (res.checkout_url) window.open(res.checkout_url, "_blank");
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Ошибка создания платежа");
+      const resp = await billingApi.createSubscriptionPayment({
+        plan: planId as "lite" | "pro" | "ultra",
+        period_days: 30,
+      });
+      window.open(resp.checkout_url, "_blank");
+    } catch {
+      // ignore
     } finally {
-      setPaying(null);
+      setPurchasing(null);
     }
   }
 
-  const daysLeft = typeof profile?.subscription_days_left === "number"
-    ? Math.max(0, Math.ceil(profile.subscription_days_left))
-    : null;
+  const plansWithCurrent = plans.map((p) => ({
+    ...p,
+    current: p.id === currentPlan,
+    cta: p.id === currentPlan ? "Текущий тариф" : p.cta,
+  }));
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Подписка</h1>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
-        </div>
-      ) : (
-        <>
-          {/* Current plan */}
-          {profile && (
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">Текущий тариф</p>
-                    <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white capitalize">
-                      {profile.plan || "—"}
-                    </p>
-                    {daysLeft !== null && (
-                      <p className="mt-1 text-sm text-gray-400">
-                        {daysLeft > 0 ? `Осталось ${daysLeft} дн.` : "Истёк"}
-                      </p>
-                    )}
-                    {profile.subscription_expires_at && (
-                      <p className="text-xs text-gray-400">
-                        до {new Date(profile.subscription_expires_at).toLocaleDateString("ru-RU")}
-                      </p>
-                    )}
-                  </div>
-                  <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${
-                    profile.subscription_expired ? "bg-error-500/10" : "bg-success-500/10"
-                  }`}>
-                    <Icon
-                      name={profile.subscription_expired ? "error" : "check-circle"}
-                      className={`h-7 w-7 ${profile.subscription_expired ? "text-error-500" : "text-success-500"}`}
-                    />
-                  </div>
+      {/* Active plan banner */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-5">
+              <RingProgress percent={periodPercent} />
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2 w-2 rounded-full bg-success-500" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-success-600">
+                    Активная подписка
+                  </span>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Plans */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            {PLANS.map((plan) => (
-              <Card key={plan.id} className={plan.popular ? "ring-2 ring-brand-500" : ""}>
-                <CardContent className="flex h-full flex-col p-6">
-                  {plan.popular && (
-                    <span className="mb-3 inline-block rounded-full bg-brand-500/10 px-2.5 py-0.5 text-xs font-semibold text-brand-500">
-                      Популярный
-                    </span>
-                  )}
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">{plan.name}</h3>
-                  <p className="mt-1 text-2xl font-bold text-brand-500">{plan.price}</p>
-                  <ul className="mt-4 flex-1 space-y-2">
-                    {plan.features.map((f) => (
-                      <li key={f} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                        <Icon name="check-line" className="h-4 w-4 text-success-500 shrink-0" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    variant={plan.popular ? "primary" : "outline"}
-                    className="mt-5 w-full justify-center"
-                    onClick={() => handleSubscribe(plan.id)}
-                    disabled={paying !== null}
-                  >
-                    {paying === plan.id ? "Перенаправление..." : "Оплатить"}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+                <h2 className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
+                  Тариф <span className="text-brand-500">{currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}</span>
+                </h2>
+                <p className="mt-0.5 text-sm text-gray-500">
+                  Действует до {expiryStr} · Осталось{" "}
+                  <span className="font-semibold text-gray-700 dark:text-gray-300">{daysLeft ?? "—"} дн.</span>
+                </p>
+              </div>
+            </div>
+            <div className="shrink-0">
+              <Button
+                variant="outline"
+                className="whitespace-nowrap"
+                onClick={() => handleChoosePlan(currentPlan)}
+                disabled={purchasing === currentPlan}
+              >
+                Продлить на месяц
+              </Button>
+            </div>
           </div>
 
-          {/* History */}
-          <Card>
-            <CardHeader className="px-6 py-4">
-              <CardTitle className="text-base">История платежей</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {history.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16">
-                  <Icon name="dollar-line" className="h-12 w-12 text-gray-200" />
-                  <p className="mt-3 text-sm text-gray-400">Платежей пока нет</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {history.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between px-6 py-3.5">
-                      <div>
-                        <p className="text-sm font-medium text-gray-800 dark:text-white capitalize">
-                          {item.plan} — {item.period_days} дн.
-                        </p>
-                        <p className="text-xs text-gray-400">{new Date(item.created_at).toLocaleDateString("ru-RU")}</p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_CLS[item.status] ?? "bg-gray-100 text-gray-500"}`}>
-                          {STATUS_LABEL[item.status] ?? item.status}
-                        </span>
-                        <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                          {item.amount.toLocaleString("ru-RU")} ₽
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+          <div className="mt-5 grid grid-cols-2 gap-3 border-t border-gray-100 pt-5 dark:border-gray-800 sm:grid-cols-4">
+            {[
+              { label: "Аккаунты", value: "1 / 5" },
+              { label: "Аналитика", value: "30 дней" },
+              { label: "Плагины", value: "Базовые" },
+              { label: "AI сообщений", value: "500 / мес" },
+            ].map(({ label, value }) => (
+              <div key={label} className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800">
+                <p className="text-xs text-gray-400">{label}</p>
+                <p className="mt-0.5 text-sm font-semibold text-gray-800 dark:text-white">{value}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Period toggle */}
+      <div className="flex items-center justify-center gap-3">
+        <span className={`text-sm font-medium ${!annual ? "text-gray-900 dark:text-white" : "text-gray-400"}`}>
+          Ежемесячно
+        </span>
+        <Toggle checked={annual} onChange={() => setAnnual((v) => !v)} />
+        <span className={`text-sm font-medium ${annual ? "text-gray-900 dark:text-white" : "text-gray-400"}`}>
+          Ежегодно
+        </span>
+        {annual && (
+          <span className="rounded-full bg-success-500/10 px-2 py-0.5 text-xs font-semibold text-success-600">
+            −20%
+          </span>
+        )}
+      </div>
+
+      {/* Plans grid */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        {plansWithCurrent.map((plan) => {
+          const price = annual ? plan.yearlyPrice : plan.monthlyPrice;
+          return (
+            <div
+              key={plan.id}
+              className={`relative flex flex-col rounded-2xl border p-6 transition-shadow ${
+                plan.current
+                  ? "border-brand-500 shadow-[0_0_0_1px_#465fff] dark:border-brand-500"
+                  : "border-gray-200 dark:border-gray-700"
+              }`}
+            >
+              {plan.popular && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="rounded-full bg-brand-500 px-3 py-0.5 text-xs font-bold uppercase tracking-wider text-white shadow-sm">
+                    Популярный
+                  </span>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </>
-      )}
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">{plan.name}</p>
+                <div className="mt-2 flex items-end gap-1">
+                  <span className="text-3xl font-bold text-gray-900 dark:text-white">{price}</span>
+                  <span className="mb-1 text-sm text-gray-400">₽/мес</span>
+                </div>
+                <p className="mt-0.5 text-sm text-gray-500">{plan.tagline}</p>
+              </div>
+
+              <div className="my-5 h-px bg-gray-100 dark:bg-gray-800" />
+
+              <ul className="flex-1 space-y-2.5">
+                {plan.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <CheckCircleIcon className={`mt-0.5 h-4 w-4 shrink-0 ${plan.current ? "text-brand-500" : plan.id === "ultra" ? "text-violet-500" : "text-success-500"}`} />
+                    {f}
+                  </li>
+                ))}
+                {plan.missing.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-gray-300 dark:text-gray-600">
+                    <XMarkIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-6">
+                <button
+                  disabled={plan.current || purchasing === plan.id}
+                  onClick={() => handleChoosePlan(plan.id)}
+                  className={`w-full rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
+                    plan.current
+                      ? "cursor-default bg-brand-50 text-brand-400 dark:bg-brand-500/10"
+                      : plan.id === "ultra"
+                      ? "bg-violet-500 text-white hover:bg-violet-600"
+                      : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  {purchasing === plan.id ? "…" : plan.cta}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Comparison table */}
+      <Card>
+        <button
+          onClick={() => setShowComparison((v) => !v)}
+          className="flex w-full items-center justify-between px-6 py-4 text-sm font-medium text-gray-700 dark:text-gray-300"
+        >
+          <span>{showComparison ? "Скрыть" : "Показать"} подробное сравнение</span>
+          {showComparison ? (
+            <ChevronUpIcon className="h-4 w-4" />
+          ) : (
+            <ChevronDownIcon className="h-4 w-4" />
+          )}
+        </button>
+
+        {showComparison && (
+          <div className="overflow-x-auto border-t border-gray-100 dark:border-gray-800">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/50">
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 w-1/3">
+                    Функция
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400">
+                    Lite
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-brand-500">
+                    Pro
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-violet-500">
+                    Ultra
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparisonRows.map((row, i) => (
+                  <tr
+                    key={row.label}
+                    className={`border-b border-gray-50 last:border-0 dark:border-gray-800 ${
+                      i % 2 === 0 ? "" : "bg-gray-50/50 dark:bg-gray-800/20"
+                    }`}
+                  >
+                    <td className="px-6 py-3.5 text-sm font-medium text-gray-700 dark:text-gray-300">{row.label}</td>
+                    <td className="px-4 py-3.5 text-sm text-gray-500">{row.lite}</td>
+                    <td className="px-4 py-3.5 text-sm font-medium text-gray-800 dark:text-white">{row.pro}</td>
+                    <td className="px-4 py-3.5 text-sm text-gray-500">{row.ultra}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
