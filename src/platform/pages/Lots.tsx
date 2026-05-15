@@ -6,6 +6,7 @@ import { ArrowUpCircle, Loader2, Pencil, Plus, Power, Trash2, SearchX } from '@/
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { accountsApi, ApiAccount, ApiLot, lotsApi } from '@/lib/api';
+import { LotEditDialog } from '@/platform/components/LotEditDialog';
 import {
   DataTableWrap,
   EmptyState,
@@ -37,7 +38,6 @@ export default function Lots() {
   const [reloadKey, setReloadKey] = useState(0);
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
 
@@ -50,12 +50,6 @@ export default function Lots() {
   const [creating, setCreating] = useState(false);
 
   const [editingLot, setEditingLot] = useState<ApiLot | null>(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editPrice, setEditPrice] = useState('');
-  const [editAmount, setEditAmount] = useState('0');
-  const [editActive, setEditActive] = useState(true);
-  const [updating, setUpdating] = useState(false);
 
   async function loadLots(refresh = false) {
     setLoading(true);
@@ -209,33 +203,6 @@ export default function Lots() {
 
   function openEdit(lot: ApiLot) {
     setEditingLot(lot);
-    setEditTitle(lot.title || '');
-    setEditDescription(lot.description || '');
-    setEditPrice(String(Number(lot.price || 0)));
-    setEditAmount(String(Number(lot.amount || 0)));
-    setEditActive(Boolean(lot.is_active));
-    setEditOpen(true);
-  }
-
-  async function saveEdit() {
-    if (!editingLot) return;
-    setUpdating(true);
-    try {
-      await lotsApi.update(editingLot.funpay_account_id, editingLot.lot_id || editingLot.id, {
-        title: editTitle.trim(),
-        description: editDescription,
-        price: Number(editPrice),
-        amount: Number(editAmount || 0),
-        is_active: editActive,
-      });
-      toast.success('Лот обновлён');
-      setEditOpen(false);
-      setReloadKey(prev => prev + 1);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Ошибка обновления лота');
-    } finally {
-      setUpdating(false);
-    }
   }
 
   async function removeLot(lot: ApiLot) {
@@ -470,43 +437,18 @@ export default function Lots() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="platform-dialog-content sm:max-w-[560px]">
-          <DialogHeader>
-            <DialogTitle>Редактировать лот</DialogTitle>
-          </DialogHeader>
-          <div className="platform-form-grid">
-            <label className="platform-field">
-              <span>Название</span>
-              <input className="platform-input" value={editTitle} onChange={event => setEditTitle(event.target.value)} />
-            </label>
-            <label className="platform-field">
-              <span>Описание</span>
-              <textarea className="platform-input min-h-[88px]" value={editDescription} onChange={event => setEditDescription(event.target.value)} />
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="platform-field">
-                <span>Цена</span>
-                <input className="platform-input" type="number" value={editPrice} onChange={event => setEditPrice(event.target.value)} />
-              </label>
-              <label className="platform-field">
-                <span>Количество</span>
-                <input className="platform-input" type="number" value={editAmount} onChange={event => setEditAmount(event.target.value)} />
-              </label>
-            </div>
-            <label className="platform-field inline-flex items-center gap-2">
-              <input type="checkbox" checked={editActive} onChange={event => setEditActive(event.target.checked)} />
-              <span>Лот активен</span>
-            </label>
-            <div className="mt-2 flex gap-2">
-              <button className="platform-btn-primary flex-1" onClick={() => void saveEdit()} disabled={updating}>
-                {updating ? <Loader2 size={14} className="animate-spin" /> : 'Сохранить'}
-              </button>
-              <button className="platform-btn-secondary flex-1" onClick={() => setEditOpen(false)}>Отмена</button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <LotEditDialog
+        open={Boolean(editingLot)}
+        onOpenChange={open => {
+          if (!open) {
+            setEditingLot(null);
+          }
+        }}
+        lot={editingLot}
+        onSaved={async () => {
+          setReloadKey(prev => prev + 1);
+        }}
+      />
     </motion.div>
   );
 }

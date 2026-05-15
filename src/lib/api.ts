@@ -451,6 +451,50 @@ export type ApiLot = {
   params?: ApiLotParam[];
 };
 
+export type ApiLotEditableField = {
+  label: string;
+  type: string;
+  name: string;
+  options?: Array<{
+    value: string;
+    label: string;
+  }>;
+  required: boolean;
+  placeholder?: string;
+};
+
+export type ApiLotEditValues = Record<string, string | boolean | string[]>;
+
+export type ApiLotEditForm = {
+  lot: {
+    id: string;
+    lot_id: string;
+    title: string;
+    description?: string;
+    price?: number;
+    amount?: number;
+    is_active?: boolean;
+    category_name?: string;
+    category_id?: number;
+    funpay_account_id: number;
+    account_username: string;
+    node_id?: number;
+    node_type?: 'lots' | 'chips' | string;
+    external_url?: string;
+    edit_url?: string;
+  };
+  schema: ApiLotEditableField[];
+  values: ApiLotEditValues;
+  meta: {
+    node_id?: number;
+    node_type?: 'lots' | 'chips' | string;
+    edit_url?: string;
+    source_url?: string;
+    loaded_at?: string;
+    field_count?: number;
+  };
+};
+
 export const lotsApi = {
   listByAccount: (accountId: number | string, options?: { refresh?: boolean }) => {
     const query = new URLSearchParams();
@@ -472,10 +516,14 @@ export const lotsApi = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+  getEditForm: (accountId: number | string, lotId: number | string) =>
+    apiRequest<ApiLotEditForm>(`/api/accounts/${accountId}/lots/${lotId}/edit-form`),
   update: (
     accountId: number | string,
     lotId: number | string,
-    payload: { title: string; description: string; price: number; amount: number; is_active: boolean },
+    payload:
+      | { title: string; description: string; price: number; amount: number; is_active: boolean }
+      | { mode: 'schema'; values: ApiLotEditValues },
   ) =>
     apiRequest(`/api/accounts/${accountId}/lots/${lotId}`, {
       method: 'PUT',

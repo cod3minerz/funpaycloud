@@ -6,6 +6,7 @@ import { AlertTriangle, Download, Loader2, Plus, Save, Trash2, Upload, XCircle, 
 import { toast } from 'sonner';
 import { Switch } from '@/app/components/ui/switch';
 import { accountsApi, ApiAccount, ApiWarehouseItem, ApiWarehouseLot, lotsApi, warehouseApi } from '@/lib/api';
+import { LotEditDialog } from '@/platform/components/LotEditDialog';
 import {
   DataTableWrap,
   EmptyState,
@@ -109,6 +110,7 @@ export default function Warehouse() {
   const [autoDeliveryDraft, setAutoDeliveryDraft] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [deletingLot, setDeletingLot] = useState(false);
+  const [editingLot, setEditingLot] = useState<ApiWarehouseLot | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -518,16 +520,12 @@ export default function Warehouse() {
                           Открыть на FunPay
                         </a>
                       )}
-                      {selectedLot.edit_url && (
-                        <a
-                          href={selectedLot.edit_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="platform-btn-secondary"
-                        >
+                      <button
+                        className="platform-btn-secondary"
+                        onClick={() => setEditingLot(selectedLot)}
+                      >
                           Редактировать
-                        </a>
-                      )}
+                      </button>
                       <button
                         className="platform-btn-secondary"
                         onClick={() => setDetailReloadKey(prev => prev + 1)}
@@ -846,6 +844,19 @@ export default function Warehouse() {
           </div>
         </div>
       </PageShell>
+      <LotEditDialog
+        open={Boolean(editingLot)}
+        onOpenChange={open => {
+          if (!open) {
+            setEditingLot(null);
+          }
+        }}
+        lot={editingLot}
+        onSaved={async () => {
+          await loadLots(accountFilter, true);
+          setDetailReloadKey(prev => prev + 1);
+        }}
+      />
     </motion.div>
   );
 }
