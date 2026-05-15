@@ -5,6 +5,7 @@ import { Loader2 } from '@/shared/streamline/icons';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { ApiLotEditForm, ApiLotEditValues, ApiWarehouseLot, ApiLot, lotsApi } from '@/lib/api';
+import { LotSchemaFields, normalizeSchemaFieldValue, SchemaFieldValues } from '@/platform/components/LotSchemaFields';
 
 type EditableLotRef =
   | Pick<ApiLot, 'funpay_account_id' | 'lot_id' | 'id' | 'title' | 'account_username' | 'category_name'>
@@ -17,46 +18,12 @@ type LotEditDialogProps = {
   onSaved?: () => void | Promise<void>;
 };
 
-function normalizeFieldValue(raw: unknown, type: string, optionCount: number) {
-  if (type === 'checkbox' && optionCount <= 1) {
-    return Boolean(raw);
-  }
-  if (type === 'checkbox') {
-    return Array.isArray(raw)
-      ? raw.map(item => String(item))
-      : typeof raw === 'string' && raw
-        ? [raw]
-        : [];
-  }
-  if (Array.isArray(raw)) {
-    return raw[0] != null ? String(raw[0]) : '';
-  }
-  if (raw == null) return '';
-  return String(raw);
-}
-
-function isTextareaField(type: string) {
-  return type === 'textarea';
-}
-
-function isSelectField(type: string) {
-  return type === 'select';
-}
-
-function isRadioField(type: string) {
-  return type === 'radio';
-}
-
-function isCheckboxField(type: string) {
-  return type === 'checkbox';
-}
-
 export function LotEditDialog({ open, onOpenChange, lot, onSaved }: LotEditDialogProps) {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<ApiLotEditForm | null>(null);
-  const [formValues, setFormValues] = useState<Record<string, string | boolean | string[]>>({});
+  const [formValues, setFormValues] = useState<SchemaFieldValues>({});
 
   const accountId = lot?.funpay_account_id ?? 0;
   const lotId = lot?.lot_id || String(lot?.id || '');
@@ -70,7 +37,7 @@ export function LotEditDialog({ open, onOpenChange, lot, onSaved }: LotEditDialo
       setFormData(data);
       const nextValues: Record<string, string | boolean | string[]> = {};
       for (const field of data.schema || []) {
-        nextValues[field.name] = normalizeFieldValue(data.values?.[field.name], field.type, field.options?.length || 0);
+        nextValues[field.name] = normalizeSchemaFieldValue(data.values?.[field.name], field.type, field.options?.length || 0);
       }
       setFormValues(nextValues);
     } catch (err) {
@@ -111,24 +78,6 @@ export function LotEditDialog({ open, onOpenChange, lot, onSaved }: LotEditDialo
     }
     return prepared;
   }, [formValues, schema]);
-
-  function setStringField(name: string, value: string) {
-    setFormValues(prev => ({ ...prev, [name]: value }));
-  }
-
-  function setBooleanField(name: string, value: boolean) {
-    setFormValues(prev => ({ ...prev, [name]: value }));
-  }
-
-  function toggleMultiCheckbox(name: string, optionValue: string, checked: boolean) {
-    setFormValues(prev => {
-      const current = Array.isArray(prev[name]) ? [...(prev[name] as string[])] : [];
-      const next = checked
-        ? Array.from(new Set([...current, optionValue]))
-        : current.filter(item => item !== optionValue);
-      return { ...prev, [name]: next };
-    });
-  }
 
   async function handleSave() {
     if (!accountId || !lotId) return;
@@ -176,99 +125,12 @@ export function LotEditDialog({ open, onOpenChange, lot, onSaved }: LotEditDialo
           </div>
         ) : (
           <>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {schema.map(field => {
-                const currentValue = formValues[field.name];
-                const options = Array.isArray(field.options) ? field.options : [];
-                const wide = isTextareaField(field.type) || (isCheckboxField(field.type) && options.length > 1);
-
-                return (
-                  <div
-                    key={field.name}
-                    className={wide ? 'space-y-2 sm:col-span-2' : 'space-y-2'}
-                  >
-                    <label className="block text-sm font-medium text-[var(--pf-text)]">
-                      {field.label || field.name}
-                      {field.required ? <span className="ml-1 text-[var(--pf-danger)]">*</span> : null}
-                    </label>
-
-                    {isTextareaField(field.type) ? (
-                      <textarea
-                        className="platform-input min-h-[140px] w-full"
-                        placeholder={field.placeholder || ''}
-                        value={typeof currentValue === 'string' ? currentValue : ''}
-                        onChange={event => setStringField(field.name, event.target.value)}
-                      />
-                    ) : isSelectField(field.type) ? (
-                      <select
-                        className="platform-select w-full"
-                        value={typeof currentValue === 'string' ? currentValue : ''}
-                        onChange={event => setStringField(field.name, event.target.value)}
-                      >
-                        {!field.required ? <option value="">{field.placeholder || 'Не выбрано'}</option> : null}
-                        {options.map(option => (
-                          <option key={`${field.name}-${option.value}`} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : isRadioField(field.type) ? (
-                      <div className="space-y-2 rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-surface)] p-4">
-                        {options.map(option => (
-                          <label key={`${field.name}-${option.value}`} className="flex items-center gap-3 text-sm text-[var(--pf-text)]">
-                            <input
-                              type="radio"
-                              name={field.name}
-                              value={option.value}
-                              checked={currentValue === option.value}
-                              onChange={event => setStringField(field.name, event.target.value)}
-                            />
-                            <span>{option.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                    ) : isCheckboxField(field.type) && options.length > 1 ? (
-                      <div className="space-y-2 rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-surface)] p-4">
-                        {options.map(option => {
-                          const selected = Array.isArray(currentValue) ? currentValue : [];
-                          return (
-                            <label key={`${field.name}-${option.value}`} className="flex items-center gap-3 text-sm text-[var(--pf-text)]">
-                              <input
-                                type="checkbox"
-                                checked={selected.includes(option.value)}
-                                onChange={event => toggleMultiCheckbox(field.name, option.value, event.target.checked)}
-                              />
-                              <span>{option.label}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    ) : isCheckboxField(field.type) ? (
-                      <label className="flex min-h-[48px] items-center gap-3 rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-surface)] px-4 text-sm text-[var(--pf-text)]">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(currentValue)}
-                          onChange={event => setBooleanField(field.name, event.target.checked)}
-                        />
-                        <span>{options[0]?.label || field.label || field.name}</span>
-                      </label>
-                    ) : (
-                      <input
-                        className="platform-input w-full"
-                        type={field.type === 'number' ? 'number' : 'text'}
-                        placeholder={field.placeholder || ''}
-                        value={typeof currentValue === 'string' ? currentValue : ''}
-                        onChange={event => setStringField(field.name, event.target.value)}
-                      />
-                    )}
-
-                    {field.placeholder && !isTextareaField(field.type) && !isSelectField(field.type) && !isCheckboxField(field.type) && !isRadioField(field.type) ? (
-                      <div className="text-xs text-[var(--pf-text-dim)]">{field.placeholder}</div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
+            <LotSchemaFields
+              fields={schema}
+              values={formValues}
+              onChange={(name, value) => setFormValues(prev => ({ ...prev, [name]: value }))}
+              disabled={saving}
+            />
 
             <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:justify-end">
               <button className="platform-btn-secondary" onClick={() => onOpenChange(false)} disabled={saving}>

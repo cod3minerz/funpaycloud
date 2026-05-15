@@ -6,6 +6,7 @@ import { AlertTriangle, Download, Loader2, Plus, Save, Trash2, Upload, XCircle, 
 import { toast } from 'sonner';
 import { Switch } from '@/app/components/ui/switch';
 import { accountsApi, ApiAccount, ApiWarehouseItem, ApiWarehouseLot, lotsApi, warehouseApi } from '@/lib/api';
+import { LotCreateDialog } from '@/platform/components/LotCreateDialog';
 import { LotEditDialog } from '@/platform/components/LotEditDialog';
 import {
   DataTableWrap,
@@ -111,6 +112,8 @@ export default function Warehouse() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [deletingLot, setDeletingLot] = useState(false);
   const [editingLot, setEditingLot] = useState<ApiWarehouseLot | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createInitialAccountID, setCreateInitialAccountID] = useState<number | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -125,7 +128,7 @@ export default function Warehouse() {
     }
   }
 
-  async function loadLots(selectedAccount?: string, refresh = false) {
+  async function loadLots(selectedAccount?: string, refresh = false): Promise<ApiWarehouseLot[]> {
     setLoading(true);
     setRefreshing(refresh);
     setLoadError(null);
@@ -139,10 +142,11 @@ export default function Warehouse() {
         setSelectedLotId(null);
         setSelectedLotDetails(null);
         setDetailsError(null);
-        return;
+        return safe;
       }
 
       setSelectedLotId(prev => (prev && safe.some(lot => lot.id === prev) ? prev : safe[0].id));
+      return safe;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Ошибка загрузки склада';
       setLoadError(message);
@@ -150,6 +154,7 @@ export default function Warehouse() {
       setLots([]);
       setSelectedLotId(null);
       setSelectedLotDetails(null);
+      return [];
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -392,6 +397,23 @@ export default function Warehouse() {
               disabled={loading || refreshing}
             >
               {refreshing ? <Loader2 size={14} className="animate-spin" /> : 'Обновить с FunPay'}
+            </button>
+            <button
+              className="platform-btn-primary"
+              onClick={() => {
+                if (accounts.length === 0) {
+                  toast.error('Сначала добавьте аккаунт');
+                  return;
+                }
+                if (accountFilter !== 'all') {
+                  setCreateInitialAccountID(Number(accountFilter));
+                } else if (accounts[0]) {
+                  setCreateInitialAccountID(accounts[0].id);
+                }
+                setCreateOpen(true);
+              }}
+            >
+              <Plus size={14} /> Создать лот
             </button>
           </ToolbarRow>
         </SectionCard>
@@ -855,6 +877,31 @@ export default function Warehouse() {
         onSaved={async () => {
           await loadLots(accountFilter, true);
           setDetailReloadKey(prev => prev + 1);
+        }}
+      />
+      <LotCreateDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        accounts={accounts}
+        initialAccountId={createInitialAccountID}
+        onCreated={async ({ accountId, lotId }) => {
+          const targetFilter =
+            accountFilter !== 'all' && accountFilter !== String(accountId)
+              ? String(accountId)
+              : accountFilter;
+          if (targetFilter !== accountFilter) {
+            setAccountFilter(targetFilter);
+          }
+          const refreshed = await loadLots(targetFilter, true);
+          if (lotId) {
+            const createdLot = refreshed.find(
+              lot => lot.funpay_account_id === accountId && lot.lot_id === lotId,
+            );
+            if (createdLot) {
+              setSelectedLotId(createdLot.id);
+              setDetailReloadKey(prev => prev + 1);
+            }
+          }
         }}
       />
     </motion.div>

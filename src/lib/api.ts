@@ -451,6 +451,24 @@ export type ApiLot = {
   params?: ApiLotParam[];
 };
 
+export type ApiLotCategorySubcategory = {
+  id: number;
+  name: string;
+  url?: string;
+  node_type: 'lots' | 'chips' | string;
+};
+
+export type ApiLotCategory = {
+  game_id: number;
+  game_title: string;
+  variant_name?: string;
+  title_url?: string;
+  title_node_id?: number;
+  title_node_type?: 'lots' | 'chips' | string;
+  sort_letter?: string;
+  subcategories: ApiLotCategorySubcategory[];
+};
+
 export type ApiLotEditableField = {
   label: string;
   type: string;
@@ -464,6 +482,8 @@ export type ApiLotEditableField = {
 };
 
 export type ApiLotEditValues = Record<string, string | boolean | string[]>;
+export type ApiLotCreateField = ApiLotEditableField;
+export type ApiLotCreateValues = Record<string, string | boolean | string[]>;
 
 export type ApiLotEditForm = {
   lot: {
@@ -495,6 +515,32 @@ export type ApiLotEditForm = {
   };
 };
 
+export type ApiLotCreateForm = {
+  schema: ApiLotCreateField[];
+  schema_status: 'ready' | 'missing';
+  schema_source?: 'stored' | 'live_synced' | string;
+  sync_error?: string;
+  category?: {
+    title?: string;
+    variant_name?: string;
+  };
+  subcategory?: {
+    id?: number;
+    name?: string;
+  };
+  meta: {
+    node_id?: number;
+    node_type?: 'lots' | 'chips' | string;
+    source_url?: string;
+    subcategory_id?: number;
+    category_title?: string;
+    subcategory_name?: string;
+    variant_name?: string;
+    loaded_at?: string;
+    field_count?: number;
+  };
+};
+
 export const lotsApi = {
   listByAccount: (accountId: number | string, options?: { refresh?: boolean }) => {
     const query = new URLSearchParams();
@@ -503,14 +549,14 @@ export const lotsApi = {
     return apiRequest<ApiLot[]>(`/api/accounts/${accountId}/lots${suffix ? `?${suffix}` : ''}`);
   },
   categories: (accountId: number | string) =>
-    apiRequest<Array<{
-      game_id: number;
-      game_title: string;
-      subcategories: Array<{ id: number; name: string }>;
-    }>>(`/api/accounts/${accountId}/lots/categories`),
+    apiRequest<ApiLotCategory[]>(`/api/accounts/${accountId}/lots/categories`),
+  getCreateForm: (accountId: number | string, nodeId: number, nodeType: string) =>
+    apiRequest<ApiLotCreateForm>(`/api/accounts/${accountId}/lots/create-form?node_id=${nodeId}&node_type=${encodeURIComponent(nodeType)}`),
   create: (
     accountId: number | string,
-    payload: { node_id: number; title: string; description: string; price: number; amount: number },
+    payload:
+      | { node_id: number; node_type?: string; title: string; description: string; price: number; amount: number }
+      | { mode: 'schema'; node_id: number; node_type: string; values: ApiLotCreateValues },
   ) =>
     apiRequest<{ id?: string }>(`/api/accounts/${accountId}/lots`, {
       method: 'POST',
