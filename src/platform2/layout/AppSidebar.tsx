@@ -97,7 +97,7 @@ const managementNavItems: NavItem[] = [
   {
     icon: <PlugInIcon className="h-5 w-5" />,
     name: "Плагины",
-    path: `${BASE}/plugins`,
+    badge: "Скоро",
   },
   {
     icon: <DollarLineIcon className="h-5 w-5" />,
@@ -161,33 +161,52 @@ const AppSidebar: React.FC = () => {
                 />
               )}
             </button>
-          ) : (
-            nav.path && (
-              <Link
-                href={nav.path}
-                className={`menu-item group ${
-                  isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
+          ) : nav.path ? (
+            <Link
+              href={nav.path}
+              className={`menu-item group ${
+                isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
+              }`}
+            >
+              <span
+                className={`${
+                  isActive(nav.path)
+                    ? "menu-item-icon-active"
+                    : "menu-item-icon-inactive"
                 }`}
               >
-                <span
-                  className={`${
-                    isActive(nav.path)
-                      ? "menu-item-icon-active"
-                      : "menu-item-icon-inactive"
-                  }`}
-                >
-                  {nav.icon}
+                {nav.icon}
+              </span>
+              {(isExpanded || isHovered || isMobileOpen) && (
+                <span className={`menu-item-text`}>{nav.name}</span>
+              )}
+              {(isExpanded || isHovered || isMobileOpen) && nav.badge && (
+                <span className={`ml-auto rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                  nav.badge === "Скоро"
+                    ? "bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500"
+                    : "bg-brand-500/10 text-brand-500"
+                }`}>
+                  {nav.badge}
                 </span>
-                {(isExpanded || isHovered || isMobileOpen) && (
-                  <span className={`menu-item-text`}>{nav.name}</span>
-                )}
-                {(isExpanded || isHovered || isMobileOpen) && nav.badge && (
-                  <span className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-semibold bg-brand-500/10 text-brand-500">
-                    {nav.badge}
-                  </span>
-                )}
-              </Link>
-            )
+              )}
+            </Link>
+          ) : (
+            /* Пункт без пути — недоступен, только отображается */
+            <div className="menu-item group opacity-50 cursor-not-allowed select-none">
+              <span className="menu-item-icon-inactive">{nav.icon}</span>
+              {(isExpanded || isHovered || isMobileOpen) && (
+                <span className="menu-item-text">{nav.name}</span>
+              )}
+              {(isExpanded || isHovered || isMobileOpen) && nav.badge && (
+                <span className={`ml-auto rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                  nav.badge === "Скоро"
+                    ? "bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500"
+                    : "bg-brand-500/10 text-brand-500"
+                }`}>
+                  {nav.badge}
+                </span>
+              )}
+            </div>
           )}
           {nav.subItems && (isExpanded || isHovered || isMobileOpen) && (
             <div

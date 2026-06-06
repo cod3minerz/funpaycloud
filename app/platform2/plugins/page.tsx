@@ -1,2 +1,4 @@
-import PluginsPage from "@/platform2/pages/Plugins";
-export default function Page() { return <PluginsPage />; }
+import { redirect } from "next/navigation";
+export default function Page() {
+  redirect("/platform2/dashboard");
+}
