@@ -191,11 +191,13 @@
   [role="button"]:not(:disabled) {
     cursor: pointer;
   }
-  body {
-    @apply relative font-normal z-1 bg-gray-50;
-    font-family: var(--font-roboto-flex), sans-serif;
-    font-variation-settings: "wdth" 125;
-  }
+  /* body styles scoped to [data-p2] wrapper — see platform2 layout */
+}
+
+/* ── platform2 root wrapper ──────────────────────────────────────────────── */
+[data-p2] {
+  font-family: var(--font-outfit), sans-serif;
+  @apply relative font-normal;
 }
 
 @utility menu-item {

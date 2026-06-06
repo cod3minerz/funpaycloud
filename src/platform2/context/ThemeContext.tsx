@@ -30,10 +30,15 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     if (isInitialized) {
       localStorage.setItem("theme", theme);
-      if (theme === "dark") {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
+      // Apply dark class to the platform2 wrapper only, not to <html>
+      // to avoid conflicting with the rest of the site
+      const p2 = document.querySelector("[data-p2]");
+      if (p2) {
+        if (theme === "dark") {
+          p2.classList.add("dark");
+        } else {
+          p2.classList.remove("dark");
+        }
       }
     }
   }, [theme, isInitialized]);

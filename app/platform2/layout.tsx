@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/api";
 import { SidebarProvider, useSidebar } from "@/platform2/context/SidebarContext";
-import { ThemeProvider } from "@/platform2/context/ThemeContext";
+import { ThemeProvider, useTheme } from "@/platform2/context/ThemeContext";
 import AppHeader from "@/platform2/layout/AppHeader";
 import AppSidebar from "@/platform2/layout/AppSidebar";
 import Backdrop from "@/platform2/layout/Backdrop";
 
 function Shell({ children }: { children: React.ReactNode }) {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
+  const { theme } = useTheme();
 
   const mainContentMargin = isMobileOpen
     ? "ml-0"
@@ -19,7 +20,10 @@ function Shell({ children }: { children: React.ReactNode }) {
     : "lg:ml-[90px]";
 
   return (
-    <div className="min-h-screen xl:flex">
+    <div
+      data-p2="true"
+      className={`${theme === "dark" ? "dark bg-gray-950" : "bg-gray-50"} min-h-screen xl:flex`}
+    >
       <AppSidebar />
       <Backdrop />
       <div className={`min-w-0 flex-1 transition-all duration-300 ease-in-out ${mainContentMargin}`}>

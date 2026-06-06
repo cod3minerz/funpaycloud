@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Caveat, Inter, JetBrains_Mono, Syne } from 'next/font/google';
+import { Caveat, Inter, JetBrains_Mono, Outfit, Syne } from 'next/font/google';
 import { Suspense } from 'react';
 import { Toaster } from 'sonner';
 import { YandexMetrika } from './components/analytics/YandexMetrika';
@@ -27,6 +27,12 @@ const caveat = Caveat({
   subsets: ['latin', 'cyrillic'],
   display: 'swap',
   variable: '--font-caveat',
+});
+
+const outfit = Outfit({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-outfit',
 });
 
 export const metadata: Metadata = {
@@ -59,7 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="ru"
-      className={`dark ${syne.variable} ${inter.variable} ${jetbrainsMono.variable} ${caveat.variable}`}
+      className={`dark ${syne.variable} ${inter.variable} ${jetbrainsMono.variable} ${caveat.variable} ${outfit.variable}`}
       suppressHydrationWarning
     >
       <body className="antialiased">
