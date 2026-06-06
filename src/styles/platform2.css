@@ -172,6 +172,14 @@
 }
 
 /*
+  Scope the `dark:` variant to [data-p2].dark so that platform2 theming is
+  independent from <html class="dark"> used by platform1.
+  Auth/admin/platform1 use zero dark: Tailwind classes — only CSS vars — so
+  this override is safe globally.
+*/
+@custom-variant dark (&:is([data-p2].dark *));
+
+/*
   The default border color has changed to `currentColor` in Tailwind CSS v4,
   so we've added these compatibility styles to make sure everything still
   looks the same as it did with Tailwind CSS v3.
