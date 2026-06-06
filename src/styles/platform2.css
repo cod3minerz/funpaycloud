@@ -1,6 +1,5 @@
 @theme {
   --font-*: initial;
-  --font-outfit: Outfit, sans-serif;
 
   --breakpoint-*: initial;
   --breakpoint-2xsm: 375px;
@@ -204,7 +203,8 @@
 
 /* ── platform2 root wrapper ──────────────────────────────────────────────── */
 [data-p2] {
-  font-family: var(--font-outfit), sans-serif;
+  font-family: var(--font-roboto-flex), sans-serif;
+  font-variation-settings: "wdth" 125;
   @apply relative font-normal;
 }
 

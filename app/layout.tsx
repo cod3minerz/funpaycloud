@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Caveat, Inter, JetBrains_Mono, Outfit, Syne } from 'next/font/google';
+import { Caveat, Inter, JetBrains_Mono, Outfit, Roboto_Flex, Syne } from 'next/font/google';
 import { Suspense } from 'react';
 import { Toaster } from 'sonner';
 import { YandexMetrika } from './components/analytics/YandexMetrika';
@@ -35,6 +35,13 @@ const outfit = Outfit({
   variable: '--font-outfit',
 });
 
+const robotoFlex = Roboto_Flex({
+  subsets: ['latin'],
+  axes: ['wdth'],
+  display: 'swap',
+  variable: '--font-roboto-flex',
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL('https://funpay.cloud'),
   title: 'FunPay Cloud',
@@ -65,7 +72,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="ru"
-      className={`dark ${syne.variable} ${inter.variable} ${jetbrainsMono.variable} ${caveat.variable} ${outfit.variable}`}
+      className={`dark ${syne.variable} ${inter.variable} ${jetbrainsMono.variable} ${caveat.variable} ${outfit.variable} ${robotoFlex.variable}`}
       suppressHydrationWarning
     >
       <body className="antialiased">
