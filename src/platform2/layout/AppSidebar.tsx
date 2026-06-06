@@ -352,12 +352,22 @@ const AppSidebar: React.FC = () => {
               />
             </>
           ) : (
-            <Image
-              src="/branding/logo_short_new.svg"
-              alt="FunPay Cloud"
-              width={28}
-              height={19}
-            />
+            <>
+              <Image
+                className="dark:hidden"
+                src="/branding/logo_short_new.svg"
+                alt="FunPay Cloud"
+                width={28}
+                height={19}
+              />
+              <Image
+                className="hidden dark:block"
+                src="/branding/logo_short_new_dark.svg"
+                alt="FunPay Cloud"
+                width={28}
+                height={19}
+              />
+            </>
           )}
         </Link>
       </div>
