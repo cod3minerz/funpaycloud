@@ -8,6 +8,7 @@ import { ThemeProvider, useTheme } from "@/platform2/context/ThemeContext";
 import AppHeader from "@/platform2/layout/AppHeader";
 import AppSidebar from "@/platform2/layout/AppSidebar";
 import Backdrop from "@/platform2/layout/Backdrop";
+import { Toaster } from "sonner";
 
 function Shell({ children }: { children: React.ReactNode }) {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
@@ -32,6 +33,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </div>
+      <Toaster position="top-right" richColors />
     </div>
   );
 }

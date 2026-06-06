@@ -522,7 +522,7 @@ function ConstructorFlow() {
   return (
     <div
       className="-mx-4 -my-4 md:-mx-6 md:-my-6 relative flex flex-col overflow-hidden"
-      style={{ height: "calc(100vh - 4rem)" }}
+      style={{ height: "calc(100dvh - 4rem)" }}
     >
       {/* ── TOOLBAR ── */}
       <div className="relative z-20 flex items-center justify-between gap-3 border-b border-gray-200 bg-white/95 px-4 py-2.5 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/95">
@@ -599,7 +599,7 @@ function ConstructorFlow() {
       </div>
 
       {/* ── CANVAS ── */}
-      <div className="relative flex-1 overflow-hidden" style={{ background: bgFill }}>
+      <div className="relative flex-1 overflow-hidden" style={{ background: bgFill, minHeight: 0 }}>
         {loading && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/60 backdrop-blur-sm dark:bg-gray-950/60">
             <Icon name="time" className="h-8 w-8 animate-spin text-brand-500" />

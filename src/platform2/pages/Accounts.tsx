@@ -13,6 +13,7 @@ import {
 } from "@/platform2/components/ui/table";
 import Icon from "@/platform2/icons";
 import { accountsApi, ApiAccount } from "@/lib/api";
+import { toast } from "sonner";
 
 type Account = {
   id: string;
@@ -106,8 +107,9 @@ export default function AccountsPage() {
       await accountsApi.add(goldenKey);
       const list = await accountsApi.list();
       setAccounts(list.map(mapApiAccount));
+      toast.success("Аккаунт успешно добавлен");
     } catch {
-      // ignore
+      toast.error("Не удалось добавить аккаунт. Проверьте Golden Key.");
     } finally {
       setAddingAccount(false);
       setIsAddModal(false);
@@ -120,8 +122,9 @@ export default function AccountsPage() {
       await accountsApi.delete(acc.apiId);
       setAccounts((prev) => prev.filter((a) => a.id !== acc.id));
       if (drawerAccount?.id === acc.id) setDrawerAccount(null);
+      toast.success(`Аккаунт ${acc.username} удалён`);
     } catch {
-      // ignore
+      toast.error("Не удалось удалить аккаунт");
     }
   }
 
@@ -130,8 +133,9 @@ export default function AccountsPage() {
       await accountsApi.stopRuntime(acc.apiId);
       setAccounts((prev) => prev.map((a) => a.id === acc.id ? { ...a, runner: false } : a));
       if (drawerAccount?.id === acc.id) setDrawerAccount((d) => d ? { ...d, runner: false } : d);
+      toast.success("Runner остановлен");
     } catch {
-      // ignore
+      toast.error("Не удалось остановить Runner");
     }
   }
 
@@ -140,8 +144,9 @@ export default function AccountsPage() {
       await accountsApi.startRuntime(acc.apiId);
       setAccounts((prev) => prev.map((a) => a.id === acc.id ? { ...a, runner: true } : a));
       if (drawerAccount?.id === acc.id) setDrawerAccount((d) => d ? { ...d, runner: true } : d);
+      toast.success("Runner запущен");
     } catch {
-      // ignore
+      toast.error("Не удалось запустить Runner");
     }
   }
 
@@ -155,16 +160,18 @@ export default function AccountsPage() {
       const updated = { ...acc, raiser: !acc.raiser };
       setAccounts((prev) => prev.map((a) => a.id === acc.id ? updated : a));
       if (drawerAccount?.id === acc.id) setDrawerAccount(updated);
+      toast.success(acc.raiser ? "Raiser остановлен" : "Raiser запущен");
     } catch {
-      // ignore
+      toast.error("Не удалось переключить Raiser");
     }
   }
 
   async function handleSaveSchedule(acc: Account) {
     try {
       await accountsApi.updateRaiserSchedule(acc.apiId, scheduleTime, "Europe/Moscow");
+      toast.success("Расписание сохранено");
     } catch {
-      // ignore
+      toast.error("Не удалось сохранить расписание");
     }
   }
 
@@ -173,8 +180,9 @@ export default function AccountsPage() {
       await accountsApi.connectProxy(accountId, "free");
       const list = await accountsApi.list();
       setAccounts(list.map(mapApiAccount));
+      toast.success("Бесплатный прокси подключён");
     } catch {
-      // ignore
+      toast.error("Не удалось подключить прокси");
     }
     setIsProxyModal(false);
   }
@@ -192,8 +200,9 @@ export default function AccountsPage() {
       });
       const list = await accountsApi.list();
       setAccounts(list.map(mapApiAccount));
+      toast.success("Внешний прокси подключён");
     } catch {
-      // ignore
+      toast.error("Не удалось подключить прокси. Проверьте данные.");
     }
     setIsExternalProxyModal(false);
   }
@@ -204,8 +213,9 @@ export default function AccountsPage() {
       await accountsApi.startAllRuntime();
       const list = await accountsApi.list();
       setAccounts(list.map(mapApiAccount));
+      toast.success("Все Runner запущены");
     } catch {
-      // ignore
+      toast.error("Не удалось запустить все Runner");
     } finally {
       setRunningAll(false);
     }
@@ -217,8 +227,9 @@ export default function AccountsPage() {
       await accountsApi.stopAllRuntime();
       const list = await accountsApi.list();
       setAccounts(list.map(mapApiAccount));
+      toast.success("Все Runner остановлены");
     } catch {
-      // ignore
+      toast.error("Не удалось остановить все Runner");
     } finally {
       setStoppingAll(false);
     }
@@ -513,49 +524,66 @@ export default function AccountsPage() {
         </p>
 
         <div className="mt-6 space-y-3">
-          {/* Host + Port */}
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={extProxy.host}
-              onChange={(e) => setExtProxy((p) => ({ ...p, host: e.target.value }))}
-              placeholder="host или ip"
-              className="flex-1 rounded-xl border border-brand-300 bg-white px-4 py-3 text-sm text-gray-800 outline-none ring-2 ring-brand-500/20 focus:border-brand-400 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            />
-            <input
-              type="number"
-              value={extProxy.port}
-              onChange={(e) => setExtProxy((p) => ({ ...p, port: e.target.value }))}
-              placeholder="порт"
-              className="w-28 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            />
-          </div>
-
-          {/* Protocol + Login + Password */}
-          <div className="flex gap-3">
+          {/* Protocol */}
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-gray-500 dark:text-gray-400">Протокол</label>
             <select
               value={extProxy.protocol}
               onChange={(e) => setExtProxy((p) => ({ ...p, protocol: e.target.value }))}
-              className="w-32 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
             >
               <option>HTTP</option>
               <option>HTTPS</option>
               <option>SOCKS5</option>
             </select>
-            <input
-              type="text"
-              value={extProxy.login}
-              onChange={(e) => setExtProxy((p) => ({ ...p, login: e.target.value }))}
-              placeholder="логин (опц.)"
-              className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            />
-            <input
-              type="password"
-              value={extProxy.password}
-              onChange={(e) => setExtProxy((p) => ({ ...p, password: e.target.value }))}
-              placeholder="пароль (опц.)"
-              className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            />
+          </div>
+
+          {/* Host + Port */}
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="mb-1.5 block text-xs font-medium text-gray-500 dark:text-gray-400">Хост / IP</label>
+              <input
+                type="text"
+                value={extProxy.host}
+                onChange={(e) => setExtProxy((p) => ({ ...p, host: e.target.value }))}
+                placeholder="192.168.1.1 или host.com"
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              />
+            </div>
+            <div className="w-28">
+              <label className="mb-1.5 block text-xs font-medium text-gray-500 dark:text-gray-400">Порт</label>
+              <input
+                type="number"
+                value={extProxy.port}
+                onChange={(e) => setExtProxy((p) => ({ ...p, port: e.target.value }))}
+                placeholder="8080"
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              />
+            </div>
+          </div>
+
+          {/* Login + Password */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-gray-500 dark:text-gray-400">Логин (опц.)</label>
+              <input
+                type="text"
+                value={extProxy.login}
+                onChange={(e) => setExtProxy((p) => ({ ...p, login: e.target.value }))}
+                placeholder="username"
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-gray-500 dark:text-gray-400">Пароль (опц.)</label>
+              <input
+                type="password"
+                value={extProxy.password}
+                onChange={(e) => setExtProxy((p) => ({ ...p, password: e.target.value }))}
+                placeholder="••••••••"
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              />
+            </div>
           </div>
         </div>
 
@@ -603,11 +631,22 @@ export default function AccountsPage() {
                   <p className="text-lg font-bold text-gray-900 dark:text-white">{drawerAccount.username}</p>
                   <p className="text-sm text-gray-400">FunPay ID: {drawerAccount.funpayId}</p>
                   <div className="mt-1 flex items-center gap-1.5">
-                    <span className="relative flex h-2 w-2">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success-400 opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-success-500" />
-                    </span>
-                    <span className="text-sm font-medium text-success-600">Онлайн</span>
+                    {drawerAccount.status === "online" ? (
+                      <>
+                        <span className="relative flex h-2 w-2">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success-400 opacity-75" />
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-success-500" />
+                        </span>
+                        <span className="text-sm font-medium text-success-600">Онлайн</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="relative flex h-2 w-2">
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-gray-400" />
+                        </span>
+                        <span className="text-sm font-medium text-gray-400">Оффлайн</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -691,13 +730,23 @@ export default function AccountsPage() {
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Прокси</p>
                 <div className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
                   <div className="flex items-center gap-2">
-                    <span className="relative flex h-2 w-2">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success-400 opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-success-500" />
-                    </span>
+                    {drawerAccount.proxy !== "Нет прокси" ? (
+                      <span className="relative flex h-2 w-2">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success-400 opacity-75" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-success-500" />
+                      </span>
+                    ) : (
+                      <span className="relative flex h-2 w-2">
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-gray-400" />
+                      </span>
+                    )}
                     <span className="font-medium text-gray-800 dark:text-white">{drawerAccount.proxy}</span>
                   </div>
-                  <p className="mt-1 text-sm text-gray-400">Все запросы аккаунта идут через прокси.</p>
+                  <p className="mt-1 text-sm text-gray-400">
+                    {drawerAccount.proxy !== "Нет прокси"
+                      ? "Все запросы аккаунта идут через прокси."
+                      : "Прокси не подключён. Рекомендуем подключить прокси для защиты аккаунта."}
+                  </p>
                   <button
                     onClick={() => { setProxyTargetId(drawerAccount.apiId); setDrawerAccount(null); setIsProxyModal(true); }}
                     className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
@@ -714,9 +763,13 @@ export default function AccountsPage() {
                 <div className="space-y-2">
                   <button
                     onClick={() => drawerAccount.runner ? handleStopRuntime(drawerAccount) : handleStartRuntime(drawerAccount)}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-error-500/10 py-3 text-sm font-medium text-error-500 hover:bg-error-500/20 transition-colors">
-                    <Icon name="close" className="h-4 w-4" />
-                    {drawerAccount.runner ? "Выключить Runner" : "Включить Runner"}
+                    className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-colors ${
+                      drawerAccount.runner
+                        ? "bg-error-500/10 text-error-500 hover:bg-error-500/20"
+                        : "bg-success-500/10 text-success-600 hover:bg-success-500/20"
+                    }`}>
+                    <Icon name={drawerAccount.runner ? "close" : "check-circle"} className="h-4 w-4" />
+                    {drawerAccount.runner ? "Остановить Runner" : "Запустить Runner"}
                   </button>
                   <button
                     onClick={() => handleDeleteAccount(drawerAccount)}

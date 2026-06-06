@@ -310,12 +310,9 @@ export default function ChatsPage() {
               }`}
             >
               <div className="flex items-center gap-2.5">
-                {/* Avatar with online dot */}
+                {/* Avatar */}
                 <div className="relative shrink-0">
                   <Avatar name={conv.buyer} size="sm" />
-                  {conv.online && (
-                    <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-success-500 dark:border-gray-900" />
-                  )}
                 </div>
 
                 <div className="min-w-0 flex-1">
@@ -350,39 +347,15 @@ export default function ChatsPage() {
         {/* Chat header */}
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-3 dark:border-gray-800">
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <Avatar name={active.buyer} />
-              {active.online && (
-                <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-success-500 dark:border-gray-950" />
-              )}
-            </div>
+            <Avatar name={active.buyer} />
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-gray-900 dark:text-white">{active.buyer}</span>
-                <span className="text-xs text-gray-400">{active.online ? "онлайн" : "не в сети"}</span>
-              </div>
+              <span className="font-bold text-gray-900 dark:text-white">{active.buyer}</span>
               <p className="text-xs text-gray-400">
                 <span className="text-gray-500 dark:text-gray-400">{active.account}</span>
                 {" · "}
                 <span className="truncate">{active.lotTitle}</span>
               </p>
             </div>
-          </div>
-
-          {/* Header actions */}
-          <div className="flex items-center gap-1">
-            {[
-              { icon: "eye", title: "Просмотр заказа" },
-              { icon: "info", title: "Информация" },
-            ].map(({ icon, title }) => (
-              <button
-                key={icon}
-                title={title}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-              >
-                <Icon name={icon} className="h-4 w-4" />
-              </button>
-            ))}
           </div>
         </div>
 
@@ -421,23 +394,7 @@ export default function ChatsPage() {
             />
 
             {/* Toolbar */}
-            <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
-              <div className="flex items-center gap-0.5">
-                {[
-                  { icon: "docs", title: "Форматирование" },
-                  { icon: "envelope", title: "Emoji" },
-                  { icon: "download", title: "Прикрепить файл" },
-                ].map(({ icon, title }) => (
-                  <button
-                    key={icon}
-                    title={title}
-                    className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-                  >
-                    <Icon name={icon} className="h-4 w-4" />
-                  </button>
-                ))}
-              </div>
-
+            <div className="flex items-center justify-end px-3 pb-2.5 pt-1">
               <button
                 onClick={sendMessage}
                 disabled={!input.trim()}

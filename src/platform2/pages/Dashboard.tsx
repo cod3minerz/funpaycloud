@@ -1,6 +1,10 @@
+"use client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/platform2/components/ui/card";
 import { Button } from "@/platform2/components/ui/button";
 import Icon from "@/platform2/icons";
+
+const TELEGRAM_CHANNEL = "https://t.me/funpay_cloud";
+const TELEGRAM_SUPPORT = "https://t.me/funpay_cloud";
 
 export default function DashboardPage() {
   return (
@@ -58,14 +62,14 @@ export default function DashboardPage() {
                   КАНАЛ
                 </p>
                 <h3 className="text-lg font-bold text-dark dark:text-white">
-                  @fpcloud_support
+                  @funpay_cloud
                 </h3>
                 <p className="text-sm text-body">
-                  Новости платформы, промокоды и обновления в едином Telegram-аккаунте.
+                  Новости платформы, промокоды и обновления в едином Telegram-канале.
                 </p>
               </div>
-              <Button variant="outline" className="w-full">
-                Открыть @fpcloud_support
+              <Button variant="outline" className="w-full" onClick={() => window.open(TELEGRAM_CHANNEL, "_blank")}>
+                Открыть @funpay_cloud
                 <Icon name="arrow-right" className="ml-2 h-4 w-4" />
               </Button>
             </div>
@@ -110,14 +114,14 @@ export default function DashboardPage() {
                   ТЕХПОДДЕРЖКА
                 </p>
                 <h3 className="text-lg font-bold text-dark dark:text-white">
-                  @fpcloud_support
+                  @funpay_cloud
                 </h3>
                 <p className="text-sm text-body">
-                  Если что-то сломалось — напишите в единый Telegram поддержки.
+                  Если что-то сломалось — напишите нам в Telegram поддержки.
                 </p>
               </div>
-              <Button variant="outline" className="w-full">
-                Написать @fpcloud_support
+              <Button variant="outline" className="w-full" onClick={() => window.open(TELEGRAM_SUPPORT, "_blank")}>
+                Написать в поддержку
                 <Icon name="arrow-right" className="ml-2 h-4 w-4" />
               </Button>
             </div>

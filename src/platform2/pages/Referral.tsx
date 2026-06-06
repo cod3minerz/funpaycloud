@@ -173,10 +173,10 @@ export default function ReferralPage() {
                     <td className="px-5 py-4">
                       <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
                         r.status === "active"
-                          ? "bg-success-500/10 text-success-600"
-                          : "bg-gray-100 text-gray-400"
+                          ? "bg-success-500/10 text-success-600 dark:bg-success-500/20 dark:text-success-400"
+                          : "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
                       }`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${r.status === "active" ? "bg-success-500" : "bg-gray-300"}`} />
+                        <span className={`h-1.5 w-1.5 rounded-full ${r.status === "active" ? "bg-success-500" : "bg-gray-400 dark:bg-gray-500"}`} />
                         {r.status === "active" ? "Активен" : "Неактивен"}
                       </span>
                     </td>
