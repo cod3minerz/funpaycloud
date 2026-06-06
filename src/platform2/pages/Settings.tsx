@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { settingsApi, NotificationSettings } from "@/lib/api";
 import { logout } from "@/lib/auth";
 import { Card, CardContent } from "@/platform2/components/ui/card";
@@ -115,6 +115,43 @@ export default function SettingsPage() {
   const [pwdSaved, setPwdSaved] = useState(false);
   const [pwdError, setPwdError] = useState("");
 
+  const [telegramLinked, setTelegramLinked] = useState(false);
+  const [telegramUsername, setTelegramUsername] = useState("");
+  const [unlinkingTelegram, setUnlinkingTelegram] = useState(false);
+
+  // Load profile for Telegram status
+  useEffect(() => {
+    settingsApi.getProfile().then((p) => {
+      setTelegramLinked(p.telegram_linked ?? false);
+      setTelegramUsername(p.telegram_username ?? p.telegram ?? "");
+    }).catch(() => {});
+  }, []);
+
+  async function handleUnlinkTelegram() {
+    setUnlinkingTelegram(true);
+    try {
+      await settingsApi.unlinkTelegram();
+      setTelegramLinked(false);
+      setTelegramUsername("");
+    } catch {
+      // ignore
+    } finally {
+      setUnlinkingTelegram(false);
+    }
+  }
+
+  // Password strength
+  const passwordStrength = useMemo<"" | "weak" | "medium" | "strong">(() => {
+    if (!newPwd) return "";
+    if (newPwd.length < 8) return "weak";
+    const score = [/[a-zA-Z]/, /\d/, /[^a-zA-Z0-9]/].filter((r) => r.test(newPwd)).length;
+    return score >= 3 ? "strong" : score >= 2 ? "medium" : "weak";
+  }, [newPwd]);
+
+  const strengthColor = passwordStrength === "strong" ? "bg-success-500" : passwordStrength === "medium" ? "bg-yellow-500" : "bg-error-500";
+  const strengthLabel = passwordStrength === "strong" ? "Надёжный" : passwordStrength === "medium" ? "Средний" : "Слабый";
+  const strengthWidth = passwordStrength === "strong" ? "w-full" : passwordStrength === "medium" ? "w-2/3" : "w-1/3";
+
   const [notifs, setNotifs] = useState<Record<NotifKey, boolean>>({
     all: false,
     newOrder: false,
@@ -202,6 +239,20 @@ export default function SettingsPage() {
               placeholder="Введите новый пароль"
               hint="Минимум 8 символов"
             />
+            {newPwd.length > 0 && (
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-xs text-gray-400">Надёжность пароля</span>
+                  <span className={`text-xs font-medium ${
+                    passwordStrength === "strong" ? "text-success-600" :
+                    passwordStrength === "medium" ? "text-yellow-600" : "text-error-500"
+                  }`}>{strengthLabel}</span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
+                  <div className={`h-1.5 rounded-full transition-all ${strengthColor} ${strengthWidth}`} />
+                </div>
+              </div>
+            )}
             <PasswordField
               label="Повторите новый пароль"
               value={confirmPwd}
@@ -243,18 +294,33 @@ export default function SettingsPage() {
               <PaperAirplaneIcon className="h-5 w-5 text-brand-500" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-semibold text-gray-800 dark:text-white">
-                Telegram аккаунт привязан
-              </p>
-              <p className="text-xs text-gray-400">Уведомления будут приходить в ваш Telegram.</p>
-              <div className="mt-1 flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-success-500" />
-                <span className="text-xs font-medium text-success-600">@chroomes</span>
-              </div>
+              {telegramLinked ? (
+                <>
+                  <p className="text-sm font-semibold text-gray-800 dark:text-white">Telegram привязан</p>
+                  <p className="text-xs text-gray-400">Уведомления будут приходить в ваш Telegram.</p>
+                  {telegramUsername && (
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-success-500" />
+                      <span className="text-xs font-medium text-success-600">@{telegramUsername}</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold text-gray-800 dark:text-white">Telegram не привязан</p>
+                  <p className="text-xs text-gray-400">Привяжите Telegram для получения уведомлений.</p>
+                </>
+              )}
             </div>
-            <button className="shrink-0 text-xs text-gray-400 hover:text-error-500 transition-colors">
-              Отвязать
-            </button>
+            {telegramLinked && (
+              <button
+                onClick={handleUnlinkTelegram}
+                disabled={unlinkingTelegram}
+                className="shrink-0 text-xs text-gray-400 hover:text-error-500 transition-colors disabled:opacity-50"
+              >
+                {unlinkingTelegram ? "…" : "Отвязать"}
+              </button>
+            )}
           </div>
 
           {/* Master toggle */}

@@ -1,11 +1,9 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/platform2/components/ui/card";
 import { Button } from "@/platform2/components/ui/button";
 import { Badge } from "@/platform2/components/ui/badge";
 import { Modal } from "@/platform2/components/ui/modal";
-import InputField from "@/platform2/components/form/InputField";
-import Select from "@/platform2/components/form/Select";
 import {
   Table,
   TableBody,
@@ -92,6 +90,10 @@ export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [proxyTargetId, setProxyTargetId] = useState<number | null>(null);
   const [addingAccount, setAddingAccount] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"" | "online" | "offline">("");
+  const [runningAll, setRunningAll] = useState(false);
+  const [stoppingAll, setStoppingAll] = useState(false);
 
   useEffect(() => {
     accountsApi.list().then((list) => setAccounts(list.map(mapApiAccount))).catch(() => {});
@@ -196,13 +198,43 @@ export default function AccountsPage() {
     setIsExternalProxyModal(false);
   }
 
-  const mockAccounts = accounts;
+  async function handleStartAll() {
+    setRunningAll(true);
+    try {
+      await accountsApi.startAllRuntime();
+      const list = await accountsApi.list();
+      setAccounts(list.map(mapApiAccount));
+    } catch {
+      // ignore
+    } finally {
+      setRunningAll(false);
+    }
+  }
+
+  async function handleStopAll() {
+    setStoppingAll(true);
+    try {
+      await accountsApi.stopAllRuntime();
+      const list = await accountsApi.list();
+      setAccounts(list.map(mapApiAccount));
+    } catch {
+      // ignore
+    } finally {
+      setStoppingAll(false);
+    }
+  }
+
+  const filteredAccounts = useMemo(() => {
+    return accounts
+      .filter((a) => !search || a.username.toLowerCase().includes(search.toLowerCase()))
+      .filter((a) => !filterStatus || a.status === filterStatus);
+  }, [accounts, search, filterStatus]);
 
   const stats = {
-    total: mockAccounts.length,
-    runnerActive: mockAccounts.filter((a) => a.runner).length,
-    keeperOnline: mockAccounts.filter((a) => a.keeper).length,
-    raiserRunning: mockAccounts.filter((a) => a.raiser).length,
+    total: accounts.length,
+    runnerActive: accounts.filter((a) => a.runner).length,
+    keeperOnline: accounts.filter((a) => a.keeper).length,
+    raiserRunning: accounts.filter((a) => a.raiser).length,
   };
 
   return (
@@ -214,10 +246,24 @@ export default function AccountsPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Аккаунты</h1>
           <p className="text-sm text-gray-500">Управление FunPay аккаунтами</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" className="whitespace-nowrap">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            className="whitespace-nowrap"
+            onClick={handleStartAll}
+            disabled={runningAll}
+          >
+            <Icon name="bolt" className="mr-2 h-4 w-4" />
+            {runningAll ? "Запуск…" : "Запустить всё"}
+          </Button>
+          <Button
+            variant="outline"
+            className="whitespace-nowrap"
+            onClick={handleStopAll}
+            disabled={stoppingAll}
+          >
             <Icon name="close" className="mr-2 h-4 w-4" />
-            Остановить всё
+            {stoppingAll ? "Остановка…" : "Остановить всё"}
           </Button>
           <Button variant="primary" className="whitespace-nowrap" onClick={() => setIsAddModal(true)}>
             <Icon name="plus" className="mr-2 h-4 w-4" />
@@ -292,12 +338,22 @@ export default function AccountsPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Список аккаунтов</CardTitle>
             <div className="flex gap-2">
-              <InputField placeholder="Поиск по логину" className="w-64" />
-              <Select>
-                <option value="all">Все статусы</option>
+              <input
+                type="text"
+                placeholder="Поиск по логину"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-56 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              />
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as "" | "online" | "offline")}
+                className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              >
+                <option value="">Все статусы</option>
                 <option value="online">Онлайн</option>
                 <option value="offline">Оффлайн</option>
-              </Select>
+              </select>
             </div>
           </div>
         </CardHeader>
@@ -313,7 +369,7 @@ export default function AccountsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockAccounts.map((account) => (
+                {filteredAccounts.map((account) => (
                   <TableRow key={account.id}>
                     <TableCell className="px-5 py-4">
                       <div className="flex items-center gap-3">

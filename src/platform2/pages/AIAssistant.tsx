@@ -356,7 +356,15 @@ export default function AIAssistantPage() {
       <div>
         <div className="mb-2 flex items-center justify-between">
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Инструкция для AI</p>
-          <button className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600">
+          <button
+            onClick={() => setInstruction(
+              `Ты вежливый помощник продавца на FunPay. Отвечай кратко и по делу.\n` +
+              `При вопросе о товаре — уточни детали заказа.\n` +
+              `Если не знаешь ответа — предложи написать продавцу напрямую.\n` +
+              `Будь дружелюбным, используй простой язык. Не используй сложные термины.`
+            )}
+            className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 transition-colors"
+          >
             <Icon name="info" className="h-3.5 w-3.5" />
             Пример
           </button>

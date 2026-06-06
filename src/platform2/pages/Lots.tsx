@@ -1,10 +1,12 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/platform2/components/ui/card";
 import { Button } from "@/platform2/components/ui/button";
 import { Badge } from "@/platform2/components/ui/badge";
-import InputField from "@/platform2/components/form/InputField";
-import Select from "@/platform2/components/form/Select";
+import { Modal } from "@/platform2/components/ui/modal";
+import { Dropdown } from "@/platform2/components/ui/dropdown/Dropdown";
+import { DropdownItem } from "@/platform2/components/ui/dropdown/DropdownItem";
+import Icon from "@/platform2/icons";
 import {
   Table,
   TableBody,
@@ -12,57 +14,615 @@ import {
   TableHeader,
   TableRow,
 } from "@/platform2/components/ui/table";
-import { Modal } from "@/platform2/components/ui/modal";
-import { Dropdown } from "@/platform2/components/ui/dropdown/Dropdown";
-import { DropdownItem } from "@/platform2/components/ui/dropdown/DropdownItem";
-import Icon from "@/platform2/icons";
-import { lotsApi, accountsApi, ApiLot, ApiAccount } from "@/lib/api";
+import {
+  lotsApi,
+  accountsApi,
+  ApiLot,
+  ApiAccount,
+  ApiLotCategory,
+  ApiLotCategorySubcategory,
+  ApiLotCreateForm,
+  ApiLotEditForm,
+  ApiLotCreateValues,
+  ApiLotEditValues,
+} from "@/lib/api";
 
-type CreateLotForm = {
-  account: string;
-  category: string;
-  name: string;
-  description: string;
-  price: string;
-  quantity: string;
-};
+// ──────────────────────────────────────────────────────────────────────────────
+// Schema field renderer — полностью в стилях platform2
+// ──────────────────────────────────────────────────────────────────────────────
+type FieldValues = Record<string, string | boolean | string[]>;
 
-const emptyForm: CreateLotForm = { account: "", category: "", name: "", description: "", price: "", quantity: "0" };
+function getInitialValue(
+  field: ApiLotCreateForm["schema"][number]
+): string | boolean | string[] {
+  if (field.type === "checkbox") {
+    if ((field.options || []).length > 1) return [];
+    return false;
+  }
+  return "";
+}
 
+function SchemaFieldInput({
+  field,
+  value,
+  onChange,
+}: {
+  field: ApiLotCreateForm["schema"][number];
+  value: string | boolean | string[] | undefined;
+  onChange: (v: string | boolean | string[]) => void;
+}) {
+  const inputCls =
+    "w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white";
+
+  if (field.type === "select" && field.options) {
+    return (
+      <select
+        value={String(value ?? "")}
+        onChange={(e) => onChange(e.target.value)}
+        className={inputCls}
+      >
+        <option value="">— выберите —</option>
+        {field.options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  if (field.type === "textarea") {
+    return (
+      <textarea
+        value={String(value ?? "")}
+        onChange={(e) => onChange(e.target.value)}
+        rows={3}
+        placeholder={field.placeholder ?? ""}
+        className={`${inputCls} resize-none`}
+      />
+    );
+  }
+
+  if (field.type === "checkbox") {
+    const opts = field.options || [];
+    if (opts.length > 1) {
+      const selected: string[] = Array.isArray(value) ? (value as string[]) : [];
+      return (
+        <div className="flex flex-wrap gap-3">
+          {opts.map((opt) => (
+            <label key={opt.value} className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selected.includes(opt.value)}
+                onChange={(e) => {
+                  const next = e.target.checked
+                    ? [...selected, opt.value]
+                    : selected.filter((v) => v !== opt.value);
+                  onChange(next);
+                }}
+                className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/20"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">{opt.label}</span>
+            </label>
+          ))}
+        </div>
+      );
+    }
+    return (
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={Boolean(value)}
+          onChange={(e) => onChange(e.target.checked)}
+          className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/20"
+        />
+        <span className="text-sm text-gray-700 dark:text-gray-300">
+          {field.options?.[0]?.label ?? field.label}
+        </span>
+      </label>
+    );
+  }
+
+  return (
+    <input
+      type={field.type === "number" ? "number" : "text"}
+      value={String(value ?? "")}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={field.placeholder ?? ""}
+      className={inputCls}
+    />
+  );
+}
+
+function FieldGroup({
+  field,
+  value,
+  onChange,
+}: {
+  field: ApiLotCreateForm["schema"][number];
+  value: string | boolean | string[] | undefined;
+  onChange: (v: string | boolean | string[]) => void;
+}) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+        {field.label}
+        {field.required && <span className="ml-1 text-error-500">*</span>}
+      </label>
+      <SchemaFieldInput field={field} value={value} onChange={onChange} />
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Вспомогательные функции для категорий
+// ──────────────────────────────────────────────────────────────────────────────
+function buildCategoryKey(cat: ApiLotCategory): string {
+  return [
+    cat.title_node_type || "lots",
+    cat.title_node_id || cat.game_id,
+    cat.variant_name || "",
+  ].join(":");
+}
+
+function formatCategoryLabel(cat: ApiLotCategory): string {
+  return cat.variant_name ? `${cat.game_title} / ${cat.variant_name}` : cat.game_title;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Модал создания лота
+// ──────────────────────────────────────────────────────────────────────────────
+function LotCreateModal({
+  isOpen,
+  onClose,
+  accounts,
+  onCreated,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  accounts: ApiAccount[];
+  onCreated: () => void;
+}) {
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+  const [categories, setCategories] = useState<ApiLotCategory[]>([]);
+  const [catsLoading, setCatsLoading] = useState(false);
+  const [catsError, setCatsError] = useState<string | null>(null);
+  const [selectedCategoryKey, setSelectedCategoryKey] = useState("");
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<number>(0);
+  const [formData, setFormData] = useState<ApiLotCreateForm | null>(null);
+  const [formLoading, setFormLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formValues, setFormValues] = useState<FieldValues>({});
+  const [creating, setCreating] = useState(false);
+
+  const inputCls =
+    "w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white";
+
+  // Сброс при закрытии
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedAccountId(null);
+      setCategories([]);
+      setCatsError(null);
+      setSelectedCategoryKey("");
+      setSelectedSubcategoryId(0);
+      setFormData(null);
+      setFormError(null);
+      setFormValues({});
+      setCreating(false);
+      return;
+    }
+    const fallback = accounts[0]?.id ?? null;
+    setSelectedAccountId(fallback ? Number(fallback) : null);
+  }, [isOpen, accounts]);
+
+  // Загружаем категории при смене аккаунта
+  useEffect(() => {
+    if (!isOpen || !selectedAccountId) return;
+    let cancelled = false;
+    setCatsLoading(true);
+    setCatsError(null);
+    setFormData(null);
+    setFormValues({});
+    lotsApi.categories(selectedAccountId)
+      .then((data) => {
+        if (cancelled) return;
+        const safe = Array.isArray(data) ? data : [];
+        setCategories(safe);
+        setSelectedCategoryKey(safe[0] ? buildCategoryKey(safe[0]) : "");
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setCatsError(e instanceof Error ? e.message : "Ошибка загрузки категорий");
+        setCategories([]);
+      })
+      .finally(() => { if (!cancelled) setCatsLoading(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, selectedAccountId]);
+
+  const selectedCategory = useMemo(
+    () => categories.find((c) => buildCategoryKey(c) === selectedCategoryKey) ?? null,
+    [categories, selectedCategoryKey]
+  );
+
+  // Автовыбор первой подкатегории
+  useEffect(() => {
+    const subs = selectedCategory?.subcategories || [];
+    if (subs.length === 0) { setSelectedSubcategoryId(0); return; }
+    if (!subs.some((s) => s.id === selectedSubcategoryId)) {
+      setSelectedSubcategoryId(subs[0].id);
+    }
+  }, [selectedCategory, selectedSubcategoryId]);
+
+  const selectedSubcategory = useMemo<ApiLotCategorySubcategory | null>(
+    () => selectedCategory?.subcategories.find((s) => s.id === selectedSubcategoryId) ?? null,
+    [selectedCategory, selectedSubcategoryId]
+  );
+
+  // Загружаем схему формы при выборе подкатегории
+  useEffect(() => {
+    if (!isOpen || !selectedAccountId || !selectedSubcategory) {
+      setFormData(null);
+      setFormValues({});
+      return;
+    }
+    let cancelled = false;
+    setFormLoading(true);
+    setFormError(null);
+    lotsApi.getCreateForm(selectedAccountId, selectedSubcategory.id, selectedSubcategory.node_type)
+      .then((data) => {
+        if (cancelled) return;
+        setFormData(data);
+        const vals: FieldValues = {};
+        for (const f of data.schema || []) vals[f.name] = getInitialValue(f);
+        setFormValues(vals);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setFormError(e instanceof Error ? e.message : "Ошибка загрузки схемы");
+        setFormData(null);
+        setFormValues({});
+      })
+      .finally(() => { if (!cancelled) setFormLoading(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, selectedAccountId, selectedSubcategory?.id, selectedSubcategory?.node_type]);
+
+  async function handleCreate() {
+    if (!selectedAccountId || !selectedSubcategory || !formData) return;
+    const schemaReady = formData.schema_status === "ready" && (formData.schema?.length || 0) > 0;
+    if (!schemaReady) return;
+
+    const values: ApiLotCreateValues = {};
+    for (const f of formData.schema) {
+      const raw = formValues[f.name];
+      if (Array.isArray(raw)) values[f.name] = raw.map(String);
+      else if (typeof raw === "boolean") values[f.name] = raw;
+      else values[f.name] = raw == null ? "" : String(raw);
+    }
+
+    setCreating(true);
+    try {
+      await lotsApi.create(selectedAccountId, {
+        mode: "schema",
+        node_id: selectedSubcategory.id,
+        node_type: selectedSubcategory.node_type,
+        values,
+      });
+      onCreated();
+      onClose();
+    } catch {
+      // ignore — пользователь увидит что лот не создался
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  const subs = selectedCategory?.subcategories || [];
+  const schemaReady =
+    formData?.schema_status === "ready" && (formData?.schema?.length || 0) > 0;
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} className="w-full max-w-2xl p-8">
+      <h2 className="mb-6 text-xl font-bold text-gray-900 dark:text-white">Создать лот</h2>
+      <p className="mb-5 text-sm text-gray-500">
+        Выберите аккаунт и категорию — поля лота загрузятся из каталога FunPay.
+      </p>
+
+      <div className="space-y-4">
+        {/* Аккаунт */}
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Аккаунт</label>
+          <select
+            value={selectedAccountId ?? ""}
+            onChange={(e) => setSelectedAccountId(Number(e.target.value))}
+            disabled={creating}
+            className={inputCls}
+          >
+            <option value="">Выберите аккаунт</option>
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>{a.username ?? `#${a.id}`}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Категория */}
+        {selectedAccountId && (
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Категория</label>
+            {catsLoading ? (
+              <div className="flex items-center gap-2 py-2 text-sm text-gray-400">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+                Загрузка категорий…
+              </div>
+            ) : catsError ? (
+              <p className="text-sm text-error-500">{catsError}</p>
+            ) : (
+              <select
+                value={selectedCategoryKey}
+                onChange={(e) => setSelectedCategoryKey(e.target.value)}
+                disabled={creating}
+                className={inputCls}
+              >
+                <option value="">Выберите категорию</option>
+                {categories.map((cat) => (
+                  <option key={buildCategoryKey(cat)} value={buildCategoryKey(cat)}>
+                    {formatCategoryLabel(cat)}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
+
+        {/* Подкатегория */}
+        {selectedCategory && subs.length > 0 && (
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Подкатегория</label>
+            <select
+              value={selectedSubcategoryId}
+              onChange={(e) => setSelectedSubcategoryId(Number(e.target.value))}
+              disabled={creating}
+              className={inputCls}
+            >
+              {subs.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Схема полей */}
+        {formLoading && (
+          <div className="flex items-center gap-2 py-2 text-sm text-gray-400">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+            Загрузка полей из FunPay…
+          </div>
+        )}
+        {formError && <p className="text-sm text-error-500">{formError}</p>}
+        {formData && !schemaReady && !formLoading && (
+          <p className="rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-700 dark:border-yellow-700/30 dark:bg-yellow-900/20 dark:text-yellow-400">
+            Схема недоступна: {formData.sync_error ?? "требуется синхронизация с FunPay"}
+          </p>
+        )}
+        {schemaReady && formData && (
+          <>
+            <div className="border-t border-gray-100 pt-4 dark:border-gray-800" />
+            <div className="grid gap-4 sm:grid-cols-2">
+              {formData.schema.map((field) => (
+                <div key={field.name} className={field.type === "textarea" ? "sm:col-span-2" : ""}>
+                  <FieldGroup
+                    field={field}
+                    value={formValues[field.name]}
+                    onChange={(v) => setFormValues((prev) => ({ ...prev, [field.name]: v }))}
+                  />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="mt-6 grid grid-cols-2 gap-3">
+        <Button
+          variant="primary"
+          onClick={handleCreate}
+          disabled={creating || !schemaReady || !selectedSubcategory}
+        >
+          {creating ? (
+            <span className="flex items-center gap-2">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              Создание…
+            </span>
+          ) : "Создать лот"}
+        </Button>
+        <Button variant="outline" onClick={onClose} disabled={creating}>Отмена</Button>
+      </div>
+    </Modal>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Модал редактирования лота
+// ──────────────────────────────────────────────────────────────────────────────
+function LotEditModal({
+  isOpen,
+  onClose,
+  lot,
+  onSaved,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  lot: ApiLot | null;
+  onSaved: () => void;
+}) {
+  const [formData, setFormData] = useState<ApiLotEditForm | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [formValues, setFormValues] = useState<FieldValues>({});
+  const [saving, setSaving] = useState(false);
+
+  const inputCls =
+    "w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white";
+
+  useEffect(() => {
+    if (!isOpen || !lot) {
+      setFormData(null);
+      setLoadError(null);
+      setFormValues({});
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    lotsApi.getEditForm(lot.funpay_account_id, lot.lot_id)
+      .then((data) => {
+        if (cancelled) return;
+        setFormData(data);
+        const vals: FieldValues = {};
+        for (const f of data.schema || []) {
+          const raw = data.values?.[f.name];
+          if (f.type === "checkbox") {
+            if ((f.options || []).length > 1) {
+              vals[f.name] = Array.isArray(raw) ? raw.map(String) : [];
+            } else {
+              vals[f.name] = Boolean(raw);
+            }
+          } else {
+            vals[f.name] = raw == null ? "" : String(raw);
+          }
+        }
+        setFormValues(vals);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setLoadError(e instanceof Error ? e.message : "Ошибка загрузки формы");
+        setFormData(null);
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, lot?.lot_id, lot?.funpay_account_id]);
+
+  async function handleSave() {
+    if (!lot || !formData) return;
+    const values: ApiLotEditValues = {};
+    for (const f of formData.schema || []) {
+      const raw = formValues[f.name];
+      if (Array.isArray(raw)) values[f.name] = raw.map(String);
+      else if (typeof raw === "boolean") values[f.name] = raw;
+      else values[f.name] = raw == null ? "" : String(raw);
+    }
+    setSaving(true);
+    try {
+      await lotsApi.update(lot.funpay_account_id, lot.lot_id, { mode: "schema", values });
+      onSaved();
+      onClose();
+    } catch {
+      // ignore
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} className="w-full max-w-2xl p-8">
+      <h2 className="mb-2 text-xl font-bold text-gray-900 dark:text-white">Редактировать лот</h2>
+      {lot && (
+        <p className="mb-5 line-clamp-1 text-sm text-gray-400">{lot.title}</p>
+      )}
+
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
+        </div>
+      )}
+      {loadError && (
+        <p className="rounded-xl border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-600 dark:border-error-700/30 dark:bg-error-900/20 dark:text-error-400">
+          {loadError}
+        </p>
+      )}
+
+      {!loading && formData && (formData.schema?.length || 0) > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {formData.schema.map((field) => (
+            <div key={field.name} className={field.type === "textarea" ? "sm:col-span-2" : ""}>
+              <FieldGroup
+                field={field}
+                value={formValues[field.name]}
+                onChange={(v) => setFormValues((prev) => ({ ...prev, [field.name]: v }))}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && formData && (formData.schema?.length || 0) === 0 && (
+        <p className="text-sm text-gray-400">Нет редактируемых полей для этого лота.</p>
+      )}
+
+      <div className="mt-6 grid grid-cols-2 gap-3">
+        <Button
+          variant="primary"
+          onClick={handleSave}
+          disabled={saving || loading || !!loadError || !formData}
+        >
+          {saving ? (
+            <span className="flex items-center gap-2">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              Сохранение…
+            </span>
+          ) : "Сохранить"}
+        </Button>
+        <Button variant="outline" onClick={onClose} disabled={saving}>Отмена</Button>
+      </div>
+    </Modal>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Основная страница
+// ──────────────────────────────────────────────────────────────────────────────
 export default function LotsPage() {
   const [lots, setLots] = useState<ApiLot[]>([]);
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
+  const [search, setSearch] = useState("");
+  const [filterAccount, setFilterAccount] = useState("");
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [form, setForm] = useState<CreateLotForm>(emptyForm);
+  const [editLot, setEditLot] = useState<ApiLot | null>(null);
   const [raising, setRaising] = useState<string | null>(null);
+  const [toggling, setToggling] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     lotsApi.listAll().then(setLots).catch(() => {});
     accountsApi.list().then(setAccounts).catch(() => {});
   }, []);
 
-  async function handleCreateSubmit() {
-    if (!form.name.trim() || !form.account) return;
-    try {
-      await lotsApi.create(form.account, {
-        node_id: 0,
-        title: form.name,
-        description: form.description,
-        price: parseFloat(form.price) || 0,
-        amount: parseInt(form.quantity) || 0,
-      });
-      const updated = await lotsApi.listAll();
-      setLots(updated);
-    } catch {
-      // ignore
-    }
-    setForm(emptyForm);
-    setShowCreateModal(false);
+  const filtered = useMemo(() => {
+    return lots
+      .filter((l) => !filterAccount || String(l.funpay_account_id) === filterAccount)
+      .filter((l) => !search || l.title.toLowerCase().includes(search.toLowerCase()));
+  }, [lots, filterAccount, search]);
+
+  async function reloadLots() {
+    const updated = await lotsApi.listAll().catch(() => lots);
+    setLots(updated);
   }
 
-  function toggleDropdown(id: string) {
-    setOpenDropdownId((prev) => (prev === id ? null : id));
+  async function handleRefresh() {
+    if (!filterAccount || refreshing) return;
+    setRefreshing(true);
+    try {
+      const fresh = await lotsApi.listByAccount(filterAccount, { refresh: true });
+      setLots((prev) => [
+        ...prev.filter((l) => String(l.funpay_account_id) !== filterAccount),
+        ...fresh,
+      ]);
+    } catch {
+      // ignore
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   async function handleRaise(lot: ApiLot) {
@@ -74,6 +634,23 @@ export default function LotsPage() {
       // ignore
     } finally {
       setRaising(null);
+    }
+  }
+
+  async function handleToggleActive(lot: ApiLot) {
+    setToggling(lot.id);
+    try {
+      await lotsApi.update(lot.funpay_account_id, lot.lot_id, {
+        mode: "schema",
+        values: { is_active: !lot.is_active },
+      });
+      setLots((prev) =>
+        prev.map((l) => (l.id === lot.id ? { ...l, is_active: !l.is_active } : l))
+      );
+    } catch {
+      // ignore
+    } finally {
+      setToggling(null);
     }
   }
 
@@ -91,12 +668,25 @@ export default function LotsPage() {
     <div className="space-y-6">
 
       {/* HEADER */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Лоты</h1>
-        <Button variant="primary" onClick={() => setShowCreateModal(true)}>
-          <Icon name="plus" className="mr-2 h-4 w-4" />
-          Создать лот
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={!filterAccount || refreshing}
+          >
+            <Icon
+              name="refresh"
+              className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+            />
+            Обновить с FunPay
+          </Button>
+          <Button variant="primary" onClick={() => setShowCreateModal(true)}>
+            <Icon name="plus" className="mr-2 h-4 w-4" />
+            Создать лот
+          </Button>
+        </div>
       </div>
 
       {/* TABLE */}
@@ -105,18 +695,30 @@ export default function LotsPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Все лоты</CardTitle>
             <div className="flex gap-2">
-              <InputField placeholder="Поиск по лотам" className="w-64" />
-              <Select>
-                <option value="all">Все аккаунты</option>
+              <input
+                type="text"
+                placeholder="Поиск по названию"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-56 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              />
+              <select
+                value={filterAccount}
+                onChange={(e) => setFilterAccount(e.target.value)}
+                className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              >
+                <option value="">Все аккаунты</option>
                 {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>{a.username ?? `#${a.id}`}</option>
+                  <option key={a.id} value={String(a.id)}>
+                    {a.username ?? `#${a.id}`}
+                  </option>
                 ))}
-              </Select>
+              </select>
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {lots.length === 0 ? (
+          {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20">
               <Icon name="box-cube" className="h-16 w-16 text-gray-300" />
               <h3 className="mt-4 text-lg font-semibold text-gray-800 dark:text-white">
@@ -139,7 +741,7 @@ export default function LotsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {lots.map((lot) => (
+                  {filtered.map((lot) => (
                     <TableRow key={lot.id}>
 
                       {/* LOT NAME */}
@@ -148,7 +750,7 @@ export default function LotsPage() {
                           {lot.title}
                         </p>
                         <p className="mt-0.5 text-xs text-gray-400 line-clamp-1">{lot.description ?? ""}</p>
-                        <p className="mt-0.5 text-xs text-gray-300">ID: {lot.lot_id}</p>
+                        <p className="mt-0.5 text-xs text-gray-300 dark:text-gray-600">ID: {lot.lot_id}</p>
                       </TableCell>
 
                       {/* CATEGORY */}
@@ -176,11 +778,29 @@ export default function LotsPage() {
                         </span>
                       </TableCell>
 
-                      {/* STATUS */}
+                      {/* STATUS — toggle switch */}
                       <TableCell className="px-5 py-4">
-                        <Badge variant={lot.is_active ? "success" : "secondary"}>
-                          {lot.is_active ? "Активен" : "Выключен"}
-                        </Badge>
+                        <button
+                          onClick={() => handleToggleActive(lot)}
+                          disabled={toggling === lot.id}
+                          className="flex items-center gap-2 group"
+                          title={lot.is_active ? "Выключить лот" : "Включить лот"}
+                        >
+                          <span
+                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                              lot.is_active ? "bg-brand-500" : "bg-gray-300 dark:bg-gray-600"
+                            } ${toggling === lot.id ? "opacity-60" : ""}`}
+                          >
+                            <span
+                              className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${
+                                lot.is_active ? "translate-x-4.5" : "translate-x-0.5"
+                              }`}
+                            />
+                          </span>
+                          <Badge variant={lot.is_active ? "success" : "secondary"} className="text-xs">
+                            {lot.is_active ? "Активен" : "Выключен"}
+                          </Badge>
+                        </button>
                       </TableCell>
 
                       {/* ACTIONS */}
@@ -199,7 +819,7 @@ export default function LotsPage() {
                           <div className="relative">
                             <button
                               className="dropdown-toggle flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 transition-colors"
-                              onClick={() => toggleDropdown(lot.id)}
+                              onClick={() => setOpenDropdownId((prev) => (prev === lot.id ? null : lot.id))}
                             >
                               <Icon name="horizontal-dots" className="h-4 w-4" />
                             </button>
@@ -210,7 +830,7 @@ export default function LotsPage() {
                               className="w-44 py-1"
                             >
                               <DropdownItem
-                                onItemClick={() => setOpenDropdownId(null)}
+                                onItemClick={() => { setOpenDropdownId(null); setEditLot(lot); }}
                                 baseClassName="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
                               >
                                 <Icon name="pencil" className="h-4 w-4 text-gray-400" />
@@ -238,94 +858,20 @@ export default function LotsPage() {
         </CardContent>
       </Card>
 
-      {/* CREATE LOT MODAL */}
-      <Modal
+      {/* MODALS */}
+      <LotCreateModal
         isOpen={showCreateModal}
-        onClose={() => { setShowCreateModal(false); setForm(emptyForm); }}
-        className="w-full max-w-lg p-8"
-      >
-        <h2 className="mb-6 text-xl font-bold text-gray-900 dark:text-white">Создать лот</h2>
+        onClose={() => setShowCreateModal(false)}
+        accounts={accounts}
+        onCreated={reloadLots}
+      />
 
-        <div className="space-y-4">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Аккаунт</label>
-            <select
-              value={form.account}
-              onChange={(e) => setForm((f) => ({ ...f, account: e.target.value }))}
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            >
-              <option value="">Выберите аккаунт</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>{a.username ?? `#${a.id}`}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Категория</label>
-            <input
-              type="text"
-              value={form.category}
-              onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-              placeholder="Abyss of Dungeons / Аккаунты"
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Название</label>
-            <input
-              type="text"
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder=""
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Описание</label>
-            <textarea
-              value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              rows={3}
-              className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Цена</label>
-              <input
-                type="number"
-                min="0"
-                value={form.price}
-                onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Количество</label>
-              <input
-                type="number"
-                min="0"
-                value={form.quantity}
-                onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <Button variant="primary" onClick={handleCreateSubmit} disabled={!form.name.trim() || !form.account}>
-            Создать
-          </Button>
-          <Button variant="outline" onClick={() => { setShowCreateModal(false); setForm(emptyForm); }}>
-            Отмена
-          </Button>
-        </div>
-      </Modal>
+      <LotEditModal
+        isOpen={editLot !== null}
+        onClose={() => setEditLot(null)}
+        lot={editLot}
+        onSaved={reloadLots}
+      />
     </div>
   );
 }

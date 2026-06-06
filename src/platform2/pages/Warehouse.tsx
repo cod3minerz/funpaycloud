@@ -1,9 +1,8 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/platform2/components/ui/card";
 import { Badge } from "@/platform2/components/ui/badge";
 import { Button } from "@/platform2/components/ui/button";
-import Select from "@/platform2/components/form/Select";
 import {
   Table,
   TableBody,
@@ -15,21 +14,22 @@ import Icon from "@/platform2/icons";
 import { warehouseApi, ApiWarehouseLot } from "@/lib/api";
 
 type WarehouseItem = {
-  id: string;       // index as string, used for API deleteStockItem
+  id: string;       // index as string
   value: string;
   status: "available" | "issued";
   issuedAt: string | null;
 };
 
 type Lot = {
-  id: string;             // String(ApiWarehouseLot.id)
-  apiId: number;          // warehouse lot ID for addItems/updateSettings
-  funpayAccountId: number; // for deleteStockItem
-  apiLotId: string;       // funpay lot_id for deleteStockItem
+  id: string;
+  apiId: number;
+  funpayAccountId: number;
+  apiLotId: string;
   name: string;
   account: string;
   autoDelivery: boolean;
   messageTemplate: string;
+  externalUrl: string | null;
   items: WarehouseItem[];
 };
 
@@ -43,6 +43,7 @@ function mapApiLot(l: ApiWarehouseLot): Lot {
     account: l.account_username,
     autoDelivery: l.auto_delivery_enabled,
     messageTemplate: l.auto_delivery_template ?? "",
+    externalUrl: l.external_url ?? null,
     items: l.stock_items.map((si, idx) => ({
       id: String(idx),
       value: si.value,
@@ -58,21 +59,32 @@ export default function WarehousePage() {
   const [selectedLotId, setSelectedLotId] = useState<string>("");
   const [addMode, setAddMode] = useState<AddMode>("single");
   const [newItem, setNewItem] = useState("");
+  const [bulkText, setBulkText] = useState("");
   const [lots, setLots] = useState<Lot[]>([]);
   const [template, setTemplate] = useState<string>("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const loadLots = useCallback(async () => {
+    const data = await warehouseApi.list().catch(() => [] as ApiWarehouseLot[]);
+    const mapped = data.map(mapApiLot);
+    setLots(mapped);
+    if (mapped.length > 0 && !selectedLotId) setSelectedLotId(mapped[0].id);
+  }, [selectedLotId]);
+
+  // Первичная загрузка и при reloadKey
   useEffect(() => {
-    warehouseApi.list().then((data) => {
-      const mapped = data.map(mapApiLot);
-      setLots(mapped);
-      if (mapped.length > 0 && !selectedLotId) setSelectedLotId(mapped[0].id);
-    }).catch(() => {});
-  }, []);
+    loadLots();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reloadKey]);
 
   const lot = lots.find((l) => l.id === selectedLotId) ?? lots[0] ?? {
     id: "", apiId: 0, funpayAccountId: 0, apiLotId: "",
-    name: "—", account: "—", autoDelivery: false, messageTemplate: "", items: [],
+    name: "—", account: "—", autoDelivery: false, messageTemplate: "",
+    externalUrl: null, items: [],
   };
+
   const available = lot.items.filter((i) => i.status === "available").length;
   const issued = lot.items.filter((i) => i.status === "issued").length;
   const totalAvailable = lots.reduce(
@@ -87,19 +99,81 @@ export default function WarehousePage() {
     setTemplate("");
   }
 
+  // ── Обновить с FunPay ──────────────────────────────────────────────────────
+  async function handleRefresh() {
+    if (!lot.funpayAccountId || refreshing) return;
+    setRefreshing(true);
+    try {
+      const fresh = await warehouseApi.list(lot.funpayAccountId, { refresh: true });
+      const mapped = fresh.map(mapApiLot);
+      // Заменяем лоты этого аккаунта на свежие
+      setLots((prev) => {
+        const otherAccounts = prev.filter((l) => l.funpayAccountId !== lot.funpayAccountId);
+        return [...otherAccounts, ...mapped];
+      });
+    } catch {
+      // ignore
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  // ── Обновить карточку ──────────────────────────────────────────────────────
+  function handleReloadCard() {
+    setReloadKey((k) => k + 1);
+  }
+
+  // ── Скачать выданные (CSV) ─────────────────────────────────────────────────
+  function handleExportDelivered() {
+    const rows = lot.items
+      .filter((i) => i.status === "issued")
+      .map((i) => `"${i.value.replace(/"/g, '""')}","${i.issuedAt ?? ""}"`);
+    if (rows.length === 0) return;
+    const blob = new Blob(["value,issued_at\n" + rows.join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `delivered_${lot.apiLotId || lot.name}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ── Импорт из файла ────────────────────────────────────────────────────────
+  async function handleFileImport(file: File) {
+    if (!lot.apiId) return;
+    const text = await file.text();
+    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (lines.length === 0) return;
+    try {
+      await warehouseApi.addItems(lot.apiId, lines);
+      const newItems: WarehouseItem[] = lines.map((val, idx) => ({
+        id: String(lot.items.length + idx),
+        value: val,
+        status: "available",
+        issuedAt: null,
+      }));
+      setLots((prev) =>
+        prev.map((l) =>
+          l.id === selectedLotId ? { ...l, items: [...l.items, ...newItems] } : l
+        )
+      );
+    } catch {
+      // ignore
+    }
+  }
+
+  // ── Добавить один товар ────────────────────────────────────────────────────
   async function handleAddItem() {
-    if (!newItem.trim() || !lot) return;
+    if (!newItem.trim() || !lot.apiId) return;
     const value = newItem.trim();
     try {
       await warehouseApi.addItems(lot.apiId, [value]);
-      const newItemObj: WarehouseItem = {
-        id: String(lot.items.length),
-        value,
-        status: "available",
-        issuedAt: null,
-      };
       setLots((prev) =>
-        prev.map((l) => (l.id === selectedLotId ? { ...l, items: [...l.items, newItemObj] } : l))
+        prev.map((l) =>
+          l.id === selectedLotId
+            ? { ...l, items: [...l.items, { id: String(l.items.length), value, status: "available", issuedAt: null }] }
+            : l
+        )
       );
     } catch {
       // ignore
@@ -107,8 +181,31 @@ export default function WarehousePage() {
     setNewItem("");
   }
 
+  // ── Добавить список товаров ────────────────────────────────────────────────
+  async function handleAddBulk() {
+    const lines = bulkText.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (!lines.length || !lot.apiId) return;
+    try {
+      await warehouseApi.addItems(lot.apiId, lines);
+      const newItems: WarehouseItem[] = lines.map((val, idx) => ({
+        id: String(lot.items.length + idx),
+        value: val,
+        status: "available",
+        issuedAt: null,
+      }));
+      setLots((prev) =>
+        prev.map((l) =>
+          l.id === selectedLotId ? { ...l, items: [...l.items, ...newItems] } : l
+        )
+      );
+    } catch {
+      // ignore
+    }
+    setBulkText("");
+  }
+
+  // ── Удалить товар ─────────────────────────────────────────────────────────
   async function handleDeleteItem(itemId: string) {
-    if (!lot) return;
     const idx = parseInt(itemId, 10);
     try {
       await warehouseApi.deleteStockItem(lot.funpayAccountId, lot.apiLotId, idx);
@@ -124,8 +221,8 @@ export default function WarehousePage() {
     }
   }
 
+  // ── Авто-выдача ────────────────────────────────────────────────────────────
   async function handleToggleAutoDelivery() {
-    if (!lot) return;
     const next = !lot.autoDelivery;
     try {
       await warehouseApi.updateSettings(lot.apiId, {
@@ -136,14 +233,11 @@ export default function WarehousePage() {
       // ignore
     }
     setLots((prev) =>
-      prev.map((l) =>
-        l.id === selectedLotId ? { ...l, autoDelivery: next } : l
-      )
+      prev.map((l) => (l.id === selectedLotId ? { ...l, autoDelivery: next } : l))
     );
   }
 
   async function handleSaveTemplate() {
-    if (!lot) return;
     try {
       await warehouseApi.updateSettings(lot.apiId, {
         auto_delivery_enabled: lot.autoDelivery,
@@ -153,9 +247,7 @@ export default function WarehousePage() {
       // ignore
     }
     setLots((prev) =>
-      prev.map((l) =>
-        l.id === selectedLotId ? { ...l, messageTemplate: currentTemplate } : l
-      )
+      prev.map((l) => (l.id === selectedLotId ? { ...l, messageTemplate: currentTemplate } : l))
     );
     setTemplate("");
   }
@@ -164,18 +256,13 @@ export default function WarehousePage() {
     <div className="space-y-6">
 
       {/* HEADER */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Склад</h1>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-500">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-500 hidden sm:block">
             Лотов на складе:{" "}
             <span className="font-semibold text-gray-800 dark:text-white">{lots.length}</span>
           </span>
-          <Select className="w-48">
-            <option value="all">Все аккаунты</option>
-            <option value="paidinful">PaidInFull</option>
-            <option value="tonminerz">tonminerz</option>
-          </Select>
         </div>
       </div>
 
@@ -238,18 +325,14 @@ export default function WarehousePage() {
                       : "border-l-2 border-transparent"
                   }`}
                 >
-                  <p
-                    className={`text-sm font-medium leading-snug ${
-                      isSelected ? "text-brand-600 dark:text-brand-400" : "text-gray-800 dark:text-white"
-                    }`}
-                  >
+                  <p className={`text-sm font-medium leading-snug ${
+                    isSelected ? "text-brand-600 dark:text-brand-400" : "text-gray-800 dark:text-white"
+                  }`}>
                     {l.name}
                   </p>
                   <p className="mt-0.5 text-xs text-gray-400">{l.account}</p>
                   <div className="mt-2">
-                    <Badge variant={avail > 0 ? "success" : "warning"}>
-                      {avail} доступно
-                    </Badge>
+                    <Badge variant={avail > 0 ? "success" : "warning"}>{avail} доступно</Badge>
                   </div>
                 </button>
               );
@@ -263,7 +346,7 @@ export default function WarehousePage() {
           {/* Lot header */}
           <Card>
             <CardContent className="p-4">
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h2 className="font-semibold text-gray-800 dark:text-white">{lot.name}</h2>
                   <p className="mt-1 text-sm text-gray-500">
@@ -277,13 +360,46 @@ export default function WarehousePage() {
                     <span className="font-medium text-gray-700 dark:text-gray-300">{issued}</span>
                   </p>
                 </div>
-                <Button variant="outline" size="sm">
-                  <Icon name="download" className="mr-1.5 h-4 w-4" />
-                  Скачать выданные
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRefresh}
+                    disabled={refreshing || !lot.funpayAccountId}
+                  >
+                    <Icon name="refresh" className={`mr-1.5 h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                    Обновить с FunPay
+                  </Button>
+
+                  {lot.externalUrl && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(lot.externalUrl!, "_blank")}
+                    >
+                      <Icon name="external-link" className="mr-1.5 h-3.5 w-3.5" />
+                      Открыть на FunPay
+                    </Button>
+                  )}
+
+                  <Button variant="outline" size="sm" onClick={handleReloadCard}>
+                    <Icon name="refresh" className="mr-1.5 h-3.5 w-3.5" />
+                    Обновить карточку
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportDelivered}
+                    disabled={issued === 0}
+                  >
+                    <Icon name="download" className="mr-1.5 h-3.5 w-3.5" />
+                    Скачать выданные
+                  </Button>
+                </div>
               </div>
 
-              {available === 0 && (
+              {available === 0 && lot.id && (
                 <div className="mt-3 flex items-center gap-2 rounded-lg bg-error-500/10 px-4 py-3 text-sm text-error-600 dark:text-error-400">
                   <Icon name="alert" className="h-4 w-4 shrink-0" />
                   Товары закончились. Пополните склад.
@@ -324,7 +440,7 @@ export default function WarehousePage() {
                     placeholder="Введите товар (ключ, аккаунт и т.д.)"
                     className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                   />
-                  <Button variant="primary" onClick={handleAddItem}>
+                  <Button variant="primary" onClick={handleAddItem} disabled={!newItem.trim()}>
                     <Icon name="plus" className="mr-1.5 h-4 w-4" />
                     Добавить
                   </Button>
@@ -335,10 +451,12 @@ export default function WarehousePage() {
                 <div className="space-y-2">
                   <textarea
                     rows={5}
+                    value={bulkText}
+                    onChange={(e) => setBulkText(e.target.value)}
                     placeholder={"Введите товары построчно:\nтовар1\nтовар2\nтовар3"}
                     className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                   />
-                  <Button variant="primary">
+                  <Button variant="primary" onClick={handleAddBulk} disabled={!bulkText.trim()}>
                     <Icon name="plus" className="mr-1.5 h-4 w-4" />
                     Добавить всё
                   </Button>
@@ -346,10 +464,26 @@ export default function WarehousePage() {
               )}
 
               {addMode === "file" && (
-                <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-200 p-8 dark:border-gray-700">
+                <div
+                  className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-200 p-8 cursor-pointer transition-colors hover:border-brand-400 hover:bg-brand-50/30 dark:border-gray-700 dark:hover:border-brand-600 dark:hover:bg-brand-900/10"
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   <Icon name="file" className="h-10 w-10 text-gray-300" />
-                  <p className="mt-2 text-sm text-gray-500">Перетащите .txt файл или</p>
-                  <Button variant="outline" size="sm" className="mt-2">Выбрать файл</Button>
+                  <p className="mt-2 text-sm text-gray-500">Перетащите .txt / .csv файл или</p>
+                  <Button variant="outline" size="sm" className="mt-2 pointer-events-none">
+                    Выбрать файл
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".txt,.csv"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileImport(file);
+                      e.target.value = "";
+                    }}
+                  />
                 </div>
               )}
             </CardContent>
@@ -364,7 +498,7 @@ export default function WarehousePage() {
               <div className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
                 <div>
                   <p className="text-sm font-medium text-gray-800 dark:text-white">Включить авто-выдачу</p>
-                  <p className="text-xs text-gray-400">При новом заказе товар будет выдан автоматически</p>
+                  <p className="text-xs text-gray-400">При новом заказе товар выдаётся автоматически</p>
                 </div>
                 <button
                   onClick={handleToggleAutoDelivery}
@@ -372,11 +506,9 @@ export default function WarehousePage() {
                     lot.autoDelivery ? "bg-brand-500" : "bg-gray-300 dark:bg-gray-600"
                   }`}
                 >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                      lot.autoDelivery ? "translate-x-6" : "translate-x-1"
-                    }`}
-                  />
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                    lot.autoDelivery ? "translate-x-6" : "translate-x-1"
+                  }`} />
                 </button>
               </div>
 
@@ -393,9 +525,7 @@ export default function WarehousePage() {
               </div>
 
               <div className="rounded-lg bg-gray-50 px-4 py-3 dark:bg-gray-800">
-                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                  Предпросмотр
-                </p>
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Предпросмотр</p>
                 <p className="whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">
                   {currentTemplate.replace("{товар}", "SAMPLE-KEY-1234")}
                 </p>
@@ -410,8 +540,11 @@ export default function WarehousePage() {
 
           {/* Items table */}
           <Card>
-            <div className="border-b border-gray-200 px-5 py-4 dark:border-gray-700">
+            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-gray-700">
               <h3 className="font-semibold text-gray-800 dark:text-white">Товары на складе</h3>
+              <span className="text-xs text-gray-400">
+                {available} доступно · {issued} выдано
+              </span>
             </div>
             {lot.items.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16">
@@ -457,6 +590,7 @@ export default function WarehousePage() {
                             <button
                               onClick={() => handleDeleteItem(item.id)}
                               className="text-gray-400 hover:text-error-500 transition-colors"
+                              title="Удалить товар"
                             >
                               <Icon name="trash" className="h-4 w-4" />
                             </button>
