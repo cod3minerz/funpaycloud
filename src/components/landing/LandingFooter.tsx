@@ -35,15 +35,15 @@ export default function LandingFooter() {
             </a>
             <p className="ft-about">Облачная платформа автоматизации продаж для профессиональных продавцов FunPay.</p>
             <div className="ft-socials">
-              <a href="https://t.me/funpaycloud" target="_blank" rel="noreferrer" className="ft-social-btn" aria-label="Telegram-канал">
+              <a href="https://t.me/fpcloud_support" target="_blank" rel="noreferrer" className="ft-social-btn" aria-label="Telegram @fpcloud_support">
                 <TelegramIcon />
-                <span>Telegram</span>
+                <span>@fpcloud_support</span>
               </a>
               <a href="https://vk.com/funpaycloud" target="_blank" rel="noreferrer" className="ft-social-btn" aria-label="ВКонтакте">
                 <VkIcon />
                 <span>ВКонтакте</span>
               </a>
-              <a href="https://t.me/funpaycloud_support" target="_blank" rel="noreferrer" className="ft-social-btn ft-social-btn--support" aria-label="Поддержка">
+              <a href="https://t.me/fpcloud_support" target="_blank" rel="noreferrer" className="ft-social-btn ft-social-btn--support" aria-label="Поддержка @fpcloud_support">
                 <SupportIcon />
                 <span>Поддержка</span>
               </a>
@@ -66,9 +66,9 @@ export default function LandingFooter() {
             <ul>
               <li><a href="/docs">Документация</a></li>
               <li><a href="#faq">База знаний</a></li>
-              <li><a href="https://t.me/funpaycloud_support" target="_blank" rel="noreferrer">Telegram-поддержка</a></li>
+              <li><a href="https://t.me/fpcloud_support" target="_blank" rel="noreferrer">Telegram-поддержка @fpcloud_support</a></li>
               <li><a href="/auth/register">Онбординг</a></li>
-              <li><a href="https://t.me/funpaycloud" target="_blank" rel="noreferrer">Сообщество</a></li>
+              <li><a href="https://t.me/fpcloud_support" target="_blank" rel="noreferrer">Сообщество @fpcloud_support</a></li>
             </ul>
           </div>
 

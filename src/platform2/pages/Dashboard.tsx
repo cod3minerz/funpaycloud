@@ -58,14 +58,14 @@ export default function DashboardPage() {
                   КАНАЛ
                 </p>
                 <h3 className="text-lg font-bold text-dark dark:text-white">
-                  Наш Telegram
+                  @fpcloud_support
                 </h3>
                 <p className="text-sm text-body">
-                  Новости платформы, промокоды и обновления по ключевым функциям.
+                  Новости платформы, промокоды и обновления в едином Telegram-аккаунте.
                 </p>
               </div>
               <Button variant="outline" className="w-full">
-                Подписаться
+                Открыть @fpcloud_support
                 <Icon name="arrow-right" className="ml-2 h-4 w-4" />
               </Button>
             </div>
@@ -110,14 +110,14 @@ export default function DashboardPage() {
                   ТЕХПОДДЕРЖКА
                 </p>
                 <h3 className="text-lg font-bold text-dark dark:text-white">
-                  Поддержка
+                  @fpcloud_support
                 </h3>
                 <p className="text-sm text-body">
-                  Если что-то сломалось — быстро поможем с настройкой и восстановлением.
+                  Если что-то сломалось — напишите в единый Telegram поддержки.
                 </p>
               </div>
               <Button variant="outline" className="w-full">
-                Написать
+                Написать @fpcloud_support
                 <Icon name="arrow-right" className="ml-2 h-4 w-4" />
               </Button>
             </div>

@@ -38,8 +38,8 @@ export default function PrivacyPage() {
           Оператор персональных данных: <strong>FunPay Cloud</strong>.<br />
           Электронная почта по вопросам обработки персональных данных:{' '}
           <a href="mailto:legal@funpay.cloud">legal@funpay.cloud</a>.<br />
-          Почта для обращений пользователей:{' '}
-          <a href="mailto:support@funpay.cloud">support@funpay.cloud</a>.
+          Telegram для обращений пользователей:{' '}
+          <a href="https://t.me/fpcloud_support" target="_blank" rel="noreferrer">@fpcloud_support</a>.
         </p>
         <p>
           Настоящая Политика разработана на основании и во исполнение требований Федерального закона от 27.07.2006 № 152-ФЗ «О персональных данных», постановлений Правительства РФ и иных нормативных правовых актов в сфере персональных данных.
@@ -237,8 +237,8 @@ export default function PrivacyPage() {
         </p>
         <ul>
           <li>Электронная почта: <a href="mailto:legal@funpay.cloud">legal@funpay.cloud</a></li>
-          <li>По вопросам технической поддержки: <a href="mailto:support@funpay.cloud">support@funpay.cloud</a></li>
-          <li>Telegram-поддержка: <a href="https://t.me/funpaycloud_support" target="_blank" rel="noreferrer">@funpaycloud_support</a></li>
+          <li>По вопросам технической поддержки: <a href="https://t.me/fpcloud_support" target="_blank" rel="noreferrer">@fpcloud_support</a></li>
+          <li>Telegram-поддержка: <a href="https://t.me/fpcloud_support" target="_blank" rel="noreferrer">@fpcloud_support</a></li>
         </ul>
         <p>
           Уполномоченный орган по защите прав субъектов персональных данных в Российской Федерации: Федеральная служба по надзору в сфере связи, информационных технологий и массовых коммуникаций (Роскомнадзор), <a href="https://rkn.gov.ru" target="_blank" rel="noreferrer">rkn.gov.ru</a>.

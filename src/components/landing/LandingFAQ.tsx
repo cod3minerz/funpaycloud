@@ -16,7 +16,7 @@ const faq = [
   {
     question: 'Сложно ли настроить? Я не технарь',
     answer:
-      'Нет. Онбординг занимает 10 минут, мы ведём за руку на каждом шаге. Если что-то непонятно — команда поддержки поможет настроить всё за тебя в рамках бесплатного онбординга.',
+      'Нет. Онбординг занимает 10 минут, мы ведём за руку на каждом шаге. Если что-то непонятно — команда поддержки @fpcloud_support поможет настроить всё за тебя в рамках бесплатного онбординга.',
   },
   {
     question: 'Что такое AI-автоответчик и как он работает?',
@@ -31,7 +31,7 @@ const faq = [
   {
     question: 'Что если у меня вопросы после оплаты?',
     answer:
-      'Приоритетная поддержка в Telegram с временем ответа до 15 минут в рабочее время. На тарифе Ultra — персональный менеджер и приоритетные тикеты 24/7.',
+      'Приоритетная поддержка в Telegram @fpcloud_support с временем ответа до 15 минут в рабочее время. На тарифе Ultra — персональная поддержка @fpcloud_support и приоритетные тикеты 24/7.',
   },
   {
     question: 'Чем FunPay Cloud лучше других ботов для FunPay?',
@@ -56,7 +56,7 @@ export default function LandingFAQ() {
             <div className="sec-eyebrow">Частые вопросы</div>
             <h2 className="sec-title faq-title">Всё, что ты хотел спросить</h2>
             <div className="faq-foot">
-              Не нашёл ответа? <a href="https://t.me/funpaycloud_support" target="_blank" rel="noreferrer">Напиши нам в Telegram →</a>
+              Не нашёл ответа? <a href="https://t.me/fpcloud_support" target="_blank" rel="noreferrer">Напиши @fpcloud_support →</a>
             </div>
           </div>
 

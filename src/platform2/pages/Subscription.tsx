@@ -24,7 +24,7 @@ const plans = [
       "Аналитика 7 дней",
       "2 правила автоматизации",
     ],
-    missing: ["Плагины", "AI автоответы", "Приоритетная поддержка"],
+    missing: ["Плагины", "AI автоответы", "Поддержка @fpcloud_support"],
     cta: "Выбрать Lite",
     color: "gray",
   },
@@ -43,7 +43,7 @@ const plans = [
       "10 правил автоматизации",
       "Базовые плагины (20+)",
       "AI ответы 500 msg/мес",
-      "Приоритетная поддержка",
+      "Приоритет @fpcloud_support",
     ],
     missing: [],
     cta: "Текущий тариф",
@@ -62,7 +62,7 @@ const plans = [
       "Безлимит автоматизации",
       "VIP плагины",
       "AI ответы без лимита",
-      "Персональный менеджер",
+      "Персональная поддержка @fpcloud_support",
       "API доступ",
     ],
     missing: [],
@@ -78,7 +78,7 @@ const comparisonRows = [
   { label: "Шаблоны сообщений", lite: "3", pro: "15", ultra: "Без ограничений" },
   { label: "AI ответы", lite: "—", pro: "500 / мес", ultra: "Без лимита" },
   { label: "Плагины", lite: "—", pro: "Базовые", ultra: "VIP + эксклюзив" },
-  { label: "Поддержка", lite: "Базовая", pro: "Приоритетная", ultra: "Персональная 24/7" },
+  { label: "Поддержка", lite: "@fpcloud_support", pro: "Приоритет @fpcloud_support", ultra: "@fpcloud_support 24/7" },
 ];
 
 // Circular progress ring

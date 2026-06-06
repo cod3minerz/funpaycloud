@@ -41,7 +41,7 @@ const COMPARISON_ROWS = [
   { label: 'Шаблоны сообщений', lite: '3', pro: '15', ultra: 'Без ограничений' },
   { label: 'AI ответы', lite: '—', pro: '500 / мес', ultra: 'Без лимита' },
   { label: 'Плагины', lite: '—', pro: 'Базовые', ultra: 'VIP + эксклюзив' },
-  { label: 'Поддержка', lite: 'Базовая', pro: 'Приоритетная', ultra: 'Персональная 24/7' },
+  { label: 'Поддержка', lite: '@fpcloud_support', pro: 'Приоритет @fpcloud_support', ultra: '@fpcloud_support 24/7' },
 ] as const;
 
 function formatDate(value?: string | null): string {
@@ -443,7 +443,7 @@ export default function SubscriptionPage() {
             {[
               { icon: Shield, text: 'Безопасная оплата', sub: 'ЮKassa · шифрование' },
               { icon: RefreshCw, text: 'Возврат за 3 дня', sub: 'Если сервис не работал' },
-              { icon: Headphones, text: 'Поддержка 24/7', sub: 'Ответ в течение 30 минут' },
+              { icon: Headphones, text: '@fpcloud_support', sub: 'Telegram для оплаты и продления' },
             ].map(item => (
               <div key={item.text} className="flex flex-col items-center gap-2 text-center">
                 <item.icon size={18} className="text-[var(--pf-text-dim)]" />

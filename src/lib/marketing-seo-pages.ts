@@ -339,13 +339,13 @@ export const SEO_PAGE_CONFIGS: SeoPageConfig[] = [
     slug: 'funpay-cardinal-alternative',
     title: 'Альтернатива FunPay Cardinal — облачный подход без VPS | FunPay Cloud',
     description:
-      'Сравнение FunPay Cloud и Cardinal: облачная модель, отсутствие ручной серверной настройки, быстрый старт и поддержка.',
+      'Сравнение FunPay Cloud и Cardinal: облачная модель, отсутствие ручной серверной настройки, быстрый старт и поддержка @fpcloud_support.',
     h1: 'Чем заменить Cardinal для FunPay: облачный сервис вместо ручной инфраструктуры',
     lead: 'Если вы ищете альтернативу Cardinal, ключевой выбор — между самостоятельным техстеком и SaaS-моделью с готовой инфраструктурой.',
     cluster: 'D: Comparison/alternative',
     primaryQuery: 'cardinal funpay аналог',
     secondaryQueries: ['чем заменить cardinal', 'альтернатива cardinal funpay', 'funpay облачный сервис'],
-    quickPoints: ['Без VPS и ручных апдейтов', 'Быстрое внедрение', 'Единая панель управления', 'Поддержка и обновления на стороне сервиса'],
+    quickPoints: ['Без VPS и ручных апдейтов', 'Быстрое внедрение', 'Единая панель управления', 'Поддержка @fpcloud_support и обновления на стороне сервиса'],
     sections: [
       {
         title: 'Когда Cardinal всё ещё уместен',
@@ -353,7 +353,7 @@ export const SEO_PAGE_CONFIGS: SeoPageConfig[] = [
       },
       {
         title: 'Когда выгоднее FunPay Cloud',
-        text: 'Когда важны скорость запуска, предсказуемая поддержка и минимум технической операционки.',
+        text: 'Когда важны скорость запуска, предсказуемая поддержка @fpcloud_support и минимум технической операционки.',
       },
       {
         title: 'Практическое сравнение по внедрению',

@@ -51,8 +51,8 @@ export default function AboutPage() {
               <td><a href="https://funpay.cloud">funpay.cloud</a></td>
             </tr>
             <tr>
-              <td><strong>Электронная почта</strong></td>
-              <td><a href="mailto:support@funpay.cloud">support@funpay.cloud</a></td>
+              <td><strong>Telegram-поддержка</strong></td>
+              <td><a href="https://t.me/fpcloud_support" target="_blank" rel="noreferrer">@fpcloud_support</a></td>
             </tr>
             <tr>
               <td><strong>Юридические вопросы</strong></td>

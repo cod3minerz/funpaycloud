@@ -79,7 +79,7 @@ export const subscriptionPlans: SubscriptionPlan[] = [
       { text: '2 правила автоматизации', available: true },
       { text: 'Плагины', available: false },
       { text: 'AI автоответы', available: false },
-      { text: 'Приоритетная поддержка', available: false },
+      { text: 'Поддержка @fpcloud_support', available: false },
     ],
   },
   {
@@ -103,7 +103,7 @@ export const subscriptionPlans: SubscriptionPlan[] = [
       { text: '10 правил автоматизации', available: true },
       { text: 'Базовые плагины (20+)', available: true },
       { text: 'AI ответы 500 msg/мес', available: true },
-      { text: 'Приоритетная поддержка', available: true },
+      { text: 'Приоритет @fpcloud_support', available: true },
     ],
   },
   {
@@ -126,7 +126,7 @@ export const subscriptionPlans: SubscriptionPlan[] = [
       { text: 'Безлимит автоматизации', available: true },
       { text: 'VIP плагины', available: true },
       { text: 'AI ответы без лимита', available: true },
-      { text: 'Персональный менеджер', available: true },
+      { text: 'Персональная поддержка @fpcloud_support', available: true },
       { text: 'API доступ', available: true },
     ],
   },

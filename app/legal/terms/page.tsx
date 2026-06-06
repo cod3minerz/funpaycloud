@@ -291,8 +291,8 @@ export default function TermsPage() {
               <td><a href="tel:+79897702776">+7 989 770-27-76</a></td>
             </tr>
             <tr>
-              <td><strong>Электронная почта</strong></td>
-              <td><a href="mailto:support@funpay.cloud">support@funpay.cloud</a></td>
+              <td><strong>Telegram-поддержка</strong></td>
+              <td><a href="https://t.me/fpcloud_support" target="_blank" rel="noreferrer">@fpcloud_support</a></td>
             </tr>
           </tbody>
         </table>
