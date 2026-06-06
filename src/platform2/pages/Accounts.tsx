@@ -25,6 +25,7 @@ type Account = {
   keeper: boolean;
   raiser: boolean;
   proxy: string;
+  proxyConnected: boolean;
   eventsToday: number;
   lastEvent: string;
   sessionUpdated: string;
@@ -43,6 +44,7 @@ function mapApiAccount(a: ApiAccount): Account {
     keeper: a.keeper_active,
     raiser: a.raiser_active,
     proxy: a.proxy_label ?? (a.proxy_connected ? "Прокси подключён" : "Нет прокси"),
+    proxyConnected: a.proxy_connected ?? false,
     eventsToday: a.runner_events_today ?? 0,
     lastEvent: a.runner_last_event_at
       ? new Date(a.runner_last_event_at).toLocaleString("ru-RU", { hour: "2-digit", minute: "2-digit" })
@@ -730,7 +732,7 @@ export default function AccountsPage() {
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Прокси</p>
                 <div className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
                   <div className="flex items-center gap-2">
-                    {drawerAccount.proxy !== "Нет прокси" ? (
+                    {drawerAccount.proxyConnected ? (
                       <span className="relative flex h-2 w-2">
                         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success-400 opacity-75" />
                         <span className="relative inline-flex h-2 w-2 rounded-full bg-success-500" />
@@ -743,9 +745,9 @@ export default function AccountsPage() {
                     <span className="font-medium text-gray-800 dark:text-white">{drawerAccount.proxy}</span>
                   </div>
                   <p className="mt-1 text-sm text-gray-400">
-                    {drawerAccount.proxy !== "Нет прокси"
+                    {drawerAccount.proxyConnected
                       ? "Все запросы аккаунта идут через прокси."
-                      : "Прокси не подключён. Рекомендуем подключить прокси для защиты аккаунта."}
+                      : "Прокси не подключён. Рекомендуем подключить для защиты аккаунта."}
                   </p>
                   <button
                     onClick={() => { setProxyTargetId(drawerAccount.apiId); setDrawerAccount(null); setIsProxyModal(true); }}

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { settingsApi, NotificationSettings } from "@/lib/api";
+import { toast } from "sonner";
 import { logout } from "@/lib/auth";
 import { Card, CardContent } from "@/platform2/components/ui/card";
 import { Button } from "@/platform2/components/ui/button";
@@ -133,8 +134,9 @@ export default function SettingsPage() {
       await settingsApi.unlinkTelegram();
       setTelegramLinked(false);
       setTelegramUsername("");
+      toast.success("Telegram отвязан");
     } catch {
-      // ignore
+      toast.error("Не удалось отвязать Telegram");
     } finally {
       setUnlinkingTelegram(false);
     }

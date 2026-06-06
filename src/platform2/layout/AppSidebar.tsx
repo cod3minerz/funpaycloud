@@ -192,7 +192,7 @@ const AppSidebar: React.FC = () => {
             </Link>
           ) : (
             /* Пункт без пути — недоступен, только отображается */
-            <div className="menu-item group opacity-50 cursor-not-allowed select-none">
+            <div className="menu-item group opacity-50 cursor-not-allowed select-none text-gray-700 dark:text-gray-300">
               <span className="menu-item-icon-inactive">{nav.icon}</span>
               {(isExpanded || isHovered || isMobileOpen) && (
                 <span className="menu-item-text">{nav.name}</span>

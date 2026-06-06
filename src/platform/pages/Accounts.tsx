@@ -159,7 +159,7 @@ export default function Accounts() {
   const [proxyConnecting, setProxyConnecting] = useState(false);
   const [proxyConnectingMode, setProxyConnectingMode] = useState<'free' | 'external' | null>(null);
   const [proxyConnectError, setProxyConnectError] = useState<string | null>(null);
-  const [proxySupportURL, setProxySupportURL] = useState('https://t.me/fpcloud_support');
+  const [proxySupportURL, setProxySupportURL] = useState('https://t.me/funpay_cloud');
   const [externalProxyStatus, setExternalProxyStatus] = useState<'form' | 'checking' | 'success'>('form');
   const [externalProxyError, setExternalProxyError] = useState<string | null>(null);
   const [externalProxyHost, setExternalProxyHost] = useState('');
@@ -416,7 +416,7 @@ export default function Accounts() {
     setProxyConnectError(null);
     try {
       const result = await accountsApi.connectProxy(proxyTargetAccount.id, { mode: 'free' });
-      setProxySupportURL('https://t.me/fpcloud_support');
+      setProxySupportURL('https://t.me/funpay_cloud');
       toast.success(result?.label || 'Бесплатный прокси подключен');
       await loadAccounts();
       setShowProxyDialog(false);
@@ -431,7 +431,7 @@ export default function Accounts() {
         normalized.includes('нет доступных рабочих бесплатных прокси') ||
         normalized.includes('нет доступных бесплатных прокси')
       ) {
-        setProxySupportURL('https://t.me/fpcloud_support');
+        setProxySupportURL('https://t.me/funpay_cloud');
       }
     } finally {
       setProxyConnecting(false);
@@ -1114,7 +1114,7 @@ export default function Accounts() {
                   className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--pf-accent)]"
                 >
                   <LifeBuoy size={12} />
-                  Написать @fpcloud_support
+                  Написать @funpay_cloud
                 </a>
               )}
             </div>

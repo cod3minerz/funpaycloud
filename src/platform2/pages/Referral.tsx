@@ -57,6 +57,22 @@ export default function ReferralPage() {
     });
   }
 
+  function shareLink() {
+    if (navigator.share) {
+      navigator.share({
+        title: "FunPay Cloud — реферальная ссылка",
+        text: "Присоединяйся к FunPay Cloud по моей ссылке!",
+        url: refLink,
+      }).catch(() => {});
+    } else {
+      // fallback — copy to clipboard
+      navigator.clipboard.writeText(refLink).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      });
+    }
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Реферальная программа</h1>
@@ -79,7 +95,7 @@ export default function ReferralPage() {
               <Icon name={copied ? "check-line" : "copy"} className="h-4 w-4" />
               {copied ? "Скопировано!" : "Копировать ссылку"}
             </button>
-            <button className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
+            <button onClick={shareLink} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
               <Icon name="share" className="h-4 w-4" />
               Поделиться
             </button>

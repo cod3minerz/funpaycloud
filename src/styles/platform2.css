@@ -766,3 +766,23 @@ span.flatpickr-weekday,
   opacity: 0.8;
   cursor: grabbing; /* Changes the cursor to indicate dragging */
 }
+
+/* ── ReactFlow Controls dark mode ───────────────────────────────────────── */
+[data-p2] .react-flow__controls {
+  box-shadow: none;
+}
+[data-p2] .react-flow__controls-button {
+  @apply border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300;
+  border-width: 1px;
+}
+[data-p2] .react-flow__controls-button:hover {
+  @apply bg-gray-50 dark:bg-gray-800;
+}
+[data-p2] .react-flow__controls-button svg {
+  @apply fill-current;
+}
+
+/* ── Select fields — consistent arrow spacing ───────────────────────────── */
+[data-p2] select {
+  padding-right: 2.5rem; /* ensure space for custom chevron */
+}

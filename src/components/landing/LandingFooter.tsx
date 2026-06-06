@@ -35,15 +35,15 @@ export default function LandingFooter() {
             </a>
             <p className="ft-about">Облачная платформа автоматизации продаж для профессиональных продавцов FunPay.</p>
             <div className="ft-socials">
-              <a href="https://t.me/fpcloud_support" target="_blank" rel="noreferrer" className="ft-social-btn" aria-label="Telegram @fpcloud_support">
+              <a href="https://t.me/funpay_cloud" target="_blank" rel="noreferrer" className="ft-social-btn" aria-label="Telegram @funpay_cloud">
                 <TelegramIcon />
-                <span>@fpcloud_support</span>
+                <span>@funpay_cloud</span>
               </a>
               <a href="https://vk.com/funpaycloud" target="_blank" rel="noreferrer" className="ft-social-btn" aria-label="ВКонтакте">
                 <VkIcon />
                 <span>ВКонтакте</span>
               </a>
-              <a href="https://t.me/fpcloud_support" target="_blank" rel="noreferrer" className="ft-social-btn ft-social-btn--support" aria-label="Поддержка @fpcloud_support">
+              <a href="https://t.me/funpay_cloud" target="_blank" rel="noreferrer" className="ft-social-btn ft-social-btn--support" aria-label="Поддержка @funpay_cloud">
                 <SupportIcon />
                 <span>Поддержка</span>
               </a>
@@ -66,9 +66,9 @@ export default function LandingFooter() {
             <ul>
               <li><a href="/docs">Документация</a></li>
               <li><a href="#faq">База знаний</a></li>
-              <li><a href="https://t.me/fpcloud_support" target="_blank" rel="noreferrer">Telegram-поддержка @fpcloud_support</a></li>
+              <li><a href="https://t.me/funpay_cloud" target="_blank" rel="noreferrer">Telegram-поддержка @funpay_cloud</a></li>
               <li><a href="/auth/register">Онбординг</a></li>
-              <li><a href="https://t.me/fpcloud_support" target="_blank" rel="noreferrer">Сообщество @fpcloud_support</a></li>
+              <li><a href="https://t.me/funpay_cloud" target="_blank" rel="noreferrer">Сообщество @funpay_cloud</a></li>
             </ul>
           </div>
 

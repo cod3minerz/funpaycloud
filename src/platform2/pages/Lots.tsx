@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/platform2/components/ui/card";
 import { Button } from "@/platform2/components/ui/button";
 import { Badge } from "@/platform2/components/ui/badge";
@@ -618,8 +619,9 @@ export default function LotsPage() {
         ...prev.filter((l) => String(l.funpay_account_id) !== filterAccount),
         ...fresh,
       ]);
+      toast.success("Лоты обновлены с FunPay");
     } catch {
-      // ignore
+      toast.error("Не удалось обновить лоты");
     } finally {
       setRefreshing(false);
     }
@@ -630,8 +632,9 @@ export default function LotsPage() {
     setOpenDropdownId(null);
     try {
       await lotsApi.raiseLot(lot.funpay_account_id, lot.lot_id);
+      toast.success("Лот поднят");
     } catch {
-      // ignore
+      toast.error("Не удалось поднять лот");
     } finally {
       setRaising(null);
     }
@@ -648,7 +651,7 @@ export default function LotsPage() {
         prev.map((l) => (l.id === lot.id ? { ...l, is_active: !l.is_active } : l))
       );
     } catch {
-      // ignore
+      toast.error("Не удалось изменить статус лота");
     } finally {
       setToggling(null);
     }
@@ -659,8 +662,9 @@ export default function LotsPage() {
     try {
       await lotsApi.delete(lot.funpay_account_id, lot.lot_id);
       setLots((prev) => prev.filter((l) => l.id !== lot.id));
+      toast.success("Лот удалён");
     } catch {
-      // ignore
+      toast.error("Не удалось удалить лот");
     }
   }
 

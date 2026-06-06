@@ -168,16 +168,19 @@ export default function AnalyticsPage() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Аналитика</h1>
         <div className="flex items-center gap-2">
           {accounts.length > 0 && (
-            <select
-              value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
-              className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            >
-              <option value="all">Все аккаунты</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>{a.username ?? `#${a.id}`}</option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={accountId}
+                onChange={(e) => setAccountId(e.target.value)}
+                className="appearance-none rounded-xl border border-gray-200 bg-white py-2 pl-3 pr-9 text-sm text-gray-700 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              >
+                <option value="all">Все аккаунты</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>{a.username ?? `#${a.id}`}</option>
+                ))}
+              </select>
+              <svg className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
           )}
           <div className="flex gap-1 rounded-xl border border-gray-200 bg-white p-1 dark:border-gray-700 dark:bg-gray-900">
             {(Object.keys(periodLabels) as Period[]).map((p) => (
@@ -249,13 +252,19 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent className="pb-6 pt-2">
             <MiniLineChart data={chartData} />
-            {chartData.length > 0 && (
-              <div className="mt-2 flex justify-between px-3 text-xs text-gray-400">
-                {chartData.map((d) => (
-                  <span key={d.date}>{new Date(d.date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</span>
-                ))}
-              </div>
-            )}
+            {chartData.length > 0 && (() => {
+              const fmt = (d: string) => new Date(d).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+              const first = chartData[0];
+              const last = chartData[chartData.length - 1];
+              const mid = chartData[Math.floor(chartData.length / 2)];
+              return (
+                <div className="mt-2 flex justify-between px-3 text-xs text-gray-400">
+                  <span>{fmt(first.date)}</span>
+                  {chartData.length > 4 && <span>{fmt(mid.date)}</span>}
+                  <span>{fmt(last.date)}</span>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
         <Card>
@@ -266,7 +275,7 @@ export default function AnalyticsPage() {
             {byAccounts.length > 0 ? (
               <HBarChart data={byAccounts} />
             ) : (
-              <p className="pt-2 text-sm text-gray-400">Нет данных</p>
+              <div className="flex h-28 items-center justify-center text-sm text-gray-400">Нет данных</div>
             )}
           </CardContent>
         </Card>
@@ -282,7 +291,7 @@ export default function AnalyticsPage() {
             {topProducts.length > 0 ? (
               <ProductChart data={topProducts} />
             ) : (
-              <p className="pt-2 text-sm text-gray-400">Нет данных</p>
+              <div className="flex h-28 items-center justify-center text-sm text-gray-400">Нет данных</div>
             )}
           </CardContent>
         </Card>
@@ -297,7 +306,7 @@ export default function AnalyticsPage() {
                 <p className="mt-2 text-center text-xs text-gray-400">Час дня (0–23)</p>
               </>
             ) : (
-              <p className="pt-2 text-sm text-gray-400">Нет данных</p>
+              <div className="flex h-28 items-center justify-center text-sm text-gray-400">Нет данных</div>
             )}
           </CardContent>
         </Card>

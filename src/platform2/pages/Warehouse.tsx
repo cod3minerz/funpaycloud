@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/platform2/components/ui/card";
 import { Badge } from "@/platform2/components/ui/badge";
 import { Button } from "@/platform2/components/ui/button";
@@ -106,13 +107,13 @@ export default function WarehousePage() {
     try {
       const fresh = await warehouseApi.list(lot.funpayAccountId, { refresh: true });
       const mapped = fresh.map(mapApiLot);
-      // Заменяем лоты этого аккаунта на свежие
       setLots((prev) => {
         const otherAccounts = prev.filter((l) => l.funpayAccountId !== lot.funpayAccountId);
         return [...otherAccounts, ...mapped];
       });
+      toast.success("Склад обновлён с FunPay");
     } catch {
-      // ignore
+      toast.error("Не удалось обновить данные");
     } finally {
       setRefreshing(false);
     }
@@ -157,8 +158,9 @@ export default function WarehousePage() {
           l.id === selectedLotId ? { ...l, items: [...l.items, ...newItems] } : l
         )
       );
+      toast.success(`Импортировано ${lines.length} товаров`);
     } catch {
-      // ignore
+      toast.error("Ошибка импорта файла");
     }
   }
 
@@ -176,7 +178,7 @@ export default function WarehousePage() {
         )
       );
     } catch {
-      // ignore
+      toast.error("Не удалось добавить товар");
     }
     setNewItem("");
   }
@@ -198,8 +200,9 @@ export default function WarehousePage() {
           l.id === selectedLotId ? { ...l, items: [...l.items, ...newItems] } : l
         )
       );
+      toast.success(`Добавлено ${lines.length} товаров`);
     } catch {
-      // ignore
+      toast.error("Не удалось добавить товары");
     }
     setBulkText("");
   }
@@ -217,7 +220,7 @@ export default function WarehousePage() {
         )
       );
     } catch {
-      // ignore
+      toast.error("Не удалось удалить товар");
     }
   }
 
@@ -229,8 +232,9 @@ export default function WarehousePage() {
         auto_delivery_enabled: next,
         auto_delivery_template: lot.messageTemplate,
       });
+      toast.success(next ? "Авто-выдача включена" : "Авто-выдача выключена");
     } catch {
-      // ignore
+      toast.error("Не удалось изменить настройку");
     }
     setLots((prev) =>
       prev.map((l) => (l.id === selectedLotId ? { ...l, autoDelivery: next } : l))
@@ -243,8 +247,9 @@ export default function WarehousePage() {
         auto_delivery_enabled: lot.autoDelivery,
         auto_delivery_template: currentTemplate,
       });
+      toast.success("Шаблон сохранён");
     } catch {
-      // ignore
+      toast.error("Не удалось сохранить шаблон");
     }
     setLots((prev) =>
       prev.map((l) => (l.id === selectedLotId ? { ...l, messageTemplate: currentTemplate } : l))

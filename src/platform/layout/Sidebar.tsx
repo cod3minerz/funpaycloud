@@ -63,9 +63,9 @@ const navGroups: Array<{ title: string; items: NavItem[] }> = [
 ];
 
 const mobileTopLinks = [
-  { label: '@fpcloud_support', href: 'https://t.me/fpcloud_support', icon: <TelegramMark size={16} /> },
+  { label: '@funpay_cloud', href: 'https://t.me/funpay_cloud', icon: <TelegramMark size={16} /> },
   { label: 'Группа ВКонтакте', href: '#', icon: <VkMark size={16} /> },
-  { label: 'Поддержка @fpcloud_support', href: 'https://t.me/fpcloud_support', icon: <LifeBuoy size={16} /> },
+  { label: 'Поддержка @funpay_cloud', href: 'https://t.me/funpay_cloud', icon: <LifeBuoy size={16} /> },
 ] as const;
 
 export default function Sidebar({

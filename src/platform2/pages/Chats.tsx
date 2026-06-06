@@ -290,7 +290,7 @@ export default function ChatsPage() {
                 <option key={a.id} value={a.username ?? `#${a.id}`}>{a.username ?? `#${a.id}`}</option>
               ))}
             </select>
-            <Icon name="chevron-down" className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+            <svg className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </div>
         </div>
 

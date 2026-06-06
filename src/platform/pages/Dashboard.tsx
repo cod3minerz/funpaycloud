@@ -98,11 +98,11 @@ const FEATURES: Feature[] = [
 
 const COMMUNITY_CARDS: CommunityCard[] = [
   {
-    title: '@fpcloud_support',
+    title: '@funpay_cloud',
     subtitle: 'Канал',
     description: 'Новости платформы, промокоды и обновления теперь в одном Telegram-аккаунте.',
     cta: 'Подписаться',
-    href: 'https://t.me/fpcloud_support',
+    href: 'https://t.me/funpay_cloud',
     imageSrc: '/illustrations/community/tg_icon.png',
     imageAlt: 'Иконка Telegram',
     variant: 'telegram',
@@ -118,11 +118,11 @@ const COMMUNITY_CARDS: CommunityCard[] = [
     variant: 'vk',
   },
   {
-    title: '@fpcloud_support',
+    title: '@funpay_cloud',
     subtitle: 'Техподдержка',
     description: 'Если что-то сломалось — напишите в единый Telegram поддержки.',
     cta: 'Написать',
-    href: 'https://t.me/fpcloud_support',
+    href: 'https://t.me/funpay_cloud',
     imageSrc: '/illustrations/community/sup_icon.png',
     imageAlt: 'Иконка поддержки',
     variant: 'support',

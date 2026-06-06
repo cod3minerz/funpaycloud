@@ -159,12 +159,12 @@ export default function PlatformFrame({ children, basePath, scopeClassName }: Pl
             </Link>
           </div>
           <a
-            href="https://t.me/fpcloud_support"
+            href="https://t.me/funpay_cloud"
             target="_blank"
             rel="noopener noreferrer"
             className="mt-4 inline-flex w-full justify-center text-xs text-[var(--pf-text-soft)] hover:text-[var(--pf-text-muted)]"
           >
-            Нужна помощь? Написать @fpcloud_support
+            Нужна помощь? Написать @funpay_cloud
           </a>
           <button
             type="button"

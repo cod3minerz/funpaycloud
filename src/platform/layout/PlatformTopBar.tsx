@@ -164,11 +164,11 @@ export default function PlatformTopBar({
                 className="cursor-pointer text-[var(--pf-text)] focus:bg-[var(--pf-accent-soft)] focus:text-[var(--pf-text)]"
                 onSelect={event => {
                   event.preventDefault();
-                  window.open('https://t.me/fpcloud_support', '_blank', 'noopener,noreferrer');
+                  window.open('https://t.me/funpay_cloud', '_blank', 'noopener,noreferrer');
                 }}
               >
                 <LifeBuoy size={14} className="mr-2" />
-                Поддержка @fpcloud_support
+                Поддержка @funpay_cloud
               </DropdownMenuItem>
 
               <DropdownMenuSeparator className="bg-[var(--pf-border)]" />

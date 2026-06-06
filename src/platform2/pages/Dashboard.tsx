@@ -21,7 +21,7 @@ export default function DashboardPage() {
       </div>
 
       {/* БЛОГ КАРТОЧКА - ГРАДИЕНТ */}
-      <div className="rounded-2xl bg-gradient-to-r from-brand-500 to-blue-600 border-0">
+      <a href="https://t.me/funpay_cloud" target="_blank" rel="noopener noreferrer" className="block rounded-2xl bg-gradient-to-r from-brand-500 to-blue-600 border-0 hover:opacity-95 transition-opacity">
         <div className="p-6 md:p-8">
           <div className="flex items-start justify-between">
             <div className="max-w-2xl space-y-3 text-white">
@@ -34,10 +34,10 @@ export default function DashboardPage() {
               <p className="text-white/90">
                 Пошаговый разбор настроек автоподнятия и ошибок, которых важно избегать.
               </p>
-              <Button variant="outline" className="mt-4">
-                Читать статью
-                <Icon name="arrow-right" className="ml-2 h-4 w-4" />
-              </Button>
+              <div className="mt-4 inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 py-2.5 text-sm font-medium text-white hover:bg-white/20 transition-colors">
+                Читать в канале
+                <Icon name="arrow-right" className="h-4 w-4" />
+              </div>
             </div>
             <Icon
               name="docs"
@@ -45,7 +45,7 @@ export default function DashboardPage() {
             />
           </div>
         </div>
-      </div>
+      </a>
 
       {/* 3 КАРТОЧКИ: TELEGRAM, VK, ПОДДЕРЖКА */}
       <div className="grid gap-6 md:grid-cols-3">
@@ -140,6 +140,9 @@ export default function DashboardPage() {
                 <Icon name="docs" className="h-5 w-5 text-warning-600" />
               </div>
               <CardTitle>Документация</CardTitle>
+              <span className="ml-auto rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-400 dark:bg-gray-700 dark:text-gray-500">
+                Скоро
+              </span>
             </div>
           </CardHeader>
           <CardContent className="px-6 pb-6">
