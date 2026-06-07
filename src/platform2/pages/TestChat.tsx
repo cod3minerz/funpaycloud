@@ -34,6 +34,7 @@ export default function TestChatPage() {
   const [selectedAccountID, setSelectedAccountID] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
+  const [showSettingsPanel, setShowSettingsPanel] = useState(false);
 
   const [productionMode, setProductionMode] = useState<ChatMode>("assistant");
   const [autoMode, setAutoMode] = useState(true);
@@ -91,12 +92,26 @@ export default function TestChatPage() {
   }, []);
 
   async function loadForAccount(accountID: number, cancelled = false) {
-    const [config, accountScenarios, faqItems] = await Promise.all([
-      aiApi.getConfig(accountID),
-      scenariosApi.list(accountID),
-      aiApi.getFaq(accountID),
+    // Gracefully handle AI config not yet created for account
+    const [configResult, accountScenarios, faqItems] = await Promise.all([
+      aiApi.getConfig(accountID).catch(() => null),
+      scenariosApi.list(accountID).catch(() => []),
+      aiApi.getFaq(accountID).catch(() => []),
     ]);
     if (cancelled) return;
+    const config = configResult ?? {
+      account_id: accountID,
+      is_enabled: false,
+      tone: "neutral" as const,
+      system_prompt: "",
+      delay_seconds: 3,
+      show_ai_signature: false,
+      chat_mode: "assistant" as const,
+      constructor_scenario_id: null,
+      used_messages: 0,
+      limit_messages: 0,
+      remaining_messages: 0,
+    };
 
     const mode: ChatMode = config.chat_mode === "constructor" ? "constructor" : "assistant";
     setProductionMode(mode);
@@ -242,10 +257,27 @@ export default function TestChatPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-5rem)] gap-5 overflow-hidden">
+    <div className="flex h-[calc(100vh-4rem)] gap-5 overflow-hidden -mx-4 -my-4 md:-mx-6 md:-my-6 px-4 py-4 md:px-6 md:py-6">
 
-      {/* LEFT — settings */}
-      <div className="w-[360px] shrink-0 overflow-y-auto space-y-4 pr-1">
+      {/* LEFT — settings panel (desktop: always visible, mobile: drawer overlay) */}
+      {/* Mobile overlay backdrop */}
+      {showSettingsPanel && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          onClick={() => setShowSettingsPanel(false)}
+        />
+      )}
+      <div className={`
+        ${showSettingsPanel ? "translate-x-0" : "-translate-x-full"}
+        lg:translate-x-0
+        fixed lg:relative left-0 top-0 lg:top-auto z-40 lg:z-auto
+        h-full lg:h-auto
+        w-[320px] lg:w-[340px] shrink-0
+        overflow-y-auto space-y-4 pr-1 pb-4
+        bg-white dark:bg-gray-950 lg:bg-transparent lg:dark:bg-transparent
+        pt-16 lg:pt-0
+        transition-transform duration-300 lg:transition-none
+      `}>
 
         {/* Account */}
         <Card>
@@ -484,21 +516,29 @@ export default function TestChatPage() {
       </div>
 
       {/* RIGHT — chat */}
-      <Card className="flex flex-1 flex-col overflow-hidden">
+      <Card className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Chat header */}
-        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-800">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500/10">
-              <Icon name="cpu" className="h-5 w-5 text-brand-500" />
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800 sm:px-5 sm:py-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Mobile settings toggle */}
+            <button
+              onClick={() => setShowSettingsPanel((v) => !v)}
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 lg:hidden"
+              aria-label="Настройки теста"
+            >
+              <Icon name="more-dots" className="h-5 w-5" />
+            </button>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500/10 sm:h-9 sm:w-9">
+              <Icon name="cpu" className="h-4 w-4 text-brand-500 sm:h-5 sm:w-5" />
             </div>
             <div>
-              <p className="font-semibold text-gray-800 dark:text-white">Тестовый диалог</p>
-              <p className="text-xs text-gray-400">Режим теста не влияет на боевой режим аккаунта</p>
+              <p className="text-sm font-semibold text-gray-800 dark:text-white sm:text-base">Тестовый диалог</p>
+              <p className="hidden text-xs text-gray-400 sm:block">Режим теста не влияет на боевой режим аккаунта</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400">Ответил:</span>
-            <span className="rounded-full bg-brand-500/10 px-2.5 py-0.5 text-xs font-medium text-brand-600">
+            <span className="hidden text-xs text-gray-400 sm:block">Ответил:</span>
+            <span className="rounded-full bg-brand-500/10 px-2 py-0.5 text-xs font-medium text-brand-600 sm:px-2.5">
               {modeLabel(lastEffectiveMode)}
             </span>
           </div>

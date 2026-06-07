@@ -786,3 +786,8 @@ span.flatpickr-weekday,
 [data-p2] select {
   padding-right: 2.5rem; /* ensure space for custom chevron */
 }
+
+/* ── Mobile overflow protection ─────────────────────────────────────────── */
+[data-p2] {
+  overflow-x: hidden;
+}

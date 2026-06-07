@@ -350,23 +350,26 @@ export default function AccountsPage() {
         <CardHeader className="border-b border-gray-200 dark:border-gray-700">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Список аккаунтов</CardTitle>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <input
                 type="text"
-                placeholder="Поиск по логину"
+                placeholder="Поиск"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-56 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                className="min-w-0 flex-1 sm:flex-none sm:w-48 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
               />
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as "" | "online" | "offline")}
-                className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              >
-                <option value="">Все статусы</option>
-                <option value="online">Онлайн</option>
-                <option value="offline">Оффлайн</option>
-              </select>
+              <div className="relative flex-1 sm:flex-none">
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value as "" | "online" | "offline")}
+                  className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-2 pl-3 pr-9 text-sm outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                >
+                  <option value="">Все статусы</option>
+                  <option value="online">Онлайн</option>
+                  <option value="offline">Оффлайн</option>
+                </select>
+                <svg className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -610,7 +613,7 @@ export default function AccountsPage() {
             className="fixed inset-0 z-40 bg-gray-900/40 backdrop-blur-sm"
             onClick={() => setDrawerAccount(null)}
           />
-          <div className="fixed right-0 top-16 z-50 flex h-[calc(100vh-4rem)] w-[420px] flex-col overflow-y-auto bg-white shadow-2xl dark:bg-gray-900">
+          <div className="fixed right-0 top-16 z-50 flex h-[calc(100vh-4rem)] w-full flex-col overflow-y-auto bg-white shadow-2xl dark:bg-gray-900 sm:w-[420px]">
 
             {/* Close */}
             <div className="flex justify-end p-4">

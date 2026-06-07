@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/platform2/components/ui/card";
 import { Button } from "@/platform2/components/ui/button";
 import Icon from "@/platform2/icons";
 import { aiApi, scenariosApi, accountsApi, AIConfig, AIFaqItem, ApiScenario, ApiAccount } from "@/lib/api";
+import { toast } from "sonner";
 
 type Tone = "formal" | "neutral" | "friendly";
 
@@ -109,14 +110,15 @@ export default function AIAssistantPage() {
       await aiApi.saveConfig(account, {
         is_enabled: autoReply,
         tone,
-        system_prompt: instruction,
+        system_prompt: instruction.trim(),
         delay_seconds: delay,
         show_ai_signature: signature,
         chat_mode: mode === "scenarios" ? "constructor" : "assistant",
         constructor_scenario_id: mode === "scenarios" ? scenario : undefined,
       });
+      toast.success("Настройки AI сохранены");
     } catch {
-      // ignore
+      toast.error("Не удалось сохранить настройки AI");
     } finally {
       setSaving(false);
     }

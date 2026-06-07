@@ -672,21 +672,22 @@ export default function LotsPage() {
     <div className="space-y-6">
 
       {/* HEADER */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Лоты</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             onClick={handleRefresh}
             disabled={!filterAccount || refreshing}
+            className="flex-1 sm:flex-none"
           >
             <Icon
               name="refresh"
               className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
             />
-            Обновить с FunPay
+            Обновить
           </Button>
-          <Button variant="primary" onClick={() => setShowCreateModal(true)}>
+          <Button variant="primary" onClick={() => setShowCreateModal(true)} className="flex-1 sm:flex-none">
             <Icon name="plus" className="mr-2 h-4 w-4" />
             Создать лот
           </Button>
@@ -698,26 +699,29 @@ export default function LotsPage() {
         <CardHeader className="border-b border-gray-200 dark:border-gray-700">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Все лоты</CardTitle>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <input
                 type="text"
-                placeholder="Поиск по названию"
+                placeholder="Поиск"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-56 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                className="min-w-0 flex-1 sm:flex-none sm:w-48 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
               />
-              <select
-                value={filterAccount}
-                onChange={(e) => setFilterAccount(e.target.value)}
-                className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              >
-                <option value="">Все аккаунты</option>
-                {accounts.map((a) => (
-                  <option key={a.id} value={String(a.id)}>
-                    {a.username ?? `#${a.id}`}
-                  </option>
-                ))}
-              </select>
+              <div className="relative flex-1 sm:flex-none">
+                <select
+                  value={filterAccount}
+                  onChange={(e) => setFilterAccount(e.target.value)}
+                  className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-2 pl-3 pr-9 text-sm outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                >
+                  <option value="">Все аккаунты</option>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={String(a.id)}>
+                      {a.username ?? `#${a.id}`}
+                    </option>
+                  ))}
+                </select>
+                <svg className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
             </div>
           </div>
         </CardHeader>

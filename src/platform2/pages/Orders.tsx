@@ -91,15 +91,15 @@ export default function OrdersPage() {
         <CardHeader className="border-b border-gray-200 dark:border-gray-700">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Все заказы</CardTitle>
-            <div className="flex gap-2">
-              <InputField placeholder="Поиск по заказам" className="w-64" />
-              <Select value={selectedAccount} onChange={(value) => { setSelectedAccount(value); setPage(1); }}>
+            <div className="flex flex-wrap gap-2">
+              <InputField placeholder="Поиск" className="min-w-0 flex-1 sm:w-48 sm:flex-none" />
+              <Select value={selectedAccount} onChange={(value) => { setSelectedAccount(value); setPage(1); }} className="flex-1 sm:flex-none">
                 <option value="all">Все аккаунты</option>
                 {accounts.map((a) => (
                   <option key={a.id} value={a.id}>{a.username ?? `#${a.id}`}</option>
                 ))}
               </Select>
-              <Select>
+              <Select className="flex-1 sm:flex-none">
                 <option value="all">Все статусы</option>
                 <option value="completed">Завершён</option>
                 <option value="pending">В ожидании</option>
@@ -198,7 +198,7 @@ export default function OrdersPage() {
         </CardContent>
 
         <div className="border-t border-gray-200 px-5 py-4 dark:border-gray-700">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-gray-500">
               Показано <span className="font-medium text-gray-800 dark:text-white">
                 {Math.min((page - 1) * LIMIT + 1, total)}–{Math.min(page * LIMIT, total)}
