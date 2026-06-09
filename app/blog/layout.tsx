@@ -17,8 +17,8 @@ export default function BlogLayout({ children }: { children: ReactNode }) {
               <Image
                 src="/branding/logo_full_new.svg"
                 alt="FunPay Cloud"
-                width={1223}
-                height={206}
+                width={692}
+                height={113}
                 className="h-8 w-auto"
               />
             </Link>

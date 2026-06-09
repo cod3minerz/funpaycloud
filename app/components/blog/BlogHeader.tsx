@@ -63,8 +63,8 @@ export function BlogHeader() {
           <Image
             src="/branding/logo_full_new.svg"
             alt="FunPay Cloud"
-            width={1223}
-            height={206}
+            width={692}
+            height={113}
             priority
             className="h-8 w-auto"
           />
