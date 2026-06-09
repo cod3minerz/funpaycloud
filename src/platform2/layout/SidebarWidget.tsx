@@ -27,7 +27,7 @@ export default function SidebarWidget() {
         </div>
       </div>
       <Link
-        href="/platform2/subscription"
+        href="/platform/subscription"
         className="flex w-full items-center justify-center rounded-lg bg-brand-500 py-2.5 text-xs font-semibold text-white hover:bg-brand-600 transition-colors"
       >
         Управление тарифом

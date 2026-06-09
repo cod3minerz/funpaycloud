@@ -1,2 +1,4 @@
-'use client';
-export { default } from '@/platform/pages/Plugins';
+import { redirect } from "next/navigation";
+export default function Page() {
+  redirect("/platform/dashboard");
+}

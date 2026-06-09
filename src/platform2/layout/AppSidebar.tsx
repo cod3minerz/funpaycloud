@@ -32,7 +32,7 @@ type NavItem = {
   subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
 
-const BASE = "/platform2";
+const BASE = "/platform";
 
 const mainNavItems: NavItem[] = [
   {

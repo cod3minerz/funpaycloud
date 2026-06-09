@@ -1,5 +1,4 @@
-import PluginDetail from '@/platform/pages/PluginDetail';
-
-export default function PluginDetailPage() {
-  return <PluginDetail />;
+import { redirect } from "next/navigation";
+export default function Page() {
+  redirect("/platform/dashboard");
 }

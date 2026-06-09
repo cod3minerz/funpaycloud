@@ -14,10 +14,10 @@ import { authApi } from "@/lib/api";
 import { logout } from "@/lib/auth";
 
 const menuItems = [
-  { label: "Настройки",  icon: Cog8ToothIcon,           href: "/platform2/settings" },
-  { label: "Подписка",   icon: CreditCardIcon,           href: "/platform2/subscription" },
-  { label: "Промокоды",  icon: TagIcon,                  href: "/platform2/promo-codes" },
-  { label: "Поддержка @funpay_cloud",  icon: QuestionMarkCircleIcon,   href: "https://t.me/funpay_cloud" },
+  { label: "Настройки",  icon: Cog8ToothIcon,           href: "/platform/settings" },
+  { label: "Подписка",   icon: CreditCardIcon,           href: "/platform/subscription" },
+  { label: "Промокоды",  icon: TagIcon,                  href: "/platform/promo-codes" },
+  { label: "Поддержка @fpcloud_support",  icon: QuestionMarkCircleIcon,   href: "https://t.me/fpcloud_support" },
 ];
 
 export default function UserDropdown() {

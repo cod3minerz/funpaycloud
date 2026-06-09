@@ -50,6 +50,11 @@ const config: NextConfig = {
   async redirects() {
     return [
       {
+        source: '/platform2/:path*',
+        destination: '/platform/:path*',
+        permanent: true,
+      },
+      {
         source: '/legal',
         destination: '/legal/privacy',
         permanent: true,

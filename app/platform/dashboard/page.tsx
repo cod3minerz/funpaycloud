@@ -1,2 +1,2 @@
-'use client';
-export { default } from '@/platform/pages/Dashboard';
+import DashboardPage from "@/platform2/pages/Dashboard";
+export default function Page() { return <DashboardPage />; }

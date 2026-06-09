@@ -15,7 +15,7 @@ type PlatformTheme = 'light' | 'dark';
 
 type PlatformFrameProps = {
   children: React.ReactNode;
-  basePath: '/platform' | '/platform-v2';
+  basePath: '/platform' | '/platform-v2' | '/oldplatform';
   scopeClassName?: string;
 };
 
@@ -159,12 +159,12 @@ export default function PlatformFrame({ children, basePath, scopeClassName }: Pl
             </Link>
           </div>
           <a
-            href="https://t.me/funpay_cloud"
+            href="https://t.me/fpcloud_support"
             target="_blank"
             rel="noopener noreferrer"
             className="mt-4 inline-flex w-full justify-center text-xs text-[var(--pf-text-soft)] hover:text-[var(--pf-text-muted)]"
           >
-            Нужна помощь? Написать @funpay_cloud
+            Нужна помощь? Написать @fpcloud_support
           </a>
           <button
             type="button"

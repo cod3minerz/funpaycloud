@@ -1,2 +1,2 @@
-'use client';
-export { default } from '@/platform/pages/Accounts';
+import AccountsPage from "@/platform2/pages/Accounts";
+export default function Page() { return <AccountsPage />; }

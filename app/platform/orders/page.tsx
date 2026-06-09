@@ -1,2 +1,2 @@
-'use client';
-export { default } from '@/platform/pages/Orders';
+import OrdersPage from "@/platform2/pages/Orders";
+export default function Page() { return <OrdersPage />; }

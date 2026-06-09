@@ -1,2 +1,2 @@
-'use client';
-export { default } from '@/platform/pages/Constructor';
+import ConstructorPage from "@/platform2/pages/Constructor";
+export default function Page() { return <ConstructorPage />; }
