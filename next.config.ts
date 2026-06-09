@@ -8,7 +8,9 @@ const withMDX = createMDX({
 });
 
 const isProduction = process.env.NODE_ENV === 'production';
-const enableObfuscation = isProduction && process.env.NEXT_DISABLE_OBFUSCATION !== 'true';
+// Opt-in: set NEXT_ENABLE_OBFUSCATION=true in the environment to enable JS obfuscation.
+// Off by default to avoid OOM on memory-constrained build machines (e.g. Vercel 8 GB).
+const enableObfuscation = isProduction && process.env.NEXT_ENABLE_OBFUSCATION === 'true';
 const scriptSrc = [
   "'self'",
   "'unsafe-inline'",
