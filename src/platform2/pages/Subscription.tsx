@@ -9,6 +9,7 @@ import {
   ChevronUpIcon,
 } from "@heroicons/react/24/outline";
 import { authApi, billingApi, SubscriptionPaymentHistoryItem } from "@/lib/api";
+import { normalizePlanId, PLAN_LIMITS } from "@/shared/subscriptions";
 
 const plans = [
   {
@@ -84,25 +85,32 @@ const comparisonRows = [
 ];
 
 // Circular progress ring
-function RingProgress({ percent }: { percent: number }) {
+function RingProgress({ percent, expired }: { percent: number; expired?: boolean }) {
   const r = 36;
   const circ = 2 * Math.PI * r;
   const offset = circ * (1 - percent / 100);
+  const color = expired ? "#ef4444" : "#465fff";
   return (
     <div className="relative flex h-20 w-20 items-center justify-center">
       <svg className="-rotate-90" width="80" height="80">
-        <circle cx="40" cy="40" r={r} fill="none" stroke="#e5e7eb" strokeWidth="6" />
+        <circle cx="40" cy="40" r={r} fill="none" stroke="#e5e7eb" strokeWidth="6" className="dark:[stroke:#374151]" />
         <circle
           cx="40" cy="40" r={r} fill="none"
-          stroke="#465fff" strokeWidth="6"
+          stroke={color} strokeWidth="6"
           strokeDasharray={circ}
           strokeDashoffset={offset}
           strokeLinecap="round"
         />
       </svg>
       <div className="absolute text-center">
-        <p className="text-base font-bold text-gray-900 dark:text-white leading-none">{percent}%</p>
-        <p className="text-[9px] text-gray-400 leading-tight">остаток</p>
+        {expired ? (
+          <p className="text-[9px] font-semibold text-red-500 leading-tight">истекла</p>
+        ) : (
+          <>
+            <p className="text-base font-bold text-gray-900 dark:text-white leading-none">{percent}%</p>
+            <p className="text-[9px] text-gray-400 leading-tight">остаток</p>
+          </>
+        )}
       </div>
     </div>
   );
@@ -130,6 +138,8 @@ export default function SubscriptionPage() {
   const [annual, setAnnual] = useState(false);
   const [showComparison, setShowComparison] = useState(true);
   const [currentPlan, setCurrentPlan] = useState("pro");
+  const [isExpired, setIsExpired] = useState(false);
+  const [isTrial, setIsTrial] = useState(false);
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
   const [expiryStr, setExpiryStr] = useState("—");
   const [periodPercent, setPeriodPercent] = useState(90);
@@ -137,17 +147,36 @@ export default function SubscriptionPage() {
 
   useEffect(() => {
     authApi.me().then((me) => {
-      if (me.plan) setCurrentPlan(me.plan.toLowerCase());
-      if (me.subscription_days_left != null) setDaysLeft(me.subscription_days_left);
-      if (me.subscription_expires_at) {
-        setExpiryStr(new Date(me.subscription_expires_at).toLocaleDateString("ru-RU", {
+      const plan = (me.plan ?? "").toLowerCase();
+      if (plan) setCurrentPlan(plan);
+
+      const expired = Boolean(
+        me.subscription_expired ||
+        me.trial_expired ||
+        me.status_code === "subscription_expired" ||
+        me.status_code === "trial_expired"
+      );
+      setIsExpired(expired);
+      setIsTrial(plan === "trial");
+
+      const left = me.subscription_days_left ?? 0;
+      setDaysLeft(expired ? 0 : left);
+
+      const expiresAt = me.subscription_expires_at ?? me.trial_expires_at;
+      if (expiresAt) {
+        setExpiryStr(new Date(expiresAt).toLocaleDateString("ru-RU", {
           day: "numeric", month: "long", year: "numeric",
         }));
-        const total = 30;
-        const left = me.subscription_days_left ?? 0;
-        setPeriodPercent(Math.round((left / total) * 100));
+      }
+
+      if (expired) {
+        setPeriodPercent(0);
+      } else if (expiresAt) {
+        const total = isTrial ? 7 : 30;
+        setPeriodPercent(Math.max(0, Math.min(100, Math.round((left / total) * 100))));
       }
     }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleChoosePlan(planId: string) {
@@ -177,46 +206,68 @@ export default function SubscriptionPage() {
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Подписка</h1>
 
       {/* Active plan banner */}
-      <Card>
+      <Card className={isExpired ? "border-red-200 dark:border-red-900/40" : ""}>
         <CardContent className="p-6">
+          {isExpired && (
+            <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="shrink-0">
+                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              Подписка истекла. Продлите её, чтобы возобновить работу автоматизации.
+            </div>
+          )}
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-5">
-              <RingProgress percent={periodPercent} />
+              <RingProgress percent={periodPercent} expired={isExpired} />
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="flex h-2 w-2 rounded-full bg-success-500" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-success-600">
-                    Активная подписка
+                  <span className={`flex h-2 w-2 rounded-full ${isExpired ? "bg-red-500" : "bg-success-500"}`} />
+                  <span className={`text-xs font-semibold uppercase tracking-wider ${
+                    isExpired ? "text-red-600 dark:text-red-400" : "text-success-600"
+                  }`}>
+                    {isExpired ? "Подписка истекла" : isTrial ? "Пробный период" : "Активная подписка"}
                   </span>
                 </div>
                 <h2 className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
-                  Тариф <span className="text-brand-500">{currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}</span>
+                  Тариф{" "}
+                  <span className={isExpired ? "text-red-500" : "text-brand-500"}>
+                    {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}
+                  </span>
                 </h2>
                 <p className="mt-0.5 text-sm text-gray-500">
-                  Действует до {expiryStr} · Осталось{" "}
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">{daysLeft ?? "—"} дн.</span>
+                  {isExpired
+                    ? `Истекла ${expiryStr}`
+                    : `Действует до ${expiryStr} · Осталось `}
+                  {!isExpired && (
+                    <span className="font-semibold text-gray-700 dark:text-gray-300">{daysLeft ?? "—"} дн.</span>
+                  )}
                 </p>
               </div>
             </div>
             <div className="shrink-0">
               <Button
-                variant="outline"
+                variant={isExpired ? "primary" : "outline"}
                 className="whitespace-nowrap"
                 onClick={() => handleChoosePlan(currentPlan)}
                 disabled={purchasing === currentPlan}
               >
-                Продлить на месяц
+                {isExpired ? "Возобновить подписку" : "Продлить на месяц"}
               </Button>
             </div>
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-3 border-t border-gray-100 pt-5 dark:border-gray-800 sm:grid-cols-4">
-            {[
-              { label: "Аккаунты", value: "1 / 5" },
-              { label: "Аналитика", value: "30 дней" },
-              { label: "Плагины", value: "Базовые" },
-              { label: "AI сообщений", value: "500 / мес" },
-            ].map(({ label, value }) => (
+            {(() => {
+              const limits = PLAN_LIMITS[normalizePlanId(currentPlan)];
+              return [
+                { label: "Аккаунты", value: limits.accounts === Infinity ? "Безлимит" : String(limits.accounts) },
+                { label: "Аналитика", value: limits.analytics_days === Infinity ? "Без лимита" : `${limits.analytics_days} дней` },
+                { label: "Сценарии", value: limits.scenarios === Infinity ? "Безлимит" : String(limits.scenarios) },
+                { label: "AI сообщений", value: limits.ai_messages_per_month === Infinity ? "Без лимита" : limits.ai_messages_per_month === 0 ? "—" : `${limits.ai_messages_per_month} / мес` },
+              ];
+            })().map(({ label, value }) => (
               <div key={label} className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800">
                 <p className="text-xs text-gray-400">{label}</p>
                 <p className="mt-0.5 text-sm font-semibold text-gray-800 dark:text-white">{value}</p>

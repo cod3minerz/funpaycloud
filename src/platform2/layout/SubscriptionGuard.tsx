@@ -8,7 +8,11 @@ import { logout } from "@/lib/auth";
 import { Modal } from "@/platform2/components/ui/modal";
 
 /** Routes that remain accessible even when subscription is locked */
-const LOCK_ALLOWED: string[] = ["/platform/subscription", "/platform/promo-codes"];
+const LOCK_ALLOWED: string[] = [
+  "/platform/subscription",
+  "/platform/promo-codes",
+  "/platform/dashboard",
+];
 
 // ─────────────────────────────────────────────────────────────────────
 // Sub-components
@@ -168,7 +172,14 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
       .me()
       .then((profile) => {
         if (cancelled) return;
-        setLocked(Boolean(profile.subscription_expired || profile.trial_expired));
+        // Check all possible expired signals: boolean flags + status_code string
+        const isLocked = Boolean(
+          profile.subscription_expired ||
+          profile.trial_expired ||
+          profile.status_code === "subscription_expired" ||
+          profile.status_code === "trial_expired"
+        );
+        setLocked(isLocked);
 
         if (
           typeof profile.subscription_days_left === "number" &&
@@ -185,7 +196,7 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {
         if (cancelled) return;
-        setLocked(false);
+        // On network/server error — don't block the user, but don't unlock either
         setDaysLeft(null);
         setExpiresAt(null);
       })
