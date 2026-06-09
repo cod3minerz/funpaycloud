@@ -15,9 +15,12 @@ function Shell({ children }: { children: React.ReactNode }) {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
   const { theme } = useTheme();
 
+  // Hover expands sidebar as an OVERLAY (no margin change) — this prevents the
+  // simultaneous width + margin-left double-reflow that causes scan-line artifacts.
+  // Only pinned (isExpanded) state actually pushes the main content.
   const mainContentMargin = isMobileOpen
     ? "ml-0"
-    : isExpanded || isHovered
+    : isExpanded
     ? "lg:ml-[290px]"
     : "lg:ml-[90px]";
 
