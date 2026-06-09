@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
-import { settingsApi, NotificationSettings } from "@/lib/api";
+import { settingsApi, type NotificationSettings, type TelegramAuthPayload, type TelegramLinkData } from "@/lib/api";
 import { toast } from "sonner";
 import { logout } from "@/lib/auth";
 import { Card, CardContent } from "@/platform2/components/ui/card";
@@ -16,6 +16,69 @@ import {
   DocumentChartBarIcon,
   BellAlertIcon,
 } from "@heroicons/react/24/outline";
+
+declare global {
+  interface Window {
+    Telegram?: {
+      Login?: {
+        auth: (
+          options: { bot_id: number; request_access?: string; lang?: string },
+          callback: (user: TelegramAuthPayload | false) => void,
+        ) => void;
+      };
+    };
+  }
+}
+
+let telegramLoginScriptPromise: Promise<void> | null = null;
+
+function isTelegramLoginReady() {
+  return typeof window !== "undefined" && typeof window.Telegram?.Login?.auth === "function";
+}
+
+function loadTelegramLoginScript(): Promise<void> {
+  if (typeof document === "undefined") {
+    return Promise.resolve();
+  }
+  if (isTelegramLoginReady()) {
+    return Promise.resolve();
+  }
+  if (telegramLoginScriptPromise) {
+    return telegramLoginScriptPromise;
+  }
+
+  telegramLoginScriptPromise = new Promise((resolve, reject) => {
+    const finish = () => {
+      if (isTelegramLoginReady()) {
+        resolve();
+      } else {
+        telegramLoginScriptPromise = null;
+        reject(new Error("Не удалось инициализировать Telegram вход"));
+      }
+    };
+
+    const fail = () => {
+      telegramLoginScriptPromise = null;
+      reject(new Error("Не удалось загрузить Telegram Login"));
+    };
+
+    const existing = document.getElementById("telegram-login-script") as HTMLScriptElement | null;
+    if (existing) {
+      window.setTimeout(finish, 0);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = "telegram-login-script";
+    script.async = true;
+    script.src = "https://telegram.org/js/telegram-widget.js?22";
+    script.onload = finish;
+    script.onerror = fail;
+    document.head.appendChild(script);
+  });
+
+  return telegramLoginScriptPromise;
+}
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
   return (
@@ -118,15 +181,150 @@ export default function SettingsPage() {
 
   const [telegramLinked, setTelegramLinked] = useState(false);
   const [telegramUsername, setTelegramUsername] = useState("");
+  const [telegramLink, setTelegramLink] = useState<TelegramLinkData | null>(null);
+  const [telegramLinkLoading, setTelegramLinkLoading] = useState(true);
+  const [telegramConfigError, setTelegramConfigError] = useState("");
+  const [telegramLoginError, setTelegramLoginError] = useState("");
+  const [telegramScriptLoading, setTelegramScriptLoading] = useState(false);
+  const [telegramScriptReady, setTelegramScriptReady] = useState(false);
+  const [telegramAuthStarting, setTelegramAuthStarting] = useState(false);
+  const [telegramLinking, setTelegramLinking] = useState(false);
   const [unlinkingTelegram, setUnlinkingTelegram] = useState(false);
 
   // Load profile for Telegram status
   useEffect(() => {
+    let cancelled = false;
+
     settingsApi.getProfile().then((p) => {
-      setTelegramLinked(p.telegram_linked ?? false);
+      if (cancelled) return;
+      setTelegramLinked(Boolean(p.telegram_linked || p.telegram_id));
       setTelegramUsername(p.telegram_username ?? p.telegram ?? "");
     }).catch(() => {});
+
+    settingsApi.getTelegramLink().then((link) => {
+      if (cancelled) return;
+      setTelegramLink(link);
+      setTelegramConfigError("");
+    }).catch((err) => {
+      if (cancelled) return;
+      setTelegramLink(null);
+      setTelegramConfigError(err instanceof Error ? err.message : "Telegram временно недоступен");
+    }).finally(() => {
+      if (!cancelled) setTelegramLinkLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  const telegramLoginAvailable = Boolean(telegramLink?.available && telegramLink?.bot_id && telegramLink?.bot_username);
+  const telegramTemporarilyUnavailable = !telegramLinked && !telegramLinkLoading && !telegramLoginAvailable;
+  const telegramUsernameLabel = telegramUsername ? (telegramUsername.startsWith("@") ? telegramUsername : `@${telegramUsername}`) : "";
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!telegramLoginAvailable) {
+      setTelegramScriptReady(false);
+      setTelegramScriptLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setTelegramScriptLoading(true);
+    setTelegramLoginError("");
+
+    loadTelegramLoginScript()
+      .then(() => {
+        if (!cancelled) setTelegramScriptReady(true);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setTelegramScriptReady(false);
+        setTelegramLoginError(err instanceof Error ? err.message : "Не удалось загрузить Telegram вход");
+      })
+      .finally(() => {
+        if (!cancelled) setTelegramScriptLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [telegramLoginAvailable]);
+
+  async function refreshTelegramState() {
+    const [profile, link] = await Promise.all([
+      settingsApi.getProfile(),
+      settingsApi.getTelegramLink(),
+    ]);
+
+    setTelegramLinked(Boolean(profile.telegram_linked || profile.telegram_id));
+    setTelegramUsername(profile.telegram_username ?? profile.telegram ?? "");
+    setTelegramLink(link);
+    setTelegramConfigError("");
+  }
+
+  async function handleTelegramAuth(payload: TelegramAuthPayload) {
+    if (telegramLinking) return;
+
+    setTelegramLinking(true);
+    try {
+      await settingsApi.linkTelegram(payload);
+      await refreshTelegramState();
+      toast.success("Telegram аккаунт привязан");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось привязать Telegram аккаунт");
+    } finally {
+      setTelegramLinking(false);
+    }
+  }
+
+  function handleTelegramLoginStart() {
+    if (!telegramLink?.bot_id) {
+      toast.error("Telegram вход сейчас недоступен");
+      return;
+    }
+    if (!telegramScriptReady) {
+      toast.info("Подготавливаем вход через Telegram, попробуйте ещё раз через секунду");
+      return;
+    }
+
+    const login = window.Telegram?.Login;
+    if (typeof login?.auth !== "function") {
+      const message = "Не удалось инициализировать Telegram вход";
+      setTelegramLoginError(message);
+      toast.error(message);
+      return;
+    }
+
+    setTelegramAuthStarting(true);
+    setTelegramLoginError("");
+
+    try {
+      login.auth(
+        {
+          bot_id: telegramLink.bot_id,
+          request_access: "write",
+          lang: "ru",
+        },
+        (user) => {
+          setTelegramAuthStarting(false);
+          if (!user) {
+            toast.info("Вход через Telegram отменён");
+            return;
+          }
+          void handleTelegramAuth(user);
+        },
+      );
+    } catch (err) {
+      setTelegramAuthStarting(false);
+      const message = err instanceof Error ? err.message : "Не удалось открыть Telegram вход";
+      setTelegramLoginError(message);
+      toast.error(message);
+    }
+  }
 
   async function handleUnlinkTelegram() {
     setUnlinkingTelegram(true);
@@ -300,10 +498,10 @@ export default function SettingsPage() {
                 <>
                   <p className="text-sm font-semibold text-gray-800 dark:text-white">Telegram привязан</p>
                   <p className="text-xs text-gray-400">Уведомления будут приходить в ваш Telegram.</p>
-                  {telegramUsername && (
+                  {telegramUsernameLabel && (
                     <div className="mt-1 flex items-center gap-1.5">
                       <span className="h-1.5 w-1.5 rounded-full bg-success-500" />
-                      <span className="text-xs font-medium text-success-600">@{telegramUsername}</span>
+                      <span className="text-xs font-medium text-success-600">{telegramUsernameLabel}</span>
                     </div>
                   )}
                 </>
@@ -311,10 +509,35 @@ export default function SettingsPage() {
                 <>
                   <p className="text-sm font-semibold text-gray-800 dark:text-white">Telegram не привязан</p>
                   <p className="text-xs text-gray-400">Привяжите Telegram для получения уведомлений.</p>
+                  {telegramTemporarilyUnavailable && (
+                    <p className="mt-1 text-xs text-error-500">
+                      {telegramConfigError || "Подключение Telegram временно недоступно."}
+                    </p>
+                  )}
+                  {telegramLoginError && !telegramTemporarilyUnavailable && (
+                    <p className="mt-1 text-xs text-error-500">{telegramLoginError}</p>
+                  )}
                 </>
               )}
             </div>
-            {telegramLinked && (
+            {!telegramLinked ? (
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={handleTelegramLoginStart}
+                disabled={!telegramLoginAvailable || telegramLinkLoading || telegramScriptLoading || telegramAuthStarting || telegramLinking}
+                startIcon={<PaperAirplaneIcon className="h-4 w-4" />}
+                className="shrink-0"
+              >
+                {telegramScriptLoading
+                  ? "Готовим..."
+                  : telegramAuthStarting
+                    ? "Открываем..."
+                    : telegramLinking
+                      ? "Привязываем..."
+                      : "Привязать"}
+              </Button>
+            ) : (
               <button
                 onClick={handleUnlinkTelegram}
                 disabled={unlinkingTelegram}
