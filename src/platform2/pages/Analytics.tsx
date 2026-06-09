@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/platform2/components/ui/card";
+import Select from "@/platform2/components/form/Select";
 import {
   Table,
   TableBody,
@@ -9,7 +10,8 @@ import {
   TableRow,
 } from "@/platform2/components/ui/table";
 import Icon from "@/platform2/icons";
-import { analyticsApi, accountsApi, AnalyticsData, ApiAccount } from "@/lib/api";
+import { analyticsApi, accountsApi, authApi, AnalyticsData, ApiAccount } from "@/lib/api";
+import { normalizePlanId, PLAN_LIMITS } from "@/shared/subscriptions";
 
 type Period = "week" | "month" | "quarter" | "year";
 
@@ -18,6 +20,13 @@ const periodLabels: Record<Period, string> = {
   month: "Месяц",
   quarter: "Квартал",
   year: "Год",
+};
+
+const periodDays: Record<Period, number> = {
+  week: 7,
+  month: 30,
+  quarter: 90,
+  year: 365,
 };
 
 const periodApiMap: Record<Period, string> = {
@@ -129,13 +138,25 @@ function HourlyChart({ data }: { data: { hour: number; orders: number }[] }) {
 }
 
 export default function AnalyticsPage() {
-  const [period, setPeriod] = useState<Period>("month");
+  const [period, setPeriod] = useState<Period>("week");
   const [accountId, setAccountId] = useState<string>("all");
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [data, setData] = useState<AnalyticsData | null>(null);
+  const [maxDays, setMaxDays] = useState<number>(7);
 
   useEffect(() => {
     accountsApi.list().then(setAccounts).catch(() => {});
+    authApi.me().then((me) => {
+      const plan = normalizePlanId(me.plan);
+      const limits = plan === "trial" ? PLAN_LIMITS.trial
+        : plan === "lite" ? PLAN_LIMITS.lite
+        : plan === "pro" ? PLAN_LIMITS.pro
+        : PLAN_LIMITS.ultra;
+      const days = limits.analytics_days === Infinity ? 365 : limits.analytics_days;
+      setMaxDays(days);
+      // clamp current period if needed
+      setPeriod((p) => (periodDays[p] <= days ? p : "week"));
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -168,34 +189,40 @@ export default function AnalyticsPage() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Аналитика</h1>
         <div className="flex flex-wrap items-center gap-2">
           {accounts.length > 0 && (
-            <div className="relative">
-              <select
-                value={accountId}
-                onChange={(e) => setAccountId(e.target.value)}
-                className="appearance-none rounded-xl border border-gray-200 bg-white py-2 pl-3 pr-9 text-sm text-gray-700 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              >
+            <>
+              <Select value={accountId} onChange={setAccountId}>
                 <option value="all">Все аккаунты</option>
                 {accounts.map((a) => (
                   <option key={a.id} value={a.id}>{a.username ?? `#${a.id}`}</option>
                 ))}
-              </select>
-              <svg className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </div>
+              </Select>
+            </>
           )}
           <div className="flex flex-wrap gap-1 rounded-xl border border-gray-200 bg-white p-1 dark:border-gray-700 dark:bg-gray-900">
-            {(Object.keys(periodLabels) as Period[]).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                  period === p
-                    ? "bg-brand-500 text-white"
-                    : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
-                }`}
-              >
-                {periodLabels[p]}
-              </button>
-            ))}
+            {(Object.keys(periodLabels) as Period[]).map((p) => {
+              const locked = periodDays[p] > maxDays;
+              return (
+                <button
+                  key={p}
+                  onClick={() => !locked && setPeriod(p)}
+                  title={locked ? `Доступно начиная с тарифа ${periodDays[p] <= 30 ? "Pro" : "Ultra"}` : undefined}
+                  className={`relative rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                    locked
+                      ? "cursor-not-allowed text-gray-300 dark:text-gray-600"
+                      : period === p
+                      ? "bg-brand-500 text-white"
+                      : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+                  }`}
+                >
+                  {periodLabels[p]}
+                  {locked && (
+                    <span className="ml-1 text-[9px] font-bold uppercase text-gray-300 dark:text-gray-600">
+                      {periodDays[p] <= 30 ? "Pro+" : "Ultra"}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

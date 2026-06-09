@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/platform2/components/ui/card";
+import Select from "@/platform2/components/form/Select";
 import { Button } from "@/platform2/components/ui/button";
 import { Badge } from "@/platform2/components/ui/badge";
 import {
@@ -163,19 +164,12 @@ export default function FinancesPage() {
       {/* ЗАГОЛОВОК */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Финансы</h1>
-        <div className="relative">
-          <select
-            value={filterAccount}
-            onChange={(e) => setFilterAccount(e.target.value)}
-            className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-2 pl-3 pr-9 text-sm outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-900 dark:text-white sm:w-auto"
-          >
-            <option value="">Все аккаунты</option>
-            {accounts.map((a) => (
-              <option key={a.id} value={String(a.id)}>{a.username ?? `#${a.id}`}</option>
-            ))}
-          </select>
-          <svg className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        </div>
+        <Select value={filterAccount} onChange={setFilterAccount} className="sm:w-44">
+          <option value="">Все аккаунты</option>
+          {accounts.map((a) => (
+            <option key={a.id} value={String(a.id)}>{a.username ?? `#${a.id}`}</option>
+          ))}
+        </Select>
       </div>
 
       {/* 4 КАРТОЧКИ */}

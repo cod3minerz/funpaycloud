@@ -7,6 +7,7 @@ import { Badge } from "@/platform2/components/ui/badge";
 import { Modal } from "@/platform2/components/ui/modal";
 import { Dropdown } from "@/platform2/components/ui/dropdown/Dropdown";
 import { DropdownItem } from "@/platform2/components/ui/dropdown/DropdownItem";
+import Select from "@/platform2/components/form/Select";
 import Icon from "@/platform2/icons";
 import {
   Table,
@@ -611,14 +612,28 @@ export default function LotsPage() {
   }
 
   async function handleRefresh() {
-    if (!filterAccount || refreshing) return;
+    if (refreshing) return;
     setRefreshing(true);
     try {
-      const fresh = await lotsApi.listByAccount(filterAccount, { refresh: true });
-      setLots((prev) => [
-        ...prev.filter((l) => String(l.funpay_account_id) !== filterAccount),
-        ...fresh,
-      ]);
+      if (filterAccount) {
+        // Refresh single selected account
+        const fresh = await lotsApi.listByAccount(filterAccount, { refresh: true });
+        setLots((prev) => [
+          ...prev.filter((l) => String(l.funpay_account_id) !== filterAccount),
+          ...fresh,
+        ]);
+      } else {
+        // Refresh all accounts
+        const accountIds = accounts.map((a) => String(a.id));
+        const results = await Promise.allSettled(
+          accountIds.map((id) => lotsApi.listByAccount(id, { refresh: true }))
+        );
+        const freshAll: ApiLot[] = [];
+        results.forEach((r) => {
+          if (r.status === "fulfilled") freshAll.push(...r.value);
+        });
+        setLots(freshAll);
+      }
       toast.success("Лоты обновлены с FunPay");
     } catch {
       toast.error("Не удалось обновить лоты");
@@ -678,14 +693,14 @@ export default function LotsPage() {
           <Button
             variant="outline"
             onClick={handleRefresh}
-            disabled={!filterAccount || refreshing}
+            disabled={refreshing}
             className="flex-1 sm:flex-none"
           >
             <Icon
               name="refresh"
               className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
             />
-            Обновить
+            {refreshing ? "Обновление…" : "Обновить с FunPay"}
           </Button>
           <Button variant="primary" onClick={() => setShowCreateModal(true)} className="flex-1 sm:flex-none">
             <Icon name="plus" className="mr-2 h-4 w-4" />
@@ -705,23 +720,20 @@ export default function LotsPage() {
                 placeholder="Поиск"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="min-w-0 flex-1 sm:flex-none sm:w-48 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                className="h-11 min-w-0 flex-1 sm:flex-none sm:w-48 rounded-lg border border-gray-300 bg-white px-4 text-sm shadow-theme-xs outline-none focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
               />
-              <div className="relative flex-1 sm:flex-none">
-                <select
-                  value={filterAccount}
-                  onChange={(e) => setFilterAccount(e.target.value)}
-                  className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-2 pl-3 pr-9 text-sm outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-                >
-                  <option value="">Все аккаунты</option>
-                  {accounts.map((a) => (
-                    <option key={a.id} value={String(a.id)}>
-                      {a.username ?? `#${a.id}`}
-                    </option>
-                  ))}
-                </select>
-                <svg className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </div>
+              <Select
+                value={filterAccount}
+                onChange={setFilterAccount}
+                className="flex-1 sm:flex-none sm:w-44"
+              >
+                <option value="">Все аккаунты</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={String(a.id)}>
+                    {a.username ?? `#${a.id}`}
+                  </option>
+                ))}
+              </Select>
             </div>
           </div>
         </CardHeader>

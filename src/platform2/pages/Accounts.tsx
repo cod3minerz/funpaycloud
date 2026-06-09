@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/platform2/components
 import { Button } from "@/platform2/components/ui/button";
 import { Badge } from "@/platform2/components/ui/badge";
 import { Modal } from "@/platform2/components/ui/modal";
+import Select from "@/platform2/components/form/Select";
 import {
   Table,
   TableBody,
@@ -356,20 +357,17 @@ export default function AccountsPage() {
                 placeholder="Поиск"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="min-w-0 flex-1 sm:flex-none sm:w-48 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                className="h-11 min-w-0 flex-1 sm:flex-none sm:w-48 rounded-lg border border-gray-300 bg-white px-4 text-sm shadow-theme-xs outline-none focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
               />
-              <div className="relative flex-1 sm:flex-none">
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value as "" | "online" | "offline")}
-                  className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-2 pl-3 pr-9 text-sm outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-                >
-                  <option value="">Все статусы</option>
-                  <option value="online">Онлайн</option>
-                  <option value="offline">Оффлайн</option>
-                </select>
-                <svg className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </div>
+              <Select
+                value={filterStatus}
+                onChange={(v) => setFilterStatus(v as "" | "online" | "offline")}
+                className="flex-1 sm:flex-none sm:w-40"
+              >
+                <option value="">Все статусы</option>
+                <option value="online">Онлайн</option>
+                <option value="offline">Оффлайн</option>
+              </Select>
             </div>
           </div>
         </CardHeader>
