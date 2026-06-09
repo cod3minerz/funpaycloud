@@ -284,16 +284,16 @@ export default function FinancesPage() {
 
             <div className="flex items-center gap-2">
               {activeTab === "transactions" && txTypes.length > 0 && (
-                <select
+                <Select
                   value={filterType}
-                  onChange={(e) => setFilterType(e.target.value)}
-                  className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                  onChange={(val) => setFilterType(val)}
+                  className="w-40"
                 >
                   <option value="">Все типы</option>
                   {txTypes.map((t) => (
                     <option key={t} value={t}>{txTypeLabel(t)}</option>
                   ))}
-                </select>
+                </Select>
               )}
               {activeTab === "transactions" && (
                 <Button variant="outline" onClick={exportCsv} disabled={filteredTransactions.length === 0}>

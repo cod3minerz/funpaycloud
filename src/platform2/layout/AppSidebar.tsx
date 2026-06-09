@@ -115,7 +115,7 @@ const navItems = mainNavItems;
 const othersItems: NavItem[] = [];
 
 const AppSidebar: React.FC = () => {
-  const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
+  const { isExpanded, isMobileOpen, isHovered, setIsHovered, toggleMobileSidebar } = useSidebar();
   const pathname = usePathname();
 
   const renderMenuItems = (
@@ -164,6 +164,7 @@ const AppSidebar: React.FC = () => {
           ) : nav.path ? (
             <Link
               href={nav.path}
+              onClick={() => { if (isMobileOpen) toggleMobileSidebar(); }}
               className={`menu-item group ${
                 isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
               }`}
@@ -226,6 +227,7 @@ const AppSidebar: React.FC = () => {
                   <li key={subItem.name}>
                     <Link
                       href={subItem.path}
+                      onClick={() => { if (isMobileOpen) toggleMobileSidebar(); }}
                       className={`menu-dropdown-item ${
                         isActive(subItem.path)
                           ? "menu-dropdown-item-active"
@@ -359,14 +361,14 @@ const AppSidebar: React.FC = () => {
                 className="dark:hidden"
                 src="/branding/logo_full_new.svg"
                 alt="FunPay Cloud"
-                width={135}
+                width={139}
                 height={22}
               />
               <Image
                 className="hidden dark:block"
                 src="/branding/logo_full_new_dark.svg"
                 alt="FunPay Cloud"
-                width={135}
+                width={139}
                 height={22}
               />
             </>
@@ -377,14 +379,14 @@ const AppSidebar: React.FC = () => {
                 src="/branding/logo_short_new.svg"
                 alt="FunPay Cloud"
                 width={28}
-                height={19}
+                height={24}
               />
               <Image
                 className="hidden dark:block"
                 src="/branding/logo_short_new_dark.svg"
                 alt="FunPay Cloud"
                 width={28}
-                height={19}
+                height={24}
               />
             </>
           )}

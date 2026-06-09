@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
+import TextArea from "@/platform2/components/form/input/TextArea";
+import Input from "@/platform2/components/form/input/InputField";
 import { Card, CardContent } from "@/platform2/components/ui/card";
 import { Badge } from "@/platform2/components/ui/badge";
 import { Button } from "@/platform2/components/ui/button";
@@ -437,13 +439,13 @@ export default function WarehousePage() {
 
               {addMode === "single" && (
                 <div className="flex gap-2">
-                  <input
+                  <Input
                     type="text"
                     value={newItem}
                     onChange={(e) => setNewItem(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
                     placeholder="Введите товар (ключ, аккаунт и т.д.)"
-                    className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                    className="flex-1"
                   />
                   <Button variant="primary" onClick={handleAddItem} disabled={!newItem.trim()}>
                     <Icon name="plus" className="mr-1.5 h-4 w-4" />
@@ -454,12 +456,11 @@ export default function WarehousePage() {
 
               {addMode === "list" && (
                 <div className="space-y-2">
-                  <textarea
+                  <TextArea
                     rows={5}
                     value={bulkText}
-                    onChange={(e) => setBulkText(e.target.value)}
+                    onChange={(val) => setBulkText(val)}
                     placeholder={"Введите товары построчно:\nтовар1\nтовар2\nтовар3"}
-                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                   />
                   <Button variant="primary" onClick={handleAddBulk} disabled={!bulkText.trim()}>
                     <Icon name="plus" className="mr-1.5 h-4 w-4" />
@@ -521,11 +522,10 @@ export default function WarehousePage() {
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Шаблон сообщения
                 </label>
-                <textarea
+                <TextArea
                   rows={3}
                   value={currentTemplate}
-                  onChange={(e) => setTemplate(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                  onChange={(val) => setTemplate(val)}
                 />
               </div>
 

@@ -4,6 +4,9 @@ import { Card, CardContent } from "@/platform2/components/ui/card";
 import Icon from "@/platform2/icons";
 import { aiApi, scenariosApi, accountsApi, ApiScenario, ApiAccount } from "@/lib/api";
 import { toast } from "sonner";
+import TextArea from "@/platform2/components/form/input/TextArea";
+import Input from "@/platform2/components/form/input/InputField";
+import Select from "@/platform2/components/form/Select";
 
 type ChatMode = "assistant" | "constructor";
 
@@ -224,12 +227,16 @@ export default function TestChatPage() {
         return copy;
       });
     } catch (err) {
-      const errorText = err instanceof Error ? err.message : "Ошибка тестового сообщения";
+      const rawError = err instanceof Error ? err.message : "Ошибка тестового сообщения";
+      const isServiceDown = /внешний сервис|временно недоступен|service unavailable|unavailable/i.test(rawError);
+      const errorText = isServiceDown
+        ? "ИИ-провайдер временно недоступен. Подождите 1–2 минуты и попробуйте снова."
+        : rawError;
       setMessages((prev) => {
         const copy = [...prev];
         const loadingIndex = copy.findIndex((m) => m.role === "ai" && m.loading);
         if (loadingIndex >= 0) {
-          copy[loadingIndex] = { role: "ai", text: `Ошибка: ${errorText}`, loading: false };
+          copy[loadingIndex] = { role: "ai", text: `⚠️ ${errorText}`, loading: false };
         }
         return copy;
       });
@@ -283,19 +290,14 @@ export default function TestChatPage() {
         <Card>
           <CardContent className="p-5 space-y-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Аккаунт</p>
-            <div className="relative">
-              <select
-                value={selectedAccountID ?? ""}
-                onChange={(e) => void handleAccountChange(Number(e.target.value))}
-                disabled={loading}
-                className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-10 text-sm text-gray-800 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white disabled:opacity-50"
-              >
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>{a.username ?? `#${a.id}`}</option>
-                ))}
-              </select>
-              <Icon name="chevron-down" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            </div>
+            <Select
+              value={String(selectedAccountID ?? "")}
+              onChange={(val) => void handleAccountChange(Number(val))}
+            >
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>{a.username ?? `#${a.id}`}</option>
+              ))}
+            </Select>
             <p className="text-xs text-gray-400">
               Текущий аккаунт: {accounts.find((a) => a.id === selectedAccountID)?.username ?? String(selectedAccountID ?? "")}
             </p>
@@ -365,19 +367,15 @@ export default function TestChatPage() {
                 {overrideMode === "constructor" && (
                   <div>
                     <p className="mb-2 text-xs text-gray-500">Сценарий</p>
-                    <div className="relative">
-                      <select
-                        value={selectedScenarioID}
-                        onChange={(e) => setSelectedScenarioID(e.target.value)}
-                        className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-2.5 pl-4 pr-10 text-sm text-gray-800 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                      >
-                        <option value="">Выберите сценарий</option>
-                        {activeScenarios.map((s) => (
-                          <option key={s.id} value={s.id}>{s.name}</option>
-                        ))}
-                      </select>
-                      <Icon name="chevron-down" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                    </div>
+                    <Select
+                      value={selectedScenarioID}
+                      onChange={(val) => setSelectedScenarioID(val)}
+                    >
+                      <option value="">Выберите сценарий</option>
+                      {activeScenarios.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </Select>
                   </div>
                 )}
 
@@ -389,18 +387,14 @@ export default function TestChatPage() {
                     {/* Tone */}
                     <div>
                       <p className="mb-1.5 text-xs text-gray-500">Тон общения</p>
-                      <div className="relative">
-                        <select
-                          value={localTone}
-                          onChange={(e) => setLocalTone(e.target.value as "formal" | "neutral" | "friendly")}
-                          className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-2.5 pl-4 pr-10 text-sm text-gray-800 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                        >
-                          <option value="neutral">Нейтральный</option>
-                          <option value="formal">Официальный</option>
-                          <option value="friendly">Дружелюбный</option>
-                        </select>
-                        <Icon name="chevron-down" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                      </div>
+                      <Select
+                        value={localTone}
+                        onChange={(val) => setLocalTone(val as "formal" | "neutral" | "friendly")}
+                      >
+                        <option value="neutral">Нейтральный</option>
+                        <option value="formal">Официальный</option>
+                        <option value="friendly">Дружелюбный</option>
+                      </Select>
                     </div>
 
                     {/* Delay */}
@@ -427,12 +421,11 @@ export default function TestChatPage() {
                     {/* Instruction */}
                     <div>
                       <p className="mb-1.5 text-xs text-gray-500">Инструкция для ИИ</p>
-                      <textarea
+                      <TextArea
                         value={localPrompt}
-                        onChange={(e) => setLocalPrompt(e.target.value)}
+                        onChange={(val) => setLocalPrompt(val)}
                         rows={4}
                         placeholder="Например: отвечай коротко, всегда уточняй логин перед выдачей..."
-                        className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
                       />
                     </div>
 
@@ -464,18 +457,16 @@ export default function TestChatPage() {
                                 </button>
                               </div>
                               <div className="p-2 space-y-1.5">
-                                <input
+                                <Input
                                   value={item.question}
                                   onChange={(e) => updateLocalFaq(i, "question", e.target.value)}
                                   placeholder="Вопрос"
-                                  className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-xs outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                                 />
-                                <textarea
+                                <TextArea
                                   value={item.answer}
-                                  onChange={(e) => updateLocalFaq(i, "answer", e.target.value)}
+                                  onChange={(val) => updateLocalFaq(i, "answer", val)}
                                   placeholder="Ответ"
                                   rows={2}
-                                  className="w-full resize-none rounded-lg border border-gray-200 px-2 py-1.5 text-xs outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                                 />
                               </div>
                             </div>

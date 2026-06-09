@@ -8,6 +8,8 @@ import { Modal } from "@/platform2/components/ui/modal";
 import { Dropdown } from "@/platform2/components/ui/dropdown/Dropdown";
 import { DropdownItem } from "@/platform2/components/ui/dropdown/DropdownItem";
 import Select from "@/platform2/components/form/Select";
+import Input from "@/platform2/components/form/input/InputField";
+import TextArea from "@/platform2/components/form/input/TextArea";
 import Icon from "@/platform2/icons";
 import {
   Table,
@@ -58,10 +60,9 @@ function SchemaFieldInput({
 
   if (field.type === "select" && field.options) {
     return (
-      <select
+      <Select
         value={String(value ?? "")}
-        onChange={(e) => onChange(e.target.value)}
-        className={inputCls}
+        onChange={(val) => onChange(val)}
       >
         <option value="">— выберите —</option>
         {field.options.map((opt) => (
@@ -69,18 +70,17 @@ function SchemaFieldInput({
             {opt.label}
           </option>
         ))}
-      </select>
+      </Select>
     );
   }
 
   if (field.type === "textarea") {
     return (
-      <textarea
+      <TextArea
         value={String(value ?? "")}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(val) => onChange(val)}
         rows={3}
         placeholder={field.placeholder ?? ""}
-        className={`${inputCls} resize-none`}
       />
     );
   }
@@ -126,12 +126,11 @@ function SchemaFieldInput({
   }
 
   return (
-    <input
+    <Input
       type={field.type === "number" ? "number" : "text"}
       value={String(value ?? "")}
       onChange={(e) => onChange(e.target.value)}
       placeholder={field.placeholder ?? ""}
-      className={inputCls}
     />
   );
 }
@@ -334,17 +333,15 @@ function LotCreateModal({
         {/* Аккаунт */}
         <div>
           <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Аккаунт</label>
-          <select
-            value={selectedAccountId ?? ""}
-            onChange={(e) => setSelectedAccountId(Number(e.target.value))}
-            disabled={creating}
-            className={inputCls}
+          <Select
+            value={String(selectedAccountId ?? "")}
+            onChange={(val) => setSelectedAccountId(Number(val))}
           >
             <option value="">Выберите аккаунт</option>
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>{a.username ?? `#${a.id}`}</option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {/* Категория */}
@@ -359,11 +356,9 @@ function LotCreateModal({
             ) : catsError ? (
               <p className="text-sm text-error-500">{catsError}</p>
             ) : (
-              <select
+              <Select
                 value={selectedCategoryKey}
-                onChange={(e) => setSelectedCategoryKey(e.target.value)}
-                disabled={creating}
-                className={inputCls}
+                onChange={(val) => setSelectedCategoryKey(val)}
               >
                 <option value="">Выберите категорию</option>
                 {categories.map((cat) => (
@@ -371,7 +366,7 @@ function LotCreateModal({
                     {formatCategoryLabel(cat)}
                   </option>
                 ))}
-              </select>
+              </Select>
             )}
           </div>
         )}
@@ -380,16 +375,14 @@ function LotCreateModal({
         {selectedCategory && subs.length > 0 && (
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Подкатегория</label>
-            <select
-              value={selectedSubcategoryId}
-              onChange={(e) => setSelectedSubcategoryId(Number(e.target.value))}
-              disabled={creating}
-              className={inputCls}
+            <Select
+              value={String(selectedSubcategoryId)}
+              onChange={(val) => setSelectedSubcategoryId(Number(val))}
             >
               {subs.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
-            </select>
+            </Select>
           </div>
         )}
 
@@ -715,12 +708,12 @@ export default function LotsPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Все лоты</CardTitle>
             <div className="flex flex-wrap gap-2">
-              <input
+              <Input
                 type="text"
                 placeholder="Поиск"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-11 min-w-0 flex-1 sm:flex-none sm:w-48 rounded-lg border border-gray-300 bg-white px-4 text-sm shadow-theme-xs outline-none focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
+                className="min-w-0 flex-1 sm:flex-none sm:w-48"
               />
               <Select
                 value={filterAccount}

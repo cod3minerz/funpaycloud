@@ -6,6 +6,8 @@ import { Button } from "@/platform2/components/ui/button";
 import Icon from "@/platform2/icons";
 import { aiApi, scenariosApi, accountsApi, AIConfig, AIFaqItem, ApiScenario, ApiAccount } from "@/lib/api";
 import { toast } from "sonner";
+import TextArea from "@/platform2/components/form/input/TextArea";
+import Input from "@/platform2/components/form/input/InputField";
 
 type Tone = "formal" | "neutral" | "friendly";
 
@@ -374,12 +376,11 @@ export default function AIAssistantPage() {
         <Card>
           <CardContent className="p-5">
             <p className="mb-3 text-sm text-gray-500">Опишите своими словами, как должен вести себя ассистент</p>
-            <textarea
+            <TextArea
               value={instruction}
-              onChange={(e) => setInstruction(e.target.value)}
+              onChange={(val) => setInstruction(val)}
               maxLength={2000}
               rows={5}
-              className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
             />
             <div className="mt-2 flex items-center justify-between">
               <p className="text-xs text-gray-400">Лоты из вашего аккаунта добавляются автоматически</p>
@@ -429,24 +430,22 @@ export default function AIAssistantPage() {
                 <div className="flex-1 min-w-0">
                   {editingKbId === String(entry.id) ? (
                     <div className="space-y-2">
-                      <input
+                      <Input
                         defaultValue={entry.question}
                         onChange={(e) =>
                           setKb((prev) =>
                             prev.map((k) => k.id === entry.id ? { ...k, question: e.target.value } : k)
                           )
                         }
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                         placeholder="Вопрос"
                       />
-                      <input
+                      <Input
                         defaultValue={entry.answer}
                         onChange={(e) =>
                           setKb((prev) =>
                             prev.map((k) => k.id === entry.id ? { ...k, answer: e.target.value } : k)
                           )
                         }
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                         placeholder="Ответ"
                       />
                       <button
@@ -482,17 +481,15 @@ export default function AIAssistantPage() {
 
             {addingKb && (
               <div className="space-y-2 px-5 py-4">
-                <input
+                <Input
                   value={newQ}
                   onChange={(e) => setNewQ(e.target.value)}
                   placeholder="Вопрос покупателя"
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                 />
-                <input
+                <Input
                   value={newA}
                   onChange={(e) => setNewA(e.target.value)}
                   placeholder="Ответ ассистента"
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                 />
                 <div className="flex gap-2">
                   <Button variant="primary" size="sm" onClick={saveKbEntry}>Сохранить</Button>

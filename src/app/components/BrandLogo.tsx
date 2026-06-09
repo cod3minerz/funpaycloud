@@ -26,7 +26,7 @@ export function BrandLogo({ className = "", compact = false, iconOnly = false, d
     <Image
       src={darkText ? "/branding/logo_full_new_dark.svg" : "/branding/logo_full_new.svg"}
       alt="FunPay Cloud"
-      width={compact ? 165 : 184}
+      width={compact ? 170 : 189}
       height={compact ? 27 : 30}
       unoptimized
       className={`block ${compact ? 'h-[27px]' : 'h-[30px]'} w-auto max-w-none object-contain ${className}`.trim()}

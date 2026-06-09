@@ -15,6 +15,9 @@ import { CSS } from "@dnd-kit/utilities";
 import { Modal } from "@/platform2/components/ui/modal";
 import { Button } from "@/platform2/components/ui/button";
 import Icon from "@/platform2/icons";
+import Input from "@/platform2/components/form/input/InputField";
+import TextArea from "@/platform2/components/form/input/TextArea";
+import Select from "@/platform2/components/form/Select";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -176,8 +179,6 @@ function Column({
 
 // ── Create modal ──────────────────────────────────────────────────────────────
 
-const inputCls =
-  "w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white";
 
 function CreateModal({
   isOpen,
@@ -214,11 +215,11 @@ function CreateModal({
       <div className="space-y-4">
         <div>
           <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Название <span className="text-error-500">*</span></label>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSubmit()} placeholder="Что нужно сделать?" className={inputCls} autoFocus />
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSubmit()} placeholder="Что нужно сделать?" autoFocus />
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Описание</label>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="Подробности..." className={`${inputCls} resize-none`} />
+          <TextArea value={description} onChange={(val) => setDescription(val)} rows={2} placeholder="Подробности..." />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -245,18 +246,18 @@ function CreateModal({
           <div className="space-y-3">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Аккаунт</label>
-              <select value={account} onChange={(e) => setAccount(e.target.value)} className={inputCls}>
-                <option>tonminerz</option>
-                <option>PaidInFull</option>
-              </select>
+              <Select value={account} onChange={(val) => setAccount(val)}>
+                <option value="tonminerz">tonminerz</option>
+                <option value="PaidInFull">PaidInFull</option>
+              </Select>
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Колонка</label>
-              <select value={column} onChange={(e) => setColumn(e.target.value as ColumnId)} className={inputCls}>
+              <Select value={column} onChange={(val) => setColumn(val as ColumnId)}>
                 {COLUMNS.map((c) => (
                   <option key={c.id} value={c.id}>{c.label}</option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
         </div>
