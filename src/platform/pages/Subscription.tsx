@@ -37,11 +37,11 @@ const PLAN_LIMITS: Record<CanonicalPlanId, PlanLimit> = {
 const COMPARISON_ROWS = [
   { label: 'Аккаунты', lite: '1', pro: '5', ultra: 'Безлимит' },
   { label: 'Аналитика', lite: '7 дней', pro: '30 дней + CSV', ultra: 'Без ограничений' },
-  { label: 'Автоматизация', lite: '2 правила', pro: '10 правил', ultra: 'Без ограничений' },
-  { label: 'Шаблоны сообщений', lite: '3', pro: '15', ultra: 'Без ограничений' },
-  { label: 'AI ответы', lite: '—', pro: '500 / мес', ultra: 'Без лимита' },
-  { label: 'Плагины', lite: '—', pro: 'Базовые', ultra: 'VIP + эксклюзив' },
-  { label: 'Поддержка', lite: '@funpay_cloud', pro: 'Приоритет @funpay_cloud', ultra: '@funpay_cloud 24/7' },
+  { label: 'Конструктор', lite: '1 сценарий', pro: '5 сценариев', ultra: '20 сценариев' },
+  { label: 'AI-узлы', lite: '—', pro: '✓', ultra: '✓ без лимита' },
+  { label: 'AI сообщения', lite: '—', pro: '500 / мес', ultra: 'Без лимита' },
+  { label: 'Плагины', lite: '—', pro: 'Базовые (20+)', ultra: 'VIP + эксклюзив' },
+  { label: 'Поддержка', lite: '—', pro: 'Приоритет @fpcloud_support', ultra: 'Персональная 24/7' },
 ] as const;
 
 function formatDate(value?: string | null): string {
@@ -443,7 +443,7 @@ export default function SubscriptionPage() {
             {[
               { icon: Shield, text: 'Безопасная оплата', sub: 'ЮKassa · шифрование' },
               { icon: RefreshCw, text: 'Возврат за 3 дня', sub: 'Если сервис не работал' },
-              { icon: Headphones, text: '@funpay_cloud', sub: 'Telegram для оплаты и продления' },
+              { icon: Headphones, text: '@fpcloud_support', sub: 'Telegram для оплаты и продления' },
             ].map(item => (
               <div key={item.text} className="flex flex-col items-center gap-2 text-center">
                 <item.icon size={18} className="text-[var(--pf-text-dim)]" />

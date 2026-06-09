@@ -25,10 +25,12 @@ import { Modal } from "@/platform2/components/ui/modal";
 import {
   accountsApi,
   scenariosApi,
+  authApi,
   ApiAccount,
   ApiScenario,
   ApiScenarioLog,
 } from "@/lib/api";
+import { normalizePlanId, PLAN_LIMITS } from "@/shared/subscriptions";
 import { toast } from "sonner";
 import { useTheme } from "@/platform2/context/ThemeContext";
 
@@ -308,6 +310,7 @@ function ConstructorFlow() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
+  const [planLimits, setPlanLimits] = useState<typeof PLAN_LIMITS[keyof typeof PLAN_LIMITS]>(PLAN_LIMITS.pro); // default to pro until loaded
 
   // Mobile read-only
   useEffect(() => {
@@ -316,6 +319,19 @@ function ConstructorFlow() {
     sync();
     media.addEventListener("change", sync);
     return () => media.removeEventListener("change", sync);
+  }, []);
+
+  // Load plan limits
+  useEffect(() => {
+    authApi.me().then((me) => {
+      const plan = normalizePlanId(me.plan);
+      setPlanLimits(
+        plan === "trial" ? PLAN_LIMITS.trial
+        : plan === "lite" ? PLAN_LIMITS.lite
+        : plan === "pro" ? PLAN_LIMITS.pro
+        : PLAN_LIMITS.ultra
+      );
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -433,6 +449,11 @@ function ConstructorFlow() {
 
   const handleCreate = async () => {
     if (!selectedAccountID || !newName.trim()) return;
+    if (scenarios.length >= planLimits.scenarios) {
+      toast.error(`Лимит сценариев для вашего тарифа: ${planLimits.scenarios}. Перейдите на более высокий тариф.`);
+      setCreateOpen(false);
+      return;
+    }
     setCreating(true);
     try {
       const res = await scenariosApi.create(selectedAccountID, {
@@ -482,6 +503,17 @@ function ConstructorFlow() {
 
   const addNode = (type: string, subtype: string, extra: Record<string, unknown> = {}) => {
     if (isReadOnly) return;
+    const maxNodes = planLimits.nodes_per_scenario;
+    if (maxNodes !== Infinity && nodes.length >= maxNodes) {
+      toast.error(`Лимит узлов в сценарии для вашего тарифа: ${maxNodes}.`);
+      setActivePalette(null);
+      return;
+    }
+    if (type === "aiNode" && !planLimits.ai_nodes) {
+      toast.error("AI-узлы доступны начиная с тарифа Pro.");
+      setActivePalette(null);
+      return;
+    }
     setNodes((nds) => [
       ...nds,
       {
@@ -795,24 +827,34 @@ function ConstructorFlow() {
                       { id: "action", icon: "arrow-right", label: "Действия", activeColor: "bg-success-500/10 text-success-600" },
                       { id: "ai", icon: "shooting-star", label: "AI Узлы", activeColor: "bg-violet-500/10 text-violet-600" },
                     ] as const
-                  ).map((btn) => (
+                  ).map((btn) => {
+                    const aiLocked = btn.id === "ai" && !planLimits.ai_nodes;
+                    return (
                     <button
                       key={btn.id}
-                      onClick={(e) => { e.stopPropagation(); setActivePalette((p) => (p === btn.id ? null : btn.id)); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (aiLocked) { toast.error("AI-узлы доступны начиная с тарифа Pro."); return; }
+                        setActivePalette((p) => (p === btn.id ? null : btn.id));
+                      }}
+                      title={aiLocked ? "Доступно начиная с тарифа Pro" : undefined}
                       className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors whitespace-nowrap ${
-                        activePalette === btn.id
+                        aiLocked
+                          ? "cursor-not-allowed border-gray-100 bg-white text-gray-300 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-600"
+                          : activePalette === btn.id
                           ? `border-transparent ${btn.activeColor}`
                           : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
                       }`}
                     >
                       <Icon name={btn.icon} className="h-4 w-4" />
                       {btn.label}
+                      {aiLocked && <span className="ml-0.5 text-[9px] font-bold uppercase text-gray-300 dark:text-gray-600">Pro+</span>}
                       <Icon
                         name="chevron-up"
                         className={`h-3.5 w-3.5 transition-transform ${activePalette === btn.id ? "rotate-180" : "text-gray-400"}`}
                       />
                     </button>
-                  ))}
+                  );})}
                 </div>
               )}
             </FlowPanel>

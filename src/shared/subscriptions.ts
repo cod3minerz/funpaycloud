@@ -3,6 +3,42 @@ export type SubscriptionFeature = {
   available: boolean;
 };
 
+// ─── Plan hard limits (single source of truth) ────────────────────────────────
+export const PLAN_LIMITS = {
+  trial: {
+    accounts: 1,
+    analytics_days: 7,
+    scenarios: 1,
+    nodes_per_scenario: 50,
+    ai_messages_per_month: 0,
+    ai_nodes: false,
+  },
+  lite: {
+    accounts: 1,
+    analytics_days: 7,
+    scenarios: 1,
+    nodes_per_scenario: 100,
+    ai_messages_per_month: 0,
+    ai_nodes: false,
+  },
+  pro: {
+    accounts: 5,
+    analytics_days: 30,
+    scenarios: 5,
+    nodes_per_scenario: 300,
+    ai_messages_per_month: 500,
+    ai_nodes: true,
+  },
+  ultra: {
+    accounts: Infinity,
+    analytics_days: Infinity,
+    scenarios: 20,
+    nodes_per_scenario: Infinity,
+    ai_messages_per_month: Infinity,
+    ai_nodes: true,
+  },
+} as const;
+
 export type CanonicalPlanId = 'trial' | 'lite' | 'pro' | 'ultra';
 export type LegacyPlanId = 'free' | 'start' | 'team';
 export type PaidPlanId = 'lite' | 'pro' | 'ultra';
@@ -76,10 +112,10 @@ export const subscriptionPlans: SubscriptionPlan[] = [
       { text: 'Автоподнятие лотов', available: true },
       { text: 'Автовыдача товаров', available: true },
       { text: 'Аналитика 7 дней', available: true },
-      { text: '2 правила автоматизации', available: true },
+      { text: 'Конструктор сценариев (1 сцен.)', available: true },
       { text: 'Плагины', available: false },
       { text: 'AI автоответы', available: false },
-      { text: 'Поддержка @funpay_cloud', available: false },
+      { text: 'AI-узлы в конструкторе', available: false },
     ],
   },
   {
@@ -100,10 +136,11 @@ export const subscriptionPlans: SubscriptionPlan[] = [
       { text: 'Автоподнятие лотов', available: true },
       { text: 'Автовыдача товаров', available: true },
       { text: 'Аналитика 30 дней + CSV', available: true },
-      { text: '10 правил автоматизации', available: true },
+      { text: 'Конструктор (5 сценариев)', available: true },
+      { text: 'AI-узлы в конструкторе', available: true },
       { text: 'Базовые плагины (20+)', available: true },
       { text: 'AI ответы 500 msg/мес', available: true },
-      { text: 'Приоритет @funpay_cloud', available: true },
+      { text: 'Приоритет @fpcloud_support', available: true },
     ],
   },
   {
@@ -123,11 +160,11 @@ export const subscriptionPlans: SubscriptionPlan[] = [
       { text: 'Безлимит аккаунтов', available: true },
       { text: 'Всё из Pro', available: true },
       { text: 'Аналитика без ограничений', available: true },
-      { text: 'Безлимит автоматизации', available: true },
+      { text: 'Конструктор (20 сценариев)', available: true },
+      { text: 'AI-узлы без ограничений', available: true },
       { text: 'VIP плагины', available: true },
       { text: 'AI ответы без лимита', available: true },
-      { text: 'Персональная поддержка @funpay_cloud', available: true },
-      { text: 'API доступ', available: true },
+      { text: 'Персональная поддержка @fpcloud_support', available: true },
     ],
   },
 ];

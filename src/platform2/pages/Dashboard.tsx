@@ -4,7 +4,7 @@ import { Button } from "@/platform2/components/ui/button";
 import Icon from "@/platform2/icons";
 
 const TELEGRAM_CHANNEL = "https://t.me/funpay_cloud";
-const TELEGRAM_SUPPORT = "https://t.me/funpay_cloud";
+const TELEGRAM_SUPPORT = "https://t.me/fpcloud_support";
 
 export default function DashboardPage() {
   return (
