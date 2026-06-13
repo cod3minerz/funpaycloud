@@ -4,6 +4,10 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ShieldCheck } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { Card, CardContent } from '@/platform2/components/ui/card';
+import Button from '@/platform2/components/ui/button/Button';
+import Input from '@/platform2/components/form/input/InputField';
+import Label from '@/platform2/components/form/Label';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -14,7 +18,6 @@ export default function AdminLoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Remove legacy oversized JWT cookie if it still exists from older builds.
     document.cookie = 'admin_token=; path=/; max-age=0';
   }, []);
 
@@ -33,68 +36,73 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
-      <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-blue-950/30">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/20 text-blue-400">
-            <ShieldCheck size={18} />
-          </div>
-          <div>
-            <h1 className="text-lg font-semibold text-white">Вход в админ-панель</h1>
-            <p className="text-xs text-slate-400">FunPay Cloud Admin</p>
-          </div>
-        </div>
-
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <label className="block text-sm text-slate-300">
-            Email
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              className="mt-1 h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none focus:border-blue-500"
-              required
-            />
-          </label>
-
-          <label className="block text-sm text-slate-300">
-            Пароль
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              className="mt-1 h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none focus:border-blue-500"
-              required
-            />
-          </label>
-
-          <label className="block text-sm text-slate-300">
-            TOTP код
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              value={totp}
-              onChange={e => setTotp(e.target.value.replace(/\D/g, ''))}
-              className="mt-1 h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none focus:border-blue-500"
-              required
-            />
-          </label>
-
-          {error && (
-            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-              {error}
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 dark:bg-gray-950">
+      <div className="w-full max-w-md">
+        <Card>
+          <CardContent className="p-6">
+            <div className="mb-6 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-500 dark:bg-brand-500/20">
+                <ShieldCheck size={18} />
+              </div>
+              <div>
+                <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Admin Panel</h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">FunPay Cloud Admin</p>
+              </div>
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-blue-600 text-sm font-semibold text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loading ? 'Входим...' : 'Войти'}
-          </button>
-        </form>
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="admin@funpay.cloud"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="password">Пароль</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="totp">TOTP код</Label>
+                <Input
+                  id="totp"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={totp}
+                  onChange={e => setTotp(e.target.value.replace(/\D/g, ''))}
+                />
+              </div>
+
+              {error && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+                  {error}
+                </div>
+              )}
+
+              {/* raw button so type="submit" works inside <form> */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-brand-500 text-sm font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? 'Входим...' : 'Войти'}
+              </button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
