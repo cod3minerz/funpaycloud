@@ -20,7 +20,7 @@ import SmoothScroll from '@/components/landing/SmoothScroll';
 export const metadata: Metadata = {
   title: 'FunPay Cloud — Облачная платформа автоматизации продаж на FunPay',
   description:
-    'Автоматизируй магазин на FunPay без компьютера. Автоподнятие лотов, AI-ответы, автовыдача товаров. Попробуй бесплатно 14 дней.',
+    'Автоматизируй магазин на FunPay без компьютера. Автоподнятие лотов, AI-ответы, автовыдача товаров. Попробуй бесплатно 7 дней.',
   keywords: ['funpay автоматизация', 'автоподнятие лотов funpay', 'бот funpay облако'],
   alternates: {
     canonical: 'https://funpay.cloud',

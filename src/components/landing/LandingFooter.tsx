@@ -18,18 +18,38 @@ const SupportIcon = () => (
   </svg>
 );
 
+const ArrowRightIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 12h14M12 5l7 7-7 7"/>
+  </svg>
+);
+
 export default function LandingFooter() {
   return (
     <footer>
       <div className="wrap">
+
+        {/* ─── Top CTA strip ─── */}
+        <div className="ft-top-cta">
+          <div className="ft-top-cta-text">
+            <h3>Начните автоматизацию уже сегодня</h3>
+            <p>Первые 7 дней бесплатно — без карты и обязательств</p>
+          </div>
+          <a href="/auth/register" className="btn btn-accent btn-lg">
+            Попробовать бесплатно
+            <ArrowRightIcon />
+          </a>
+        </div>
+
+        {/* ─── Column grid ─── */}
         <div className="ft-grid">
           <div>
             <a className="logo" href="/">
               <Image
-                src="/branding/logo_full_new.svg"
+                src="/branding/logo_full_new_dark.svg"
                 alt="FunPay Cloud"
-                width={479}
-                height={61}
+                width={715}
+                height={113}
                 className="landing-logo-full landing-logo-full-footer"
               />
             </a>
@@ -43,7 +63,7 @@ export default function LandingFooter() {
                 <VkIcon />
                 <span>ВКонтакте</span>
               </a>
-              <a href="https://t.me/funpay_cloud" target="_blank" rel="noreferrer" className="ft-social-btn ft-social-btn--support" aria-label="Поддержка @funpay_cloud">
+              <a href="https://t.me/fpcloud_support" target="_blank" rel="noreferrer" className="ft-social-btn ft-social-btn--support" aria-label="Поддержка @fpcloud_support">
                 <SupportIcon />
                 <span>Поддержка</span>
               </a>
@@ -66,7 +86,7 @@ export default function LandingFooter() {
             <ul>
               <li><a href="/docs">Документация</a></li>
               <li><a href="#faq">База знаний</a></li>
-              <li><a href="https://t.me/funpay_cloud" target="_blank" rel="noreferrer">Telegram-поддержка @funpay_cloud</a></li>
+              <li><a href="https://t.me/fpcloud_support" target="_blank" rel="noreferrer">Поддержка</a></li>
               <li><a href="/auth/register">Онбординг</a></li>
               <li><a href="https://t.me/funpay_cloud" target="_blank" rel="noreferrer">Сообщество @funpay_cloud</a></li>
             </ul>
@@ -78,15 +98,19 @@ export default function LandingFooter() {
               <li><a href="/about">О компании</a></li>
               <li><a href="/blog">Блог</a></li>
               <li><a href="mailto:partners@funpay.cloud">Партнёрство</a></li>
-              <li><a href="/legal/privacy">Политика конфиденциальности и ПДн</a></li>
-              <li><a href="/legal/terms">Условия использования и оферта</a></li>
+              <li><a href="/legal/privacy">Политика конфиденциальности</a></li>
+              <li><a href="/legal/terms">Условия использования</a></li>
             </ul>
           </div>
         </div>
 
+        {/* ─── Bottom row ─── */}
         <div className="ft-bottom">
           <div>© 2026 FunPay Cloud. Все права защищены.</div>
-          <div className="mono">status: all systems operational ●</div>
+          <span className="ft-status">
+            <span className="ft-status-dot" />
+            All systems operational
+          </span>
         </div>
 
         <div className="ft-disclaimer">

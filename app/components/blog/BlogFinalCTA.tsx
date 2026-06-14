@@ -14,7 +14,7 @@ export function BlogFinalCTA({ slug, config }: BlogFinalCTAProps) {
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--text-secondary)]">{config.description}</p>
 
       <div className="mt-5 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-[var(--text-muted)]">
-        <span className="rounded-full border border-[var(--line-2)] bg-[var(--bg-card)] px-2.5 py-1">14 дней бесплатно</span>
+        <span className="rounded-full border border-[var(--line-2)] bg-[var(--bg-card)] px-2.5 py-1">7 дней бесплатно</span>
         <span className="rounded-full border border-[var(--line-2)] bg-[var(--bg-card)] px-2.5 py-1">Без привязки карты</span>
         <span className="rounded-full border border-[var(--line-2)] bg-[var(--bg-card)] px-2.5 py-1">Запуск за 10 минут</span>
       </div>

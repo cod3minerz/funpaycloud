@@ -44,7 +44,7 @@ export function BlogStickyCTA({ slug, config }: BlogStickyCTAProps) {
       <div className="mx-auto flex w-full max-w-7xl items-center gap-2 rounded-xl border border-[var(--line-2)] bg-[var(--bg)] px-3 py-2">
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-semibold text-[var(--text-primary)]">{subtitle}</p>
-          <p className="truncate text-[11px] text-[var(--text-muted)]">14 дней бесплатно, без карты</p>
+          <p className="truncate text-[11px] text-[var(--text-muted)]">7 дней бесплатно, без карты</p>
         </div>
         <BlogTrackedCtaLink
           href={config.registerHref}

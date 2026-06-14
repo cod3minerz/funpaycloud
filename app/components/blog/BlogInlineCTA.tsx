@@ -15,7 +15,7 @@ export function BlogInlineCTA({ topic = 'automation', slug }: BlogInlineCTAProps
       <h3 className="mt-2 text-lg font-semibold text-[var(--text-primary)]">{config.title}</h3>
       <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">{config.description}</p>
       <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-[var(--text-muted)]">
-        <span className="rounded-full border border-[var(--line-2)] bg-[var(--bg-card)] px-2.5 py-1">14 дней бесплатно</span>
+        <span className="rounded-full border border-[var(--line-2)] bg-[var(--bg-card)] px-2.5 py-1">7 дней бесплатно</span>
         <span className="rounded-full border border-[var(--line-2)] bg-[var(--bg-card)] px-2.5 py-1">Без карты</span>
         <span className="rounded-full border border-[var(--line-2)] bg-[var(--bg-card)] px-2.5 py-1">Запуск за 10 минут</span>
       </div>
