@@ -2387,6 +2387,31 @@ body:has(.landing) {
   line-height: 1.5;
 }
 
+/* ─── Footer top CTA strip ─── */
+.landing .ft-top-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 0 0 40px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 48px;
+}
+
+.landing .ft-top-cta-text h3 {
+  font-size: clamp(20px, 2.8vw, 26px);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin: 0 0 6px;
+}
+
+.landing .ft-top-cta-text p {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0;
+}
+
 @media (max-width: 1000px) {
   .landing .cmp,
   .landing .feat-grid,
@@ -2398,6 +2423,16 @@ body:has(.landing) {
   .landing .ft-grid,
   .landing .faq-wrap {
     grid-template-columns: 1fr;
+  }
+
+  .landing .ft-top-cta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .landing .ft-top-cta .btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .landing .nav-links {

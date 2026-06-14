@@ -46,7 +46,7 @@ export default function LandingFooter() {
           <div>
             <a className="logo" href="/">
               <Image
-                src="/branding/logo_full_new_dark.svg"
+                src="/branding/logo_full_new.svg"
                 alt="FunPay Cloud"
                 width={715}
                 height={113}
