@@ -151,6 +151,42 @@ function statusRank(status?: ThreadMessage['status']) {
   }
 }
 
+function isAuthoritativeFunpayMessageID(value?: number | null) {
+  const id = Number(value ?? 0);
+  return Number.isFinite(id) && id > 0 && id <= MAX_AUTHORITATIVE_FUNPAY_MESSAGE_ID;
+}
+
+function hasAuthoritativeIdentity(message: ThreadMessage) {
+  return (
+    isAuthoritativeFunpayMessageID(message.cursor_message_id) ||
+    isAuthoritativeFunpayMessageID(message.funpay_message_id)
+  );
+}
+
+function hasSyntheticOrNonAuthoritativeIdentity(message: ThreadMessage) {
+  if (hasAuthoritativeIdentity(message)) return false;
+  const id = Number(message.funpay_message_id ?? 0);
+  if (Number.isFinite(id) && id !== 0) return true;
+  return message.ingest_kind === 'live' || message.ingest_kind === 'catchup';
+}
+
+function isSyntheticAuthoritativeDuplicate(a: ThreadMessage, b: ThreadMessage) {
+  if (a.is_my_msg !== b.is_my_msg) return false;
+  if (normalizeMessageText(a.text) !== normalizeMessageText(b.text)) return false;
+  if (!a.is_my_msg && normalizeAuthorName(a.author_name) !== normalizeAuthorName(b.author_name)) {
+    return false;
+  }
+
+  const aAuthoritative = hasAuthoritativeIdentity(a);
+  const bAuthoritative = hasAuthoritativeIdentity(b);
+  if (aAuthoritative === bAuthoritative) return false;
+
+  return (
+    (aAuthoritative && hasSyntheticOrNonAuthoritativeIdentity(b)) ||
+    (bAuthoritative && hasSyntheticOrNonAuthoritativeIdentity(a))
+  );
+}
+
 function isFallbackDuplicate(a: ThreadMessage, b: ThreadMessage, windowMs = MESSAGE_FALLBACK_WINDOW_MS) {
   if (a.is_my_msg !== b.is_my_msg) return false;
   if (normalizeMessageText(a.text) !== normalizeMessageText(b.text)) return false;
@@ -164,6 +200,8 @@ function isFallbackDuplicate(a: ThreadMessage, b: ThreadMessage, windowMs = MESS
 }
 
 function choosePreferredMessage(current: ThreadMessage, incoming: ThreadMessage): ThreadMessage {
+  const currentAuthoritative = hasAuthoritativeIdentity(current);
+  const incomingAuthoritative = hasAuthoritativeIdentity(incoming);
   const next: ThreadMessage = {
     ...current,
     ...incoming,
@@ -195,6 +233,14 @@ function choosePreferredMessage(current: ThreadMessage, incoming: ThreadMessage)
     next.created_at = current.created_at;
   }
 
+  if (currentAuthoritative && !incomingAuthoritative) {
+    next.id = current.id;
+    next.row_id = current.row_id;
+    next.funpay_message_id = current.funpay_message_id;
+    next.cursor_message_id = current.cursor_message_id;
+    next.ingest_kind = current.ingest_kind ?? next.ingest_kind;
+  }
+
   return next;
 }
 
@@ -208,6 +254,9 @@ function findMergeMatchIndex(rows: ThreadMessage[], candidate: ThreadMessage, mo
     return existingKey !== null && candidateKey !== null && existingKey === candidateKey;
   });
   if (keyedIndex >= 0) return keyedIndex;
+
+  const canonicalDuplicateIndex = rows.findIndex(existing => isSyntheticAuthoritativeDuplicate(existing, candidate));
+  if (canonicalDuplicateIndex >= 0) return canonicalDuplicateIndex;
 
   if ((mode === 'replace' || mode === 'silent-merge') && candidate.row_id != null && candidate.is_my_msg) {
     const uniqueOwnCandidate = findUniqueRecentOwnEphemeralCandidate(rows, candidate);

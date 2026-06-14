@@ -26,11 +26,13 @@ async function bootstrapChatPage(page: Page) {
       id: number;
       temp_id?: number;
       funpay_message_id?: number;
+      cursor_message_id?: number | null;
       chat_id: number;
       author_id?: number;
       author_name: string;
       text: string;
       is_my_msg: boolean;
+      ingest_kind?: string | null;
       status?: 'pending' | 'delivered' | 'failed';
       created_at: string;
     };
@@ -293,6 +295,9 @@ async function bootstrapChatPage(page: Page) {
             : msg,
         );
       },
+      addMessages(messages: MockMessage[]) {
+        state.messages.push(...messages);
+      },
       getOpenCount() {
         return openCount;
       },
@@ -463,6 +468,84 @@ test('incoming ws ghost that is absent in API self-heals without full refresh', 
   await expect.poll(async () => (await readState(page)).messagesRequests, { timeout: 5000 }).toBeGreaterThan(beforeNormalizationLoads);
   const incomingRow = page.locator('.platform-thread-messages-scroll').getByText('Старый призрак');
   await expect(incomingRow).toHaveCount(0);
+});
+
+test('incoming synthetic and authoritative ws copies merge into one bubble', async ({ page }) => {
+  await bootstrapChatPage(page);
+
+  await page.goto('/platform/chats');
+  await expect(page.getByRole('heading', { name: 'Чаты' })).toBeVisible();
+  await expect.poll(async () => (await readState(page)).historyRequests, { timeout: 20000 }).toBeGreaterThan(0);
+  await expect(page.getByText('Подгружаем ваши чаты с FunPay...')).toBeHidden({ timeout: 20000 });
+
+  const firstChat = page.locator('.platform-chat-row').first();
+  await firstChat.click();
+  await expect.poll(async () => (await readState(page)).messagesRequests).toBeGreaterThan(0);
+
+  await page.evaluate(() => {
+    (window as any).__chatTest.addMessages([
+      {
+        id: 201,
+        funpay_message_id: 8_200_000_000_012_345,
+        chat_id: 5,
+        author_id: 777,
+        author_name: 'DigitalRush',
+        text: 'Один визуальный дубль',
+        is_my_msg: false,
+        ingest_kind: 'live',
+        status: 'delivered',
+        created_at: '2026-04-14T10:01:00Z',
+      },
+    ]);
+    (window as any).__chatTest.emit('new_message', {
+      account_id: 8,
+      chat_id: 5,
+      node_id: '252535735',
+      id: 8_200_000_000_012_345,
+      funpay_message_id: 8_200_000_000_012_345,
+      text: 'Один визуальный дубль',
+      is_my_msg: false,
+      author_name: 'DigitalRush',
+      with_user: 'DigitalRush',
+      created_at: '2026-04-14T10:01:00Z',
+    });
+  });
+
+  const duplicateBubble = page.locator('.platform-thread-messages-scroll').getByText('Один визуальный дубль', { exact: true });
+  await expect(duplicateBubble).toHaveCount(1);
+
+  await page.evaluate(() => {
+    (window as any).__chatTest.addMessages([
+      {
+        id: 202,
+        funpay_message_id: 990880,
+        cursor_message_id: 990880,
+        chat_id: 5,
+        author_id: 777,
+        author_name: 'DigitalRush',
+        text: 'Один визуальный дубль',
+        is_my_msg: false,
+        ingest_kind: 'live',
+        status: 'delivered',
+        created_at: '2026-04-14T10:02:00Z',
+      },
+    ]);
+    (window as any).__chatTest.emit('new_message', {
+      account_id: 8,
+      chat_id: 5,
+      node_id: '252535735',
+      id: 990880,
+      funpay_message_id: 990880,
+      cursor_message_id: 990880,
+      text: 'Один визуальный дубль',
+      is_my_msg: false,
+      author_name: 'DigitalRush',
+      with_user: 'DigitalRush',
+      created_at: '2026-04-14T10:02:00Z',
+    });
+  });
+
+  await expect(duplicateBubble).toHaveCount(1);
 });
 
 test('ws reconnect + visibility refresh trigger catch-up reload', async ({ page }) => {
