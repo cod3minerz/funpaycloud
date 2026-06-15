@@ -317,7 +317,7 @@ test('send flow: pending -> delivered, without loadMessages call after send', as
   await expect.poll(async () => (await readState(page)).historyRequests, { timeout: 20000 }).toBeGreaterThan(0);
   await expect(page.getByText('Подгружаем ваши чаты с FunPay...')).toBeHidden({ timeout: 20000 });
 
-  const firstChat = page.locator('.platform-chat-row').first();
+  const firstChat = page.getByTestId('chat-row').first();
   await expect(firstChat).toBeVisible();
   await firstChat.click();
 
@@ -328,7 +328,7 @@ test('send flow: pending -> delivered, without loadMessages call after send', as
   await composer.fill('Надежность чата');
   await composer.press('Enter');
 
-  const outgoingRow = page.locator('.platform-chat-message-outgoing').filter({ hasText: 'Надежность чата' });
+  const outgoingRow = page.getByTestId('message-outgoing').filter({ hasText: 'Надежность чата' });
   await expect(outgoingRow).toHaveCount(1);
   await expect(outgoingRow.locator('[aria-label="Отправлено"]')).toBeVisible();
 
@@ -369,7 +369,7 @@ test('message_sent with known temp_id updates existing pending row without dupli
   await expect.poll(async () => (await readState(page)).historyRequests, { timeout: 20000 }).toBeGreaterThan(0);
   await expect(page.getByText('Подгружаем ваши чаты с FunPay...')).toBeHidden({ timeout: 20000 });
 
-  const firstChat = page.locator('.platform-chat-row').first();
+  const firstChat = page.getByTestId('chat-row').first();
   await firstChat.click();
   await expect.poll(async () => (await readState(page)).messagesRequests).toBeGreaterThan(0);
 
@@ -402,7 +402,7 @@ test('message_sent with known temp_id updates existing pending row without dupli
     },
   );
 
-  const outgoingRow = page.locator('.platform-chat-message-outgoing').filter({ hasText: 'Только один bubble' });
+  const outgoingRow = page.getByTestId('message-outgoing').filter({ hasText: 'Только один bubble' });
   await expect(outgoingRow).toHaveCount(1);
 });
 
@@ -414,7 +414,7 @@ test('message_sent with unknown temp_id does not create stray own bubble', async
   await expect.poll(async () => (await readState(page)).historyRequests, { timeout: 20000 }).toBeGreaterThan(0);
   await expect(page.getByText('Подгружаем ваши чаты с FunPay...')).toBeHidden({ timeout: 20000 });
 
-  const firstChat = page.locator('.platform-chat-row').first();
+  const firstChat = page.getByTestId('chat-row').first();
   await firstChat.click();
   await expect.poll(async () => (await readState(page)).messagesRequests).toBeGreaterThan(0);
 
@@ -434,7 +434,7 @@ test('message_sent with unknown temp_id does not create stray own bubble', async
   });
 
   await page.waitForTimeout(600);
-  await expect(page.locator('.platform-chat-message-outgoing').filter({ hasText: 'Призрак' })).toHaveCount(0);
+  await expect(page.getByTestId('message-outgoing').filter({ hasText: 'Призрак' })).toHaveCount(0);
 });
 
 test('incoming ws ghost that is absent in API self-heals without full refresh', async ({ page }) => {
@@ -445,7 +445,7 @@ test('incoming ws ghost that is absent in API self-heals without full refresh', 
   await expect.poll(async () => (await readState(page)).historyRequests, { timeout: 20000 }).toBeGreaterThan(0);
   await expect(page.getByText('Подгружаем ваши чаты с FunPay...')).toBeHidden({ timeout: 20000 });
 
-  const firstChat = page.locator('.platform-chat-row').first();
+  const firstChat = page.getByTestId('chat-row').first();
   await firstChat.click();
   await expect.poll(async () => (await readState(page)).messagesRequests).toBeGreaterThan(0);
   const beforeNormalizationLoads = (await readState(page)).messagesRequests;
@@ -466,7 +466,7 @@ test('incoming ws ghost that is absent in API self-heals without full refresh', 
   });
 
   await expect.poll(async () => (await readState(page)).messagesRequests, { timeout: 5000 }).toBeGreaterThan(beforeNormalizationLoads);
-  const incomingRow = page.locator('.platform-thread-messages-scroll').getByText('Старый призрак');
+  const incomingRow = page.getByTestId('thread-messages').getByText('Старый призрак');
   await expect(incomingRow).toHaveCount(0);
 });
 
@@ -478,7 +478,7 @@ test('incoming synthetic and authoritative ws copies merge into one bubble', asy
   await expect.poll(async () => (await readState(page)).historyRequests, { timeout: 20000 }).toBeGreaterThan(0);
   await expect(page.getByText('Подгружаем ваши чаты с FunPay...')).toBeHidden({ timeout: 20000 });
 
-  const firstChat = page.locator('.platform-chat-row').first();
+  const firstChat = page.getByTestId('chat-row').first();
   await firstChat.click();
   await expect.poll(async () => (await readState(page)).messagesRequests).toBeGreaterThan(0);
 
@@ -511,7 +511,7 @@ test('incoming synthetic and authoritative ws copies merge into one bubble', asy
     });
   });
 
-  const duplicateBubble = page.locator('.platform-thread-messages-scroll').getByText('Один визуальный дубль', { exact: true });
+  const duplicateBubble = page.getByTestId('thread-messages').getByText('Один визуальный дубль', { exact: true });
   await expect(duplicateBubble).toHaveCount(1);
 
   await page.evaluate(() => {
@@ -556,7 +556,7 @@ test('ws reconnect + visibility refresh trigger catch-up reload', async ({ page 
   await expect.poll(async () => (await readState(page)).historyRequests, { timeout: 20000 }).toBeGreaterThan(0);
   await expect(page.getByText('Подгружаем ваши чаты с FunPay...')).toBeHidden({ timeout: 20000 });
 
-  const firstChat = page.locator('.platform-chat-row').first();
+  const firstChat = page.getByTestId('chat-row').first();
   await expect(firstChat).toBeVisible();
   await firstChat.click();
 

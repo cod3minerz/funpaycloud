@@ -1,421 +1,1835 @@
-"use client";
-import { useRef, useEffect, useState, useCallback } from "react";
-import Icon from "@/platform2/icons";
-import { accountsApi, chatsApi, createAccountWebSocket, ApiAccount, ApiChat, ApiMessage } from "@/lib/api";
+'use client';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Check, CheckCheck, Loader2, SendHorizontal } from '@/shared/streamline/icons';
+import { toast } from 'sonner';
+import { accountsApi, ApiAccount, ApiChat, ApiMessage, chatsApi, createAccountWebSocket, SendMessageResponse } from '@/lib/api';
+import { sanitizeInput } from '@/lib/sanitize';
+import Icon from '@/platform2/icons';
 
-type Message = {
-  id: string;
-  from: "buyer" | "me";
+type ChatRow = ApiChat & { unread_count: number };
+type ThreadMessage = ApiMessage & {
+  row_id?: number;
+  source?: string | null;
+  optimistic_sort_anchor?: number;
+  local_send_token?: string;
+};
+type LocalSendEntry = {
+  token: string;
+  optimisticID: number;
+  tempID?: number;
   text: string;
-  time: string;
+  sentAt: number;
 };
+type AccountScope = 'all' | number;
+type ThreadRenderItem =
+  | { type: 'separator'; key: string; label: string }
+  | { type: 'message'; key: string; message: ThreadMessage; grouped: boolean };
 
-type Conversation = {
-  id: string;           // node_id (string chat identifier on FunPay)
-  chatApiId: number;    // internal db id for chatsApi.messages()
-  funpayAccountId: string; // account id for send
-  buyer: string;
-  account: string;
-  lotTitle: string;
-  lastMessage: string;
-  time: string;
-  unread: number;
-  online: boolean;
-  messages: Message[];
-};
+type LoadMessagesMode = 'replace' | 'silent-merge' | 'prepend-history' | 'append-live';
 
-function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+const CHAT_PAGE_SIZE = 50;
+const MESSAGE_FALLBACK_WINDOW_MS = 15_000;
+const PENDING_MATCH_WINDOW_MS = 15_000;
+const OWN_API_RECONCILIATION_WINDOW_MS = 120_000;
+const LOCAL_TAIL_PRESERVE_WINDOW_MS = 180_000;
+const MAX_AUTHORITATIVE_FUNPAY_MESSAGE_ID = 10_000_000_000;
+
+const AVATAR_TONES = [
+  'bg-violet-500',
+  'bg-brand-500',
+  'bg-teal-500',
+  'bg-orange-500',
+  'bg-pink-500',
+  'bg-blue-500',
+  'bg-emerald-500',
+  'bg-rose-500',
+] as const;
+
+function sortChatsByUpdatedAt(chats: ChatRow[]) {
+  return [...chats].sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at));
 }
 
-function mapApiChat(c: ApiChat, accountUsername: string, accountId: string): Conversation {
-  return {
-    id: c.node_id,
-    chatApiId: c.id,
-    funpayAccountId: accountId,
-    buyer: c.with_user,
-    account: accountUsername,
-    lotTitle: c.last_message.slice(0, 50),
-    lastMessage: c.last_message,
-    time: fmtTime(c.updated_at),
-    unread: c.unread ? 1 : 0,
-    online: false,
-    messages: [],
-  };
+function moveChatToTop(chats: ChatRow[], nodeID: string, accountID?: number) {
+  const idx = chats.findIndex(chat => {
+    if (chat.node_id !== nodeID) return false;
+    if (!accountID) return true;
+    return (chat.funpay_account_id ?? 0) === accountID;
+  });
+  if (idx > 0) {
+    const updated = [...chats];
+    const [chat] = updated.splice(idx, 1);
+    return [chat, ...updated];
+  }
+  return chats;
 }
 
-function mapApiMessage(m: ApiMessage): Message {
-  return {
-    id: String(m.id),
-    from: m.is_my_msg ? "me" : "buyer",
-    text: m.text,
-    time: fmtTime(m.created_at),
-  };
+function isChatMatch(chat: ChatRow | null | undefined, nodeID: string, accountID: number) {
+  if (!chat) return false;
+  return chat.node_id === nodeID && (chat.funpay_account_id ?? 0) === accountID;
 }
 
-// ── Avatar ────────────────────────────────────────────────────────────────────
-
-const COLORS = ["bg-violet-500", "bg-brand-500", "bg-teal-500", "bg-orange-500", "bg-pink-500"];
-function avatarColor(name: string) {
-  return COLORS[name.charCodeAt(0) % COLORS.length];
+function formatTime(value?: string) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 }
 
-function Avatar({ name, size = "md" }: { name: string; size?: "sm" | "md" }) {
-  const sz = size === "sm" ? "h-8 w-8 text-xs" : "h-9 w-9 text-sm";
+function getAvatarLabel(name?: string) {
+  const normalized = (name || '').trim();
+  if (!normalized) return '?';
+  return normalized[0].toUpperCase();
+}
+
+function getAvatarToneClass(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i += 1) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_TONES[Math.abs(hash) % AVATAR_TONES.length];
+}
+
+function formatDateSeparator(value?: string) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'short',
+    weekday: 'short',
+  });
+}
+
+function toThreadMessages(rows: ApiMessage[]): ThreadMessage[] {
+  return rows.map(msg => ({
+    ...msg,
+    row_id: msg.id,
+    status: msg.status || (msg.is_my_msg ? 'delivered' : undefined),
+    optimistic_sort_anchor:
+      msg.temp_id && msg.temp_id < 0
+        ? Math.abs(msg.temp_id)
+        : msg.funpay_message_id && msg.funpay_message_id < 0
+          ? Math.abs(msg.funpay_message_id)
+          : undefined,
+  }));
+}
+
+function normalizeAuthorName(value?: string) {
+  return (value || '').trim().toLowerCase();
+}
+
+function normalizeMessageText(value?: string) {
+  return (value || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+}
+
+function messageTimestamp(value?: string) {
+  if (!value) return 0;
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function getMessageClientKey(message: ThreadMessage): string | null {
+  if (message.temp_id) return `temp:${message.temp_id}`;
+  if (message.funpay_message_id) return `fp:${message.funpay_message_id}`;
+  if (message.row_id) return `row:${message.row_id}`;
+  return null;
+}
+
+function statusRank(status?: ThreadMessage['status']) {
+  switch (status) {
+    case 'delivered':
+      return 3;
+    case 'pending':
+      return 2;
+    case 'failed':
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+function isAuthoritativeFunpayMessageID(value?: number | null) {
+  const id = Number(value ?? 0);
+  return Number.isFinite(id) && id > 0 && id <= MAX_AUTHORITATIVE_FUNPAY_MESSAGE_ID;
+}
+
+function hasAuthoritativeIdentity(message: ThreadMessage) {
   return (
-    <div className={`${sz} ${avatarColor(name)} flex shrink-0 items-center justify-center rounded-lg font-bold text-white`}>
-      {name[0].toUpperCase()}
-    </div>
+    isAuthoritativeFunpayMessageID(message.cursor_message_id) ||
+    isAuthoritativeFunpayMessageID(message.funpay_message_id)
   );
 }
 
-// ── Message group (Slack-style) ───────────────────────────────────────────────
+function hasSyntheticOrNonAuthoritativeIdentity(message: ThreadMessage) {
+  if (hasAuthoritativeIdentity(message)) return false;
+  const id = Number(message.funpay_message_id ?? 0);
+  if (Number.isFinite(id) && id !== 0) return true;
+  return message.ingest_kind === 'live' || message.ingest_kind === 'catchup';
+}
 
-type Group = { from: "buyer" | "me"; name: string; time: string; messages: Message[] };
+function isSyntheticAuthoritativeDuplicate(a: ThreadMessage, b: ThreadMessage) {
+  if (a.is_my_msg !== b.is_my_msg) return false;
+  if (normalizeMessageText(a.text) !== normalizeMessageText(b.text)) return false;
+  if (!a.is_my_msg && normalizeAuthorName(a.author_name) !== normalizeAuthorName(b.author_name)) {
+    return false;
+  }
 
-function groupMessages(conv: Conversation): Group[] {
-  const groups: Group[] = [];
-  for (const msg of conv.messages) {
-    const last = groups[groups.length - 1];
-    if (last && last.from === msg.from) {
-      last.messages.push(msg);
-    } else {
-      groups.push({
-        from: msg.from,
-        name: msg.from === "buyer" ? conv.buyer : "Вы",
-        time: msg.time,
-        messages: [msg],
-      });
+  const aAuthoritative = hasAuthoritativeIdentity(a);
+  const bAuthoritative = hasAuthoritativeIdentity(b);
+  if (aAuthoritative === bAuthoritative) return false;
+
+  return (
+    (aAuthoritative && hasSyntheticOrNonAuthoritativeIdentity(b)) ||
+    (bAuthoritative && hasSyntheticOrNonAuthoritativeIdentity(a))
+  );
+}
+
+function isFallbackDuplicate(a: ThreadMessage, b: ThreadMessage, windowMs = MESSAGE_FALLBACK_WINDOW_MS) {
+  if (a.is_my_msg !== b.is_my_msg) return false;
+  if (normalizeMessageText(a.text) !== normalizeMessageText(b.text)) return false;
+  if (!a.is_my_msg && normalizeAuthorName(a.author_name) !== normalizeAuthorName(b.author_name)) {
+    return false;
+  }
+  const aTime = messageTimestamp(a.created_at);
+  const bTime = messageTimestamp(b.created_at);
+  if (!aTime || !bTime) return false;
+  return Math.abs(aTime - bTime) <= windowMs;
+}
+
+function choosePreferredMessage(current: ThreadMessage, incoming: ThreadMessage): ThreadMessage {
+  const currentAuthoritative = hasAuthoritativeIdentity(current);
+  const incomingAuthoritative = hasAuthoritativeIdentity(incoming);
+  const next: ThreadMessage = {
+    ...current,
+    ...incoming,
+    row_id: incoming.row_id ?? current.row_id,
+    temp_id: incoming.temp_id ?? current.temp_id,
+    funpay_message_id: incoming.funpay_message_id ?? current.funpay_message_id,
+    cursor_message_id: incoming.cursor_message_id ?? current.cursor_message_id,
+    chat_id: incoming.chat_id ?? current.chat_id,
+    author_id: incoming.author_id ?? current.author_id,
+    author_name: incoming.author_name || current.author_name,
+    text: incoming.text || current.text,
+    is_my_msg: incoming.is_my_msg ?? current.is_my_msg,
+    source: incoming.source ?? current.source,
+    ingest_kind: incoming.ingest_kind ?? current.ingest_kind,
+    optimistic_sort_anchor: current.optimistic_sort_anchor ?? incoming.optimistic_sort_anchor,
+    local_send_token:
+      incoming.row_id != null || current.row_id != null
+        ? undefined
+        : current.local_send_token ?? incoming.local_send_token,
+  };
+
+  if (statusRank(current.status) > statusRank(incoming.status)) {
+    next.status = current.status;
+  } else {
+    next.status = incoming.status ?? current.status;
+  }
+
+  if (!incoming.created_at) {
+    next.created_at = current.created_at;
+  }
+
+  if (currentAuthoritative && !incomingAuthoritative) {
+    next.id = current.id;
+    next.row_id = current.row_id;
+    next.funpay_message_id = current.funpay_message_id;
+    next.cursor_message_id = current.cursor_message_id;
+    next.ingest_kind = current.ingest_kind ?? next.ingest_kind;
+  }
+
+  return next;
+}
+
+function findMergeMatchIndex(rows: ThreadMessage[], candidate: ThreadMessage, mode: LoadMessagesMode): number {
+  const keyedIndex = rows.findIndex(existing => {
+    if (candidate.temp_id && existing.temp_id === candidate.temp_id) return true;
+    if (candidate.funpay_message_id && existing.funpay_message_id === candidate.funpay_message_id) return true;
+    if (candidate.row_id && existing.row_id === candidate.row_id) return true;
+    const existingKey = getMessageClientKey(existing);
+    const candidateKey = getMessageClientKey(candidate);
+    return existingKey !== null && candidateKey !== null && existingKey === candidateKey;
+  });
+  if (keyedIndex >= 0) return keyedIndex;
+
+  const canonicalDuplicateIndex = rows.findIndex(existing => isSyntheticAuthoritativeDuplicate(existing, candidate));
+  if (canonicalDuplicateIndex >= 0) return canonicalDuplicateIndex;
+
+  if ((mode === 'replace' || mode === 'silent-merge') && candidate.row_id != null && candidate.is_my_msg) {
+    const uniqueOwnCandidate = findUniqueRecentOwnEphemeralCandidate(rows, candidate);
+    if (uniqueOwnCandidate) {
+      const uniqueOwnCandidateIndex = rows.findIndex(existing => existing === uniqueOwnCandidate);
+      if (uniqueOwnCandidateIndex >= 0) {
+        return uniqueOwnCandidateIndex;
+      }
     }
   }
-  return groups;
+
+  return rows.findIndex(existing => isFallbackDuplicate(existing, candidate));
 }
 
-function MessageGroup({ group }: { group: Group }) {
-  const isSelf = group.from === "me";
-  return (
-    <div className="group flex gap-3 px-6 py-1 hover:bg-gray-50 dark:hover:bg-white/[0.02]">
-      {/* Avatar */}
-      <div className="pt-0.5">
-        <Avatar name={group.name} />
-      </div>
-
-      {/* Content */}
-      <div className="min-w-0 flex-1">
-        {/* Name + time */}
-        <div className="mb-1 flex items-baseline gap-2">
-          <span className={`text-sm font-bold ${isSelf ? "text-brand-600 dark:text-brand-400" : "text-gray-900 dark:text-white"}`}>
-            {group.name}
-          </span>
-          <span className="text-xs text-gray-400">{group.time}</span>
-        </div>
-
-        {/* Messages */}
-        <div className="space-y-0.5">
-          {group.messages.map((msg) => (
-            <p key={msg.id} className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-              {msg.text}
-            </p>
-          ))}
-        </div>
-      </div>
-
-      {/* Hover actions */}
-      <div className="flex shrink-0 items-start gap-0.5 pt-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-        {["😊", "👍", "🔁"].map((emoji) => (
-          <button key={emoji} className="flex h-7 w-7 items-center justify-center rounded-md text-sm hover:bg-gray-200 dark:hover:bg-gray-700">
-            {emoji}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+function isLocalTailMessage(message: ThreadMessage) {
+  if (message.status === 'pending' || message.status === 'failed') return true;
+  if (message.row_id == null) {
+    const ageMs = Date.now() - messageTimestamp(message.created_at);
+    const withinPreserveWindow =
+      ageMs >= 0 && ageMs <= LOCAL_TAIL_PRESERVE_WINDOW_MS;
+    if (!message.is_my_msg) return false;
+    if (message.local_send_token) return withinPreserveWindow;
+    return false;
+  }
+  return false;
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+function mergeThreadMessages(current: ThreadMessage[], incoming: ThreadMessage[], mode: LoadMessagesMode): ThreadMessage[] {
+  const baseline = mode === 'replace' ? [] : [...current];
+  const prependBuffer: ThreadMessage[] = [];
 
-export default function ChatsPage() {
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [account, setAccount] = useState("all");
-  const [input, setInput] = useState("");
-  const [chats, setChats] = useState<Conversation[]>([]);
-  const [accounts, setAccounts] = useState<ApiAccount[]>([]);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const wsRef = useRef<WebSocket | null>(null);
+  for (const candidate of incoming) {
+    const matchIndex = findMergeMatchIndex(baseline, candidate, mode);
+    if (matchIndex >= 0) {
+      baseline[matchIndex] = choosePreferredMessage(baseline[matchIndex], candidate);
+      continue;
+    }
 
-  // Load accounts on mount
-  useEffect(() => {
-    accountsApi.list().then((list) => {
-      setAccounts(list);
-    }).catch(() => {});
-  }, []);
+    if (mode === 'prepend-history') {
+      prependBuffer.push(candidate);
+    } else {
+      baseline.push(candidate);
+    }
+  }
 
-  // Load chats when account filter changes
-  useEffect(() => {
-    const targetAccounts = account === "all"
-      ? accounts
-      : accounts.filter((a) => a.username === account);
+  if (mode === 'prepend-history') {
+    return [...prependBuffer, ...baseline];
+  }
+  return baseline;
+}
 
-    if (targetAccounts.length === 0) return;
+function mergeLatestPageIntoThread(current: ThreadMessage[], latestPageRows: ThreadMessage[]): ThreadMessage[] {
+  const latestPage = mergeThreadMessages([], latestPageRows, 'replace');
+  if (current.length === 0) {
+    return latestPage;
+  }
 
-    Promise.all(
-      targetAccounts.map((a) =>
-        chatsApi.history(a.id).then((list) =>
-          list.map((c) => mapApiChat(c, a.username ?? `#${a.id}`, String(a.id)))
-        ).catch(() => [] as Conversation[])
-      )
-    ).then((results) => {
-      const all = results.flat().sort((a, b) => b.time.localeCompare(a.time));
-      setChats(all);
-      if (all.length > 0 && !activeId) setActiveId(all[0].id);
-    });
-  }, [account, accounts]);
+  const olderPrefix: ThreadMessage[] = [];
+  const localTail: ThreadMessage[] = [];
 
-  // Load messages when active chat changes
-  useEffect(() => {
-    if (!activeId) return;
-    const conv = chats.find((c) => c.id === activeId);
-    if (!conv || conv.messages.length > 0) return;
+  for (const row of current) {
+    const coveredByLatestPage = latestPage.some(candidate => findMergeMatchIndex([row], candidate, 'silent-merge') === 0);
+    if (coveredByLatestPage) {
+      continue;
+    }
+    if (isLocalTailMessage(row)) {
+      localTail.push(row);
+      continue;
+    }
+    if (row.row_id == null) {
+      continue;
+    }
+    olderPrefix.push(row);
+  }
 
-    chatsApi.messages(conv.chatApiId, 50).then((msgs) => {
-      setChats((prev) =>
-        prev.map((c) =>
-          c.id === activeId ? { ...c, messages: msgs.map(mapApiMessage) } : c
-        )
-      );
-    }).catch(() => {});
-  }, [activeId]);
+  return [...olderPrefix, ...mergeThreadMessages(latestPage, localTail, 'append-live')];
+}
 
-  // WebSocket for real-time messages
-  useEffect(() => {
-    if (!activeId) return;
-    const conv = chats.find((c) => c.id === activeId);
-    if (!conv) return;
+function mergeLatestTailIntoPaginatedThread(current: ThreadMessage[], latestPageRows: ThreadMessage[]): ThreadMessage[] {
+  const latestPage = mergeThreadMessages([], latestPageRows, 'replace');
+  if (current.length === 0) {
+    return latestPage;
+  }
 
-    wsRef.current?.close();
+  const latestWindowStart = messageTimestamp(latestPage[0]?.created_at);
+  const latestWindowEnd = messageTimestamp(latestPage[latestPage.length - 1]?.created_at);
+  const olderPrefix: ThreadMessage[] = [];
+  const newerTail: ThreadMessage[] = [];
+  const localTail: ThreadMessage[] = [];
 
-    createAccountWebSocket(conv.funpayAccountId, (event) => {
-      if (event.type === "new_message" && event.data) {
-        const msg = mapApiMessage(event.data as unknown as ApiMessage);
-        setChats((prev) =>
-          prev.map((c) =>
-            c.id === activeId
-              ? { ...c, lastMessage: msg.text, time: msg.time, messages: [...c.messages, msg] }
-              : c
-          )
-        );
-      }
-    }).then((ws) => {
-      wsRef.current = ws;
-    }).catch(() => {});
+  for (const row of current) {
+    const coveredByLatestPage = latestPage.some(candidate => findMergeMatchIndex([row], candidate, 'silent-merge') === 0);
+    if (coveredByLatestPage) {
+      continue;
+    }
 
-    return () => {
-      wsRef.current?.close();
-    };
-  }, [activeId]);
+    if (isLocalTailMessage(row)) {
+      localTail.push(row);
+      continue;
+    }
+    if (row.row_id == null) {
+      continue;
+    }
 
-  const active = chats.find((c) => c.id === activeId) ?? null;
-  const groups = active ? groupMessages(active) : [];
+    const rowTime = messageTimestamp(row.created_at);
+    if (latestWindowStart > 0 && rowTime > 0 && rowTime < latestWindowStart) {
+      olderPrefix.push(row);
+      continue;
+    }
 
-  const filtered = chats.filter((c) => {
-    const matchAccount = account === "all" || c.account === account;
-    const matchSearch = c.buyer.toLowerCase().includes(search.toLowerCase()) || c.lastMessage.toLowerCase().includes(search.toLowerCase());
-    return matchAccount && matchSearch;
+    if (latestWindowEnd > 0 && rowTime > 0 && rowTime > latestWindowEnd) {
+      newerTail.push(row);
+    }
+  }
+
+  return [...olderPrefix, ...mergeThreadMessages(latestPage, [...newerTail, ...localTail], 'append-live')];
+}
+
+function getOldestRowId(rows: ThreadMessage[]): number | null {
+  for (const row of rows) {
+    if (row.row_id) return row.row_id;
+  }
+  return null;
+}
+
+function findUniqueRecentOwnEphemeralCandidate(
+  rows: ThreadMessage[],
+  incoming: ThreadMessage,
+  windowMs = OWN_API_RECONCILIATION_WINDOW_MS,
+): ThreadMessage | null {
+  if (!incoming.is_my_msg) return null;
+  const normalizedText = normalizeMessageText(incoming.text);
+  if (!normalizedText) return null;
+  const targetTime = messageTimestamp(incoming.created_at) || Date.now();
+  const matches = rows.filter(row => {
+    if (!row.is_my_msg) return false;
+    if (!row.local_send_token) return false;
+    if (normalizeMessageText(row.text) !== normalizedText) return false;
+
+    const lacksStrongServerIdentity = row.row_id == null || (row.funpay_message_id ?? 0) <= 0;
+    if (!lacksStrongServerIdentity) return false;
+
+    const rowTime = messageTimestamp(row.created_at);
+    if (!rowTime || Math.abs(targetTime - rowTime) > windowMs) return false;
+    return true;
   });
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeId, chats]);
+  if (matches.length !== 1) return null;
+  return matches[0];
+}
 
-  async function sendMessage() {
-    if (!input.trim() || !active) return;
-    const text = input.trim();
-    const now = new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
-    const optimistic: Message = { id: `m${Date.now()}`, from: "me", text, time: now };
+function findRecentOwnPendingCandidate(
+  rows: ThreadMessage[],
+  text: string,
+  createdAt?: string,
+  localSendToken?: string | null,
+): ThreadMessage | null {
+  const targetTime = messageTimestamp(createdAt) || Date.now();
+  const normalizedText = normalizeMessageText(text);
+  let match: ThreadMessage | null = null;
 
-    setChats((prev) =>
-      prev.map((c) =>
-        c.id === activeId
-          ? { ...c, lastMessage: text, time: now, messages: [...c.messages, optimistic] }
-          : c
-      )
-    );
-    setInput("");
-
-    try {
-      await chatsApi.send(active.funpayAccountId, active.id, text);
-    } catch {
-      // message already shown optimistically
+  for (const row of rows) {
+    if (!row.is_my_msg) continue;
+    if (!row.local_send_token) continue;
+    if (localSendToken && row.local_send_token !== localSendToken) continue;
+    if (row.status !== 'pending') continue;
+    if ((row.funpay_message_id ?? 0) > 0) continue;
+    if (normalizeMessageText(row.text) !== normalizedText) continue;
+    const rowTime = messageTimestamp(row.created_at);
+    if (!rowTime || Math.abs(targetTime - rowTime) > PENDING_MATCH_WINDOW_MS) continue;
+    if (!match || rowTime > messageTimestamp(match.created_at)) {
+      match = row;
     }
   }
 
-  return (
-    <div className="flex h-[calc(100vh-64px)] -m-4 overflow-hidden md:-m-6">
+  return match;
+}
 
-      {/* ── LEFT SIDEBAR ── */}
-      <div className="flex w-72 shrink-0 flex-col border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+function updateChatRows(
+  chats: ChatRow[],
+  params: {
+    nodeID: string;
+    accountID: number;
+    withUser?: string;
+    lastMessage?: string;
+    updatedAt?: string;
+    unread?: boolean;
+    isOpened: boolean;
+  },
+) {
+  let found = false;
+  const updated = chats.map(chat => {
+    if (!isChatMatch(chat, params.nodeID, params.accountID)) return chat;
+    found = true;
+    const unread = params.isOpened ? false : Boolean(params.unread);
+    return {
+      ...chat,
+      with_user: params.withUser || chat.with_user,
+      last_message: params.lastMessage ?? chat.last_message,
+      updated_at: params.updatedAt || chat.updated_at,
+      unread,
+      unread_count: unread ? Math.max(chat.unread_count, 1) : 0,
+    };
+  });
 
-        {/* Header */}
-        <div className="border-b border-gray-200 px-4 py-4 dark:border-gray-800">
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg font-bold text-gray-900 dark:text-white">Чаты</h1>
-            <span className="rounded-full border border-warning-400 px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-warning-500">
-              Beta
-            </span>
-          </div>
+  return {
+    found,
+    rows: found ? moveChatToTop(updated, params.nodeID, params.accountID) : chats,
+  };
+}
 
-          {/* Search */}
-          <div className="relative mt-3">
-            <Icon name="list" className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Поиск"
-              className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-8 pr-3 text-sm outline-none focus:border-brand-400 focus:bg-white dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:bg-gray-800"
-            />
-          </div>
+export default function Chats() {
+  const searchParams = useSearchParams();
+  const requestedAccountID = useMemo(() => {
+    const raw = searchParams.get('account_id');
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }, [searchParams]);
+  const requestedChatID = useMemo(() => {
+    const raw = searchParams.get('chat_id');
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }, [searchParams]);
 
-          {/* Account filter */}
-          <div className="relative mt-2">
-            <select
-              value={account}
-              onChange={(e) => setAccount(e.target.value)}
-              className="w-full appearance-none rounded-lg border border-gray-200 bg-gray-50 py-2 pl-3 pr-8 text-sm text-gray-700 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-            >
-              <option value="all">Все аккаунты</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.username ?? `#${a.id}`}>{a.username ?? `#${a.id}`}</option>
-              ))}
-            </select>
-            <svg className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </div>
-        </div>
+  const [accounts, setAccounts] = useState<ApiAccount[]>([]);
+  const [accountScope, setAccountScope] = useState<AccountScope>(requestedAccountID ?? 'all');
+  const [chats, setChats] = useState<ChatRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [selectedChatID, setSelectedChatID] = useState<number | null>(null);
+  const [mobileThreadOpen, setMobileThreadOpen] = useState(requestedChatID != null);
+  const [messages, setMessages] = useState<ThreadMessage[]>([]);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [refreshingMessages, setRefreshingMessages] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [oldestMessageId, setOldestMessageId] = useState<number | null>(null);
+  const [messagesError, setMessagesError] = useState<string | null>(null);
+  const [inputValue, setInputValue] = useState('');
+  const [sending, setSending] = useState(false);
+  const [search, setSearch] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
-        {/* DM list */}
-        <div className="flex-1 overflow-y-auto py-2">
-          {filtered.length === 0 && (
-            <p className="px-4 py-8 text-center text-xs text-gray-400">Чаты не найдены</p>
-          )}
-          {filtered.map((conv) => (
-            <button
-              key={conv.id}
-              onClick={() => setActiveId(conv.id)}
-              className={`group w-full px-3 py-2 text-left transition-colors ${
-                activeId === conv.id
-                  ? "bg-brand-500/10 dark:bg-brand-500/15"
-                  : "hover:bg-gray-100 dark:hover:bg-gray-800"
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                {/* Avatar */}
-                <div className="relative shrink-0">
-                  <Avatar name={conv.buyer} size="sm" />
-                </div>
+  const reconnectTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+  const heartbeatTimersRef = useRef<Map<number, ReturnType<typeof setInterval>>>(new Map());
+  const socketsRef = useRef<Map<number, WebSocket>>(new Map());
+  const wsResyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const liveNormalizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const routeTargetRef = useRef<{ accountID: number | null; chatID: number | null }>({
+    accountID: requestedAccountID,
+    chatID: requestedChatID,
+  });
+  const recentLocalSendsRef = useRef<Map<number, Map<string, LocalSendEntry>>>(new Map());
+  const threadScrollRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  const chatsRef = useRef<ChatRow[]>([]);
+  const messagesRef = useRef<ThreadMessage[]>([]);
+  const loadingMoreRef = useRef(false);
+  const selectedChatRef = useRef<ChatRow | null>(null);
+  const messageLoadSeqRef = useRef(0);
+  const silentResyncInFlightRef = useRef(false);
+  const lastMessagesLoadRef = useRef<{ chatID: number; at: number } | null>(null);
+  const hasPrependedHistoryRef = useRef(false);
+  const threadScrollHeightBeforePrependRef = useRef<number | null>(null);
+  const threadScrollTopBeforePrependRef = useRef<number | null>(null);
+  const loadChatsRef = useRef<(scope: AccountScope, preserveSelection: boolean) => Promise<number | null>>(
+    async () => null,
+  );
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline justify-between gap-1">
-                    <span className={`truncate text-sm font-semibold ${
-                      activeId === conv.id ? "text-brand-600 dark:text-brand-400" : "text-gray-800 dark:text-gray-100"
-                    }`}>
-                      {conv.buyer}
-                    </span>
-                    <span className="shrink-0 text-[11px] text-gray-400">{conv.time}</span>
-                  </div>
-                  <p className="truncate text-xs text-gray-400">{conv.lastMessage}</p>
-                </div>
+  const selectedChat = useMemo(
+    () => chats.find(chat => chat.id === selectedChatID) || null,
+    [chats, selectedChatID],
+  );
 
-                {conv.unread > 0 && (
-                  <span className="ml-auto flex h-4.5 min-w-[18px] shrink-0 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-bold text-white">
-                    {conv.unread}
-                  </span>
-                )}
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
+  const threadRenderItems = useMemo<ThreadRenderItem[]>(() => {
+    const items: ThreadRenderItem[] = [];
+    let previousMessage: ThreadMessage | null = null;
+    let previousDateKey = '';
 
-      {/* ── MAIN AREA ── */}
-      <div className="flex min-w-0 flex-1 flex-col bg-white dark:bg-gray-950">
-      {!active ? (
-        <div className="flex flex-1 items-center justify-center text-gray-400 text-sm">Выберите чат</div>
-      ) : (<>
+    messages.forEach((message, index) => {
+      const messageDate = new Date(message.created_at);
+      const dateKey = Number.isNaN(messageDate.getTime())
+        ? `unknown-${message.created_at}-${index}`
+        : `${messageDate.getFullYear()}-${messageDate.getMonth()}-${messageDate.getDate()}`;
 
-        {/* Chat header */}
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-3 dark:border-gray-800">
-          <div className="flex items-center gap-3">
-            <Avatar name={active.buyer} />
-            <div>
-              <span className="font-bold text-gray-900 dark:text-white">{active.buyer}</span>
-              <p className="text-xs text-gray-400">
-                <span className="text-gray-500 dark:text-gray-400">{active.account}</span>
-                {" · "}
-                <span className="truncate">{active.lotTitle}</span>
-              </p>
-            </div>
-          </div>
-        </div>
+      if (dateKey !== previousDateKey) {
+        items.push({
+          type: 'separator',
+          key: `sep-${dateKey}-${index}`,
+          label: formatDateSeparator(message.created_at),
+        });
+        previousDateKey = dateKey;
+      }
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto py-4">
-          {/* Date divider */}
-          <div className="flex items-center gap-3 px-6 py-2">
-            <div className="h-px flex-1 bg-gray-100 dark:bg-gray-800" />
-            <span className="text-xs font-medium text-gray-400">Сегодня</span>
-            <div className="h-px flex-1 bg-gray-100 dark:bg-gray-800" />
-          </div>
+      const currentTimestamp = messageDate.getTime();
+      const previousTimestamp = previousMessage ? new Date(previousMessage.created_at).getTime() : Number.NaN;
+      const withinFiveMinutes =
+        !Number.isNaN(currentTimestamp) &&
+        !Number.isNaN(previousTimestamp) &&
+        currentTimestamp - previousTimestamp < 5 * 60 * 1000;
 
-          {groups.map((group, i) => (
-            <MessageGroup key={i} group={group} />
-          ))}
+      const grouped =
+        Boolean(previousMessage) &&
+        previousMessage?.is_my_msg === message.is_my_msg &&
+        (previousMessage?.author_name || '').trim() === (message.author_name || '').trim() &&
+        withinFiveMinutes;
 
-          <div ref={bottomRef} />
-        </div>
+      items.push({
+        type: 'message',
+        key:
+          message.row_id != null
+            ? `row:${message.row_id}`
+            : message.temp_id != null
+              ? `temp:${message.temp_id}`
+              : message.funpay_message_id != null
+                ? `fp:${message.funpay_message_id}`
+                : `msg-${message.id}-${message.created_at}-${index}`,
+        message,
+        grouped,
+      });
 
-        {/* ── INPUT BOX ── */}
-        <div className="border-t border-gray-200 px-6 py-4 dark:border-gray-800">
-          <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
-            {/* Text area */}
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  sendMessage();
+      previousMessage = message;
+    });
+
+    return items;
+  }, [messages]);
+
+  useEffect(() => {
+    chatsRef.current = chats;
+  }, [chats]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    selectedChatRef.current = selectedChat;
+  }, [selectedChat]);
+
+  useEffect(() => {
+    routeTargetRef.current = { accountID: requestedAccountID, chatID: requestedChatID };
+  }, [requestedAccountID, requestedChatID]);
+
+  const scrollThreadToBottom = useCallback(() => {
+    const node = threadScrollRef.current;
+    if (!node) return;
+    node.scrollTop = node.scrollHeight;
+  }, []);
+
+  const pruneRecentLocalSends = useCallback((chatID?: number) => {
+    const now = Date.now();
+    const pruneMap = (entryMap: Map<string, LocalSendEntry>) => {
+      for (const [token, entry] of entryMap.entries()) {
+        if (now - entry.sentAt > LOCAL_TAIL_PRESERVE_WINDOW_MS) {
+          entryMap.delete(token);
+        }
+      }
+    };
+
+    if (typeof chatID === 'number') {
+      const entryMap = recentLocalSendsRef.current.get(chatID);
+      if (!entryMap) return;
+      pruneMap(entryMap);
+      if (entryMap.size === 0) {
+        recentLocalSendsRef.current.delete(chatID);
+      }
+      return;
+    }
+
+    for (const [entryChatID, entryMap] of recentLocalSendsRef.current.entries()) {
+      pruneMap(entryMap);
+      if (entryMap.size === 0) {
+        recentLocalSendsRef.current.delete(entryChatID);
+      }
+    }
+  }, []);
+
+  const rememberLocalSend = useCallback((chatID: number, entry: LocalSendEntry) => {
+    pruneRecentLocalSends(chatID);
+    const entryMap = recentLocalSendsRef.current.get(chatID) ?? new Map<string, LocalSendEntry>();
+    entryMap.set(entry.token, entry);
+    recentLocalSendsRef.current.set(chatID, entryMap);
+  }, [pruneRecentLocalSends]);
+
+  const updateLocalSend = useCallback((chatID: number, token: string, patch: Partial<LocalSendEntry>) => {
+    const entryMap = recentLocalSendsRef.current.get(chatID);
+    const entry = entryMap?.get(token);
+    if (!entryMap || !entry) return;
+    entryMap.set(token, { ...entry, ...patch });
+  }, []);
+
+  const forgetLocalSend = useCallback((chatID: number, token?: string | null) => {
+    if (!token) return;
+    const entryMap = recentLocalSendsRef.current.get(chatID);
+    if (!entryMap) return;
+    entryMap.delete(token);
+    if (entryMap.size === 0) {
+      recentLocalSendsRef.current.delete(chatID);
+    }
+  }, []);
+
+  const resolveRecentLocalSend = useCallback((chatID: number, tempID: number, text: string, createdAt?: string) => {
+    pruneRecentLocalSends(chatID);
+    const entryMap = recentLocalSendsRef.current.get(chatID);
+    if (!entryMap || entryMap.size === 0) return null;
+
+    if (tempID) {
+      for (const entry of entryMap.values()) {
+        if (entry.tempID === tempID) {
+          return entry;
+        }
+      }
+    }
+
+    const normalizedText = normalizeMessageText(text);
+    const targetTime = messageTimestamp(createdAt) || Date.now();
+    const matches = Array.from(entryMap.values()).filter(entry => {
+      if (normalizeMessageText(entry.text) !== normalizedText) return false;
+      return Math.abs(targetTime - entry.sentAt) <= OWN_API_RECONCILIATION_WINDOW_MS;
+    });
+    if (matches.length !== 1) return null;
+    return matches[0];
+  }, [pruneRecentLocalSends]);
+
+  const resizeComposer = useCallback((node?: HTMLTextAreaElement | null) => {
+    const target = node ?? composerRef.current;
+    if (!target) return;
+    target.style.height = '44px';
+    const nextHeight = Math.min(120, Math.max(44, target.scrollHeight));
+    target.style.height = `${nextHeight}px`;
+  }, []);
+
+  const loadMessages = useCallback(
+    async (
+      chatID: number,
+      options?: { silent?: boolean; beforeId?: number; mode?: LoadMessagesMode },
+    ) => {
+      const mode = options?.mode ?? (options?.silent ? 'silent-merge' : 'replace');
+      if (
+        mode === 'silent-merge' &&
+        hasPrependedHistoryRef.current &&
+        selectedChatRef.current?.id === chatID &&
+        messagesRef.current.length > 0
+      ) {
+        return;
+      }
+      const beforeId = options?.beforeId ?? 0;
+      const shouldTrackSequence = mode !== 'prepend-history';
+      const requestID = shouldTrackSequence ? ++messageLoadSeqRef.current : messageLoadSeqRef.current;
+      const preserveCurrentThread = selectedChatRef.current?.id === chatID && messagesRef.current.length > 0;
+
+      if (mode === 'replace') {
+        lastMessagesLoadRef.current = { chatID, at: Date.now() };
+        setMessagesError(null);
+        setRefreshingMessages(false);
+        setLoadingMore(false);
+        setLoadingMessages(true);
+        if (!preserveCurrentThread) {
+          setMessages([]);
+          setOldestMessageId(null);
+          setHasMoreMessages(false);
+        }
+      } else if (mode === 'silent-merge') {
+        lastMessagesLoadRef.current = { chatID, at: Date.now() };
+        setRefreshingMessages(true);
+        setMessagesError(null);
+      } else {
+        if (!beforeId) return;
+        if (loadingMoreRef.current) return;
+        loadingMoreRef.current = true;
+        const node = threadScrollRef.current;
+        threadScrollHeightBeforePrependRef.current = node?.scrollHeight ?? null;
+        threadScrollTopBeforePrependRef.current = node?.scrollTop ?? null;
+        setLoadingMore(true);
+      }
+
+      try {
+        const rows = await chatsApi.messages(chatID, CHAT_PAGE_SIZE, beforeId);
+        if (selectedChatRef.current?.id !== chatID && mode === 'prepend-history') {
+          return;
+        }
+        if (shouldTrackSequence && requestID !== messageLoadSeqRef.current) return;
+
+        const safeRows = Array.isArray(rows) ? rows : [];
+        let nextRows = toThreadMessages(safeRows).map(message => ({
+          ...message,
+          chat_id: message.chat_id ?? chatID,
+        }));
+
+        if (mode === 'replace') {
+          const merged = mergeThreadMessages([], nextRows, 'replace');
+          hasPrependedHistoryRef.current = false;
+          setMessages(merged);
+          setOldestMessageId(getOldestRowId(merged));
+          setHasMoreMessages(safeRows.length === CHAT_PAGE_SIZE && getOldestRowId(merged) != null);
+          lastMessagesLoadRef.current = { chatID, at: Date.now() };
+          setChats(prev =>
+            prev.map(chat => (chat.id === chatID ? { ...chat, unread: false, unread_count: 0 } : chat)),
+          );
+          requestAnimationFrame(scrollThreadToBottom);
+          return;
+        }
+
+        if (mode === 'silent-merge') {
+          if (nextRows.length === 0 && messagesRef.current.length > 0) {
+            return;
+          }
+          const merged = hasPrependedHistoryRef.current
+            ? mergeLatestTailIntoPaginatedThread(messagesRef.current, nextRows)
+            : mergeLatestPageIntoThread(messagesRef.current, nextRows);
+          setMessages(merged);
+          setOldestMessageId(getOldestRowId(merged));
+          lastMessagesLoadRef.current = { chatID, at: Date.now() };
+          setChats(prev =>
+            prev.map(chat => (chat.id === chatID ? { ...chat, unread: false, unread_count: 0 } : chat)),
+          );
+          return;
+        }
+
+        if (mode === 'prepend-history' && messagesRef.current.length > 0) {
+          const earliestCurrentTime = messageTimestamp(messagesRef.current[0]?.created_at);
+          if (earliestCurrentTime > 0) {
+            nextRows = nextRows.filter(row => {
+              const rowTime = messageTimestamp(row.created_at);
+              return rowTime === 0 || rowTime <= earliestCurrentTime;
+            });
+          }
+        }
+
+        const merged = mergeThreadMessages(messagesRef.current, nextRows, 'prepend-history');
+        if (nextRows.length > 0) {
+          hasPrependedHistoryRef.current = true;
+        }
+        setMessages(merged);
+        setOldestMessageId(getOldestRowId(merged));
+        setHasMoreMessages(safeRows.length === CHAT_PAGE_SIZE && safeRows.length > 0);
+      } catch (err) {
+        if (shouldTrackSequence && requestID !== messageLoadSeqRef.current) return;
+        const message = err instanceof Error ? err.message : 'Не удалось загрузить сообщения';
+        if (mode === 'replace') {
+          setMessagesError(message);
+          if (!preserveCurrentThread) {
+            setMessages([]);
+          }
+          toast.error(message);
+        }
+      } finally {
+        if (mode === 'replace') {
+          if (!shouldTrackSequence || requestID === messageLoadSeqRef.current) {
+            setLoadingMessages(false);
+          }
+        } else if (mode === 'silent-merge') {
+          if (!shouldTrackSequence || requestID === messageLoadSeqRef.current) {
+            setRefreshingMessages(false);
+          }
+        } else {
+          loadingMoreRef.current = false;
+          setLoadingMore(false);
+          requestAnimationFrame(() => {
+            const node = threadScrollRef.current;
+            const previousHeight = threadScrollHeightBeforePrependRef.current;
+            const previousTop = threadScrollTopBeforePrependRef.current;
+            if (!node || previousHeight == null || previousTop == null) return;
+            const delta = node.scrollHeight - previousHeight;
+            node.scrollTop = previousTop + delta;
+            threadScrollHeightBeforePrependRef.current = null;
+            threadScrollTopBeforePrependRef.current = null;
+          });
+        }
+      }
+    },
+    [scrollThreadToBottom],
+  );
+
+  const loadChats = useCallback(
+    async (scope: AccountScope, preserveSelection: boolean) => {
+      const normalizeRows = (rows: ApiChat[], accountID: number): ChatRow[] =>
+        rows.map(chat => ({
+          ...chat,
+          funpay_account_id: chat.funpay_account_id ?? accountID,
+          unread_count: chat.unread ? 1 : 0,
+        }));
+
+      let mergedChats: ChatRow[] = [];
+
+      if (scope === 'all') {
+        const listed = await accountsApi.list();
+        const safeAccounts = Array.isArray(listed) ? listed : [];
+        setAccounts(prev => {
+          if (
+            prev.length === safeAccounts.length &&
+            prev.every((account, index) => {
+              const next = safeAccounts[index];
+              return account.id === next.id && (account.username || '') === (next.username || '');
+            })
+          ) {
+            return prev;
+          }
+          return safeAccounts;
+        });
+
+        if (safeAccounts.length > 0) {
+          const allHistories = await Promise.all(
+            safeAccounts.map(async account => {
+              const rows = await chatsApi.history(account.id);
+              const safeRows = Array.isArray(rows) ? rows : [];
+              return normalizeRows(safeRows, account.id);
+            }),
+          );
+          mergedChats = allHistories.flat();
+        }
+      } else {
+        const history = await chatsApi.history(scope);
+        const safeHistory = Array.isArray(history) ? history : [];
+        mergedChats = normalizeRows(safeHistory, scope);
+      }
+
+      const nextChats = sortChatsByUpdatedAt(mergedChats);
+
+      setChats(nextChats);
+      if (nextChats.length === 0) {
+        setSelectedChatID(null);
+        return null;
+      }
+
+      const currentSelected = selectedChatRef.current;
+      const routeTarget = routeTargetRef.current;
+      const requestedChat =
+        routeTarget.chatID != null
+          ? nextChats.find(chat => {
+              if (chat.id !== routeTarget.chatID) return false;
+              if (routeTarget.accountID == null) return true;
+              return (chat.funpay_account_id ?? 0) === routeTarget.accountID;
+            }) || null
+          : null;
+      const nextSelected =
+        requestedChat?.id ??
+        (preserveSelection &&
+        currentSelected &&
+        nextChats.some(
+          chat =>
+            chat.id === currentSelected.id &&
+            (chat.funpay_account_id ?? 0) === (currentSelected.funpay_account_id ?? 0),
+        )
+          ? currentSelected.id
+          : nextChats[0].id);
+
+      if (requestedChat) {
+        routeTargetRef.current = { accountID: null, chatID: null };
+      }
+
+      setSelectedChatID(nextSelected);
+      return nextSelected;
+    },
+    [],
+  );
+
+  useEffect(() => {
+    loadChatsRef.current = loadChats;
+  }, [loadChats]);
+
+  const handleChatSelect = useCallback(
+    async (chat: ChatRow) => {
+      setSelectedChatID(chat.id);
+      setMessagesError(null);
+      hasPrependedHistoryRef.current = false;
+      setOldestMessageId(null);
+      setHasMoreMessages(false);
+      setChats(prev =>
+        prev.map(row => (row.id === chat.id ? { ...row, unread: false, unread_count: 0 } : row)),
+      );
+      await loadMessages(chat.id, { mode: 'replace' });
+      requestAnimationFrame(scrollThreadToBottom);
+    },
+    [loadMessages, scrollThreadToBottom],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function bootstrap() {
+      setLoading(true);
+      setLoadError(null);
+      setMessagesError(null);
+      setMessages([]);
+      hasPrependedHistoryRef.current = false;
+      setChats([]);
+      setSelectedChatID(null);
+      setMobileThreadOpen(requestedChatID != null);
+
+      try {
+        const initialScope = requestedAccountID ?? 'all';
+        setAccountScope(initialScope);
+        const nextSelected = await loadChats(initialScope, false);
+        if (cancelled) return;
+        if (nextSelected) {
+          await loadMessages(nextSelected, { mode: 'replace' });
+        }
+
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Ошибка загрузки чатов';
+        if (!cancelled) {
+          setLoadError(message);
+          toast.error(message);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    bootstrap();
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey, loadChats, loadMessages, requestedAccountID, requestedChatID]);
+
+  const runSilentResync = useCallback(async () => {
+    if (silentResyncInFlightRef.current) return;
+    silentResyncInFlightRef.current = true;
+    try {
+      const nextSelected = await loadChatsRef.current(accountScope, true);
+      const target = nextSelected ?? selectedChatRef.current?.id;
+      if (target) {
+        await loadMessages(target, { silent: true, mode: 'silent-merge' });
+      }
+    } catch {
+      // no-op
+    } finally {
+      silentResyncInFlightRef.current = false;
+    }
+  }, [accountScope, loadMessages]);
+
+  const scheduleOpenedChatNormalization = useCallback((chatID: number) => {
+    if (liveNormalizeTimerRef.current) {
+      clearTimeout(liveNormalizeTimerRef.current);
+    }
+    liveNormalizeTimerRef.current = setTimeout(() => {
+      if (selectedChatRef.current?.id !== chatID) {
+        return;
+      }
+      void loadMessages(chatID, { silent: true, mode: 'silent-merge' });
+    }, 400);
+  }, [loadMessages]);
+
+  useEffect(() => {
+    if (accounts.length === 0) return;
+
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      void runSilentResync();
+    };
+
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [accounts.length, runSilentResync]);
+
+  useEffect(() => {
+    if (accounts.length === 0) return;
+
+    const timer = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      void runSilentResync();
+    }, 35000);
+
+    return () => {
+      clearInterval(timer);
+    };
+  }, [accounts.length, runSilentResync]);
+
+  useEffect(() => {
+    const targetAccountIDs =
+      accountScope === 'all'
+        ? accounts.map(account => account.id)
+        : typeof accountScope === 'number'
+          ? [accountScope]
+          : [];
+    if (targetAccountIDs.length === 0) return;
+
+    let cancelled = false;
+
+    const scheduleResync = () => {
+      if (wsResyncTimerRef.current) {
+        clearTimeout(wsResyncTimerRef.current);
+      }
+      wsResyncTimerRef.current = setTimeout(() => {
+        const selectedID = selectedChatRef.current?.id ?? null;
+        const lastLoad = lastMessagesLoadRef.current;
+        if (selectedID && lastLoad && lastLoad.chatID === selectedID && Date.now() - lastLoad.at < 1500) {
+          return;
+        }
+        void loadChatsRef.current(accountScope, true).then(nextSelected => {
+          const target = nextSelected ?? selectedChatRef.current?.id;
+          if (target) {
+            void loadMessages(target, { silent: true, mode: 'silent-merge' });
+          }
+        });
+      }, 120);
+    };
+
+    const connect = async (accountID: number, attempt = 0) => {
+      if (cancelled) return;
+
+      let ws: WebSocket;
+      try {
+        ws = await createAccountWebSocket(accountID, event => {
+          const eventAccountID = Number(event.data.account_id ?? accountID);
+          const nodeID = String(event.data.node_id ?? event.data.chat_node_id ?? '');
+          const openedChat = selectedChatRef.current;
+          const isOpened = nodeID ? isChatMatch(openedChat, nodeID, eventAccountID) : false;
+          const openedChatID = isOpened && openedChat ? openedChat.id : 0;
+
+          if (event.type === 'pong') {
+            return;
+          }
+
+          if (event.type === 'chat_updated') {
+            if (!nodeID) return;
+            const chatExists = chatsRef.current.some(chat => isChatMatch(chat, nodeID, eventAccountID));
+            setChats(prev =>
+              updateChatRows(prev, {
+                nodeID,
+                accountID: eventAccountID,
+                withUser: String(event.data.with_user ?? ''),
+                lastMessage: String(event.data.last_message ?? event.data.text ?? ''),
+                updatedAt: String(event.data.updated_at ?? event.data.created_at ?? new Date().toISOString()),
+                unread: Boolean(event.data.unread),
+                isOpened,
+              }).rows,
+            );
+            if (!chatExists) {
+              void loadChatsRef.current(accountScope, true);
+            }
+            return;
+          }
+
+          if (event.type === 'message_confirmed') {
+            const tempID = Number(event.data.temp_id ?? 0);
+            const realID = Number(event.data.real_funpay_message_id ?? 0);
+            if (!tempID || !isOpened) return;
+
+            setMessages(prev =>
+              prev.map(message => {
+                if (Number(message.temp_id ?? 0) !== tempID) return message;
+                return {
+                  ...message,
+                  id: realID || message.id,
+                  temp_id: tempID,
+                  funpay_message_id: realID || message.funpay_message_id,
+                  cursor_message_id:
+                    realID > 0 && realID <= MAX_AUTHORITATIVE_FUNPAY_MESSAGE_ID
+                      ? realID
+                      : message.cursor_message_id,
+                  ingest_kind: message.ingest_kind ?? 'live',
+                  status: 'delivered',
+                };
+              }),
+            );
+            scheduleOpenedChatNormalization(openedChatID);
+            return;
+          }
+
+          if (event.type !== 'new_message' && event.type !== 'message_sent') return;
+          if (!nodeID) return;
+
+          const text = String(event.data.text ?? '');
+          const authorName = String(event.data.author_name ?? event.data.with_user ?? '');
+          const withUser = String(event.data.with_user ?? '');
+          const createdAt = String(event.data.created_at ?? new Date().toISOString());
+          const tempID = Number(event.data.temp_id ?? 0);
+          const incomingID = Number(event.data.id ?? event.data.funpay_message_id ?? 0);
+          const realFunpayMessageID = Number(
+            event.data.real_funpay_message_id ?? event.data.funpay_message_id ?? event.data.id ?? 0,
+          );
+          const isMyMsg = Boolean(event.data.is_my_msg);
+          const status = String(event.data.status ?? (isMyMsg ? 'pending' : 'delivered'));
+          const chatExists = chatsRef.current.some(chat => isChatMatch(chat, nodeID, eventAccountID));
+
+          setChats(prev =>
+            updateChatRows(prev, {
+              nodeID,
+              accountID: eventAccountID,
+              withUser,
+              lastMessage: text,
+              updatedAt: createdAt,
+              unread: !isMyMsg,
+              isOpened,
+            }).rows,
+          );
+
+          if (!chatExists) {
+            void loadChatsRef.current(accountScope, true);
+            return;
+          }
+          if (!isOpened || openedChatID === 0) return;
+
+          const nextMessage: ThreadMessage = {
+            id: incomingID || tempID || Date.now(),
+            temp_id: tempID || undefined,
+            funpay_message_id: realFunpayMessageID || undefined,
+            cursor_message_id:
+              realFunpayMessageID > 0 && realFunpayMessageID <= MAX_AUTHORITATIVE_FUNPAY_MESSAGE_ID
+                ? realFunpayMessageID
+                : undefined,
+            chat_id: openedChatID,
+            author_id: Number(event.data.author_id ?? 0) || undefined,
+            author_name: authorName || (isMyMsg ? 'Вы' : withUser || openedChat?.with_user || 'Пользователь'),
+            text,
+            is_my_msg: isMyMsg,
+            created_at: createdAt,
+            status: isMyMsg ? (status as ThreadMessage['status']) : 'delivered',
+            source: typeof event.data.source === 'string' ? event.data.source : null,
+            ingest_kind: event.type === 'new_message' ? 'live' : null,
+          };
+
+          setMessages(prev => {
+            const replaceAt = (predicate: (message: ThreadMessage) => boolean) => {
+              const index = prev.findIndex(predicate);
+              if (index < 0) return null;
+              const updated = [...prev];
+              updated[index] = choosePreferredMessage(updated[index], nextMessage);
+              return updated;
+            };
+
+            if (event.type === 'message_sent') {
+              const byTemp = tempID ? replaceAt(message => Number(message.temp_id ?? 0) === tempID) : null;
+              if (byTemp) return byTemp;
+
+              const localSend = resolveRecentLocalSend(openedChatID, tempID, text, createdAt);
+              if (localSend) {
+                const byToken = replaceAt(message => message.local_send_token === localSend.token);
+                if (byToken) {
+                  return byToken;
                 }
-              }}
-              placeholder={`Сообщение для ${active.buyer}`}
-              rows={2}
-              className="w-full resize-none rounded-t-xl bg-transparent px-4 pt-3 text-sm text-gray-800 outline-none placeholder:text-gray-400 dark:text-white dark:placeholder:text-gray-500"
-            />
+              }
 
-            {/* Toolbar */}
-            <div className="flex items-center justify-end px-3 pb-2.5 pt-1">
-              <button
-                onClick={sendMessage}
-                disabled={!input.trim()}
-                className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
-                  input.trim()
-                    ? "bg-brand-500 text-white hover:bg-brand-600"
-                    : "bg-gray-100 text-gray-300 dark:bg-gray-800 dark:text-gray-600"
-                }`}
-              >
-                <Icon name="paper-plane" className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          <p className="mt-1.5 text-center text-[11px] text-gray-400">
-            <kbd className="rounded border border-gray-200 px-1 py-px font-mono text-[10px] dark:border-gray-700">Enter</kbd> отправить
-            {" · "}
-            <kbd className="rounded border border-gray-200 px-1 py-px font-mono text-[10px] dark:border-gray-700">Shift+Enter</kbd> новая строка
-          </p>
+              const candidate = findRecentOwnPendingCandidate(prev, text, createdAt, localSend?.token);
+              if (candidate) {
+                return replaceAt(message => message === candidate) ?? prev;
+              }
+
+              const uniqueOwnEphemeral = findUniqueRecentOwnEphemeralCandidate(prev, nextMessage);
+              if (uniqueOwnEphemeral) {
+                return replaceAt(message => message === uniqueOwnEphemeral) ?? prev;
+              }
+
+              return prev;
+            }
+
+            if (isMyMsg) {
+              const byTemp = tempID ? replaceAt(message => Number(message.temp_id ?? 0) === tempID) : null;
+              if (byTemp) return byTemp;
+
+              const byFunpay = incomingID
+                ? replaceAt(message => Number(message.funpay_message_id ?? 0) === incomingID)
+                : null;
+              if (byFunpay) return byFunpay;
+
+              const localSend = resolveRecentLocalSend(openedChatID, tempID, text, createdAt);
+              const candidate = findRecentOwnPendingCandidate(prev, text, createdAt, localSend?.token);
+              if (candidate) {
+                return replaceAt(message => message === candidate) ?? prev;
+              }
+
+              const uniqueOwnEphemeral = findUniqueRecentOwnEphemeralCandidate(prev, nextMessage);
+              if (uniqueOwnEphemeral) {
+                return replaceAt(message => message === uniqueOwnEphemeral) ?? prev;
+              }
+
+              return prev;
+            }
+
+            return mergeThreadMessages(prev, [nextMessage], 'append-live');
+          });
+
+          requestAnimationFrame(scrollThreadToBottom);
+          scheduleOpenedChatNormalization(openedChatID);
+        });
+      } catch {
+        if (cancelled) return;
+        const backoff = Math.min(15000, 3000 * Math.pow(2, attempt));
+        const jitter = Math.floor(Math.random() * 400);
+        const timer = setTimeout(() => void connect(accountID, attempt + 1), backoff + jitter);
+        reconnectTimersRef.current.set(accountID, timer);
+        return;
+      }
+
+      if (cancelled) {
+        ws.close();
+        return;
+      }
+
+      ws.onopen = () => {
+        const previousHeartbeat = heartbeatTimersRef.current.get(accountID);
+        if (previousHeartbeat) {
+          clearInterval(previousHeartbeat);
+        }
+        const heartbeat = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping' }));
+          }
+        }, 30000);
+        heartbeatTimersRef.current.set(accountID, heartbeat);
+        scheduleResync();
+      };
+      ws.onerror = () => ws.close();
+      ws.onclose = () => {
+        const heartbeat = heartbeatTimersRef.current.get(accountID);
+        if (heartbeat) {
+          clearInterval(heartbeat);
+          heartbeatTimersRef.current.delete(accountID);
+        }
+        const currentSocket = socketsRef.current.get(accountID);
+        if (currentSocket === ws) {
+          socketsRef.current.delete(accountID);
+        }
+        if (cancelled) return;
+
+        const backoff = Math.min(15000, 3000 * Math.pow(2, attempt));
+        const jitter = Math.floor(Math.random() * 400);
+        const timer = setTimeout(() => void connect(accountID, attempt + 1), backoff + jitter);
+        reconnectTimersRef.current.set(accountID, timer);
+      };
+
+      socketsRef.current.set(accountID, ws);
+    };
+
+    reconnectTimersRef.current.forEach(timer => clearTimeout(timer));
+    reconnectTimersRef.current.clear();
+    heartbeatTimersRef.current.forEach(timer => clearInterval(timer));
+    heartbeatTimersRef.current.clear();
+    socketsRef.current.forEach(socket => socket.close());
+    socketsRef.current.clear();
+
+    targetAccountIDs.forEach(accountID => void connect(accountID));
+
+    return () => {
+      cancelled = true;
+      reconnectTimersRef.current.forEach(timer => clearTimeout(timer));
+      reconnectTimersRef.current.clear();
+      heartbeatTimersRef.current.forEach(timer => clearInterval(timer));
+      heartbeatTimersRef.current.clear();
+      socketsRef.current.forEach(socket => socket.close());
+      socketsRef.current.clear();
+      if (wsResyncTimerRef.current) {
+        clearTimeout(wsResyncTimerRef.current);
+        wsResyncTimerRef.current = null;
+      }
+      if (liveNormalizeTimerRef.current) {
+        clearTimeout(liveNormalizeTimerRef.current);
+        liveNormalizeTimerRef.current = null;
+      }
+    };
+  }, [accountScope, accounts, loadMessages, scheduleOpenedChatNormalization, scrollThreadToBottom]);
+
+  const filteredChats = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return chats;
+
+    return chats.filter(chat => {
+      const user = (chat.with_user || '').toLowerCase();
+      const preview = (chat.last_message || '').toLowerCase();
+      return user.includes(query) || preview.includes(query);
+    });
+  }, [chats, search]);
+
+  const selectedChatAccountName = useMemo(() => {
+    if (!selectedChat) return '';
+    const accountID = selectedChat.funpay_account_id;
+    if (!accountID) return accountScope === 'all' ? 'Все аккаунты' : '';
+    return accounts.find(account => account.id === accountID)?.username || `ID ${accountID}`;
+  }, [accounts, accountScope, selectedChat]);
+
+  async function switchAccount(nextScope: AccountScope) {
+    setAccountScope(nextScope);
+    setSelectedChatID(null);
+    setMobileThreadOpen(false);
+    setMessages([]);
+    hasPrependedHistoryRef.current = false;
+    setOldestMessageId(null);
+    setHasMoreMessages(false);
+    setMessagesError(null);
+    setLoading(true);
+    setLoadError(null);
+
+    try {
+      const nextSelected = await loadChats(nextScope, false);
+      if (nextSelected) {
+        await loadMessages(nextSelected, { mode: 'replace' });
+      } else {
+        setMessages([]);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Ошибка загрузки чатов';
+      setLoadError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const loadOlderMessages = useCallback(async () => {
+    const chat = selectedChatRef.current;
+    if (!chat) return;
+    if (oldestMessageId == null || !hasMoreMessages || loadingMessages || loadingMoreRef.current) return;
+    await loadMessages(chat.id, { beforeId: oldestMessageId, mode: 'prepend-history' });
+  }, [hasMoreMessages, loadMessages, loadingMessages, oldestMessageId]);
+
+  const handleThreadScroll = useCallback(() => {
+    const node = threadScrollRef.current;
+    if (!node) return;
+    if (node.scrollTop > 80) return;
+    void loadOlderMessages();
+  }, [loadOlderMessages]);
+
+  async function sendMessage() {
+    if (!selectedChat) return;
+
+    const text = sanitizeInput(inputValue.trim());
+    if (!text || sending) return;
+
+    const scopeAccountID = typeof accountScope === 'number' ? accountScope : null;
+    const targetAccountID = selectedChat.funpay_account_id ?? scopeAccountID;
+    if (!targetAccountID) {
+      toast.error('Не удалось определить аккаунт для отправки');
+      return;
+    }
+
+    setSending(true);
+    const nowISO = new Date().toISOString();
+    const optimisticID = -Date.now();
+    const localSendToken = `send:${selectedChat.id}:${Math.abs(optimisticID)}`;
+    const previousLastMessage = selectedChat.last_message;
+    const previousUpdatedAt = selectedChat.updated_at;
+    const optimisticAuthorName = accounts.find(account => account.id === targetAccountID)?.username || 'Вы';
+    const optimistic: ThreadMessage = {
+      id: optimisticID,
+      temp_id: optimisticID,
+      chat_id: selectedChat.id,
+      author_id: 0,
+      author_name: optimisticAuthorName,
+      text,
+      is_my_msg: true,
+      created_at: nowISO,
+      status: 'pending',
+      source: 'manual',
+      optimistic_sort_anchor: Date.now(),
+      local_send_token: localSendToken,
+    };
+
+    rememberLocalSend(selectedChat.id, {
+      token: localSendToken,
+      optimisticID,
+      text,
+      sentAt: messageTimestamp(nowISO) || Date.now(),
+    });
+
+    setMessages(prev => mergeThreadMessages(prev, [optimistic], 'append-live'));
+    setChats(prev =>
+      moveChatToTop(
+        prev.map(chat =>
+          chat.node_id === selectedChat.node_id &&
+          (chat.funpay_account_id ?? 0) === (selectedChat.funpay_account_id ?? 0)
+            ? { ...chat, last_message: text, updated_at: nowISO, unread: false, unread_count: 0 }
+            : chat,
+        ),
+        selectedChat.node_id,
+        selectedChat.funpay_account_id,
+      ),
+    );
+
+    setInputValue('');
+    requestAnimationFrame(() => {
+      resizeComposer();
+      scrollThreadToBottom();
+    });
+
+    try {
+      const response = await chatsApi.send(targetAccountID, selectedChat.node_id, text);
+      const pendingTempID = response?.temp_id ?? optimisticID;
+      const pendingTime = response?.created_at || nowISO;
+
+      setMessages(prev =>
+        prev.map(message =>
+          message.id === optimisticID || message.temp_id === optimisticID
+            ? {
+                ...message,
+                id: pendingTempID,
+                temp_id: pendingTempID,
+                created_at: pendingTime,
+                status: (response?.status as SendMessageResponse['status']) || 'pending',
+              }
+            : message,
+        ),
+      );
+      updateLocalSend(selectedChat.id, localSendToken, {
+        tempID: pendingTempID,
+        sentAt: messageTimestamp(pendingTime) || Date.now(),
+      });
+      lastMessagesLoadRef.current = { chatID: selectedChat.id, at: Date.now() };
+
+      setChats(prev =>
+        moveChatToTop(
+          prev.map(chat =>
+            chat.node_id === selectedChat.node_id &&
+            (chat.funpay_account_id ?? 0) === (selectedChat.funpay_account_id ?? 0)
+              ? { ...chat, last_message: text, updated_at: pendingTime, unread: false, unread_count: 0 }
+              : chat,
+          ),
+          selectedChat.node_id,
+          selectedChat.funpay_account_id,
+        ),
+      );
+    } catch (err) {
+      forgetLocalSend(selectedChat.id, localSendToken);
+      setMessages(prev =>
+        prev.filter(
+          message =>
+            !(
+              (message.id === optimisticID || message.temp_id === optimisticID) &&
+              !message.funpay_message_id &&
+              !message.row_id
+            ),
+        ),
+      );
+      setChats(prev =>
+        sortChatsByUpdatedAt(
+          prev.map(chat =>
+            chat.id === selectedChat.id
+              ? {
+                  ...chat,
+                  last_message: previousLastMessage,
+                  updated_at: previousUpdatedAt,
+                  unread: false,
+                  unread_count: 0,
+                }
+              : chat,
+          ),
+        ),
+      );
+      setInputValue(text);
+      requestAnimationFrame(() => {
+        resizeComposer();
+        composerRef.current?.focus();
+      });
+      toast.error(err instanceof Error ? err.message : 'Не удалось отправить сообщение');
+      void runSilentResync();
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function retrySelectedMessages() {
+    const chat = selectedChatRef.current;
+    if (!chat) return;
+    await handleChatSelect(chat);
+  }
+
+  return (
+    <div className="flex h-[calc(100vh-64px)] -m-4 overflow-hidden bg-white dark:bg-gray-950 md:-m-6">
+      {loading ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3">
+          <Loader2 size={28} className="animate-spin text-brand-500" />
+          <p className="text-sm text-gray-500 dark:text-gray-400">Подгружаем ваши чаты с FunPay...</p>
         </div>
-      </>)}
-      </div>
+      ) : loadError ? (
+        <div className="flex flex-1 items-center justify-center p-6">
+          <div className="max-w-sm rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <Icon name="alert" className="mx-auto mb-3 h-8 w-8 text-warning-500" />
+            <p className="mb-4 text-sm text-gray-600 dark:text-gray-300">{loadError}</p>
+            <button
+              type="button"
+              className="inline-flex h-9 items-center justify-center rounded-lg bg-brand-500 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-600"
+              onClick={() => setReloadKey(prev => prev + 1)}
+            >
+              Повторить
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <aside
+            data-testid="chat-list"
+            className={`${mobileThreadOpen ? 'hidden md:flex' : 'flex'} w-full shrink-0 flex-col border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 md:w-80 xl:w-96`}
+          >
+            <div className="border-b border-gray-200 px-4 py-4 dark:border-gray-800">
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-bold text-dark dark:text-white">Чаты</h1>
+                <span className="rounded-full border border-warning-400 px-1.5 py-px text-[10px] font-bold uppercase text-warning-500">
+                  Beta
+                </span>
+              </div>
+
+              <div className="relative mt-3">
+                <Icon name="list" className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+                <input
+                  value={search}
+                  onChange={event => setSearch(event.target.value)}
+                  placeholder="Поиск"
+                  className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-8 pr-3 text-sm text-gray-800 outline-none transition-colors focus:border-brand-400 focus:bg-white dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:bg-gray-800"
+                />
+              </div>
+
+              <div className="relative mt-2">
+                <select
+                  value={accountScope === 'all' ? 'all' : String(accountScope)}
+                  onChange={event => {
+                    const value = event.target.value;
+                    void switchAccount(value === 'all' ? 'all' : Number(value));
+                  }}
+                  className="w-full appearance-none rounded-lg border border-gray-200 bg-gray-50 py-2 pl-3 pr-8 text-sm text-gray-700 outline-none transition-colors focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                >
+                  <option value="all">Все аккаунты</option>
+                  {accounts.map(account => (
+                    <option key={account.id} value={account.id}>
+                      {account.username || `ID ${account.id}`}
+                    </option>
+                  ))}
+                </select>
+                <Icon name="chevron-down" className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-2">
+              {filteredChats.map(chat => {
+                const chatAccountName =
+                  chat.funpay_account_id != null
+                    ? accounts.find(account => account.id === chat.funpay_account_id)?.username || `ID ${chat.funpay_account_id}`
+                    : '';
+                const authorName = chat.with_user || 'Пользователь';
+                const isActive = chat.id === selectedChatID;
+
+                return (
+                  <button
+                    key={`${chat.funpay_account_id ?? 'account'}:${chat.id}`}
+                    type="button"
+                    data-testid="chat-row"
+                    className={`group w-full px-3 py-2 text-left transition-colors ${
+                      isActive ? 'bg-brand-500/10 dark:bg-brand-500/15' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                    }`}
+                    onClick={() => {
+                      setMobileThreadOpen(true);
+                      void handleChatSelect(chat);
+                    }}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white ${getAvatarToneClass(authorName)}`}
+                        aria-hidden="true"
+                      >
+                        {getAvatarLabel(authorName)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className={`truncate text-sm font-semibold ${isActive ? 'text-brand-600 dark:text-brand-400' : 'text-gray-800 dark:text-gray-100'}`}>
+                            {authorName}
+                          </span>
+                          <span className="shrink-0 text-[11px] text-gray-400">{formatTime(chat.updated_at)}</span>
+                        </div>
+                        {accountScope === 'all' && chatAccountName ? (
+                          <div className="truncate text-[11px] text-gray-400">{chatAccountName}</div>
+                        ) : null}
+                        <p className="truncate text-xs text-gray-400">{chat.last_message || ''}</p>
+                      </div>
+                      {chat.unread_count > 0 && !isActive ? (
+                        <span className="flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-bold text-white">
+                          {chat.unread_count > 9 ? '9+' : chat.unread_count}
+                        </span>
+                      ) : null}
+                    </div>
+                  </button>
+                );
+              })}
+
+              {filteredChats.length === 0 ? (
+                <div className="px-4 py-10 text-center">
+                  <Icon name="chat" className="mx-auto mb-3 h-8 w-8 text-gray-300 dark:text-gray-700" />
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                    {chats.length === 0 ? 'Нет чатов' : 'Чаты не найдены'}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    {chats.length === 0 ? 'Обновите страницу после синхронизации аккаунта.' : 'Попробуйте изменить поиск.'}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          </aside>
+
+          <section
+            data-testid="chat-thread"
+            className={`${mobileThreadOpen ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col bg-white dark:bg-gray-950`}
+          >
+            {!selectedChat ? (
+              <div className="flex flex-1 items-center justify-center p-8 text-center">
+                <div>
+                  <Icon name="chat" className="mx-auto mb-3 h-10 w-10 text-gray-300 dark:text-gray-700" />
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Выберите чат</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <header className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-800 md:px-6">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <button
+                      type="button"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 md:hidden"
+                      onClick={() => setMobileThreadOpen(false)}
+                      aria-label="Назад к списку чатов"
+                    >
+                      <Icon name="chevron-left" className="h-4 w-4" />
+                    </button>
+                    <div
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white ${getAvatarToneClass(selectedChat.with_user || 'Пользователь')}`}
+                      aria-hidden="true"
+                    >
+                      {getAvatarLabel(selectedChat.with_user || 'Пользователь')}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-bold text-gray-900 dark:text-white">{selectedChat.with_user || 'Пользователь'}</div>
+                      <div className="truncate text-xs text-gray-400">{selectedChatAccountName}</div>
+                    </div>
+                  </div>
+                  {refreshingMessages ? <Loader2 size={16} className="animate-spin text-gray-400" /> : null}
+                </header>
+
+                <div className="min-h-0 flex-1 overflow-hidden">
+                  <div
+                    ref={threadScrollRef}
+                    data-testid="thread-messages"
+                    className="h-full overflow-y-auto py-4"
+                    onScroll={handleThreadScroll}
+                  >
+                    {loadingMore ? (
+                      <div className="flex justify-center px-6 py-2">
+                        <Loader2 size={16} className="animate-spin text-gray-400" />
+                      </div>
+                    ) : null}
+
+                    {loadingMessages && messages.length === 0 ? (
+                      <div className="space-y-3 px-6 py-2">
+                        <div className="h-12 w-[72%] animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800" />
+                        <div className="h-12 w-[58%] animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800" />
+                        <div className="h-12 w-[66%] animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800" />
+                      </div>
+                    ) : messagesError ? (
+                      <div className="flex h-full items-center justify-center p-8 text-center">
+                        <div>
+                          <p className="mb-3 text-sm text-gray-500 dark:text-gray-400">{messagesError || 'Не удалось загрузить сообщения'}</p>
+                          <button
+                            type="button"
+                            className="inline-flex h-9 items-center justify-center rounded-lg border border-gray-200 px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                            onClick={() => void retrySelectedMessages()}
+                          >
+                            Повторить
+                          </button>
+                        </div>
+                      </div>
+                    ) : messages.length === 0 ? (
+                      <div className="flex h-full items-center justify-center p-8 text-center">
+                        <div>
+                          <Icon name="chat" className="mx-auto mb-3 h-10 w-10 text-gray-300 dark:text-gray-700" />
+                          <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Нет сообщений</p>
+                        </div>
+                      </div>
+                    ) : (
+                      threadRenderItems.map(item => {
+                        if (item.type === 'separator') {
+                          return (
+                            <div key={item.key} className="flex items-center gap-3 px-6 py-3">
+                              <div className="h-px flex-1 bg-gray-100 dark:bg-gray-800" />
+                              <span className="shrink-0 text-xs font-medium text-gray-400">{item.label}</span>
+                              <div className="h-px flex-1 bg-gray-100 dark:bg-gray-800" />
+                            </div>
+                          );
+                        }
+
+                        const message = item.message;
+                        const isOutgoing = message.is_my_msg;
+                        const authorName = (message.author_name || (isOutgoing ? 'Вы' : selectedChat.with_user || 'Собеседник')).trim() || 'Пользователь';
+                        const formattedTime = formatTime(message.created_at);
+
+                        return (
+                          <div
+                            key={item.key}
+                            data-testid={isOutgoing ? 'message-outgoing' : 'message-incoming'}
+                            className="group flex gap-3 px-4 py-1.5 hover:bg-gray-50 dark:hover:bg-white/[0.02] md:px-6"
+                          >
+                            {item.grouped ? (
+                              <div className="w-9 shrink-0" />
+                            ) : (
+                              <div
+                                className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white ${isOutgoing ? 'bg-brand-500' : getAvatarToneClass(authorName)}`}
+                                aria-hidden="true"
+                              >
+                                {getAvatarLabel(authorName)}
+                              </div>
+                            )}
+
+                            <div className="min-w-0 flex-1">
+                              {item.grouped ? (
+                                <div className="h-4">
+                                  <span className="text-[11px] text-gray-400 opacity-0 transition-opacity group-hover:opacity-100">{formattedTime}</span>
+                                </div>
+                              ) : (
+                                <div className="mb-1 flex items-center gap-2">
+                                  <span className={`truncate text-sm font-bold ${isOutgoing ? 'text-brand-600 dark:text-brand-400' : 'text-gray-900 dark:text-white'}`}>
+                                    {authorName}
+                                  </span>
+                                  <span className="shrink-0 text-xs text-gray-400">{formattedTime}</span>
+                                  {isOutgoing ? (
+                                    <span aria-label={message.status === 'delivered' ? 'Доставлено' : 'Отправлено'} className="shrink-0">
+                                      {message.status === 'delivered' ? (
+                                        <CheckCheck size={12} className="text-brand-500" />
+                                      ) : (
+                                        <Check size={12} className="text-gray-400" />
+                                      )}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              )}
+                              <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-700 dark:text-gray-300">{message.text}</p>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                <footer data-testid="chat-composer" className="border-t border-gray-200 px-4 py-4 dark:border-gray-800 md:px-6">
+                  <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+                    <textarea
+                      ref={composerRef}
+                      value={inputValue}
+                      onChange={event => setInputValue(event.target.value)}
+                      onInput={event => resizeComposer(event.currentTarget)}
+                      onKeyDown={event => {
+                        if (event.key === 'Enter' && !event.shiftKey) {
+                          event.preventDefault();
+                          void sendMessage();
+                        }
+                      }}
+                      placeholder="Введите сообщение..."
+                      rows={1}
+                      className="max-h-40 min-h-[48px] w-full resize-none rounded-t-xl bg-transparent px-4 pt-3 text-sm text-gray-800 outline-none placeholder:text-gray-400 dark:text-white dark:placeholder:text-gray-500"
+                    />
+                    <div className="flex items-center justify-end px-3 pb-2.5 pt-1">
+                      <button
+                        type="button"
+                        aria-label="Отправить сообщение"
+                        onClick={() => void sendMessage()}
+                        disabled={sending || !inputValue.trim()}
+                        className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+                          inputValue.trim() && !sending
+                            ? 'bg-brand-500 text-white hover:bg-brand-600'
+                            : 'bg-gray-100 text-gray-300 dark:bg-gray-800 dark:text-gray-600'
+                        }`}
+                      >
+                        {sending ? <Loader2 size={15} className="animate-spin" /> : <SendHorizontal size={15} />}
+                      </button>
+                    </div>
+                  </div>
+                </footer>
+              </>
+            )}
+          </section>
+        </>
+      )}
     </div>
   );
 }

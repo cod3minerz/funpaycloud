@@ -307,12 +307,13 @@ test('mobile chats renders selected thread and composer', async ({ page }) => {
   await page.goto('/platform/chats');
   await expect(page.getByRole('heading', { name: 'Чаты' })).toBeVisible();
 
-  const firstChat = page.locator('.platform-chat-row').first();
+  const firstChat = page.getByTestId('chat-row').first();
   await expect(firstChat).toBeVisible();
 
   await firstChat.click();
-  await expect(page.locator('.platform-chat-thread')).toBeVisible();
-  await expect(page.getByText('DigitalRush').first()).toBeVisible();
+  const thread = page.getByTestId('chat-thread');
+  await expect(thread).toBeVisible();
+  await expect(thread.getByText('DigitalRush').first()).toBeVisible();
   await expect(page.getByPlaceholder('Введите сообщение...')).toBeVisible();
 
   await assertNoHorizontalOverflow(page);
@@ -322,11 +323,11 @@ test('desktop chats keeps split view list + thread', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/platform/chats');
 
-  await expect(page.locator('.platform-chat-list')).toBeVisible();
-  await expect(page.locator('.platform-chat-thread')).toBeVisible();
+  await expect(page.getByTestId('chat-list')).toBeVisible();
+  await expect(page.getByTestId('chat-thread')).toBeVisible();
   const composer = page.getByPlaceholder('Введите сообщение...');
   if (!(await composer.isVisible())) {
-    await page.locator('.platform-chat-row').first().click();
+    await page.getByTestId('chat-row').first().click();
   }
   await expect(page.getByPlaceholder('Введите сообщение...')).toBeVisible();
 });
