@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/platform2/components/ui/table";
 import Icon from "@/platform2/icons";
-import { accountsApi, ApiAccount } from "@/lib/api";
+import { accountsApi, billingApi, ApiAccount } from "@/lib/api";
 import { toast } from "sonner";
 
 type Account = {
@@ -68,10 +68,10 @@ const proxyOptions = [
   {
     id: "individual",
     title: "Индивидуальный прокси",
-    description: "Ваш личный безопасный прокси.",
-    action: "Скоро",
+    description: "Тестовая оплата личного прокси через T-Bank.",
+    action: "Тест 10 ₽",
     icon: "user-circle" as const,
-    available: false,
+    available: true,
   },
   {
     id: "external",
@@ -98,9 +98,39 @@ export default function AccountsPage() {
   const [filterStatus, setFilterStatus] = useState<"" | "online" | "offline">("");
   const [runningAll, setRunningAll] = useState(false);
   const [stoppingAll, setStoppingAll] = useState(false);
+  const [proxyPaymentLoading, setProxyPaymentLoading] = useState(false);
 
   useEffect(() => {
     accountsApi.list().then((list) => setAccounts(list.map(mapApiAccount))).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const proxyPayment = params.get("proxyPayment");
+    const paymentId = params.get("paymentId");
+    if (!proxyPayment || !paymentId) return;
+
+    window.history.replaceState(null, "", "/platform/accounts");
+    if (proxyPayment === "failed") {
+      toast.error("Тестовая оплата не прошла");
+      return;
+    }
+
+    billingApi.getProxyCheckoutStatus(paymentId)
+      .then((status) => {
+        if (status.status === "paid") {
+          toast.success("Платеж прошел, тест оплаты успешен");
+        } else if (status.status === "failed") {
+          toast.error("Тестовая оплата не прошла");
+        } else {
+          toast.message("Платеж создан, статус еще обновляется");
+        }
+      })
+      .catch((err) => {
+        const message = err instanceof Error ? err.message : "Не удалось проверить статус оплаты";
+        toast.error(message);
+      });
   }, []);
 
   async function handleAddAccount() {
@@ -188,6 +218,24 @@ export default function AccountsPage() {
       toast.error("Не удалось подключить прокси");
     }
     setIsProxyModal(false);
+  }
+
+  async function handleIndividualProxyPayment(accountId: number) {
+    setProxyPaymentLoading(true);
+    try {
+      const result = await billingApi.createIndividualProxyPayment({ account_id: accountId });
+      toast.success("Переходим к тестовой оплате T-Bank...");
+      if (result.checkout_url) {
+        window.location.assign(result.checkout_url);
+        return;
+      }
+      throw new Error("Банк не вернул ссылку на оплату");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Не удалось создать тестовый платеж";
+      toast.error(message);
+    } finally {
+      setProxyPaymentLoading(false);
+    }
   }
 
   async function handleConnectExternalProxy(accountId: number) {
@@ -476,7 +524,10 @@ export default function AccountsPage() {
       <Modal isOpen={isProxyModal} onClose={() => setIsProxyModal(false)} className="max-w-3xl p-8">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Выберите прокси</h2>
         <p className="mt-1 text-sm text-gray-500">
-          Аккаунт: <span className="font-semibold text-gray-800 dark:text-white">tonminerz</span>
+          Аккаунт:{" "}
+          <span className="font-semibold text-gray-800 dark:text-white">
+            {accounts.find((acc) => acc.apiId === proxyTargetId)?.username ?? "—"}
+          </span>
         </p>
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
           {proxyOptions.map((opt) => (
@@ -494,25 +545,27 @@ export default function AccountsPage() {
                 </div>
               </div>
               <button
-                disabled={!opt.available}
+                disabled={!opt.available || (opt.id === "individual" && proxyPaymentLoading)}
                 onClick={() => {
                   if (opt.id === "external") {
                     setIsProxyModal(false);
                     setIsExternalProxyModal(true);
                   } else if (opt.id === "free" && proxyTargetId != null) {
                     handleConnectFreeProxy(proxyTargetId);
+                  } else if (opt.id === "individual" && proxyTargetId != null) {
+                    handleIndividualProxyPayment(proxyTargetId);
                   } else {
                     setIsProxyModal(false);
                   }
                 }}
                 className={`mt-2 flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors ${
-                  opt.available
+                  opt.available && !(opt.id === "individual" && proxyPaymentLoading)
                     ? "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
                     : "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-400 dark:border-gray-800 dark:bg-gray-900"
                 }`}
               >
                 <Icon name="plug-in" className="h-4 w-4" />
-                {opt.action}
+                {opt.id === "individual" && proxyPaymentLoading ? "Создаем..." : opt.action}
               </button>
             </div>
           ))}
