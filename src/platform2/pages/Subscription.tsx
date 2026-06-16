@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/platform2/components/ui/card";
 import { Button } from "@/platform2/components/ui/button";
 import {
@@ -135,9 +137,11 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
 }
 
 export default function SubscriptionPage() {
+  const searchParams = useSearchParams();
   const [annual, setAnnual] = useState(false);
   const [showComparison, setShowComparison] = useState(true);
   const [currentPlan, setCurrentPlan] = useState("pro");
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isExpired, setIsExpired] = useState(false);
   const [isTrial, setIsTrial] = useState(false);
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
@@ -145,8 +149,9 @@ export default function SubscriptionPage() {
   const [periodPercent, setPeriodPercent] = useState(90);
   const [purchasing, setPurchasing] = useState<string | null>(null);
 
-  useEffect(() => {
-    authApi.me().then((me) => {
+  async function refreshProfile() {
+    try {
+      const me = await authApi.me();
       const plan = (me.plan ?? "").toLowerCase();
       if (plan) setCurrentPlan(plan);
 
@@ -172,24 +177,69 @@ export default function SubscriptionPage() {
       if (expired) {
         setPeriodPercent(0);
       } else if (expiresAt) {
-        const total = isTrial ? 7 : 30;
+        const total = plan === "trial" ? 7 : annual ? 365 : 30;
         setPeriodPercent(Math.max(0, Math.min(100, Math.round((left / total) * 100))));
       }
-    }).catch(() => {});
+    } catch {
+      // profile refresh is best-effort here
+    }
+  }
+
+  useEffect(() => {
+    const planFromQuery = searchParams.get("plan");
+    if (planFromQuery && ["lite", "pro", "ultra"].includes(planFromQuery)) {
+      setSelectedPlan(planFromQuery);
+    }
+    const periodFromQuery = searchParams.get("period");
+    if (periodFromQuery === "year") {
+      setAnnual(true);
+    }
+    refreshProfile();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function handleChoosePlan(planId: string) {
-    if (planId === currentPlan) return;
+  useEffect(() => {
+    const paymentResult = searchParams.get("subscriptionPayment");
+    const paymentId = searchParams.get("paymentId");
+    if (!paymentResult || !paymentId) return;
+
+    let cancelled = false;
+    async function verifyPayment() {
+      try {
+        const status = await billingApi.getCheckoutStatus(paymentId);
+        if (cancelled) return;
+        if (status.status === "paid") {
+          toast.success("Подписка оплачена и активирована");
+          await refreshProfile();
+          return;
+        }
+        if (status.status === "failed" || paymentResult === "failed") {
+          toast.error("Платеж не прошел");
+          return;
+        }
+        toast.info("Платеж еще обрабатывается");
+      } catch {
+        if (!cancelled) toast.error("Не удалось проверить статус платежа");
+      }
+    }
+    verifyPayment();
+    return () => {
+      cancelled = true;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  async function handleChoosePlan(planId: string, allowCurrent = false) {
+    if (planId === currentPlan && !allowCurrent) return;
     setPurchasing(planId);
     try {
       const resp = await billingApi.createSubscriptionPayment({
         plan: planId as "lite" | "pro" | "ultra",
-        period_days: 30,
+        period_days: annual ? 365 : 30,
       });
-      window.open(resp.checkout_url, "_blank");
-    } catch {
-      // ignore
+      window.location.assign(resp.checkout_url);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось создать платеж");
     } finally {
       setPurchasing(null);
     }
@@ -250,10 +300,10 @@ export default function SubscriptionPage() {
               <Button
                 variant={isExpired ? "primary" : "outline"}
                 className="whitespace-nowrap"
-                onClick={() => handleChoosePlan(currentPlan)}
+                onClick={() => handleChoosePlan(currentPlan, true)}
                 disabled={purchasing === currentPlan}
               >
-                {isExpired ? "Возобновить подписку" : "Продлить на месяц"}
+                {isExpired ? "Возобновить подписку" : annual ? "Продлить на год" : "Продлить на месяц"}
               </Button>
             </div>
           </div>
@@ -301,7 +351,7 @@ export default function SubscriptionPage() {
             <div
               key={plan.id}
               className={`relative flex flex-col rounded-2xl border p-6 transition-shadow ${
-                plan.current
+                plan.current || selectedPlan === plan.id
                   ? "border-brand-500 shadow-[0_0_0_1px_#465fff] dark:border-brand-500"
                   : "border-gray-200 dark:border-gray-700"
               }`}

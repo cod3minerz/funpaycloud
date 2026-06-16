@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { authApi } from '@/lib/api';
 import Button from './Button';
 
 type Plan = {
@@ -26,10 +27,10 @@ const plans: Plan[] = [
       { text: 'Автоподнятие лотов' },
       { text: 'Автовыдача товаров' },
       { text: 'Аналитика 7 дней' },
-      { text: '2 правила автоматизации' },
+      { text: 'Конструктор сценариев (1 сцен.)' },
       { text: 'Плагины', off: true },
       { text: 'AI автоответы', off: true },
-      { text: 'Поддержка @funpay_cloud', off: true },
+      { text: 'AI-узлы в конструкторе', off: true },
     ],
     variant: 'light',
     cta: 'Выбрать Lite',
@@ -45,10 +46,11 @@ const plans: Plan[] = [
       { text: 'Автоподнятие лотов' },
       { text: 'Автовыдача товаров' },
       { text: 'Аналитика 30 дней + CSV' },
-      { text: '10 правил автоматизации' },
+      { text: 'Конструктор (5 сценариев)' },
+      { text: 'AI-узлы в конструкторе' },
       { text: 'Базовые плагины (20+)' },
       { text: 'AI ответы 500 msg/мес' },
-      { text: 'Приоритет @funpay_cloud' },
+      { text: 'Приоритет @fpcloud_support' },
     ],
     variant: 'pro',
     cta: 'Перейти на Pro',
@@ -63,11 +65,11 @@ const plans: Plan[] = [
       { text: 'Безлимит аккаунтов' },
       { text: 'Всё из Pro' },
       { text: 'Аналитика без ограничений' },
-      { text: 'Безлимит автоматизации' },
+      { text: 'Конструктор (20 сценариев)' },
+      { text: 'AI-узлы без ограничений' },
       { text: 'VIP плагины' },
       { text: 'AI ответы без лимита' },
-      { text: 'Персональная поддержка @funpay_cloud' },
-      { text: 'API доступ' },
+      { text: 'Персональная поддержка @fpcloud_support' },
     ],
     variant: 'light',
     cta: 'Перейти на Ultra',
@@ -76,6 +78,21 @@ const plans: Plan[] = [
 
 export default function LandingPricing() {
   const [mode, setMode] = useState<'m' | 'y'>('m');
+  const [loggedIn, setLoggedIn] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    authApi.me()
+      .then(() => {
+        if (!cancelled) setLoggedIn(true);
+      })
+      .catch(() => {
+        if (!cancelled) setLoggedIn(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <section id="pricing">
@@ -104,6 +121,11 @@ export default function LandingPricing() {
               {(() => {
                 const oldPrice = mode === 'm' ? plan.oldMonthly : Math.round(plan.oldMonthly * 0.8);
                 const currentPrice = mode === 'm' ? plan.monthly : plan.yearly;
+                const planId = plan.title.toLowerCase();
+                const period = mode === 'y' ? 'year' : 'month';
+                const ctaHref = loggedIn
+                  ? `/platform/subscription?plan=${planId}&period=${period}`
+                  : `/auth/register?plan=${planId}&period=${period}`;
 
                 return (
                   <>
@@ -131,7 +153,7 @@ export default function LandingPricing() {
                     <Button
                       variant={plan.variant === 'pro' ? 'accent' : 'outline'}
                       size="lg"
-                      href="/auth/register"
+                      href={ctaHref}
                       className="plan-cta"
                     >
                       {plan.cta}
