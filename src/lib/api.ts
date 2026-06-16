@@ -1195,6 +1195,7 @@ export type SubscriptionCheckoutStatus = {
 export type CreateProxyPaymentResponse = {
   payment_id: number;
   status: string;
+  product?: 'proxy_lite' | 'proxy_pro' | string;
   amount: number;
   currency: string;
   checkout_url: string;
@@ -1207,6 +1208,9 @@ export type ProxyCheckoutStatus = {
   amount: number;
   currency: string;
   type: string;
+  product?: string;
+  provision_status?: 'pending' | 'success' | 'failed' | string;
+  provision_error?: string;
   created_at: string;
   paid_at?: string | null;
   failed_at?: string | null;
@@ -1236,6 +1240,15 @@ export const billingApi = {
     }),
   getCheckoutStatus: (paymentId: number | string) =>
     apiRequest<SubscriptionCheckoutStatus>(`/api/billing/subscriptions/checkout-status/${paymentId}`),
+  createProxyPayment: (payload: {
+    account_id: number;
+    product: 'proxy_lite' | 'proxy_pro';
+    idempotency_key?: string;
+  }) =>
+    apiRequest<CreateProxyPaymentResponse>('/api/billing/proxies/create-payment', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   createIndividualProxyPayment: (payload: { account_id: number; idempotency_key?: string }) =>
     apiRequest<CreateProxyPaymentResponse>('/api/billing/proxies/individual/create-payment', {
       method: 'POST',

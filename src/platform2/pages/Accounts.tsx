@@ -66,11 +66,19 @@ const proxyOptions = [
     available: true,
   },
   {
-    id: "individual",
-    title: "Индивидуальный прокси",
-    description: "Тестовая оплата личного прокси через T-Bank.",
-    action: "Тест 10 ₽",
+    id: "proxy_lite",
+    title: "Proxy Lite",
+    description: "Личный shared IPv4 RU на месяц.",
+    action: "79 ₽/мес",
     icon: "user-circle" as const,
+    available: true,
+  },
+  {
+    id: "proxy_pro",
+    title: "Proxy Pro",
+    description: "Личный выделенный IPv4 RU на месяц.",
+    action: "139 ₽/мес",
+    icon: "lock" as const,
     available: true,
   },
   {
@@ -113,16 +121,21 @@ export default function AccountsPage() {
 
     window.history.replaceState(null, "", "/platform/accounts");
     if (proxyPayment === "failed") {
-      toast.error("Тестовая оплата не прошла");
+      toast.error("Оплата прокси не прошла");
       return;
     }
 
     billingApi.getProxyCheckoutStatus(paymentId)
       .then((status) => {
-        if (status.status === "paid") {
-          toast.success("Платеж прошел, тест оплаты успешен");
+        if (status.status === "paid" && status.provision_status === "success") {
+          toast.success("Прокси оплачен и подключен");
+          return accountsApi.list().then((list) => setAccounts(list.map(mapApiAccount)));
+        } else if (status.status === "paid" && status.provision_status === "failed") {
+          toast.error(status.provision_error || "Оплата прошла, но прокси не подключился. Напишите в @fpcloud_support");
+        } else if (status.status === "paid") {
+          toast.message("Оплата прошла, прокси подключается");
         } else if (status.status === "failed") {
-          toast.error("Тестовая оплата не прошла");
+          toast.error("Оплата прокси не прошла");
         } else {
           toast.message("Платеж создан, статус еще обновляется");
         }
@@ -220,18 +233,18 @@ export default function AccountsPage() {
     setIsProxyModal(false);
   }
 
-  async function handleIndividualProxyPayment(accountId: number) {
+  async function handlePaidProxyPayment(accountId: number, product: "proxy_lite" | "proxy_pro") {
     setProxyPaymentLoading(true);
     try {
-      const result = await billingApi.createIndividualProxyPayment({ account_id: accountId });
-      toast.success("Переходим к тестовой оплате T-Bank...");
+      const result = await billingApi.createProxyPayment({ account_id: accountId, product });
+      toast.success("Переходим к оплате T-Bank...");
       if (result.checkout_url) {
         window.location.assign(result.checkout_url);
         return;
       }
       throw new Error("Банк не вернул ссылку на оплату");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Не удалось создать тестовый платеж";
+      const message = err instanceof Error ? err.message : "Не удалось создать платеж";
       toast.error(message);
     } finally {
       setProxyPaymentLoading(false);
@@ -529,7 +542,7 @@ export default function AccountsPage() {
             {accounts.find((acc) => acc.apiId === proxyTargetId)?.username ?? "—"}
           </span>
         </p>
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {proxyOptions.map((opt) => (
             <div
               key={opt.id}
@@ -545,27 +558,27 @@ export default function AccountsPage() {
                 </div>
               </div>
               <button
-                disabled={!opt.available || (opt.id === "individual" && proxyPaymentLoading)}
+                disabled={!opt.available || ((opt.id === "proxy_lite" || opt.id === "proxy_pro") && proxyPaymentLoading)}
                 onClick={() => {
                   if (opt.id === "external") {
                     setIsProxyModal(false);
                     setIsExternalProxyModal(true);
                   } else if (opt.id === "free" && proxyTargetId != null) {
                     handleConnectFreeProxy(proxyTargetId);
-                  } else if (opt.id === "individual" && proxyTargetId != null) {
-                    handleIndividualProxyPayment(proxyTargetId);
+                  } else if ((opt.id === "proxy_lite" || opt.id === "proxy_pro") && proxyTargetId != null) {
+                    handlePaidProxyPayment(proxyTargetId, opt.id);
                   } else {
                     setIsProxyModal(false);
                   }
                 }}
                 className={`mt-2 flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors ${
-                  opt.available && !(opt.id === "individual" && proxyPaymentLoading)
+                  opt.available && !((opt.id === "proxy_lite" || opt.id === "proxy_pro") && proxyPaymentLoading)
                     ? "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
                     : "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-400 dark:border-gray-800 dark:bg-gray-900"
                 }`}
               >
                 <Icon name="plug-in" className="h-4 w-4" />
-                {opt.id === "individual" && proxyPaymentLoading ? "Создаем..." : opt.action}
+                {(opt.id === "proxy_lite" || opt.id === "proxy_pro") && proxyPaymentLoading ? "Создаем..." : opt.action}
               </button>
             </div>
           ))}
