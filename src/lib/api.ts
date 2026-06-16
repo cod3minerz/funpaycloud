@@ -1192,6 +1192,26 @@ export type SubscriptionCheckoutStatus = {
   failed_at?: string | null;
 };
 
+export type CreateProxyPaymentResponse = {
+  payment_id: number;
+  status: string;
+  amount: number;
+  currency: string;
+  checkout_url: string;
+  idempotency_key: string;
+};
+
+export type ProxyCheckoutStatus = {
+  id: number;
+  status: string;
+  amount: number;
+  currency: string;
+  type: string;
+  created_at: string;
+  paid_at?: string | null;
+  failed_at?: string | null;
+};
+
 export const financesApi = {
   get: (params: { account_id?: number | string; limit?: number } = {}) => {
     const query = new URLSearchParams();
@@ -1216,6 +1236,13 @@ export const billingApi = {
     }),
   getCheckoutStatus: (paymentId: number | string) =>
     apiRequest<SubscriptionCheckoutStatus>(`/api/billing/subscriptions/checkout-status/${paymentId}`),
+  createIndividualProxyPayment: (payload: { account_id: number; idempotency_key?: string }) =>
+    apiRequest<CreateProxyPaymentResponse>('/api/billing/proxies/individual/create-payment', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getProxyCheckoutStatus: (paymentId: number | string) =>
+    apiRequest<ProxyCheckoutStatus>(`/api/billing/proxies/checkout-status/${paymentId}`),
 };
 
 // ── Warehouse ─────────────────────────────────────────────────────────────────

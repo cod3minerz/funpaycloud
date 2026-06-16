@@ -22,7 +22,7 @@ import {
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { Sheet, SheetContent } from '@/app/components/ui/sheet';
-import { accountsApi, ApiAccount } from '@/lib/api';
+import { accountsApi, billingApi, ApiAccount } from '@/lib/api';
 import { sanitizeInput, validateGoldenKey } from '@/lib/sanitize';
 import {
   DataTableWrap,
@@ -157,7 +157,7 @@ export default function Accounts() {
   const [switchingToExternalProxyDialog, setSwitchingToExternalProxyDialog] = useState(false);
   const [proxyAccountID, setProxyAccountID] = useState<number | null>(null);
   const [proxyConnecting, setProxyConnecting] = useState(false);
-  const [proxyConnectingMode, setProxyConnectingMode] = useState<'free' | 'external' | null>(null);
+  const [proxyConnectingMode, setProxyConnectingMode] = useState<'free' | 'external' | 'individual' | null>(null);
   const [proxyConnectError, setProxyConnectError] = useState<string | null>(null);
   const [proxySupportURL, setProxySupportURL] = useState('https://t.me/fpcloud_support');
   const [externalProxyStatus, setExternalProxyStatus] = useState<'form' | 'checking' | 'success'>('form');
@@ -193,6 +193,35 @@ export default function Accounts() {
     const interval = setInterval(() => setMinuteTick(Date.now()), 60_000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const proxyPayment = params.get('proxyPayment');
+    const paymentId = params.get('paymentId');
+    if (!proxyPayment || !paymentId) return;
+
+    router.replace('/platform/accounts', { scroll: false });
+    if (proxyPayment === 'failed') {
+      toast.error('Тестовая оплата не прошла');
+      return;
+    }
+
+    billingApi.getProxyCheckoutStatus(paymentId)
+      .then(status => {
+        if (status.status === 'paid') {
+          toast.success('Платеж прошел, тест оплаты успешен');
+        } else if (status.status === 'failed') {
+          toast.error('Тестовая оплата не прошла');
+        } else {
+          toast.message('Платеж создан, статус еще обновляется');
+        }
+      })
+      .catch(err => {
+        const message = err instanceof Error ? err.message : 'Не удалось проверить статус оплаты';
+        toast.error(message);
+      });
+  }, [router]);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
@@ -433,6 +462,31 @@ export default function Accounts() {
       ) {
         setProxySupportURL('https://t.me/fpcloud_support');
       }
+    } finally {
+      setProxyConnecting(false);
+      setProxyConnectingMode(null);
+    }
+  }
+
+  async function startIndividualProxyPayment() {
+    if (!proxyTargetAccount) return;
+    setProxyConnecting(true);
+    setProxyConnectingMode('individual');
+    setProxyConnectError(null);
+    try {
+      const result = await billingApi.createIndividualProxyPayment({
+        account_id: proxyTargetAccount.id,
+      });
+      toast.success('Переходим к тестовой оплате T-Bank...');
+      if (result.checkout_url) {
+        window.location.assign(result.checkout_url);
+        return;
+      }
+      throw new Error('Банк не вернул ссылку на оплату');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Не удалось создать тестовый платеж';
+      setProxyConnectError(message);
+      toast.error(message);
     } finally {
       setProxyConnecting(false);
       setProxyConnectingMode(null);
@@ -1053,11 +1107,16 @@ export default function Accounts() {
               )}
             </button>
 
-            <div className="platform-proxy-card platform-proxy-card-muted">
+            <button
+              type="button"
+              className="platform-proxy-card platform-proxy-card-action text-left disabled:opacity-60"
+              onClick={startIndividualProxyPayment}
+              disabled={proxyConnecting || !proxyTargetAccount}
+            >
               <div className="platform-proxy-card-content">
                 <h4 className="platform-proxy-card-title">Индивидуальный прокси</h4>
                 <p className="platform-proxy-card-description">
-                  Ваш личный безопасный прокси.
+                  Тестовая оплата личного прокси через T-Bank.
                 </p>
                 <div className="platform-proxy-card-illustration">
                   <Image
@@ -1069,11 +1128,18 @@ export default function Accounts() {
                   />
                 </div>
               </div>
-              <span className="platform-proxy-card-badge">
-                <BadgeDollarSign size={13} />
-                Скоро
-              </span>
-            </div>
+              {proxyConnecting && proxyConnectingMode === 'individual' ? (
+                <span className="platform-proxy-card-badge">
+                  <Loader2 size={13} className="animate-spin" />
+                  Создаем...
+                </span>
+              ) : (
+                <span className="platform-proxy-card-badge">
+                  <BadgeDollarSign size={13} />
+                  Тест 10 ₽
+                </span>
+              )}
+            </button>
 
             <button
               type="button"
