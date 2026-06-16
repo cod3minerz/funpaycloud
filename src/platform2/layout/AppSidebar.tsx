@@ -21,6 +21,7 @@ import {
   ChatBubbleOvalLeftEllipsisIcon,
   UserPlusIcon,
   TaskIcon,
+  TableIcon,
 } from "../icons/index";
 import SidebarWidget from "./SidebarWidget";
 
@@ -68,6 +69,11 @@ const managementNavItems: NavItem[] = [
     icon: <GroupIcon className="h-5 w-5" />,
     name: "Аккаунты",
     path: `${BASE}/accounts`,
+  },
+  {
+    icon: <TableIcon className="h-5 w-5" />,
+    name: "Мои прокси",
+    path: `${BASE}/proxies`,
   },
   {
     icon: <ChartBarIcon className="h-5 w-5" />,

@@ -1120,6 +1120,35 @@ export type ProxiesMarketResponse = {
 };
 
 export const proxiesApi = {
+  listMine: () => apiRequest<{ items: MyProxyItem[] }>('/api/proxies/my'),
+  getCredentials: (id: number | string) =>
+    apiRequest<MyProxyCredentials>(`/api/proxies/my/${id}/credentials`, {
+      method: 'POST',
+    }),
+  assignMine: (id: number | string, payload: { account_id: number }) =>
+    apiRequest<{ ok?: boolean }>(`/api/proxies/my/${id}/assign`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  releaseMine: (id: number | string) =>
+    apiRequest<{ ok?: boolean }>(`/api/proxies/my/${id}/release`, {
+      method: 'POST',
+    }),
+  createExternal: (payload: {
+    host: string;
+    port: number;
+    protocol: 'HTTP' | 'HTTPS' | 'SOCKS5';
+    username?: string;
+    password?: string;
+  }) =>
+    apiRequest<{ id: number }>('/api/proxies/my/external', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  checkMine: (id: number | string) =>
+    apiRequest<{ status: string; error?: string }>(`/api/proxies/my/${id}/check`, {
+      method: 'POST',
+    }),
   market: (params: { page?: number; limit?: number }) => {
     const query = new URLSearchParams();
     if (params.page !== undefined) query.set('page', String(params.page));
@@ -1214,6 +1243,31 @@ export type ProxyCheckoutStatus = {
   created_at: string;
   paid_at?: string | null;
   failed_at?: string | null;
+};
+
+export type MyProxyItem = {
+  id: number;
+  product: 'free_shared' | 'proxy_lite' | 'proxy_pro' | 'external_custom' | string;
+  label: string;
+  host: string;
+  port: number;
+  protocol: string;
+  is_shared_free: boolean;
+  has_credentials: boolean;
+  is_active: boolean;
+  health_status: 'healthy' | 'degraded' | 'unhealthy' | 'expired' | string;
+  fail_count: number;
+  last_error?: string;
+  last_checked_at?: string | null;
+  expires_at?: string | null;
+  created_at: string;
+  assigned_account_id?: number | null;
+  assigned_username?: string | null;
+};
+
+export type MyProxyCredentials = {
+  username: string;
+  password: string;
 };
 
 export const financesApi = {

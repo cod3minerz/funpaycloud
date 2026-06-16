@@ -60,7 +60,7 @@ const proxyOptions = [
   {
     id: "free",
     title: "Бесплатный прокси",
-    description: "Прокси для 2 человек на платформе.",
+    description: "Делите прокси только с одним продавцом FunPay. Быстрый старт без оплаты, пока есть свободный слот.",
     action: "Подключить",
     icon: "lock" as const,
     available: true,
@@ -68,7 +68,7 @@ const proxyOptions = [
   {
     id: "proxy_lite",
     title: "Proxy Lite",
-    description: "Личный shared IPv4 RU на месяц.",
+    description: "Личный прокси на месяц для стабильной работы одного аккаунта без ручных настроек.",
     action: "79 ₽/мес",
     icon: "user-circle" as const,
     available: true,
@@ -76,7 +76,7 @@ const proxyOptions = [
   {
     id: "proxy_pro",
     title: "Proxy Pro",
-    description: "Личный выделенный IPv4 RU на месяц.",
+    description: "Усиленный личный прокси на месяц с отдельным IPv4 для максимальной стабильности.",
     action: "139 ₽/мес",
     icon: "lock" as const,
     available: true,
@@ -84,7 +84,7 @@ const proxyOptions = [
   {
     id: "external",
     title: "Внешний прокси",
-    description: "Подключи свой собственный прокси.",
+    description: "Добавьте свой прокси и управляйте им в разделе «Мои прокси».",
     action: "Настроить",
     icon: "plug-in" as const,
     available: true,
@@ -534,7 +534,11 @@ export default function AccountsPage() {
       </Modal>
 
       {/* ── MODAL: Proxy picker ── */}
-      <Modal isOpen={isProxyModal} onClose={() => setIsProxyModal(false)} className="max-w-3xl p-8">
+      <Modal
+        isOpen={isProxyModal}
+        onClose={() => setIsProxyModal(false)}
+        className="w-[min(1120px,calc(100vw-2rem))] max-h-[calc(100vh-3rem)] overflow-y-auto p-5 sm:p-8"
+      >
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Выберите прокси</h2>
         <p className="mt-1 text-sm text-gray-500">
           Аккаунт:{" "}
@@ -542,11 +546,11 @@ export default function AccountsPage() {
             {accounts.find((acc) => acc.apiId === proxyTargetId)?.username ?? "—"}
           </span>
         </p>
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           {proxyOptions.map((opt) => (
             <div
               key={opt.id}
-              className="relative flex flex-col justify-between overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900"
+              className="relative flex min-h-[340px] min-w-0 flex-col justify-between overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900"
             >
               <div>
                 <p className="text-base font-bold text-gray-900 dark:text-white leading-snug">{opt.title}</p>
@@ -571,7 +575,7 @@ export default function AccountsPage() {
                     setIsProxyModal(false);
                   }
                 }}
-                className={`mt-2 flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors ${
+                className={`mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium leading-tight transition-colors ${
                   opt.available && !((opt.id === "proxy_lite" || opt.id === "proxy_pro") && proxyPaymentLoading)
                     ? "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
                     : "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-400 dark:border-gray-800 dark:bg-gray-900"
