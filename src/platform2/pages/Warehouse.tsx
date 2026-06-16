@@ -19,8 +19,6 @@ import { warehouseApi, ApiWarehouseLot } from "@/lib/api";
 type WarehouseItem = {
   id: string;       // index as string
   value: string;
-  status: "available" | "issued";
-  issuedAt: string | null;
 };
 
 type Lot = {
@@ -36,7 +34,13 @@ type Lot = {
   items: WarehouseItem[];
 };
 
+function isAvailableStockItem(item: ApiWarehouseLot["stock_items"][number]) {
+  const status = String(item.status ?? "").trim().toLowerCase();
+  return status === "" || status === "available";
+}
+
 function mapApiLot(l: ApiWarehouseLot): Lot {
+  const stockItems = Array.isArray(l.stock_items) ? l.stock_items.filter(isAvailableStockItem) : [];
   return {
     id: String(l.id),
     apiId: l.id,
@@ -47,11 +51,9 @@ function mapApiLot(l: ApiWarehouseLot): Lot {
     autoDelivery: l.auto_delivery_enabled,
     messageTemplate: l.auto_delivery_template ?? "",
     externalUrl: l.external_url ?? null,
-    items: l.stock_items.map((si, idx) => ({
+    items: stockItems.map((si, idx) => ({
       id: String(idx),
       value: si.value,
-      status: si.status === "available" ? "available" : "issued",
-      issuedAt: si.delivered_at ?? null,
     })),
   };
 }
@@ -88,12 +90,8 @@ export default function WarehousePage() {
     externalUrl: null, items: [],
   };
 
-  const available = lot.items.filter((i) => i.status === "available").length;
-  const issued = lot.items.filter((i) => i.status === "issued").length;
-  const totalAvailable = lots.reduce(
-    (sum, l) => sum + l.items.filter((i) => i.status === "available").length,
-    0
-  );
+  const available = lot.items.length;
+  const totalAvailable = lots.reduce((sum, l) => sum + l.items.length, 0);
 
   const currentTemplate = template !== "" ? template : lot.messageTemplate;
 
@@ -126,21 +124,6 @@ export default function WarehousePage() {
     setReloadKey((k) => k + 1);
   }
 
-  // ── Скачать выданные (CSV) ─────────────────────────────────────────────────
-  function handleExportDelivered() {
-    const rows = lot.items
-      .filter((i) => i.status === "issued")
-      .map((i) => `"${i.value.replace(/"/g, '""')}","${i.issuedAt ?? ""}"`);
-    if (rows.length === 0) return;
-    const blob = new Blob(["value,issued_at\n" + rows.join("\n")], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `delivered_${lot.apiLotId || lot.name}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   // ── Импорт из файла ────────────────────────────────────────────────────────
   async function handleFileImport(file: File) {
     if (!lot.apiId) return;
@@ -152,8 +135,6 @@ export default function WarehousePage() {
       const newItems: WarehouseItem[] = lines.map((val, idx) => ({
         id: String(lot.items.length + idx),
         value: val,
-        status: "available",
-        issuedAt: null,
       }));
       setLots((prev) =>
         prev.map((l) =>
@@ -175,7 +156,7 @@ export default function WarehousePage() {
       setLots((prev) =>
         prev.map((l) =>
           l.id === selectedLotId
-            ? { ...l, items: [...l.items, { id: String(l.items.length), value, status: "available", issuedAt: null }] }
+            ? { ...l, items: [...l.items, { id: String(l.items.length), value }] }
             : l
         )
       );
@@ -194,8 +175,6 @@ export default function WarehousePage() {
       const newItems: WarehouseItem[] = lines.map((val, idx) => ({
         id: String(lot.items.length + idx),
         value: val,
-        status: "available",
-        issuedAt: null,
       }));
       setLots((prev) =>
         prev.map((l) =>
@@ -284,11 +263,9 @@ export default function WarehousePage() {
         </Card>
         <Card>
           <CardContent className="p-5">
-            <p className="text-sm text-gray-500">Выдано</p>
-            <p className="mt-1 text-3xl font-bold text-gray-800 dark:text-white">
-              {lots.reduce((s, l) => s + l.items.filter((i) => i.status === "issued").length, 0)}
-            </p>
-            <p className="mt-1 text-xs text-gray-400">Успешно доставлено</p>
+            <p className="text-sm text-gray-500">Лотов</p>
+            <p className="mt-1 text-3xl font-bold text-gray-800 dark:text-white">{lots.length}</p>
+            <p className="mt-1 text-xs text-gray-400">Лотов с остатками</p>
           </CardContent>
         </Card>
         <Card>
@@ -302,9 +279,9 @@ export default function WarehousePage() {
         </Card>
         <Card>
           <CardContent className="p-5">
-            <p className="text-sm text-gray-500">Записей</p>
-            <p className="mt-1 text-3xl font-bold text-gray-800 dark:text-white">{lot.items.length}</p>
-            <p className="mt-1 text-xs text-gray-400">Всего в выбранном лоте</p>
+            <p className="text-sm text-gray-500">Доступно</p>
+            <p className="mt-1 text-3xl font-bold text-gray-800 dark:text-white">{available}</p>
+            <p className="mt-1 text-xs text-gray-400">В выбранном лоте</p>
           </CardContent>
         </Card>
       </div>
@@ -320,7 +297,7 @@ export default function WarehousePage() {
           </div>
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
             {lots.map((l) => {
-              const avail = l.items.filter((i) => i.status === "available").length;
+              const avail = l.items.length;
               const isSelected = l.id === selectedLotId;
               return (
                 <button
@@ -362,9 +339,6 @@ export default function WarehousePage() {
                     <span className="mx-2">·</span>
                     Доступно:{" "}
                     <span className="font-medium text-success-500">{available}</span>
-                    <span className="mx-2">·</span>
-                    Выдано:{" "}
-                    <span className="font-medium text-gray-700 dark:text-gray-300">{issued}</span>
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -394,15 +368,6 @@ export default function WarehousePage() {
                     Обновить карточку
                   </Button>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleExportDelivered}
-                    disabled={issued === 0}
-                  >
-                    <Icon name="download" className="mr-1.5 h-3.5 w-3.5" />
-                    Скачать выданные
-                  </Button>
                 </div>
               </div>
 
@@ -548,7 +513,7 @@ export default function WarehousePage() {
             <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-gray-700">
               <h3 className="font-semibold text-gray-800 dark:text-white">Товары на складе</h3>
               <span className="text-xs text-gray-400">
-                {available} доступно · {issued} выдано
+                {available} доступно
               </span>
             </div>
             {lot.items.length === 0 ? (
@@ -568,8 +533,6 @@ export default function WarehousePage() {
                     <TableRow>
                       <TableCell isHeader className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase">#</TableCell>
                       <TableCell isHeader className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Товар</TableCell>
-                      <TableCell isHeader className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Статус</TableCell>
-                      <TableCell isHeader className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Дата выдачи</TableCell>
                       <TableCell isHeader className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Действие</TableCell>
                     </TableRow>
                   </TableHeader>
@@ -583,23 +546,13 @@ export default function WarehousePage() {
                           </code>
                         </TableCell>
                         <TableCell className="px-5 py-3">
-                          <Badge variant={item.status === "available" ? "success" : "secondary"}>
-                            {item.status === "available" ? "Доступен" : "Выдан"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="px-5 py-3 text-sm text-gray-500">
-                          {item.issuedAt ?? "—"}
-                        </TableCell>
-                        <TableCell className="px-5 py-3">
-                          {item.status === "available" && (
-                            <button
-                              onClick={() => handleDeleteItem(item.id)}
-                              className="text-gray-400 hover:text-error-500 transition-colors"
-                              title="Удалить товар"
-                            >
-                              <Icon name="trash" className="h-4 w-4" />
-                            </button>
-                          )}
+                          <button
+                            onClick={() => handleDeleteItem(item.id)}
+                            className="text-gray-400 hover:text-error-500 transition-colors"
+                            title="Удалить товар"
+                          >
+                            <Icon name="trash" className="h-4 w-4" />
+                          </button>
                         </TableCell>
                       </TableRow>
                     ))}

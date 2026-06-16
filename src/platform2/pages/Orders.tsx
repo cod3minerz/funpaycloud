@@ -19,9 +19,25 @@ import { ordersApi, accountsApi, ApiOrder, ApiAccount } from "@/lib/api";
 type OrderStatus = "completed" | "pending" | "cancelled";
 
 function apiStatusToLocal(status: number): OrderStatus {
-  if (status === 2) return "completed";
+  if (status === 1) return "completed";
   if (status === 0) return "pending";
   return "cancelled";
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return `${date.toLocaleDateString("ru-RU")} ${date.toLocaleTimeString("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+}
+
+function deliveryViaLabel(value?: string) {
+  if (value === "manual") return "вручную";
+  if (value === "catchup") return "catch-up";
+  return "авто";
 }
 
 const statusLabel: Record<OrderStatus, string> = {
@@ -138,6 +154,7 @@ export default function OrdersPage() {
                 <TableBody>
                   {orders.map((order) => {
                     const localStatus = apiStatusToLocal(order.status);
+                    const delivered = Boolean(order.delivered_at);
                     return (
                       <TableRow key={order.id}>
                         <TableCell className="px-5 py-4 whitespace-nowrap">
@@ -167,7 +184,20 @@ export default function OrdersPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="px-5 py-4 whitespace-nowrap">
-                          <span className="text-sm text-gray-500">{order.delivered_at ?? "—"}</span>
+                          {delivered ? (
+                            <div className="max-w-[220px]">
+                              <span className="block text-sm text-gray-500">
+                                {formatDateTime(order.delivered_at)} · {deliveryViaLabel(order.delivered_via)}
+                              </span>
+                              {order.delivered_item && (
+                                <code className="mt-1 block truncate rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                                  {order.delivered_item}
+                                </code>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-500">—</span>
+                          )}
                         </TableCell>
                         <TableCell className="px-5 py-4 whitespace-nowrap">
                           <span className="text-sm text-gray-500">
@@ -179,10 +209,10 @@ export default function OrdersPage() {
                             <Button
                               variant="primary"
                               size="sm"
-                              disabled={delivering === order.id}
+                              disabled={delivering === order.id || delivered}
                               onClick={() => handleDeliver(order.id)}
                             >
-                              {delivering === order.id ? "…" : "Выдать"}
+                              {delivering === order.id ? "…" : delivered ? "Выдан" : "Выдать"}
                             </Button>
                           ) : (
                             <Button variant="outline" size="sm">Детали</Button>
