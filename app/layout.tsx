@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Caveat, Inter, JetBrains_Mono, Outfit, Roboto_Flex, Syne } from 'next/font/google';
 import { Suspense } from 'react';
-import { Toaster } from 'sonner';
+import { Toaster } from '@/app/components/ui/sonner';
 import { YandexMetrika } from './components/analytics/YandexMetrika';
 import './globals.css';
 
@@ -80,17 +80,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Suspense fallback={null}>
           <YandexMetrika />
         </Suspense>
-        <Toaster
-          position="bottom-right"
-          richColors
-          toastOptions={{
-            style: {
-              background: 'var(--pf-surface-overlay)',
-              border: '1px solid var(--pf-border-strong)',
-              color: 'var(--pf-text)',
-            },
-          }}
-        />
+        <Toaster />
       </body>
     </html>
   );

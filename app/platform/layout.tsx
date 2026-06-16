@@ -9,18 +9,17 @@ import AppHeader from "@/platform2/layout/AppHeader";
 import AppSidebar from "@/platform2/layout/AppSidebar";
 import Backdrop from "@/platform2/layout/Backdrop";
 import { SubscriptionGuard } from "@/platform2/layout/SubscriptionGuard";
-import { Toaster } from "sonner";
 
 function Shell({ children }: { children: React.ReactNode }) {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
   const { theme } = useTheme();
 
-  // Hover expands sidebar as an OVERLAY (no margin change) — this prevents the
-  // simultaneous width + margin-left double-reflow that causes scan-line artifacts.
-  // Only pinned (isExpanded) state actually pushes the main content.
+  // Hovered collapsed sidebar uses the same width as pinned expanded state,
+  // so the content margin follows it instead of letting the sidebar cover the page.
+  const isSidebarWide = isExpanded || isHovered;
   const mainContentMargin = isMobileOpen
     ? "ml-0"
-    : isExpanded
+    : isSidebarWide
     ? "lg:ml-[290px]"
     : "lg:ml-[90px]";
 
@@ -39,7 +38,6 @@ function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </SubscriptionGuard>
       </div>
-      <Toaster position="top-right" richColors />
     </div>
   );
 }
