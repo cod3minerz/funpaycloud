@@ -1077,7 +1077,7 @@ export default function Accounts() {
                 <h4 className="platform-proxy-card-title">Бесплатный прокси</h4>
                 <p className="platform-proxy-card-description">
                   {freeProxyAllowed
-                    ? 'Прокси для 2 человек на платформе.'
+                    ? 'Делите прокси только с одним продавцом FunPay. Быстрый старт без оплаты, пока есть свободный слот.'
                     : 'Недоступно: бесплатный прокси уже подключен к другому вашему аккаунту.'}
                 </p>
                 <div className="platform-proxy-card-illustration">

@@ -56,6 +56,15 @@ function endpoint(proxy: MyProxyItem) {
   return `${proxy.host}:${proxy.port}`;
 }
 
+function proxyDisplayName(proxy: MyProxyItem) {
+  if (proxy.is_shared_free || proxy.product === "free_shared") {
+    if (proxy.display_name) return proxy.display_name;
+    if (proxy.shared_number) return `Бесплатный прокси #${proxy.shared_number}`;
+    return "Бесплатный прокси";
+  }
+  return proxy.display_name || endpoint(proxy);
+}
+
 function masked(value?: string) {
   return value ? value : "••••••••";
 }
@@ -186,6 +195,20 @@ export default function MyProxiesPage() {
     }
   }
 
+  async function confirmFreeProxy(proxy: MyProxyItem) {
+    setBusyId(proxy.id);
+    try {
+      await proxiesApi.confirmFree(proxy.id);
+      toast.success("Бесплатный прокси оставлен за аккаунтом");
+      await load();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Не удалось подтвердить прокси";
+      toast.error(message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function buyProxy() {
     if (!buyProduct || !buyAccountId) {
       toast.error("Выберите аккаунт для покупки");
@@ -300,6 +323,11 @@ export default function MyProxiesPage() {
           Назначить
         </Button>
       )}
+      {proxy.is_shared_free && proxy.confirm_required && (
+        <Button size="sm" variant="primary" onClick={() => confirmFreeProxy(proxy)} disabled={busyId === proxy.id}>
+          Оставить прокси
+        </Button>
+      )}
       <Button size="sm" variant="outline" onClick={() => checkProxy(proxy)} disabled={busyId === proxy.id}>
         Проверить
       </Button>
@@ -324,9 +352,12 @@ export default function MyProxiesPage() {
           <Badge variant={statusVariant(proxy.health_status)}>
             {statusLabels[proxy.health_status] ?? proxy.health_status}
           </Badge>
+          {proxy.is_shared_free && proxy.confirm_required && (
+            <Badge variant="warning">Нужно подтвердить</Badge>
+          )}
         </div>
-        <p className="mt-3 truncate font-mono text-base font-semibold text-gray-900 dark:text-white" title={endpoint(proxy)}>
-          {endpoint(proxy)}
+        <p className="mt-3 truncate font-mono text-base font-semibold text-gray-900 dark:text-white" title={proxyDisplayName(proxy)}>
+          {proxyDisplayName(proxy)}
         </p>
         <p className="mt-1 line-clamp-2 text-xs text-gray-500">{productDescriptions[proxy.product]}</p>
       </div>
@@ -335,7 +366,15 @@ export default function MyProxiesPage() {
 
       <div className="flex flex-wrap gap-2">
         {renderMetaChip("Срок", proxy.is_shared_free ? "Пока назначен" : formatDate(proxy.expires_at))}
-        {renderMetaChip("Протокол", proxy.protocol)}
+        {proxy.is_shared_free
+          ? renderMetaChip(
+              "Статус",
+              proxy.confirm_required
+                ? `Подтвердить до ${formatDate(proxy.confirm_deadline_at)}`
+                : "Активен, пока используется аккаунтом",
+              proxy.confirm_required ? "warning" : "success",
+            )
+          : renderMetaChip("Протокол", proxy.protocol)}
         {proxy.last_error && (
           <span className="line-clamp-2 text-xs text-error-500">{proxy.last_error}</span>
         )}
@@ -365,8 +404,11 @@ export default function MyProxiesPage() {
               <Badge variant={statusVariant(proxy.health_status)}>
                 {statusLabels[proxy.health_status] ?? proxy.health_status}
               </Badge>
+              {proxy.is_shared_free && proxy.confirm_required && (
+                <Badge variant="warning">Нужно подтвердить</Badge>
+              )}
             </div>
-            <p className="mt-3 font-semibold text-gray-900 dark:text-white">{endpoint(proxy)}</p>
+            <p className="mt-3 font-semibold text-gray-900 dark:text-white">{proxyDisplayName(proxy)}</p>
             <p className="mt-1 text-sm text-gray-500">{productDescriptions[proxy.product]}</p>
           </div>
         </div>
@@ -374,6 +416,14 @@ export default function MyProxiesPage() {
         <div className="flex flex-wrap gap-2">
           {renderMetaChip("Срок", proxy.is_shared_free ? "Пока назначен" : formatDate(proxy.expires_at))}
           {renderMetaChip("Аккаунт", proxy.assigned_username || "Не назначен")}
+          {proxy.is_shared_free &&
+            renderMetaChip(
+              "Статус",
+              proxy.confirm_required
+                ? `Подтвердить до ${formatDate(proxy.confirm_deadline_at)}`
+                : "Активен",
+              proxy.confirm_required ? "warning" : "success",
+            )}
         </div>
         {renderActions(proxy)}
       </CardContent>
@@ -483,7 +533,7 @@ export default function MyProxiesPage() {
       <Modal isOpen={assignProxyTarget !== null} onClose={() => setAssignProxyTarget(null)} className="max-w-lg p-6">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">Назначить прокси</h2>
         <p className="mt-2 text-sm text-gray-500">
-          Выберите аккаунт для {assignProxyTarget ? endpoint(assignProxyTarget) : "прокси"}.
+          Выберите аккаунт для {assignProxyTarget ? proxyDisplayName(assignProxyTarget) : "прокси"}.
         </p>
         {assignProxyTarget && (
           <div className="mt-6">

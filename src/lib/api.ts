@@ -1149,6 +1149,10 @@ export const proxiesApi = {
     apiRequest<{ status: string; error?: string }>(`/api/proxies/my/${id}/check`, {
       method: 'POST',
     }),
+  confirmFree: (id: number | string) =>
+    apiRequest<{ ok?: boolean }>(`/api/proxies/my/${id}/confirm-free`, {
+      method: 'POST',
+    }),
   market: (params: { page?: number; limit?: number }) => {
     const query = new URLSearchParams();
     if (params.page !== undefined) query.set('page', String(params.page));
@@ -1249,10 +1253,12 @@ export type MyProxyItem = {
   id: number;
   product: 'free_shared' | 'proxy_lite' | 'proxy_pro' | 'external_custom' | string;
   label: string;
+  display_name?: string;
   host: string;
   port: number;
   protocol: string;
   is_shared_free: boolean;
+  shared_number?: number | null;
   has_credentials: boolean;
   is_active: boolean;
   health_status: 'healthy' | 'degraded' | 'unhealthy' | 'expired' | string;
@@ -1263,6 +1269,8 @@ export type MyProxyItem = {
   created_at: string;
   assigned_account_id?: number | null;
   assigned_username?: string | null;
+  confirm_required?: boolean;
+  confirm_deadline_at?: string | null;
 };
 
 export type MyProxyCredentials = {
