@@ -34,6 +34,20 @@ export function getTelegramWebApp(): TelegramWebApp | null {
   return telegram?.WebApp ?? null;
 }
 
+export function getTelegramHashInitData(): string {
+  if (typeof window === "undefined") return "";
+  const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
+  if (!hash) return "";
+  const params = new URLSearchParams(hash);
+  return params.get("tgWebAppData") || "";
+}
+
+export function hasTelegramLaunchParams(): boolean {
+  if (typeof window === "undefined") return false;
+  const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
+  return new URLSearchParams(hash).has("tgWebAppData");
+}
+
 export function setupTelegramViewport() {
   const webApp = getTelegramWebApp();
   if (!webApp) return;

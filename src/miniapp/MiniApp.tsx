@@ -25,7 +25,14 @@ import {
   MiniAppSession,
   miniAppApi,
 } from "./api";
-import { getTelegramWebApp, haptic, openTelegramLink, setupTelegramViewport } from "./telegram";
+import {
+  getTelegramHashInitData,
+  getTelegramWebApp,
+  haptic,
+  openTelegramLink,
+  hasTelegramLaunchParams,
+  setupTelegramViewport,
+} from "./telegram";
 
 type TabID = "pulse" | "attention" | "accounts" | "proxies" | "bonuses";
 
@@ -36,6 +43,9 @@ const tabs: Array<{ id: TabID; text: string; glyph: string }> = [
   { id: "proxies", text: "Прокси", glyph: "P" },
   { id: "bonuses", text: "Бонусы", glyph: "B" },
 ];
+
+const TELEGRAM_BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "fpc1oudbot";
+const TELEGRAM_BOT_URL = `https://t.me/${TELEGRAM_BOT_USERNAME}`;
 
 function platformURL(path: string) {
   if (typeof window !== "undefined") {
@@ -68,11 +78,14 @@ function useTelegramBoot() {
     const boot = () => {
       if (cancelled) return;
       const webApp = getTelegramWebApp();
-      const nextInitData = webApp?.initData || "";
+      const nextInitData = webApp?.initData || getTelegramHashInitData();
       if (webApp) {
         setupTelegramViewport();
         setHasWebApp(true);
         setWebAppMeta({ platform: webApp.platform, version: webApp.version });
+      } else if (hasTelegramLaunchParams()) {
+        setHasWebApp(true);
+        setWebAppMeta({ platform: "telegram-webview" });
       }
       if (nextInitData) {
         setInitData(nextInitData);
@@ -204,7 +217,7 @@ export default function MiniApp() {
           <Placeholder
             header="Откройте в Telegram"
             description="Mini App работает только внутри Telegram. Откройте бота FunPay Cloud и запустите приложение из меню."
-            action={<Button stretched onClick={() => openTelegramLink("https://t.me/funpay_cloud")}>Открыть Telegram</Button>}
+            action={<Button stretched onClick={() => openTelegramLink(TELEGRAM_BOT_URL)}>Открыть Telegram</Button>}
           >
             <PulseCloud status="loading" />
           </Placeholder>
@@ -220,7 +233,7 @@ export default function MiniApp() {
           <Placeholder
             header="Откройте через Mini App"
             description={`Telegram WebView найден${webAppMeta.platform ? ` (${webAppMeta.platform})` : ""}, но не передал initData. Обычно так бывает, если в боте стоит обычная URL-кнопка вместо Web App/Mini App-кнопки.`}
-            action={<Button stretched onClick={() => openTelegramLink("https://t.me/funpay_cloud")}>Открыть бота</Button>}
+            action={<Button stretched onClick={() => openTelegramLink(TELEGRAM_BOT_URL)}>Открыть бота</Button>}
           >
             <PulseCloud status="warning" />
           </Placeholder>
