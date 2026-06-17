@@ -65,6 +65,7 @@ export default function Orders() {
   const [statusFilter, setStatusFilter] = useState<'all' | 0 | 1 | 2>('all');
   const [reloadKey, setReloadKey] = useState(0);
   const [deliveringIDs, setDeliveringIDs] = useState<Set<number>>(new Set());
+  const [reconcilingIDs, setReconcilingIDs] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     accountsApi.list().then(rows => setAccounts(Array.isArray(rows) ? rows : [])).catch(() => {});
@@ -120,6 +121,23 @@ export default function Orders() {
       toast.error(err instanceof Error ? err.message : 'Ошибка выдачи');
     } finally {
       setDeliveringIDs(prev => {
+        const next = new Set(prev);
+        next.delete(order.id);
+        return next;
+      });
+    }
+  }
+
+  async function reconcile(order: ApiOrder) {
+    setReconcilingIDs(prev => new Set(prev).add(order.id));
+    try {
+      await ordersApi.reconcileDelivery(order.id);
+      toast.success(`Выдача синхронизирована по заказу #${order.funpay_order_id}`);
+      setReloadKey(prev => prev + 1);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка синхронизации выдачи');
+    } finally {
+      setReconcilingIDs(prev => {
         const next = new Set(prev);
         next.delete(order.id);
         return next;
@@ -199,19 +217,39 @@ export default function Orders() {
                           <td>{accounts.find(acc => acc.id === order.funpay_account_id)?.username || `ID ${order.funpay_account_id}`}</td>
                           <td className="text-right font-bold">{Number(order.price || 0)} ₽</td>
                           <td>{STATUS_NUM_LABEL[order.status] || String(order.status)}</td>
-                          <td>{formatDelivery(order)}</td>
+                          <td>
+                            <div>{formatDelivery(order)}</div>
+                            {order.delivered_item ? (
+                              <code className="mt-1 block max-w-[220px] truncate rounded-[6px] bg-[var(--pf-surface-2)] px-2 py-0.5 text-[12px]">
+                                {order.delivered_item}
+                              </code>
+                            ) : null}
+                          </td>
                           <td className="text-right">
-                            <button
-                              className="platform-btn-secondary"
-                              onClick={() => void deliver(order)}
-                              disabled={order.status !== 0 || Boolean(order.delivered_at) || deliveringIDs.has(order.id)}
-                            >
-                              {deliveringIDs.has(order.id)
-                                ? <Loader2 size={14} className="animate-spin" />
-                                : order.delivered_at
-                                  ? 'Выдан'
-                                  : <><Send size={14} /> Выдать</>}
-                            </button>
+                            <div className="flex flex-wrap justify-end gap-2">
+                              <button
+                                className="platform-btn-secondary"
+                                onClick={() => void deliver(order)}
+                                disabled={order.status !== 0 || Boolean(order.delivered_at) || deliveringIDs.has(order.id)}
+                              >
+                                {deliveringIDs.has(order.id)
+                                  ? <Loader2 size={14} className="animate-spin" />
+                                  : order.delivered_at
+                                    ? 'Выдан'
+                                    : <><Send size={14} /> Выдать</>}
+                              </button>
+                              {!order.delivered_at && order.status !== 2 ? (
+                                <button
+                                  className="platform-btn-secondary"
+                                  onClick={() => void reconcile(order)}
+                                  disabled={reconcilingIDs.has(order.id)}
+                                >
+                                  {reconcilingIDs.has(order.id)
+                                    ? <Loader2 size={14} className="animate-spin" />
+                                    : 'Синхронизировать'}
+                                </button>
+                              ) : null}
+                            </div>
                           </td>
                           <td className="text-right">{formatDate(order.created_at)}</td>
                         </tr>

@@ -60,6 +60,17 @@ function coerceCreateFieldValue(raw: SchemaFieldValues[string]) {
   return raw == null ? '' : String(raw);
 }
 
+function isNativeDeliverySchemaField(name: string) {
+  return name === 'secrets' || name === 'auto_delivery';
+}
+
+function splitWarehouseText(value: string) {
+  return value
+    .split(/\r?\n/)
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
 export function LotCreateDialog({ open, onOpenChange, accounts, initialAccountId, onCreated }: LotCreateDialogProps) {
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
   const [categories, setCategories] = useState<ApiLotCategory[]>([]);
@@ -73,6 +84,9 @@ export function LotCreateDialog({ open, onOpenChange, accounts, initialAccountId
   const [formError, setFormError] = useState<string | null>(null);
   const [formValues, setFormValues] = useState<SchemaFieldValues>({});
   const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
+  const [warehouseText, setWarehouseText] = useState('');
+  const [warehouseAutoDelivery, setWarehouseAutoDelivery] = useState(false);
+  const [warehouseTemplate, setWarehouseTemplate] = useState('');
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -85,6 +99,9 @@ export function LotCreateDialog({ open, onOpenChange, accounts, initialAccountId
       setFormError(null);
       setFormValues({});
       setTouchedFields({});
+      setWarehouseText('');
+      setWarehouseAutoDelivery(false);
+      setWarehouseTemplate('');
       setCreating(false);
       return;
     }
@@ -165,6 +182,9 @@ export function LotCreateDialog({ open, onOpenChange, accounts, initialAccountId
 
       const nextValues: SchemaFieldValues = {};
       for (const field of data.schema || []) {
+        if (isNativeDeliverySchemaField(field.name)) {
+          continue;
+        }
         nextValues[field.name] = getInitialCreateFieldValue(field);
       }
       setFormValues(nextValues);
@@ -193,6 +213,10 @@ export function LotCreateDialog({ open, onOpenChange, accounts, initialAccountId
   }, [open, selectedAccountId, selectedSubcategory?.id, selectedSubcategory?.node_type]);
 
   const schemaReady = formData?.schema_status === 'ready' && (formData.schema?.length || 0) > 0;
+  const visibleSchema = useMemo(
+    () => (formData?.schema || []).filter(field => !isNativeDeliverySchemaField(field.name)),
+    [formData],
+  );
 
   async function handleCreate() {
     if (!selectedAccountId) {
@@ -208,7 +232,7 @@ export function LotCreateDialog({ open, onOpenChange, accounts, initialAccountId
       return;
     }
 
-    for (const field of formData.schema) {
+    for (const field of visibleSchema) {
       if (field.required && isCreateFieldEmpty(field, formValues[field.name])) {
         toast.error(`Заполните поле «${field.label || field.name}»`);
         return;
@@ -216,7 +240,7 @@ export function LotCreateDialog({ open, onOpenChange, accounts, initialAccountId
     }
 
     const values: ApiLotCreateValues = {};
-    for (const field of formData.schema) {
+    for (const field of visibleSchema) {
       const rawValue = formValues[field.name];
       const touched = Boolean(touchedFields[field.name]);
       const shouldInclude = touched || (field.required && !isCreateFieldEmpty(field, rawValue));
@@ -231,6 +255,9 @@ export function LotCreateDialog({ open, onOpenChange, accounts, initialAccountId
         node_id: selectedSubcategory.id,
         node_type: selectedSubcategory.node_type,
         values,
+        warehouse_items: splitWarehouseText(warehouseText),
+        auto_delivery_enabled: warehouseAutoDelivery,
+        auto_delivery_template: warehouseTemplate,
       });
       toast.success('Лот создан');
       onOpenChange(false);
@@ -361,7 +388,7 @@ export function LotCreateDialog({ open, onOpenChange, accounts, initialAccountId
             </div>
 
             <LotSchemaFields
-              fields={formData.schema}
+              fields={visibleSchema}
               values={formValues}
               onChange={(name, value) => {
                 setFormValues(prev => ({ ...prev, [name]: value }));
@@ -369,6 +396,38 @@ export function LotCreateDialog({ open, onOpenChange, accounts, initialAccountId
               }}
               disabled={creating}
             />
+
+            <div className="grid gap-4 rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-surface)] p-4">
+              <label className="space-y-2">
+                <span className="block text-sm font-medium text-[var(--pf-text)]">Товары склада</span>
+                <textarea
+                  className="platform-textarea min-h-[140px] w-full"
+                  value={warehouseText}
+                  onChange={event => setWarehouseText(event.target.value)}
+                  placeholder="Один товар на строку"
+                  disabled={creating}
+                />
+              </label>
+              <label className="flex min-h-[48px] items-center gap-3 rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-surface-2)] px-4 text-sm text-[var(--pf-text)]">
+                <input
+                  type="checkbox"
+                  checked={warehouseAutoDelivery}
+                  onChange={event => setWarehouseAutoDelivery(event.target.checked)}
+                  disabled={creating}
+                />
+                <span>Автовыдача FP Cloud</span>
+              </label>
+              <label className="space-y-2">
+                <span className="block text-sm font-medium text-[var(--pf-text)]">Шаблон сообщения FP Cloud</span>
+                <textarea
+                  className="platform-textarea min-h-[100px] w-full"
+                  value={warehouseTemplate}
+                  onChange={event => setWarehouseTemplate(event.target.value)}
+                  placeholder="Спасибо за покупку! Ваш товар: {item}"
+                  disabled={creating}
+                />
+              </label>
+            </div>
 
             <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:justify-end">
               <button className="platform-btn-secondary" onClick={() => onOpenChange(false)} disabled={creating}>

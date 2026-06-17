@@ -170,6 +170,17 @@ function formatCategoryLabel(cat: ApiLotCategory): string {
   return cat.variant_name ? `${cat.game_title} / ${cat.variant_name}` : cat.game_title;
 }
 
+function isNativeDeliverySchemaField(name: string) {
+  return name === "secrets" || name === "auto_delivery";
+}
+
+function splitWarehouseText(value: string) {
+  return value
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Модал создания лота
 // ──────────────────────────────────────────────────────────────────────────────
@@ -194,6 +205,9 @@ function LotCreateModal({
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formValues, setFormValues] = useState<FieldValues>({});
+  const [warehouseText, setWarehouseText] = useState("");
+  const [warehouseAutoDelivery, setWarehouseAutoDelivery] = useState(false);
+  const [warehouseTemplate, setWarehouseTemplate] = useState("");
   const [creating, setCreating] = useState(false);
 
   const inputCls =
@@ -210,6 +224,9 @@ function LotCreateModal({
       setFormData(null);
       setFormError(null);
       setFormValues({});
+      setWarehouseText("");
+      setWarehouseAutoDelivery(false);
+      setWarehouseTemplate("");
       setCreating(false);
       return;
     }
@@ -275,7 +292,10 @@ function LotCreateModal({
         if (cancelled) return;
         setFormData(data);
         const vals: FieldValues = {};
-        for (const f of data.schema || []) vals[f.name] = getInitialValue(f);
+        for (const f of data.schema || []) {
+          if (isNativeDeliverySchemaField(f.name)) continue;
+          vals[f.name] = getInitialValue(f);
+        }
         setFormValues(vals);
       })
       .catch((e) => {
@@ -294,7 +314,8 @@ function LotCreateModal({
     if (!schemaReady) return;
 
     const values: ApiLotCreateValues = {};
-    for (const f of formData.schema) {
+    const visibleSchema = formData.schema.filter((field) => !isNativeDeliverySchemaField(field.name));
+    for (const f of visibleSchema) {
       const raw = formValues[f.name];
       if (Array.isArray(raw)) values[f.name] = raw.map(String);
       else if (typeof raw === "boolean") values[f.name] = raw;
@@ -308,6 +329,9 @@ function LotCreateModal({
         node_id: selectedSubcategory.id,
         node_type: selectedSubcategory.node_type,
         values,
+        warehouse_items: splitWarehouseText(warehouseText),
+        auto_delivery_enabled: warehouseAutoDelivery,
+        auto_delivery_template: warehouseTemplate,
       });
       onCreated();
       onClose();
@@ -321,6 +345,10 @@ function LotCreateModal({
   const subs = selectedCategory?.subcategories || [];
   const schemaReady =
     formData?.schema_status === "ready" && (formData?.schema?.length || 0) > 0;
+  const visibleSchema = useMemo(
+    () => (formData?.schema || []).filter((field) => !isNativeDeliverySchemaField(field.name)),
+    [formData]
+  );
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="w-full max-w-2xl p-8">
@@ -403,7 +431,7 @@ function LotCreateModal({
           <>
             <div className="border-t border-gray-100 pt-4 dark:border-gray-800" />
             <div className="grid gap-4 sm:grid-cols-2">
-              {formData.schema.map((field) => (
+              {visibleSchema.map((field) => (
                 <div key={field.name} className={field.type === "textarea" ? "sm:col-span-2" : ""}>
                   <FieldGroup
                     field={field}
@@ -412,6 +440,35 @@ function LotCreateModal({
                   />
                 </div>
               ))}
+            </div>
+            <div className="grid gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/60">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Товары склада</label>
+                <TextArea
+                  value={warehouseText}
+                  onChange={setWarehouseText}
+                  rows={5}
+                  placeholder="Один товар на строку"
+                />
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={warehouseAutoDelivery}
+                  onChange={(event) => setWarehouseAutoDelivery(event.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/20"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">Автовыдача FP Cloud</span>
+              </label>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Шаблон сообщения FP Cloud</label>
+                <TextArea
+                  value={warehouseTemplate}
+                  onChange={setWarehouseTemplate}
+                  rows={3}
+                  placeholder="Спасибо за покупку! Ваш товар: {item}"
+                />
+              </div>
             </div>
           </>
         )}

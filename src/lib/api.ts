@@ -556,7 +556,15 @@ export const lotsApi = {
     accountId: number | string,
     payload:
       | { node_id: number; node_type?: string; title: string; description: string; price: number; amount: number }
-      | { mode: 'schema'; node_id: number; node_type: string; values: ApiLotCreateValues },
+      | {
+          mode: 'schema';
+          node_id: number;
+          node_type: string;
+          values: ApiLotCreateValues;
+          warehouse_items?: string[];
+          auto_delivery_enabled?: boolean;
+          auto_delivery_template?: string;
+        },
   ) =>
     apiRequest<{ id?: string }>(`/api/accounts/${accountId}/lots`, {
       method: 'POST',
@@ -666,6 +674,10 @@ export const ordersApi = {
   },
   deliver: (id: number | string) =>
     apiRequest(`/api/orders/${id}/deliver`, {
+      method: 'POST',
+    }),
+  reconcileDelivery: (id: number | string) =>
+    apiRequest(`/api/orders/${id}/reconcile-delivery`, {
       method: 'POST',
     }),
 };

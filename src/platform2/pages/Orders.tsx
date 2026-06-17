@@ -61,6 +61,7 @@ export default function OrdersPage() {
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<string>("all");
   const [delivering, setDelivering] = useState<number | null>(null);
+  const [reconciling, setReconciling] = useState<number | null>(null);
 
   useEffect(() => {
     accountsApi.list().then(setAccounts).catch(() => {});
@@ -89,6 +90,22 @@ export default function OrdersPage() {
       // ignore
     } finally {
       setDelivering(null);
+    }
+  }
+
+  async function handleReconcile(id: number) {
+    setReconciling(id);
+    try {
+      await ordersApi.reconcileDelivery(id);
+      const params: Parameters<typeof ordersApi.list>[0] = { page, limit: LIMIT };
+      if (selectedAccount !== "all") params.account_id = selectedAccount;
+      const resp = await ordersApi.list(params);
+      setOrders(resp.orders);
+      setTotal(resp.total);
+    } catch {
+      // ignore
+    } finally {
+      setReconciling(null);
     }
   }
 
@@ -205,18 +222,31 @@ export default function OrdersPage() {
                           </span>
                         </TableCell>
                         <TableCell className="px-5 py-4">
-                          {localStatus === "pending" ? (
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              disabled={delivering === order.id || delivered}
-                              onClick={() => handleDeliver(order.id)}
-                            >
-                              {delivering === order.id ? "…" : delivered ? "Выдан" : "Выдать"}
-                            </Button>
-                          ) : (
-                            <Button variant="outline" size="sm">Детали</Button>
-                          )}
+                          <div className="flex flex-wrap gap-2">
+                            {localStatus === "pending" ? (
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                disabled={delivering === order.id || delivered}
+                                onClick={() => handleDeliver(order.id)}
+                              >
+                                {delivering === order.id ? "…" : delivered ? "Выдан" : "Выдать"}
+                              </Button>
+                            ) : null}
+                            {!delivered && order.status !== 2 ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={reconciling === order.id}
+                                onClick={() => handleReconcile(order.id)}
+                              >
+                                {reconciling === order.id ? "…" : "Синхронизировать"}
+                              </Button>
+                            ) : null}
+                            {delivered || order.status === 2 ? (
+                              <Button variant="outline" size="sm">Детали</Button>
+                            ) : null}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );

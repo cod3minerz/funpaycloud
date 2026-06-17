@@ -51,6 +51,11 @@ function normalizeWarehouseLot(row: ApiWarehouseLot): ApiWarehouseLot {
   };
 }
 
+function isAvailableWarehouseItem(item: ApiWarehouseItem) {
+  const status = String(item.status ?? '').trim().toLowerCase();
+  return status === '' || status === 'available';
+}
+
 function formatMoney(price?: number, currency?: string) {
   if (typeof price !== 'number' || Number.isNaN(price)) return '—';
 
@@ -81,11 +86,9 @@ function getNodeTypeLabel(nodeType?: string) {
 
 function getLotAvailableCount(lot?: ApiWarehouseLot | null) {
   if (!lot) return 0;
-  const stockAvailable = Array.isArray(lot.stock_items)
-    ? lot.stock_items.filter(item => item.status === 'available').length
+  return Array.isArray(lot.stock_items)
+    ? lot.stock_items.filter(isAvailableWarehouseItem).length
     : 0;
-  const lotAmount = typeof lot.amount === 'number' && !Number.isNaN(lot.amount) ? lot.amount : 0;
-  return Math.max(stockAvailable, lotAmount);
 }
 
 export default function Warehouse() {
@@ -240,6 +243,14 @@ export default function Warehouse() {
 
   const delivered = useMemo(
     () => (selectedLot ? selectedLot.stock_items.filter(item => item.status === 'delivered').length : 0),
+    [selectedLot],
+  );
+  const availableRows = useMemo(
+    () => selectedLot
+      ? selectedLot.stock_items
+          .map((item, originalIndex) => ({ item, originalIndex }))
+          .filter(row => isAvailableWarehouseItem(row.item))
+      : [],
     [selectedLot],
   );
 
@@ -437,8 +448,8 @@ export default function Warehouse() {
             </KpiCard>
             <KpiCard>
               <div className="text-[13px] font-semibold">Записей</div>
-              <strong className="text-[26px]">{selectedLot.stock_items.length}</strong>
-              <span className="platform-kpi-meta">Всего в выбранном лоте</span>
+              <strong className="text-[26px]">{availableRows.length}</strong>
+              <span className="platform-kpi-meta">Доступно в выбранном лоте</span>
             </KpiCard>
           </KpiGrid>
         )}
@@ -785,13 +796,13 @@ export default function Warehouse() {
                             </tr>
                           </thead>
                           <tbody>
-                            {selectedLot.stock_items.map((item: ApiWarehouseItem, idx) => (
-                              <tr key={item.id}>
+                            {availableRows.map(({ item, originalIndex }, idx) => (
+                              <tr key={item.id || `${originalIndex}-${item.value}`}>
                                 <td>{idx + 1}</td>
                                 <td className="font-mono">{maskValue(item.value)}</td>
                                 <td>
-                                  <span className={item.status === 'available' ? 'badge-active' : 'badge-inactive'}>
-                                    {item.status === 'available' ? 'Доступен' : 'Выдан'}
+                                  <span className={isAvailableWarehouseItem(item) ? 'badge-active' : 'badge-inactive'}>
+                                    {isAvailableWarehouseItem(item) ? 'Доступен' : 'Выдан'}
                                   </span>
                                 </td>
                                 <td className="platform-col-tablet-hide text-right text-[var(--pf-text-muted)]">
@@ -805,8 +816,8 @@ export default function Warehouse() {
                                 <td className="text-right">
                                   <button
                                     className="platform-btn-secondary"
-                                    onClick={() => void removeItem(idx)}
-                                    disabled={item.status !== 'available'}
+                                    onClick={() => void removeItem(originalIndex)}
+                                    disabled={!isAvailableWarehouseItem(item)}
                                   >
                                     <Trash2 size={14} /> Удалить
                                   </button>
@@ -819,12 +830,12 @@ export default function Warehouse() {
                     </div>
 
                     <div className="platform-mobile-cards">
-                      {selectedLot.stock_items.map((item: ApiWarehouseItem, idx) => (
-                        <article key={item.id} className="platform-mobile-card">
+                      {availableRows.map(({ item, originalIndex }, idx) => (
+                        <article key={item.id || `${originalIndex}-${item.value}`} className="platform-mobile-card">
                           <div className="platform-mobile-card-head">
                             <strong>#{idx + 1}</strong>
-                            <span className={item.status === 'available' ? 'badge-active' : 'badge-inactive'}>
-                              {item.status === 'available' ? 'Доступен' : 'Выдан'}
+                            <span className={isAvailableWarehouseItem(item) ? 'badge-active' : 'badge-inactive'}>
+                              {isAvailableWarehouseItem(item) ? 'Доступен' : 'Выдан'}
                             </span>
                           </div>
                           <div className="text-[13px] font-mono">{maskValue(item.value)}</div>
@@ -841,8 +852,8 @@ export default function Warehouse() {
                           <div className="mt-2">
                             <button
                               className="platform-btn-secondary"
-                              onClick={() => void removeItem(idx)}
-                              disabled={item.status !== 'available'}
+                              onClick={() => void removeItem(originalIndex)}
+                              disabled={!isAvailableWarehouseItem(item)}
                             >
                               <Trash2 size={14} /> Удалить
                             </button>
@@ -851,7 +862,7 @@ export default function Warehouse() {
                       ))}
                     </div>
 
-                    {selectedLot.stock_items.length === 0 && (
+                    {availableRows.length === 0 && (
                       <EmptyState
                         icon={PackageOpen}
                         title="Склад пуст"

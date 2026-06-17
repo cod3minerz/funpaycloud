@@ -142,9 +142,10 @@ test.beforeEach(async ({ page }) => {
         return envelope([message]);
       }
       if (path === '/api/orders' && method === 'GET') {
+        const mockOrders = (window as any).__MOCK_ORDERS__ ?? [];
         return envelope({
-          orders: [],
-          total: 0,
+          orders: mockOrders,
+          total: mockOrders.length,
           page: Number(url.searchParams.get('page') || 1),
           limit: Number(url.searchParams.get('limit') || 20),
         });
@@ -156,7 +157,7 @@ test.beforeEach(async ({ page }) => {
         return envelope([]);
       }
       if (path === '/api/warehouse/lots' && method === 'GET') {
-        return envelope([]);
+        return envelope((window as any).__MOCK_WAREHOUSE_LOTS__ ?? []);
       }
       if (path === '/api/analytics' && method === 'GET') {
         return envelope(emptyAnalytics);
@@ -258,6 +259,65 @@ test.beforeEach(async ({ page }) => {
       value: PatchedWebSocket,
     });
   });
+});
+
+test('warehouse shows only available local stock items', async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as any).__MOCK_WAREHOUSE_LOTS__ = [
+      {
+        id: 301,
+        funpay_account_id: 8,
+        account_username: 'paidinfull',
+        lot_id: 'lot-stock',
+        title: 'Albion аккаунт',
+        description: '',
+        currency: 'RUB',
+        category_name: 'Albion Online',
+        node_id: 3486,
+        node_type: 'lots',
+        amount: 4,
+        price: 5,
+        is_active: true,
+        auto_delivery_enabled: true,
+        auto_delivery_template: '',
+        stock_items: [
+          { id: '2', value: 'тут ссылка2', status: 'available' },
+          { id: '3', value: 'тут ссылка3', status: 'available' },
+          { id: '4', value: 'тут ссылка4', status: 'available' },
+        ],
+      },
+    ];
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/platform/warehouse');
+  await expect(page.getByText('3 доступно').first()).toBeVisible();
+  await expect(page.getByText('4 доступно')).toHaveCount(0);
+  await expect(page.getByText('тут ссылка1')).toHaveCount(0);
+});
+
+test('orders show delivered item after delivery history is recorded', async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as any).__MOCK_ORDERS__ = [
+      {
+        id: 901,
+        funpay_account_id: 8,
+        funpay_order_id: 'VBRZXCMQ',
+        description: 'Albion Online, 1 шт.',
+        price: 5,
+        buyer_username: 'Haizenberg137',
+        buyer_id: 137,
+        status: 1,
+        created_at: '2026-06-17T16:17:34Z',
+        delivered_at: '2026-06-17T16:17:40Z',
+        delivered_via: 'funpay_native_reconcile',
+        delivered_item: 'тут ссылка1',
+      },
+    ];
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/platform/orders');
+  await expect(page.getByText('VBRZXCMQ')).toBeVisible();
+  await expect(page.getByText('тут ссылка1')).toBeVisible();
 });
 
 test('desktop shell: no burger, stable sidebar collapse and no sidebar overflow', async ({ page }) => {
