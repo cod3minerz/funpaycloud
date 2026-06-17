@@ -25,7 +25,7 @@ import {
   MiniAppSession,
   miniAppApi,
 } from "./api";
-import { getTelegramWebApp, haptic, openTelegramLink } from "./telegram";
+import { getTelegramWebApp, haptic, openTelegramLink, setupTelegramViewport } from "./telegram";
 
 type TabID = "pulse" | "attention" | "accounts" | "proxies" | "bonuses";
 
@@ -59,20 +59,44 @@ function statusText(status: string) {
 function useTelegramBoot() {
   const [checked, setChecked] = useState(false);
   const [initData, setInitData] = useState("");
+  const [hasWebApp, setHasWebApp] = useState(false);
+  const [webAppMeta, setWebAppMeta] = useState<{ platform?: string; version?: string }>({});
 
   useEffect(() => {
-    const webApp = getTelegramWebApp();
-    webApp?.ready?.();
-    webApp?.expand?.();
-    setInitData(webApp?.initData || "");
-    setChecked(true);
+    let cancelled = false;
+    let attempts = 0;
+    const boot = () => {
+      if (cancelled) return;
+      const webApp = getTelegramWebApp();
+      const nextInitData = webApp?.initData || "";
+      if (webApp) {
+        setupTelegramViewport();
+        setHasWebApp(true);
+        setWebAppMeta({ platform: webApp.platform, version: webApp.version });
+      }
+      if (nextInitData) {
+        setInitData(nextInitData);
+        setChecked(true);
+        return;
+      }
+      attempts += 1;
+      if (attempts >= 30) {
+        setChecked(true);
+        return;
+      }
+      window.setTimeout(boot, 100);
+    };
+    boot();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  return { checked, initData, isTelegram: Boolean(initData) };
+  return { checked, initData, hasWebApp, hasInitData: Boolean(initData), webAppMeta };
 }
 
 export default function MiniApp() {
-  const { checked, initData, isTelegram } = useTelegramBoot();
+  const { checked, initData, hasWebApp, hasInitData, webAppMeta } = useTelegramBoot();
   const [activeTab, setActiveTab] = useState<TabID>("pulse");
   const [session, setSession] = useState<MiniAppSession | null>(null);
   const [pulse, setPulse] = useState<MiniAppPulse | null>(null);
@@ -116,7 +140,7 @@ export default function MiniApp() {
   }
 
   useEffect(() => {
-    if (!checked || !isTelegram || !initData) return;
+    if (!checked || !hasInitData || !initData) return;
     let cancelled = false;
     setLoading(true);
     miniAppApi.session(initData)
@@ -137,7 +161,7 @@ export default function MiniApp() {
     return () => {
       cancelled = true;
     };
-  }, [checked, initData, isTelegram]);
+  }, [checked, hasInitData, initData]);
 
   const cloudStatus = useMemo(() => {
     if (loading) return "loading";
@@ -170,19 +194,37 @@ export default function MiniApp() {
   }
 
   if (!checked) {
-    return <MiniAppShell><LoadingView /></MiniAppShell>;
+    return <MiniAppShell><CenteredView><LoadingView /></CenteredView></MiniAppShell>;
   }
 
-  if (!isTelegram) {
+  if (!hasWebApp) {
     return (
       <MiniAppShell>
-        <Placeholder
-          header="Откройте в Telegram"
-          description="Mini App работает только внутри Telegram. Откройте бота FunPay Cloud и запустите приложение из меню."
-          action={<Button stretched onClick={() => openTelegramLink("https://t.me/funpay_cloud")}>Открыть Telegram</Button>}
-        >
-          <PulseCloud status="loading" />
-        </Placeholder>
+        <CenteredView>
+          <Placeholder
+            header="Откройте в Telegram"
+            description="Mini App работает только внутри Telegram. Откройте бота FunPay Cloud и запустите приложение из меню."
+            action={<Button stretched onClick={() => openTelegramLink("https://t.me/funpay_cloud")}>Открыть Telegram</Button>}
+          >
+            <PulseCloud status="loading" />
+          </Placeholder>
+        </CenteredView>
+      </MiniAppShell>
+    );
+  }
+
+  if (!hasInitData) {
+    return (
+      <MiniAppShell>
+        <CenteredView>
+          <Placeholder
+            header="Откройте через Mini App"
+            description={`Telegram WebView найден${webAppMeta.platform ? ` (${webAppMeta.platform})` : ""}, но не передал initData. Обычно так бывает, если в боте стоит обычная URL-кнопка вместо Web App/Mini App-кнопки.`}
+            action={<Button stretched onClick={() => openTelegramLink("https://t.me/funpay_cloud")}>Открыть бота</Button>}
+          >
+            <PulseCloud status="warning" />
+          </Placeholder>
+        </CenteredView>
       </MiniAppShell>
     );
   }
@@ -190,13 +232,15 @@ export default function MiniApp() {
   if (session && !session.linked) {
     return (
       <MiniAppShell>
-        <Placeholder
-          header="Telegram не привязан"
-          description="Мы видим ваш Telegram, но не нашли связанный аккаунт FunPay Cloud. Привяжите Telegram в настройках платформы."
-          action={<Button stretched onClick={() => openTelegramLink(platformURL("/platform/settings?telegram=link"))}>Авторизоваться на сайте</Button>}
-        >
-          <PulseCloud status="warning" />
-        </Placeholder>
+        <CenteredView>
+          <Placeholder
+            header="Telegram не привязан"
+            description="Мы видим ваш Telegram, но не нашли связанный аккаунт FunPay Cloud. Привяжите Telegram в настройках платформы."
+            action={<Button stretched onClick={() => openTelegramLink(platformURL("/platform/settings?telegram=link"))}>Авторизоваться на сайте</Button>}
+          >
+            <PulseCloud status="warning" />
+          </Placeholder>
+        </CenteredView>
       </MiniAppShell>
     );
   }
@@ -244,15 +288,19 @@ function MiniAppShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+function CenteredView({ children }: { children: React.ReactNode }) {
+  return <main className="miniapp-gate">{children}</main>;
+}
+
 function LoadingView() {
   return (
-    <main className="miniapp-content">
+    <div className="miniapp-loading">
       <Section>
         <Skeleton visible className="miniapp-skeleton-hero" />
         <Skeleton visible className="miniapp-skeleton-line" />
         <Skeleton visible className="miniapp-skeleton-line short" />
       </Section>
-    </main>
+    </div>
   );
 }
 

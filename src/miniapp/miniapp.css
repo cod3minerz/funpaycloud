@@ -5,6 +5,7 @@ body:has(.miniapp-root) {
 
 .miniapp-root {
   min-height: 100dvh;
+  width: 100%;
   color-scheme: dark;
   background:
     radial-gradient(circle at 50% -20%, rgba(61, 215, 140, .16), transparent 34%),
@@ -22,6 +23,22 @@ body:has(.miniapp-root) {
 .miniapp-content {
   min-height: 100dvh;
   padding: calc(16px + env(safe-area-inset-top)) 12px calc(92px + env(safe-area-inset-bottom));
+}
+
+.miniapp-gate {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: calc(24px + env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom));
+  text-align: center;
+}
+
+.miniapp-gate > * {
+  width: min(100%, 420px);
+}
+
+.miniapp-loading {
+  width: min(100%, 420px);
 }
 
 .miniapp-hero {
