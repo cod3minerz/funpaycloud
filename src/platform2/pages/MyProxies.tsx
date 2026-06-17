@@ -8,13 +8,6 @@ import { Button } from "@/platform2/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/platform2/components/ui/card";
 import { Modal } from "@/platform2/components/ui/modal";
 import Select from "@/platform2/components/form/Select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from "@/platform2/components/ui/table";
 import Icon from "@/platform2/icons";
 
 const productLabels: Record<string, string> = {
@@ -77,6 +70,7 @@ export default function MyProxiesPage() {
   const [buyProduct, setBuyProduct] = useState<"proxy_lite" | "proxy_pro" | null>(null);
   const [buyAccountId, setBuyAccountId] = useState("");
   const [buyLoading, setBuyLoading] = useState(false);
+  const [assignProxyTarget, setAssignProxyTarget] = useState<MyProxyItem | null>(null);
   const [externalOpen, setExternalOpen] = useState(false);
   const [externalSaving, setExternalSaving] = useState(false);
   const [externalProxy, setExternalProxy] = useState({
@@ -150,6 +144,7 @@ export default function MyProxiesPage() {
     try {
       await proxiesApi.assignMine(proxy.id, { account_id: accountID });
       toast.success("Прокси назначен");
+      setAssignProxyTarget(null);
       await load();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Не удалось назначить прокси";
@@ -235,61 +230,126 @@ export default function MyProxiesPage() {
 
   const renderSecretCell = (proxy: MyProxyItem) => {
     const creds = credentials[proxy.id];
+    if (proxy.is_shared_free || proxy.product === "free_shared") {
+      return (
+        <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500 dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-400">
+          Доступы скрыты, это ресурс сервиса.
+        </div>
+      );
+    }
+
+    if (!creds) {
+      return (
+        <Button size="sm" variant="outline" onClick={() => revealCredentials(proxy)} disabled={busyId === proxy.id || !proxy.has_credentials}>
+          Показать доступы
+        </Button>
+      );
+    }
+
     return (
-      <div className="space-y-2 text-sm">
-        <div className="flex items-center gap-2">
-          <span className="w-14 text-gray-400">Логин</span>
-          <code className="min-w-0 flex-1 truncate rounded-md bg-gray-50 px-2 py-1 text-gray-700 dark:bg-gray-800 dark:text-gray-200">
-            {creds ? masked(creds.username) : "••••••••"}
+      <div className="flex flex-wrap gap-2 text-sm">
+        <div className="flex min-w-0 items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-800 dark:bg-gray-900/70">
+          <span className="text-xs text-gray-400">Логин</span>
+          <code className="max-w-[120px] truncate text-gray-700 dark:text-gray-200">
+            {masked(creds.username)}
           </code>
-          {creds && (
-            <button className="text-gray-400 hover:text-brand-500" onClick={() => copyValue(creds.username, "Логин")}>
-              <Icon name="copy" className="h-4 w-4" />
-            </button>
-          )}
+          <button className="shrink-0 text-gray-400 hover:text-brand-500" onClick={() => copyValue(creds.username, "Логин")}>
+            <Icon name="copy" className="h-4 w-4" />
+          </button>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="w-14 text-gray-400">Пароль</span>
-          <code className="min-w-0 flex-1 truncate rounded-md bg-gray-50 px-2 py-1 text-gray-700 dark:bg-gray-800 dark:text-gray-200">
-            {creds ? masked(creds.password) : "••••••••"}
+        <div className="flex min-w-0 items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-800 dark:bg-gray-900/70">
+          <span className="text-xs text-gray-400">Пароль</span>
+          <code className="max-w-[120px] truncate text-gray-700 dark:text-gray-200">
+            {masked(creds.password)}
           </code>
-          {creds && (
-            <button className="text-gray-400 hover:text-brand-500" onClick={() => copyValue(creds.password, "Пароль")}>
-              <Icon name="copy" className="h-4 w-4" />
-            </button>
-          )}
+          <button className="shrink-0 text-gray-400 hover:text-brand-500" onClick={() => copyValue(creds.password, "Пароль")}>
+            <Icon name="copy" className="h-4 w-4" />
+          </button>
         </div>
-        {proxy.has_credentials && !creds && (
-          <Button size="sm" variant="outline" onClick={() => revealCredentials(proxy)} disabled={busyId === proxy.id}>
-            Показать
-          </Button>
-        )}
       </div>
     );
   };
 
-  const renderAssignControls = (proxy: MyProxyItem) => (
-    <div className="min-w-[210px] space-y-2">
-      <Select
-        value={selectedAccount[proxy.id] ?? ""}
-        onChange={(value) => setSelectedAccount((prev) => ({ ...prev, [proxy.id]: value }))}
-      >
-        <option value="">Выберите аккаунт</option>
-        {accountOptions.map((account) => (
-          <option key={account.id} value={account.id}>
-            {account.label}
-          </option>
-        ))}
-      </Select>
-      <Button
-        size="sm"
-        variant="outline"
-        className="w-full"
-        onClick={() => assignProxy(proxy)}
-        disabled={busyId === proxy.id || proxy.is_shared_free}
-      >
-        Назначить
+  const openAssignModal = (proxy: MyProxyItem) => {
+    setSelectedAccount((prev) => ({
+      ...prev,
+      [proxy.id]: prev[proxy.id] ?? (proxy.assigned_account_id ? String(proxy.assigned_account_id) : ""),
+    }));
+    setAssignProxyTarget(proxy);
+  };
+
+  const renderMetaChip = (label: string, value: string, tone: "default" | "success" | "warning" = "default") => {
+    const toneClass =
+      tone === "success"
+        ? "border-success-500/20 bg-success-500/10 text-success-600 dark:text-success-400"
+        : tone === "warning"
+          ? "border-warning-500/20 bg-warning-500/10 text-warning-600 dark:text-warning-400"
+          : "border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-300";
+    return (
+      <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium ${toneClass}`}>
+        <span className="text-gray-400">{label}</span>
+        {value}
+      </span>
+    );
+  };
+
+  const renderActions = (proxy: MyProxyItem) => (
+    <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
+      {!proxy.is_shared_free && (
+        <Button size="sm" variant="outline" onClick={() => openAssignModal(proxy)} disabled={busyId === proxy.id}>
+          Назначить
+        </Button>
+      )}
+      <Button size="sm" variant="outline" onClick={() => checkProxy(proxy)} disabled={busyId === proxy.id}>
+        Проверить
       </Button>
+      {proxy.assigned_account_id && (
+        <Button size="sm" variant="secondary" onClick={() => releaseProxy(proxy)} disabled={busyId === proxy.id}>
+          Освободить
+        </Button>
+      )}
+    </div>
+  );
+
+  const renderProxyRow = (proxy: MyProxyItem) => (
+    <div
+      key={proxy.id}
+      className="grid gap-4 rounded-2xl border border-gray-200 bg-white p-4 transition-colors hover:border-brand-200 hover:bg-gray-50/60 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-brand-500/30 dark:hover:bg-white/[0.03] xl:grid-cols-[minmax(260px,1.15fr)_minmax(260px,1fr)_minmax(210px,.75fr)_minmax(250px,.9fr)] xl:items-center"
+    >
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={proxy.product === "proxy_pro" ? "primary" : "secondary"}>
+            {productLabels[proxy.product] ?? proxy.product}
+          </Badge>
+          <Badge variant={statusVariant(proxy.health_status)}>
+            {statusLabels[proxy.health_status] ?? proxy.health_status}
+          </Badge>
+        </div>
+        <p className="mt-3 truncate font-mono text-base font-semibold text-gray-900 dark:text-white" title={endpoint(proxy)}>
+          {endpoint(proxy)}
+        </p>
+        <p className="mt-1 line-clamp-2 text-xs text-gray-500">{productDescriptions[proxy.product]}</p>
+      </div>
+
+      <div className="min-w-0">{renderSecretCell(proxy)}</div>
+
+      <div className="flex flex-wrap gap-2">
+        {renderMetaChip("Срок", proxy.is_shared_free ? "Пока назначен" : formatDate(proxy.expires_at))}
+        {renderMetaChip("Протокол", proxy.protocol)}
+        {proxy.last_error && (
+          <span className="line-clamp-2 text-xs text-error-500">{proxy.last_error}</span>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-3 xl:items-end">
+        <div className="min-w-0">
+          <p className="text-xs text-gray-400 xl:text-right">Аккаунт</p>
+          <p className="truncate font-semibold text-gray-900 dark:text-white" title={proxy.assigned_username || undefined}>
+            {proxy.assigned_username || "Не назначен"}
+          </p>
+        </div>
+        {renderActions(proxy)}
+      </div>
     </div>
   );
 
@@ -311,27 +371,11 @@ export default function MyProxiesPage() {
           </div>
         </div>
         {renderSecretCell(proxy)}
-        <div className="grid gap-3 text-sm text-gray-500">
-          <div>
-            <span className="text-gray-400">Срок: </span>
-            {proxy.is_shared_free ? "Пока назначен аккаунту" : formatDate(proxy.expires_at)}
-          </div>
-          <div>
-            <span className="text-gray-400">Аккаунт: </span>
-            {proxy.assigned_username || "Не назначен"}
-          </div>
-        </div>
-        {!proxy.is_shared_free && renderAssignControls(proxy)}
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={() => checkProxy(proxy)} disabled={busyId === proxy.id}>
-            Проверить
-          </Button>
-          {proxy.assigned_account_id && (
-            <Button size="sm" variant="secondary" onClick={() => releaseProxy(proxy)} disabled={busyId === proxy.id}>
-              Освободить
-            </Button>
-          )}
+          {renderMetaChip("Срок", proxy.is_shared_free ? "Пока назначен" : formatDate(proxy.expires_at))}
+          {renderMetaChip("Аккаунт", proxy.assigned_username || "Не назначен")}
         </div>
+        {renderActions(proxy)}
       </CardContent>
     </Card>
   );
@@ -375,83 +419,26 @@ export default function MyProxiesPage() {
       </div>
 
       <Card className="hidden overflow-hidden lg:block">
-        <CardHeader>
-          <CardTitle>Инвентарь</CardTitle>
+        <CardHeader className="border-b border-gray-200 dark:border-gray-800">
+          <div className="flex items-center justify-between gap-4">
+            <CardTitle>Инвентарь</CardTitle>
+            <span className="text-sm text-gray-500">{items.length} прокси</span>
+          </div>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-900/60">
-              <TableRow>
-                <TableCell isHeader className="px-5 py-3">Тип</TableCell>
-                <TableCell isHeader className="px-5 py-3">Endpoint</TableCell>
-                <TableCell isHeader className="px-5 py-3">Доступы</TableCell>
-                <TableCell isHeader className="px-5 py-3">Статус</TableCell>
-                <TableCell isHeader className="px-5 py-3">Срок</TableCell>
-                <TableCell isHeader className="px-5 py-3">Аккаунт</TableCell>
-                <TableCell isHeader className="px-5 py-3">Действия</TableCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="px-5 py-10 text-center text-gray-500">
-                    Загружаем прокси...
-                  </TableCell>
-                </TableRow>
-              ) : items.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="px-5 py-10 text-center text-gray-500">
-                    Прокси пока нет. Купите Lite/Pro или добавьте внешний прокси.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                items.map((proxy) => (
-                  <TableRow key={proxy.id} className="text-sm">
-                    <TableCell className="px-5 py-4">
-                      <div className="space-y-2">
-                        <Badge variant={proxy.product === "proxy_pro" ? "primary" : "secondary"}>
-                          {productLabels[proxy.product] ?? proxy.product}
-                        </Badge>
-                        <p className="max-w-[190px] text-xs text-gray-500">{productDescriptions[proxy.product]}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-5 py-4">
-                      <code className="rounded-lg bg-gray-50 px-2.5 py-1.5 font-medium text-gray-800 dark:bg-gray-800 dark:text-gray-100">
-                        {endpoint(proxy)}
-                      </code>
-                      <p className="mt-2 text-xs text-gray-400">{proxy.protocol}</p>
-                    </TableCell>
-                    <TableCell className="px-5 py-4">{renderSecretCell(proxy)}</TableCell>
-                    <TableCell className="px-5 py-4">
-                      <Badge variant={statusVariant(proxy.health_status)}>
-                        {statusLabels[proxy.health_status] ?? proxy.health_status}
-                      </Badge>
-                      {proxy.last_error && <p className="mt-2 max-w-[190px] text-xs text-error-500">{proxy.last_error}</p>}
-                    </TableCell>
-                    <TableCell className="px-5 py-4 text-gray-600 dark:text-gray-300">
-                      {proxy.is_shared_free ? "Пока назначен" : formatDate(proxy.expires_at)}
-                    </TableCell>
-                    <TableCell className="px-5 py-4">
-                      <p className="font-medium text-gray-800 dark:text-white">{proxy.assigned_username || "Не назначен"}</p>
-                      {!proxy.is_shared_free && renderAssignControls(proxy)}
-                    </TableCell>
-                    <TableCell className="px-5 py-4">
-                      <div className="flex flex-col gap-2">
-                        <Button size="sm" variant="outline" onClick={() => checkProxy(proxy)} disabled={busyId === proxy.id}>
-                          Проверить
-                        </Button>
-                        {proxy.assigned_account_id && (
-                          <Button size="sm" variant="secondary" onClick={() => releaseProxy(proxy)} disabled={busyId === proxy.id}>
-                            Освободить
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+        <CardContent className="p-4">
+          {loading ? (
+            <div className="rounded-2xl border border-dashed border-gray-200 py-10 text-center text-sm text-gray-500 dark:border-gray-800">
+              Загружаем прокси...
+            </div>
+          ) : items.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-gray-200 py-10 text-center text-sm text-gray-500 dark:border-gray-800">
+              Прокси пока нет. Купите Lite/Pro или добавьте внешний прокси.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {items.map(renderProxyRow)}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -489,6 +476,37 @@ export default function MyProxiesPage() {
           <Button variant="outline" className="flex-1" onClick={() => setBuyProduct(null)}>Отмена</Button>
           <Button className="flex-1" onClick={buyProxy} disabled={buyLoading || !buyAccountId}>
             {buyLoading ? "Создаём..." : "Перейти к оплате"}
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={assignProxyTarget !== null} onClose={() => setAssignProxyTarget(null)} className="max-w-lg p-6">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Назначить прокси</h2>
+        <p className="mt-2 text-sm text-gray-500">
+          Выберите аккаунт для {assignProxyTarget ? endpoint(assignProxyTarget) : "прокси"}.
+        </p>
+        {assignProxyTarget && (
+          <div className="mt-6">
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Аккаунт</label>
+            <Select
+              value={selectedAccount[assignProxyTarget.id] ?? ""}
+              onChange={(value) => setSelectedAccount((prev) => ({ ...prev, [assignProxyTarget.id]: value }))}
+            >
+              <option value="">Выберите аккаунт</option>
+              {accountOptions.map((account) => (
+                <option key={account.id} value={account.id}>{account.label}</option>
+              ))}
+            </Select>
+          </div>
+        )}
+        <div className="mt-8 flex gap-3">
+          <Button variant="outline" className="flex-1" onClick={() => setAssignProxyTarget(null)}>Отмена</Button>
+          <Button
+            className="flex-1"
+            onClick={() => assignProxy(assignProxyTarget!)}
+            disabled={!assignProxyTarget || !selectedAccount[assignProxyTarget.id] || busyId === assignProxyTarget.id}
+          >
+            Назначить
           </Button>
         </div>
       </Modal>
