@@ -309,9 +309,12 @@ export default function MyProxiesPage() {
           ? "border-warning-500/20 bg-warning-500/10 text-warning-600 dark:text-warning-400"
           : "border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-300";
     return (
-      <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium ${toneClass}`}>
-        <span className="text-gray-400">{label}</span>
-        {value}
+      <span
+        className={`inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium ${toneClass}`}
+        title={`${label}: ${value}`}
+      >
+        <span className="shrink-0 text-gray-400">{label}</span>
+        <span className="min-w-0 truncate">{value}</span>
       </span>
     );
   };
@@ -342,7 +345,7 @@ export default function MyProxiesPage() {
   const renderProxyRow = (proxy: MyProxyItem) => (
     <div
       key={proxy.id}
-      className="grid gap-4 rounded-2xl border border-gray-200 bg-white p-4 transition-colors hover:border-brand-200 hover:bg-gray-50/60 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-brand-500/30 dark:hover:bg-white/[0.03] xl:grid-cols-[minmax(260px,1.15fr)_minmax(260px,1fr)_minmax(210px,.75fr)_minmax(250px,.9fr)] xl:items-center"
+      className="grid gap-4 rounded-2xl border border-gray-200 bg-white p-4 transition-colors hover:border-brand-200 hover:bg-gray-50/60 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-brand-500/30 dark:hover:bg-white/[0.03] xl:grid-cols-[minmax(230px,1fr)_minmax(220px,.85fr)_minmax(250px,1fr)_minmax(140px,.55fr)_minmax(210px,.75fr)] xl:items-center"
     >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
@@ -364,14 +367,14 @@ export default function MyProxiesPage() {
 
       <div className="min-w-0">{renderSecretCell(proxy)}</div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex min-w-0 flex-wrap gap-2">
         {renderMetaChip("Срок", proxy.is_shared_free ? "Пока назначен" : formatDate(proxy.expires_at))}
         {proxy.is_shared_free
           ? renderMetaChip(
               "Статус",
               proxy.confirm_required
                 ? `Подтвердить до ${formatDate(proxy.confirm_deadline_at)}`
-                : "Активен, пока используется аккаунтом",
+                : "Используется аккаунтом",
               proxy.confirm_required ? "warning" : "success",
             )
           : renderMetaChip("Протокол", proxy.protocol)}
@@ -380,13 +383,14 @@ export default function MyProxiesPage() {
         )}
       </div>
 
-      <div className="flex flex-col gap-3 xl:items-end">
-        <div className="min-w-0">
-          <p className="text-xs text-gray-400 xl:text-right">Аккаунт</p>
-          <p className="truncate font-semibold text-gray-900 dark:text-white" title={proxy.assigned_username || undefined}>
-            {proxy.assigned_username || "Не назначен"}
-          </p>
-        </div>
+      <div className="min-w-0">
+        <p className="text-xs text-gray-400 xl:text-right">Аккаунт</p>
+        <p className="truncate font-semibold text-gray-900 dark:text-white xl:text-right" title={proxy.assigned_username || undefined}>
+          {proxy.assigned_username || "Не назначен"}
+        </p>
+      </div>
+
+      <div className="min-w-0 xl:justify-self-end">
         {renderActions(proxy)}
       </div>
     </div>
@@ -396,8 +400,8 @@ export default function MyProxiesPage() {
     <Card key={proxy.id} className="overflow-hidden">
       <CardContent className="space-y-4 p-4">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
               <Badge variant={proxy.product === "proxy_pro" ? "primary" : "secondary"}>
                 {productLabels[proxy.product] ?? proxy.product}
               </Badge>
@@ -408,12 +412,14 @@ export default function MyProxiesPage() {
                 <Badge variant="warning">Нужно подтвердить</Badge>
               )}
             </div>
-            <p className="mt-3 font-semibold text-gray-900 dark:text-white">{proxyDisplayName(proxy)}</p>
+            <p className="mt-3 truncate font-semibold text-gray-900 dark:text-white" title={proxyDisplayName(proxy)}>
+              {proxyDisplayName(proxy)}
+            </p>
             <p className="mt-1 text-sm text-gray-500">{productDescriptions[proxy.product]}</p>
           </div>
         </div>
         {renderSecretCell(proxy)}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex min-w-0 flex-wrap gap-2">
           {renderMetaChip("Срок", proxy.is_shared_free ? "Пока назначен" : formatDate(proxy.expires_at))}
           {renderMetaChip("Аккаунт", proxy.assigned_username || "Не назначен")}
           {proxy.is_shared_free &&
