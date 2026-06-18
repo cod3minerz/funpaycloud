@@ -168,7 +168,7 @@ export default function PlatformTopBar({
                 }}
               >
                 <LifeBuoy size={14} className="mr-2" />
-                Поддержка @fpcloud_support
+                Поддержка
               </DropdownMenuItem>
 
               <DropdownMenuSeparator className="bg-[var(--pf-border)]" />

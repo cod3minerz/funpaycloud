@@ -65,7 +65,7 @@ const navGroups: Array<{ title: string; items: NavItem[] }> = [
 const mobileTopLinks = [
   { label: '@funpay_cloud', href: 'https://t.me/funpay_cloud', icon: <TelegramMark size={16} /> },
   { label: 'Группа ВКонтакте', href: '#', icon: <VkMark size={16} /> },
-  { label: 'Поддержка @fpcloud_support', href: 'https://t.me/fpcloud_support', icon: <LifeBuoy size={16} /> },
+  { label: 'Поддержка', href: 'https://t.me/fpcloud_support', icon: <LifeBuoy size={16} /> },
 ] as const;
 
 export default function Sidebar({
@@ -124,7 +124,7 @@ export default function Sidebar({
             {mobile ? (
               <BrandLogo compact darkText={theme === 'dark'} />
             ) : (
-              <BrandLogo compact={collapsed} iconOnly={collapsed} darkText={theme === 'dark'} />
+              <BrandLogo compact={collapsed} iconOnly={collapsed} darkText={theme === 'dark'} className={collapsed ? '' : 'h-[32px]'} />
             )}
           </Link>
           {mobile && (

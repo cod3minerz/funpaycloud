@@ -17,15 +17,6 @@ export default function SidebarWidget() {
           <div className="h-full w-1/5 rounded-full bg-brand-500" />
         </div>
       </div>
-      <div className="mb-4 space-y-2">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-500">Плагины</span>
-          <span className="font-medium text-gray-800 dark:text-white">2 / 10</span>
-        </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-          <div className="h-full w-[20%] rounded-full bg-brand-500" />
-        </div>
-      </div>
       <Link
         href="/platform/subscription"
         className="flex w-full items-center justify-center rounded-lg bg-brand-500 py-2.5 text-xs font-semibold text-white hover:bg-brand-600 transition-colors"

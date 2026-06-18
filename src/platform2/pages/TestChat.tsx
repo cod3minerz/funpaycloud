@@ -264,7 +264,7 @@ export default function TestChatPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] gap-5 overflow-hidden -mx-4 -my-4 md:-mx-6 md:-my-6 px-4 py-4 md:px-6 md:py-6">
+    <div className="flex min-h-[calc(100dvh-4rem)] flex-col gap-4 overflow-visible -mx-4 -my-4 px-4 py-4 md:-mx-6 md:-my-6 md:px-6 md:py-6 lg:h-[calc(100vh-4rem)] lg:flex-row lg:gap-5 lg:overflow-hidden">
 
       {/* LEFT — settings panel (desktop: always visible, mobile: drawer overlay) */}
       {/* Mobile overlay backdrop */}
@@ -506,8 +506,29 @@ export default function TestChatPage() {
         )}
       </div>
 
+      <Card className="lg:hidden">
+        <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Настройки теста</p>
+            <p className="mt-1 truncate text-sm font-semibold text-gray-800 dark:text-white">
+              {accounts.find((a) => a.id === selectedAccountID)?.username ?? "Аккаунт не выбран"}
+            </p>
+            <p className="text-xs text-gray-400">
+              {modeLabel(effectiveMode)} · {autoMode ? "боевой режим" : "локальный override"}
+            </p>
+          </div>
+          <button
+            onClick={() => setShowSettingsPanel(true)}
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 dark:border-gray-700 dark:text-gray-200"
+          >
+            <Icon name="wrench" className="h-4 w-4" />
+            Настройки
+          </button>
+        </CardContent>
+      </Card>
+
       {/* RIGHT — chat */}
-      <Card className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <Card className="flex min-h-[calc(100dvh-14rem)] min-w-0 flex-1 flex-col overflow-hidden lg:min-h-0">
         {/* Chat header */}
         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800 sm:px-5 sm:py-4">
           <div className="flex items-center gap-2 sm:gap-3">
@@ -517,7 +538,7 @@ export default function TestChatPage() {
               className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 lg:hidden"
               aria-label="Настройки теста"
             >
-              <Icon name="more-dots" className="h-5 w-5" />
+              <Icon name="more-dot" className="h-5 w-5" />
             </button>
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500/10 sm:h-9 sm:w-9">
               <Icon name="cpu" className="h-4 w-4 text-brand-500 sm:h-5 sm:w-5" />

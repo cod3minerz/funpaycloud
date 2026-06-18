@@ -42,6 +42,8 @@ import {
   PlusIcon,
   PuzzlePieceIcon,
   ShareIcon,
+  ServerStackIcon,
+  ShieldCheckIcon,
   SparklesIcon,
   SpeakerWaveIcon,
   Squares2X2Icon,
@@ -122,6 +124,8 @@ const iconMap: Record<string, React.FC<React.SVGProps<SVGSVGElement>>> = {
   "cpu": CpuChipIcon,
   "beaker": BeakerIcon,
   "share": ShareIcon,
+  "server-stack": ServerStackIcon,
+  "shield-check": ShieldCheckIcon,
 };
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {
@@ -196,6 +200,8 @@ export {
   CpuChipIcon,
   BeakerIcon,
   ShareIcon,
+  ServerStackIcon,
+  ShieldCheckIcon,
   UserPlusIcon,
   WrenchScrewdriverIcon,
   ChatBubbleOvalLeftEllipsisIcon,

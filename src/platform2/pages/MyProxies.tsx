@@ -320,22 +320,22 @@ export default function MyProxiesPage() {
   };
 
   const renderActions = (proxy: MyProxyItem) => (
-    <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
+    <div className="flex min-w-0 flex-wrap justify-start gap-2">
       {!proxy.is_shared_free && (
-        <Button size="sm" variant="outline" onClick={() => openAssignModal(proxy)} disabled={busyId === proxy.id}>
+        <Button size="sm" variant="outline" className="min-w-[108px] flex-1 sm:flex-none" onClick={() => openAssignModal(proxy)} disabled={busyId === proxy.id}>
           Назначить
         </Button>
       )}
       {proxy.is_shared_free && proxy.confirm_required && (
-        <Button size="sm" variant="primary" onClick={() => confirmFreeProxy(proxy)} disabled={busyId === proxy.id}>
+        <Button size="sm" variant="primary" className="min-w-[132px] flex-1 sm:flex-none" onClick={() => confirmFreeProxy(proxy)} disabled={busyId === proxy.id}>
           Оставить прокси
         </Button>
       )}
-      <Button size="sm" variant="outline" onClick={() => checkProxy(proxy)} disabled={busyId === proxy.id}>
+      <Button size="sm" variant="outline" className="min-w-[108px] flex-1 sm:flex-none" onClick={() => checkProxy(proxy)} disabled={busyId === proxy.id}>
         Проверить
       </Button>
       {proxy.assigned_account_id && (
-        <Button size="sm" variant="secondary" onClick={() => releaseProxy(proxy)} disabled={busyId === proxy.id}>
+        <Button size="sm" variant="secondary" className="min-w-[118px] flex-1 sm:flex-none" onClick={() => releaseProxy(proxy)} disabled={busyId === proxy.id}>
           Освободить
         </Button>
       )}
@@ -345,7 +345,7 @@ export default function MyProxiesPage() {
   const renderProxyRow = (proxy: MyProxyItem) => (
     <div
       key={proxy.id}
-      className="grid gap-4 rounded-2xl border border-gray-200 bg-white p-4 transition-colors hover:border-brand-200 hover:bg-gray-50/60 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-brand-500/30 dark:hover:bg-white/[0.03] xl:grid-cols-[minmax(230px,1fr)_minmax(220px,.85fr)_minmax(250px,1fr)_minmax(140px,.55fr)_minmax(210px,.75fr)] xl:items-center"
+      className="grid gap-4 rounded-2xl border border-gray-200 bg-white p-4 transition-colors hover:border-brand-200 hover:bg-gray-50/60 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-brand-500/30 dark:hover:bg-white/[0.03] xl:grid-cols-[minmax(240px,1.05fr)_minmax(220px,.85fr)_minmax(260px,1fr)_minmax(160px,.6fr)] xl:items-center"
     >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
@@ -390,7 +390,7 @@ export default function MyProxiesPage() {
         </p>
       </div>
 
-      <div className="min-w-0 xl:justify-self-end">
+      <div className="min-w-0 xl:col-span-4">
         {renderActions(proxy)}
       </div>
     </div>

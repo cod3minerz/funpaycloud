@@ -21,7 +21,7 @@ import {
   ChatBubbleOvalLeftEllipsisIcon,
   UserPlusIcon,
   TaskIcon,
-  TableIcon,
+  ServerStackIcon,
 } from "../icons/index";
 import SidebarWidget from "./SidebarWidget";
 
@@ -71,7 +71,7 @@ const managementNavItems: NavItem[] = [
     path: `${BASE}/accounts`,
   },
   {
-    icon: <TableIcon className="h-5 w-5" />,
+    icon: <ServerStackIcon className="h-5 w-5" />,
     name: "Мои прокси",
     path: `${BASE}/proxies`,
   },
@@ -360,15 +360,15 @@ const AppSidebar: React.FC = () => {
                 className="dark:hidden"
                 src="/branding/logo_full_new.svg"
                 alt="FunPay Cloud"
-                width={139}
-                height={22}
+                width={162}
+                height={26}
               />
               <Image
                 className="hidden dark:block"
                 src="/branding/logo_full_new_dark.svg"
                 alt="FunPay Cloud"
-                width={139}
-                height={22}
+                width={162}
+                height={26}
               />
             </>
           ) : (

@@ -17,7 +17,7 @@ const menuItems = [
   { label: "Настройки",  icon: Cog8ToothIcon,           href: "/platform/settings" },
   { label: "Подписка",   icon: CreditCardIcon,           href: "/platform/subscription" },
   { label: "Промокоды",  icon: TagIcon,                  href: "/platform/promo-codes" },
-  { label: "Поддержка @fpcloud_support",  icon: QuestionMarkCircleIcon,   href: "https://t.me/fpcloud_support" },
+  { label: "Поддержка",  icon: QuestionMarkCircleIcon,   href: "https://t.me/fpcloud_support" },
 ];
 
 export default function UserDropdown() {
