@@ -36,12 +36,12 @@ import {
 
 type TabID = "pulse" | "attention" | "accounts" | "proxies" | "bonuses";
 
-const tabs: Array<{ id: TabID; text: string }> = [
-  { id: "pulse", text: "Пульс" },
-  { id: "attention", text: "Внимание" },
-  { id: "accounts", text: "Аккаунты" },
-  { id: "proxies", text: "Прокси" },
-  { id: "bonuses", text: "Бонусы" },
+const tabs: Array<{ id: TabID; text: string; glyph: string }> = [
+  { id: "pulse", text: "Пульс", glyph: "●" },
+  { id: "attention", text: "Внимание", glyph: "!" },
+  { id: "accounts", text: "Аккаунты", glyph: "A" },
+  { id: "proxies", text: "Прокси", glyph: "P" },
+  { id: "bonuses", text: "Бонусы", glyph: "B" },
 ];
 
 const TELEGRAM_BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "fpc1oudbot";
@@ -283,7 +283,9 @@ export default function MiniApp() {
       <FixedLayout vertical="bottom">
         <Tabbar>
           {tabs.map((tab) => (
-            <Tabbar.Item key={tab.id} selected={activeTab === tab.id} text={tab.text} onClick={() => setActiveTab(tab.id)} />
+            <Tabbar.Item key={tab.id} selected={activeTab === tab.id} text={tab.text} onClick={() => setActiveTab(tab.id)}>
+              <span className="miniapp-tab-icon">{tab.glyph}</span>
+            </Tabbar.Item>
           ))}
         </Tabbar>
       </FixedLayout>
