@@ -18,6 +18,11 @@ type LotEditDialogProps = {
   onSaved?: () => void | Promise<void>;
 };
 
+function isNativeDeliverySchemaField(name: string) {
+  const clean = name.trim();
+  return clean === 'secrets' || clean === 'auto_delivery' || clean.endsWith('[secrets]') || clean.endsWith('[auto_delivery]');
+}
+
 export function LotEditDialog({ open, onOpenChange, lot, onSaved }: LotEditDialogProps) {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -37,6 +42,7 @@ export function LotEditDialog({ open, onOpenChange, lot, onSaved }: LotEditDialo
       setFormData(data);
       const nextValues: Record<string, string | boolean | string[]> = {};
       for (const field of data.schema || []) {
+        if (isNativeDeliverySchemaField(field.name)) continue;
         nextValues[field.name] = normalizeSchemaFieldValue(data.values?.[field.name], field.type, field.options?.length || 0);
       }
       setFormValues(nextValues);
@@ -61,7 +67,10 @@ export function LotEditDialog({ open, onOpenChange, lot, onSaved }: LotEditDialo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, accountId, lotId]);
 
-  const schema = formData?.schema || [];
+  const schema = useMemo(
+    () => (formData?.schema || []).filter(field => !isNativeDeliverySchemaField(field.name)),
+    [formData],
+  );
   const title = formData?.lot?.title || lot?.title || 'Редактирование лота';
 
   const normalizedValues = useMemo(() => {

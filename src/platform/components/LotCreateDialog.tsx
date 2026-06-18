@@ -61,7 +61,8 @@ function coerceCreateFieldValue(raw: SchemaFieldValues[string]) {
 }
 
 function isNativeDeliverySchemaField(name: string) {
-  return name === 'secrets' || name === 'auto_delivery';
+  const clean = name.trim();
+  return clean === 'secrets' || clean === 'auto_delivery' || clean.endsWith('[secrets]') || clean.endsWith('[auto_delivery]');
 }
 
 function splitWarehouseText(value: string) {

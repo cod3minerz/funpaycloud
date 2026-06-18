@@ -171,7 +171,8 @@ function formatCategoryLabel(cat: ApiLotCategory): string {
 }
 
 function isNativeDeliverySchemaField(name: string) {
-  return name === "secrets" || name === "auto_delivery";
+  const clean = name.trim();
+  return clean === "secrets" || clean === "auto_delivery" || clean.endsWith("[secrets]") || clean.endsWith("[auto_delivery]");
 }
 
 function splitWarehouseText(value: string) {
@@ -532,6 +533,7 @@ function LotEditModal({
         setFormData(data);
         const vals: FieldValues = {};
         for (const f of data.schema || []) {
+          if (isNativeDeliverySchemaField(f.name)) continue;
           const raw = data.values?.[f.name];
           if (f.type === "checkbox") {
             if ((f.options || []).length > 1) {
@@ -557,7 +559,7 @@ function LotEditModal({
   async function handleSave() {
     if (!lot || !formData) return;
     const values: ApiLotEditValues = {};
-    for (const f of formData.schema || []) {
+    for (const f of visibleSchema) {
       const raw = formValues[f.name];
       if (Array.isArray(raw)) values[f.name] = raw.map(String);
       else if (typeof raw === "boolean") values[f.name] = raw;
@@ -574,6 +576,11 @@ function LotEditModal({
       setSaving(false);
     }
   }
+
+  const visibleSchema = useMemo(
+    () => (formData?.schema || []).filter((field) => !isNativeDeliverySchemaField(field.name)),
+    [formData],
+  );
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="w-full max-w-2xl p-8">
@@ -593,9 +600,9 @@ function LotEditModal({
         </p>
       )}
 
-      {!loading && formData && (formData.schema?.length || 0) > 0 && (
+      {!loading && formData && visibleSchema.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2">
-          {formData.schema.map((field) => (
+          {visibleSchema.map((field) => (
             <div key={field.name} className={field.type === "textarea" ? "sm:col-span-2" : ""}>
               <FieldGroup
                 field={field}
@@ -607,7 +614,7 @@ function LotEditModal({
         </div>
       )}
 
-      {!loading && formData && (formData.schema?.length || 0) === 0 && (
+      {!loading && formData && visibleSchema.length === 0 && (
         <p className="text-sm text-gray-400">Нет редактируемых полей для этого лота.</p>
       )}
 

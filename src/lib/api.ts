@@ -588,6 +588,15 @@ export const lotsApi = {
   listAll: () => apiRequest<ApiLot[]>('/api/lots'),
   raiseLot: (accountId: number | string, lotId: number | string) =>
     apiRequest(`/api/accounts/${accountId}/lots/${lotId}/raise`, { method: 'POST' }),
+  cleanupNativeDelivery: (accountId: number | string) =>
+    apiRequest<{
+      account_id: number;
+      cleaned: number;
+      skipped: number;
+      failed: number;
+      imported: number;
+      results: Array<{ lot_id: string; managed: boolean; imported: number; error?: string }>;
+    }>(`/api/accounts/${accountId}/lots/native-delivery/cleanup`, { method: 'POST' }),
 };
 
 // ── Chats ─────────────────────────────────────────────────────────────────────
