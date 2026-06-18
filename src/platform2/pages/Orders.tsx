@@ -40,6 +40,10 @@ function deliveryViaLabel(value?: string) {
   return "авто";
 }
 
+function canDeliverOrder(order: ApiOrder) {
+  return !order.delivered_at && (order.status === 0 || order.status === 1);
+}
+
 const statusLabel: Record<OrderStatus, string> = {
   completed: "Завершён",
   pending: "В ожидании",
@@ -223,7 +227,7 @@ export default function OrdersPage() {
                         </TableCell>
                         <TableCell className="px-5 py-4">
                           <div className="flex flex-wrap gap-2">
-                            {localStatus === "pending" ? (
+                            {canDeliverOrder(order) ? (
                               <Button
                                 variant="primary"
                                 size="sm"

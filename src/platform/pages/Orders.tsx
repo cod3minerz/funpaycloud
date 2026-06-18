@@ -53,6 +53,10 @@ function formatDelivery(order: ApiOrder) {
   return `${formatDate(order.delivered_at)} (${via})`;
 }
 
+function canDeliverOrder(order: ApiOrder) {
+  return !order.delivered_at && (order.status === 0 || order.status === 1);
+}
+
 export default function Orders() {
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [orders, setOrders] = useState<ApiOrder[]>([]);
@@ -230,7 +234,7 @@ export default function Orders() {
                               <button
                                 className="platform-btn-secondary"
                                 onClick={() => void deliver(order)}
-                                disabled={order.status !== 0 || Boolean(order.delivered_at) || deliveringIDs.has(order.id)}
+                                disabled={!canDeliverOrder(order) || deliveringIDs.has(order.id)}
                               >
                                 {deliveringIDs.has(order.id)
                                   ? <Loader2 size={14} className="animate-spin" />

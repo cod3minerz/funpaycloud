@@ -320,6 +320,33 @@ test('orders show delivered item after delivery history is recorded', async ({ p
   await expect(page.getByText('тут ссылка1')).toBeVisible();
 });
 
+test('orders allow manual delivery for completed order without delivery history', async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as any).__MOCK_ORDERS__ = [
+      {
+        id: 902,
+        funpay_account_id: 8,
+        funpay_order_id: 'MXL5TDQL',
+        description: 'Albion Online, 1 шт.',
+        price: 3,
+        buyer_username: 'Haizenberg137',
+        buyer_id: 137,
+        status: 1,
+        created_at: '2026-06-18T11:34:47Z',
+        delivered_at: null,
+        delivered_via: '',
+        delivered_item: '',
+      },
+    ];
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/platform/orders');
+  await expect(page.getByText('MXL5TDQL')).toBeVisible();
+  const deliverButton = page.getByRole('button', { name: /Выдать/ }).first();
+  await expect(deliverButton).toBeVisible();
+  await expect(deliverButton).toBeEnabled();
+});
+
 test('desktop shell: no burger, stable sidebar collapse and no sidebar overflow', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/platform/dashboard');
