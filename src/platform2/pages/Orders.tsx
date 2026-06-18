@@ -15,6 +15,7 @@ import {
 import Pagination from "@/platform2/components/tables/Pagination";
 import Icon from "@/platform2/icons";
 import { ordersApi, accountsApi, ApiOrder, ApiAccount } from "@/lib/api";
+import { toast } from "sonner";
 
 type OrderStatus = "completed" | "pending" | "cancelled";
 
@@ -84,14 +85,15 @@ export default function OrdersPage() {
     setDelivering(id);
     try {
       await ordersApi.deliver(id);
+      toast.success("Товар выдан");
       // Refresh
       const params: Parameters<typeof ordersApi.list>[0] = { page, limit: LIMIT };
       if (selectedAccount !== "all") params.account_id = selectedAccount;
       const resp = await ordersApi.list(params);
       setOrders(resp.orders);
       setTotal(resp.total);
-    } catch {
-      // ignore
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось выдать товар");
     } finally {
       setDelivering(null);
     }
@@ -101,13 +103,14 @@ export default function OrdersPage() {
     setReconciling(id);
     try {
       await ordersApi.reconcileDelivery(id);
+      toast.success("Выдача синхронизирована");
       const params: Parameters<typeof ordersApi.list>[0] = { page, limit: LIMIT };
       if (selectedAccount !== "all") params.account_id = selectedAccount;
       const resp = await ordersApi.list(params);
       setOrders(resp.orders);
       setTotal(resp.total);
-    } catch {
-      // ignore
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось синхронизировать выдачу");
     } finally {
       setReconciling(null);
     }
