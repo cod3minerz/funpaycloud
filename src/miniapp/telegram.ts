@@ -38,14 +38,18 @@ export function getTelegramHashInitData(): string {
   if (typeof window === "undefined") return "";
   const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
   if (!hash) return "";
-  const params = new URLSearchParams(hash);
-  return params.get("tgWebAppData") || "";
+  const marker = "tgWebAppData=";
+  const start = hash.indexOf(marker);
+  if (start === -1) return "";
+  const valueStart = start + marker.length;
+  const valueEnd = hash.indexOf("&", valueStart);
+  return valueEnd === -1 ? hash.slice(valueStart) : hash.slice(valueStart, valueEnd);
 }
 
 export function hasTelegramLaunchParams(): boolean {
   if (typeof window === "undefined") return false;
   const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
-  return new URLSearchParams(hash).has("tgWebAppData");
+  return hash.includes("tgWebAppData=");
 }
 
 export function setupTelegramViewport() {
@@ -56,9 +60,9 @@ export function setupTelegramViewport() {
     webApp.expand?.();
     webApp.enableClosingConfirmation?.();
     webApp.disableVerticalSwipes?.();
-    webApp.setHeaderColor?.("#070b12");
-    webApp.setBackgroundColor?.("#070b12");
-    webApp.setBottomBarColor?.("#070b12");
+    webApp.setHeaderColor?.("#000000");
+    webApp.setBackgroundColor?.("#000000");
+    webApp.setBottomBarColor?.("#000000");
     if (!webApp.isFullscreen) {
       webApp.requestFullscreen?.();
     }

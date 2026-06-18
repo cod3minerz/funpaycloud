@@ -36,12 +36,12 @@ import {
 
 type TabID = "pulse" | "attention" | "accounts" | "proxies" | "bonuses";
 
-const tabs: Array<{ id: TabID; text: string; glyph: string }> = [
-  { id: "pulse", text: "Пульс", glyph: "●" },
-  { id: "attention", text: "Внимание", glyph: "!" },
-  { id: "accounts", text: "Аккаунты", glyph: "A" },
-  { id: "proxies", text: "Прокси", glyph: "P" },
-  { id: "bonuses", text: "Бонусы", glyph: "B" },
+const tabs: Array<{ id: TabID; text: string }> = [
+  { id: "pulse", text: "Пульс" },
+  { id: "attention", text: "Внимание" },
+  { id: "accounts", text: "Аккаунты" },
+  { id: "proxies", text: "Прокси" },
+  { id: "bonuses", text: "Бонусы" },
 ];
 
 const TELEGRAM_BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "fpc1oudbot";
@@ -283,9 +283,7 @@ export default function MiniApp() {
       <FixedLayout vertical="bottom">
         <Tabbar>
           {tabs.map((tab) => (
-            <Tabbar.Item key={tab.id} selected={activeTab === tab.id} text={tab.text} onClick={() => setActiveTab(tab.id)}>
-              <span className="miniapp-tab-glyph">{tab.glyph}</span>
-            </Tabbar.Item>
+            <Tabbar.Item key={tab.id} selected={activeTab === tab.id} text={tab.text} onClick={() => setActiveTab(tab.id)} />
           ))}
         </Tabbar>
       </FixedLayout>
@@ -323,11 +321,14 @@ function PulseView({ loading, pulse, runAction }: {
   runAction: (id: string, action: () => Promise<unknown>, success: string) => Promise<void>;
 }) {
   const status = loading ? "loading" : pulse?.status || "loading";
+  const statusLabel = status === "ok" ? "OK" : status === "critical" ? "Проблема" : status === "warning" ? "Внимание" : "Загрузка";
+  const statusMode = status === "critical" ? "critical" : status === "ok" ? "primary" : "secondary";
   return (
     <>
       <section className="miniapp-hero">
         <PulseCloud status={status} />
-        <Title level="1" weight="1">{pulse?.message || "Проверяем платформу"}</Title>
+        <Badge type="number" mode={statusMode}>{statusLabel}</Badge>
+        <Title level="2" weight="2">{pulse?.message || "Проверяем платформу"}</Title>
         <Text>{pulse ? `${pulse.accounts_running}/${pulse.accounts_total} аккаунтов работают` : "Собираем актуальный пульс"}</Text>
       </section>
       <Section header="Сегодня">

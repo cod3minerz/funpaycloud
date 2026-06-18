@@ -5,10 +5,10 @@ type PulseCloudProps = {
 };
 
 const colors: Record<string, { main: string; glow: string; core: string }> = {
-  ok: { main: "#35d07f", glow: "rgba(53,208,127,.42)", core: "#9ff7c4" },
-  warning: { main: "#f4bf4f", glow: "rgba(244,191,79,.42)", core: "#ffe2a0" },
-  critical: { main: "#ff5b6e", glow: "rgba(255,91,110,.42)", core: "#ffb0ba" },
-  loading: { main: "#7d8cff", glow: "rgba(125,140,255,.42)", core: "#c4cbff" },
+  ok: { main: "var(--tgui--link_color, #2ea6ff)", glow: "rgba(46,166,255,.20)", core: "rgba(255,255,255,.18)" },
+  warning: { main: "#f0a33a", glow: "rgba(240,163,58,.18)", core: "rgba(255,255,255,.16)" },
+  critical: { main: "#ff5b5b", glow: "rgba(255,91,91,.18)", core: "rgba(255,255,255,.16)" },
+  loading: { main: "var(--tgui--hint_color, #8e8e93)", glow: "rgba(142,142,147,.18)", core: "rgba(255,255,255,.12)" },
 };
 
 export default function PulseCloud({ status }: PulseCloudProps) {

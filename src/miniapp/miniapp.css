@@ -1,23 +1,13 @@
 html:has(.miniapp-root),
 body:has(.miniapp-root) {
-  background: #070b12;
+  background: var(--tgui--bg_color, #000);
 }
 
 .miniapp-root {
   min-height: 100dvh;
   width: 100%;
   color-scheme: dark;
-  background:
-    radial-gradient(circle at 50% -20%, rgba(61, 215, 140, .16), transparent 34%),
-    linear-gradient(180deg, #0a101b 0%, #070b12 100%);
-  --tgui--bg_color: #070b12;
-  --tgui--secondary_bg_color: #111827;
-  --tgui--section_bg_color: rgba(17, 24, 39, .94);
-  --tgui--text_color: #f7fbff;
-  --tgui--hint_color: #8792a4;
-  --tgui--link_color: #35d07f;
-  --tgui--button_color: #35d07f;
-  --tgui--button_text_color: #06110b;
+  background: var(--tgui--bg_color, #000);
 }
 
 .miniapp-content {
@@ -44,17 +34,16 @@ body:has(.miniapp-root) {
 .miniapp-hero {
   display: grid;
   justify-items: center;
-  gap: 8px;
-  padding: 18px 8px 14px;
+  gap: 6px;
+  padding: 6px 0 10px;
   text-align: center;
 }
 
 .miniapp-pulse-cloud {
-  width: min(74vw, 270px);
+  width: 96px;
   aspect-ratio: 260 / 170;
   display: grid;
   place-items: center;
-  animation: miniapp-cloud-breathe 2.8s ease-in-out infinite;
 }
 
 .miniapp-pulse-cloud svg {
@@ -64,39 +53,24 @@ body:has(.miniapp-root) {
 }
 
 .miniapp-cloud-shape {
-  filter: drop-shadow(0 20px 40px var(--cloud-glow));
+  filter: drop-shadow(0 8px 18px var(--cloud-glow));
   transform-origin: 50% 58%;
-  animation: miniapp-cloud-core 2.8s ease-in-out infinite;
 }
 
 .miniapp-cloud-halo {
-  opacity: .82;
+  opacity: .42;
   transform-origin: 50% 55%;
-  animation: miniapp-cloud-halo 2.8s ease-in-out infinite;
 }
 
 .miniapp-cloud-shine {
-  opacity: .72;
-}
-
-.miniapp-tab-glyph {
-  display: inline-flex;
-  width: 24px;
-  height: 24px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, .08);
-  color: var(--tgui--link_color);
-  font-size: 12px;
-  font-weight: 700;
+  opacity: .34;
 }
 
 .miniapp-skeleton-hero {
-  width: min(74vw, 270px);
-  height: 168px;
+  width: 96px;
+  height: 64px;
   margin: 20px auto;
-  border-radius: 48px;
+  border-radius: 18px;
 }
 
 .miniapp-skeleton-line {
@@ -107,41 +81,4 @@ body:has(.miniapp-root) {
 
 .miniapp-skeleton-line.short {
   width: 62%;
-}
-
-@keyframes miniapp-cloud-breathe {
-  0%, 100% {
-    transform: translateY(0) scale(1);
-  }
-  50% {
-    transform: translateY(-3px) scale(1.035);
-  }
-}
-
-@keyframes miniapp-cloud-core {
-  0%, 100% {
-    opacity: .94;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-@keyframes miniapp-cloud-halo {
-  0%, 100% {
-    transform: scale(.94);
-    opacity: .56;
-  }
-  50% {
-    transform: scale(1.08);
-    opacity: .88;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .miniapp-pulse-cloud,
-  .miniapp-cloud-shape,
-  .miniapp-cloud-halo {
-    animation: none;
-  }
 }
