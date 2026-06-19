@@ -176,7 +176,7 @@
   Auth/admin/platform1 use zero dark: Tailwind classes — only CSS vars — so
   this override is safe globally.
 */
-@custom-variant dark (&:is([data-p2].dark *));
+@custom-variant dark (&:is([data-p2].dark *, [data-admin].dark *));
 
 /*
   The default border color has changed to `currentColor` in Tailwind CSS v4,
@@ -203,8 +203,7 @@
 
 /* ── platform2 root wrapper ──────────────────────────────────────────────── */
 [data-p2] {
-  font-family: var(--font-roboto-flex), sans-serif;
-  font-variation-settings: "wdth" 125;
+  font-family: var(--font-geist), sans-serif;
   @apply relative font-normal;
 }
 

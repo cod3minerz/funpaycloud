@@ -1,9 +1,15 @@
 import type { Metadata, Viewport } from 'next';
-import { Caveat, Inter, JetBrains_Mono, Outfit, Roboto_Flex, Syne } from 'next/font/google';
+import { Caveat, Geist, Inter, JetBrains_Mono, Outfit, Roboto_Flex, Syne } from 'next/font/google';
 import { Suspense } from 'react';
 import { Toaster } from '@/app/components/ui/sonner';
 import { YandexMetrika } from './components/analytics/YandexMetrika';
 import './globals.css';
+
+const geist = Geist({
+  subsets: ['latin', 'cyrillic'],
+  display: 'swap',
+  variable: '--font-geist',
+});
 
 const syne = Syne({
   subsets: ['latin'],
@@ -72,7 +78,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="ru"
-      className={`dark ${syne.variable} ${inter.variable} ${jetbrainsMono.variable} ${caveat.variable} ${outfit.variable} ${robotoFlex.variable}`}
+      className={`dark ${geist.variable} ${syne.variable} ${inter.variable} ${jetbrainsMono.variable} ${caveat.variable} ${outfit.variable} ${robotoFlex.variable}`}
       suppressHydrationWarning
     >
       <body className="antialiased">
