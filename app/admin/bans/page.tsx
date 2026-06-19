@@ -2,6 +2,14 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { adminApi, AdminBan } from '@/lib/api';
+import { Card, CardContent } from '@/platform2/components/ui/card';
+import Alert from '@/platform2/components/ui/alert/Alert';
+import Button from '@/platform2/components/ui/button/Button';
+import { Table, TableHeader, TableBody, TableRow, TableCell } from '@/platform2/components/ui/table';
+import Input from '@/platform2/components/form/input/InputField';
+import { Select } from '@/platform2/components/form/Select';
+import Label from '@/platform2/components/form/Label';
+import Pagination from '@/platform2/components/tables/Pagination';
 
 export default function AdminBansPage() {
   const [items, setItems] = useState<AdminBan[]>([]);
@@ -55,122 +63,109 @@ export default function AdminBansPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold text-white">Ban-list</h1>
-        <p className="text-sm text-slate-400">Управление ручными блокировками email / ip / username / golden_key.</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Ban-list</h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Управление ручными блокировками email / ip / username / golden_key.</p>
       </div>
 
-      {error && <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</div>}
+      {error && <Alert variant="error" title="Ошибка" message={error} />}
 
-      <form onSubmit={addBan} className="grid grid-cols-1 gap-3 rounded-xl border border-slate-800 bg-slate-900/70 p-4 md:grid-cols-4">
-        <label className="text-xs text-slate-400">
-          Тип
-          <select
-            value={form.type}
-            onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))}
-            className="mt-1 h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none focus:border-blue-500"
-          >
-            <option value="email">email</option>
-            <option value="ip">ip</option>
-            <option value="telegram_id">telegram_id</option>
-            <option value="golden_key">golden_key</option>
-            <option value="funpay_username">funpay_username</option>
-          </select>
-        </label>
+      <Card>
+        <CardContent className="p-6">
+          <form onSubmit={addBan}>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              <div>
+                <Label>Тип</Label>
+                <Select
+                  value={form.type}
+                  onChange={val => setForm(prev => ({ ...prev, type: val }))}
+                >
+                  <option value="email">email</option>
+                  <option value="ip">ip</option>
+                  <option value="telegram_id">telegram_id</option>
+                  <option value="golden_key">golden_key</option>
+                  <option value="funpay_username">funpay_username</option>
+                </Select>
+              </div>
+              <div className="md:col-span-2">
+                <Label>Значение</Label>
+                <Input
+                  placeholder="value"
+                  value={form.value}
+                  onChange={e => setForm(prev => ({ ...prev, value: e.target.value }))}
+                  required
+                />
+              </div>
+              <div>
+                <Label>Причина</Label>
+                <Input
+                  placeholder="optional"
+                  value={form.reason}
+                  onChange={e => setForm(prev => ({ ...prev, reason: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="mt-4">
+              <Button onClick={() => {}} className="w-full md:w-auto">
+                Добавить в ban-list
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
 
-        <label className="text-xs text-slate-400 md:col-span-2">
-          Значение
-          <input
-            value={form.value}
-            onChange={e => setForm(prev => ({ ...prev, value: e.target.value }))}
-            className="mt-1 h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none focus:border-blue-500"
-            placeholder="value"
-            required
-          />
-        </label>
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-gray-50 dark:bg-gray-900">
+                <TableRow>
+                  <TableCell isHeader className="px-4 py-3 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Тип</TableCell>
+                  <TableCell isHeader className="px-4 py-3 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Значение</TableCell>
+                  <TableCell isHeader className="px-4 py-3 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Причина</TableCell>
+                  <TableCell isHeader className="px-4 py-3 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Дата</TableCell>
+                  <TableCell isHeader className="px-4 py-3 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Действие</TableCell>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {!loading && items.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="px-4 py-8 text-center text-gray-400 dark:text-gray-500">
+                      Ban-list пуст
+                    </TableCell>
+                  </TableRow>
+                )}
+                {items.map(item => (
+                  <TableRow key={item.id}>
+                    <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{item.type}</TableCell>
+                    <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 break-all">{item.value}</TableCell>
+                    <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{item.reason || '—'}</TableCell>
+                    <TableCell className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{new Date(item.created_at).toLocaleString('ru-RU')}</TableCell>
+                    <TableCell className="px-4 py-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeBan(item.id)}
+                        className="border-error-200 text-error-600 hover:bg-error-50 dark:border-error-500/30 dark:text-error-400 dark:hover:bg-error-500/10"
+                      >
+                        Разбанить
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
-        <label className="text-xs text-slate-400">
-          Причина
-          <input
-            value={form.reason}
-            onChange={e => setForm(prev => ({ ...prev, reason: e.target.value }))}
-            className="mt-1 h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none focus:border-blue-500"
-            placeholder="optional"
-          />
-        </label>
-
-        <button
-          type="submit"
-          className="h-10 rounded-md bg-blue-600 px-3 text-sm font-semibold text-white hover:bg-blue-500 md:col-span-4"
-        >
-          Добавить в ban-list
-        </button>
-      </form>
-
-      <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/70">
-        <table className="min-w-full divide-y divide-slate-800 text-sm">
-          <thead className="bg-slate-900 text-xs uppercase tracking-wide text-slate-400">
-            <tr>
-              <th className="px-3 py-2 text-left">Тип</th>
-              <th className="px-3 py-2 text-left">Значение</th>
-              <th className="px-3 py-2 text-left">Причина</th>
-              <th className="px-3 py-2 text-left">Дата</th>
-              <th className="px-3 py-2 text-left">Действие</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800">
-            {!loading && items.length === 0 && (
-              <tr>
-                <td className="px-3 py-6 text-center text-slate-500" colSpan={5}>
-                  Ban-list пуст
-                </td>
-              </tr>
-            )}
-            {items.map(item => (
-              <tr key={item.id} className="text-slate-200">
-                <td className="px-3 py-2">{item.type}</td>
-                <td className="px-3 py-2 break-all">{item.value}</td>
-                <td className="px-3 py-2">{item.reason || '—'}</td>
-                <td className="px-3 py-2 text-xs text-slate-400">{new Date(item.created_at).toLocaleString('ru-RU')}</td>
-                <td className="px-3 py-2">
-                  <button
-                    type="button"
-                    onClick={() => removeBan(item.id)}
-                    className="h-8 rounded-md border border-red-500/30 px-2 text-xs text-red-300 hover:bg-red-500/10"
-                  >
-                    Разбанить
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex items-center justify-between text-sm text-slate-400">
-        <span>
-          Всего: {total} · Страница {page} из {pages}
-        </span>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => setPage(prev => Math.max(1, prev - 1))}
-            className="h-9 rounded-md border border-slate-700 px-3 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Назад
-          </button>
-          <button
-            type="button"
-            disabled={page >= pages}
-            onClick={() => setPage(prev => Math.min(pages, prev + 1))}
-            className="h-9 rounded-md border border-slate-700 px-3 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Вперёд
-          </button>
+      {pages > 1 && (
+        <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+          <span>Всего: {total}</span>
+          <Pagination currentPage={page} totalPages={pages} onPageChange={setPage} />
         </div>
-      </div>
+      )}
     </div>
   );
 }

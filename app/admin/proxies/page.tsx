@@ -3,38 +3,29 @@
 import { useEffect, useState } from 'react';
 import { Loader2, Plus } from 'lucide-react';
 import { adminApi, AdminSharedProxy } from '@/lib/api';
+import { Card, CardContent } from '@/platform2/components/ui/card';
+import Alert from '@/platform2/components/ui/alert/Alert';
+import Badge from '@/platform2/components/ui/badge/Badge';
+import Button from '@/platform2/components/ui/button/Button';
+import { Table, TableHeader, TableBody, TableRow, TableCell } from '@/platform2/components/ui/table';
+import Input from '@/platform2/components/form/input/InputField';
+import { Select } from '@/platform2/components/form/Select';
+import Label from '@/platform2/components/form/Label';
 
 type FormState = {
-  host: string;
-  port: string;
-  username: string;
-  password: string;
-  protocol: 'HTTP' | 'HTTPS' | 'SOCKS5';
-  expiresAt: string;
+  host: string; port: string; username: string; password: string;
+  protocol: 'HTTP' | 'HTTPS' | 'SOCKS5'; expiresAt: string;
 };
 
-const initialForm: FormState = {
-  host: '',
-  port: '',
-  username: '',
-  password: '',
-  protocol: 'HTTP',
-  expiresAt: '',
-};
+const initialForm: FormState = { host: '', port: '', username: '', password: '', protocol: 'HTTP', expiresAt: '' };
 
-function proxyStatus(item: AdminSharedProxy): { label: string; className: string } {
+function proxyStatus(item: AdminSharedProxy): { label: string; color: 'error' | 'light' | 'warning' | 'success' } {
   const expiresAt = item.expires_at ? new Date(item.expires_at) : null;
   const isExpired = Boolean(expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now());
-  if (isExpired) {
-    return { label: 'Истёк', className: 'bg-red-500/15 text-red-300' };
-  }
-  if (!item.is_active || item.health_state === 'unhealthy') {
-    return { label: 'Недоступен', className: 'bg-slate-700 text-slate-300' };
-  }
-  if (item.health_state === 'degraded') {
-    return { label: 'Проблемы', className: 'bg-amber-500/15 text-amber-300' };
-  }
-  return { label: 'Активен', className: 'bg-emerald-500/15 text-emerald-300' };
+  if (isExpired) return { label: 'Истёк', color: 'error' };
+  if (!item.is_active || item.health_state === 'unhealthy') return { label: 'Недоступен', color: 'light' };
+  if (item.health_state === 'degraded') return { label: 'Проблемы', color: 'warning' };
+  return { label: 'Активен', color: 'success' };
 }
 
 export default function AdminProxiesPage() {
@@ -57,9 +48,7 @@ export default function AdminProxiesPage() {
     }
   }
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   async function submit() {
     const host = form.host.trim();
@@ -73,8 +62,7 @@ export default function AdminProxiesPage() {
     try {
       const expiresISO = form.expiresAt ? new Date(`${form.expiresAt}T23:59:59Z`).toISOString() : undefined;
       await adminApi.addSharedProxy({
-        host,
-        port,
+        host, port,
         username: form.username.trim() || undefined,
         password: form.password.trim() || undefined,
         protocol: form.protocol,
@@ -92,126 +80,100 @@ export default function AdminProxiesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-white">Shared прокси</h1>
-        <p className="text-sm text-slate-400">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Shared прокси</h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Бесплатный пул для пользователей. На один прокси можно назначить ограниченное число аккаунтов.
         </p>
       </div>
 
-      {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-          {error}
-        </div>
-      )}
+      {error && <Alert variant="error" title="Ошибка" message={error} />}
 
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 md:p-6">
-        <h2 className="mb-4 text-lg font-semibold text-white">Добавить shared прокси</h2>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <input
-            className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-500"
-            placeholder="host"
-            value={form.host}
-            onChange={event => setForm(prev => ({ ...prev, host: event.target.value }))}
-          />
-          <input
-            className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-500"
-            placeholder="port"
-            value={form.port}
-            onChange={event => setForm(prev => ({ ...prev, port: event.target.value }))}
-          />
-          <input
-            className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-500"
-            placeholder="username (опционально)"
-            value={form.username}
-            onChange={event => setForm(prev => ({ ...prev, username: event.target.value }))}
-          />
-          <input
-            className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-500"
-            placeholder="password (опционально)"
-            value={form.password}
-            onChange={event => setForm(prev => ({ ...prev, password: event.target.value }))}
-          />
-          <select
-            className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-500"
-            value={form.protocol}
-            onChange={event => setForm(prev => ({ ...prev, protocol: event.target.value as FormState['protocol'] }))}
-          >
-            <option value="HTTP">HTTP</option>
-            <option value="HTTPS">HTTPS</option>
-            <option value="SOCKS5">SOCKS5</option>
-          </select>
-          <input
-            type="date"
-            className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-500"
-            value={form.expiresAt}
-            onChange={event => setForm(prev => ({ ...prev, expiresAt: event.target.value }))}
-          />
-        </div>
-        <button
-          type="button"
-          onClick={submit}
-          disabled={saving}
-          className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-60"
-        >
-          {saving ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
-          Добавить в бесплатный пул
-        </button>
-      </section>
+      <Card>
+        <CardContent className="p-6">
+          <h2 className="mb-4 text-base font-semibold text-gray-800 dark:text-white">Добавить shared прокси</h2>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <Label>Host</Label>
+              <Input placeholder="host" value={form.host} onChange={e => setForm(p => ({ ...p, host: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Port</Label>
+              <Input placeholder="port" value={form.port} onChange={e => setForm(p => ({ ...p, port: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Username <span className="font-normal text-gray-400">(опционально)</span></Label>
+              <Input placeholder="username" value={form.username} onChange={e => setForm(p => ({ ...p, username: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Password <span className="font-normal text-gray-400">(опционально)</span></Label>
+              <Input type="password" placeholder="password" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Протокол</Label>
+              <Select value={form.protocol} onChange={val => setForm(p => ({ ...p, protocol: val as FormState['protocol'] }))}>
+                <option value="HTTP">HTTP</option>
+                <option value="HTTPS">HTTPS</option>
+                <option value="SOCKS5">SOCKS5</option>
+              </Select>
+            </div>
+            <div>
+              <Label>Аренда до</Label>
+              <Input type="date" value={form.expiresAt} onChange={e => setForm(p => ({ ...p, expiresAt: e.target.value }))} />
+            </div>
+          </div>
+          <div className="mt-4">
+            <Button
+              startIcon={saving ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
+              onClick={submit}
+              disabled={saving}
+            >
+              Добавить в бесплатный пул
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 md:p-6">
-        <h2 className="mb-4 text-lg font-semibold text-white">Текущий пул</h2>
-        {loading ? (
-          <div className="flex items-center justify-center py-10">
-            <Loader2 size={20} className="animate-spin text-slate-300" />
-          </div>
-        ) : items.length === 0 ? (
-          <p className="text-sm text-slate-400">Shared прокси пока не добавлены.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
-                  <th className="pb-2 pr-3">Номер</th>
-                  <th className="pb-2 pr-3">Адрес</th>
-                  <th className="pb-2 pr-3">Protocol</th>
-                  <th className="pb-2 pr-3">Загрузка</th>
-                  <th className="pb-2 pr-3">Аренда до</th>
-                  <th className="pb-2 pr-3">Статус</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {items.map(item => (
-                  <tr key={item.id} className="text-slate-200">
-                    <td className="py-2 pr-3 font-medium">#{item.shared_number}</td>
-                    <td className="py-2 pr-3">
-                      {item.host}:{item.port}
-                    </td>
-                    <td className="py-2 pr-3">{item.protocol}</td>
-                    <td className="py-2 pr-3">
-                      {item.used_accounts}/{item.max_accounts}
-                    </td>
-                    <td className="py-2 pr-3">
-                      {item.expires_at ? new Date(item.expires_at).toLocaleString('ru-RU') : '—'}
-                    </td>
-                    <td className="py-2 pr-3">
-                      {(() => {
-                        const status = proxyStatus(item);
-                        return (
-                      <span
-                            className={`inline-flex rounded-full px-2 py-0.5 text-xs ${status.className}`}
-                      >
-                            {status.label}
-                      </span>
-                        );
-                      })()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      <Card>
+        <CardContent className="p-6">
+          <h2 className="mb-4 text-base font-semibold text-gray-800 dark:text-white">Текущий пул</h2>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 size={20} className="animate-spin text-gray-400" />
+            </div>
+          ) : items.length === 0 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400">Shared прокси пока не добавлены.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-gray-50 dark:bg-gray-900">
+                  <TableRow>
+                    {['Номер', 'Адрес', 'Protocol', 'Загрузка', 'Аренда до', 'Статус'].map(h => (
+                      <TableCell key={h} isHeader className="px-4 py-3 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{h}</TableCell>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map(item => {
+                    const s = proxyStatus(item);
+                    return (
+                      <TableRow key={item.id}>
+                        <TableCell className="px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-200">#{item.shared_number}</TableCell>
+                        <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">{item.host}:{item.port}</TableCell>
+                        <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">{item.protocol}</TableCell>
+                        <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">{item.used_accounts}/{item.max_accounts}</TableCell>
+                        <TableCell className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{item.expires_at ? new Date(item.expires_at).toLocaleString('ru-RU') : '—'}</TableCell>
+                        <TableCell className="px-4 py-3">
+                          <Badge variant="light" color={s.color} size="sm">{s.label}</Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

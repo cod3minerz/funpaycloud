@@ -5,6 +5,7 @@ import { AlertTriangle, Bug, Package, Users } from 'lucide-react';
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { adminApi, AdminChatRuntime, AdminLog, AdminMetric, AdminStats } from '@/lib/api';
 import { Card, CardContent } from '@/platform2/components/ui/card';
+import Alert from '@/platform2/components/ui/alert/Alert';
 
 function formatTime(value: string) {
   return new Date(value).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
@@ -75,11 +76,7 @@ export default function AdminDashboardPage() {
         </p>
       </div>
 
-      {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
-          {error}
-        </div>
-      )}
+      {error && <Alert variant="error" title="Ошибка" message={error} />}
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -108,24 +105,17 @@ export default function AdminDashboardPage() {
               </div>
               <div className="mt-4 space-y-2">
                 {chatRuntime.alerts.length === 0 && (
-                  <p className="text-sm text-green-600 dark:text-emerald-300">
+                  <p className="text-sm text-success-600 dark:text-success-400">
                     Критичных проблем в chat-pipeline не обнаружено.
                   </p>
                 )}
                 {chatRuntime.alerts.map(alert => (
-                  <div
+                  <Alert
                     key={`${alert.code}-${alert.message}`}
-                    className={`rounded-lg border px-3 py-2 text-sm ${
-                      alert.level === 'critical'
-                        ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200'
-                        : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/35 dark:bg-amber-500/10 dark:text-amber-200'
-                    }`}
-                  >
-                    <span className="mr-2 inline-flex rounded-md border border-current/40 px-1.5 py-0.5 text-[10px] uppercase tracking-wide">
-                      {alert.level}
-                    </span>
-                    {alert.message}
-                  </div>
+                    variant={alert.level === 'critical' ? 'error' : 'warning'}
+                    title={alert.level.toUpperCase()}
+                    message={alert.message}
+                  />
                 ))}
               </div>
             </>
@@ -166,7 +156,7 @@ export default function AdminDashboardPage() {
             {alerts.map(log => (
               <div
                 key={log.id}
-                className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 dark:border-red-500/20 dark:bg-red-500/5"
+                className="rounded-lg border border-error-100 bg-error-50 px-3 py-2 dark:border-error-500/20 dark:bg-error-500/5"
               >
                 <div className="flex items-center justify-between gap-3 text-xs text-gray-500 dark:text-gray-400">
                   <span>{new Date(log.created_at).toLocaleString('ru-RU')} · {log.category}</span>

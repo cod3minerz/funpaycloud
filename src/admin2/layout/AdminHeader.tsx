@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { AdminThemeToggleButton } from "./AdminThemeToggleButton";
+import Badge from '@/platform2/components/ui/badge/Badge';
 
 const PAGE_TITLES: Record<string, string> = {
   "/admin/dashboard":  "Dashboard",
@@ -23,9 +24,7 @@ export function AdminHeader() {
       <h1 className="text-sm font-semibold text-gray-800 dark:text-white/90">{title}</h1>
       <div className="flex items-center gap-3">
         <AdminThemeToggleButton />
-        <span className="inline-flex items-center rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
-          Admin
-        </span>
+        <Badge variant="light" color="primary" size="sm">Admin</Badge>
       </div>
     </header>
   );

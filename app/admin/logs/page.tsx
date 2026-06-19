@@ -1,10 +1,25 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Download } from 'lucide-react';
 import { adminApi, AdminLog } from '@/lib/api';
+import { Card, CardContent } from '@/platform2/components/ui/card';
+import Alert from '@/platform2/components/ui/alert/Alert';
+import Badge from '@/platform2/components/ui/badge/Badge';
+import Button from '@/platform2/components/ui/button/Button';
+import { Table, TableHeader, TableBody, TableRow, TableCell } from '@/platform2/components/ui/table';
+import Input from '@/platform2/components/form/input/InputField';
+import { Select } from '@/platform2/components/form/Select';
+import Label from '@/platform2/components/form/Label';
+import Pagination from '@/platform2/components/tables/Pagination';
 
 type LevelFilter = '' | 'info' | 'warning' | 'error';
+
+const levelColor: Record<string, 'light' | 'warning' | 'error'> = {
+  info: 'light',
+  warning: 'warning',
+  error: 'error',
+};
 
 export default function AdminLogsPage() {
   const [logs, setLogs] = useState<AdminLog[]>([]);
@@ -37,21 +52,10 @@ export default function AdminLogsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category, level, page]);
 
-  const levelClass = useMemo(
-    () => ({
-      info: 'text-slate-300 bg-slate-700/50 border-slate-600/60',
-      warning: 'text-yellow-300 bg-yellow-500/10 border-yellow-500/30',
-      error: 'text-red-300 bg-red-500/10 border-red-500/30',
-    }),
-    [],
-  );
-
   const exportCsv = async () => {
     try {
       const response = await adminApi.logsCsv({ category, level });
-      if (!response.ok) {
-        throw new Error('Не удалось выгрузить CSV');
-      }
+      if (!response.ok) throw new Error('Не удалось выгрузить CSV');
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -67,133 +71,92 @@ export default function AdminLogsPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Системные логи</h1>
-          <p className="text-sm text-slate-400">Фильтры по категории и уровню, пагинация, экспорт CSV.</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Системные логи</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Фильтры по категории и уровню, пагинация, экспорт CSV.</p>
         </div>
-
-        <button
-          type="button"
-          onClick={exportCsv}
-          className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-700 bg-slate-800 px-3 text-sm text-slate-100 hover:border-blue-500/40 hover:text-blue-300"
-        >
-          <Download size={16} />
+        <Button variant="outline" size="sm" startIcon={<Download size={15} />} onClick={exportCsv}>
           Экспорт CSV
-        </button>
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 rounded-xl border border-slate-800 bg-slate-900/70 p-3 md:grid-cols-3">
-        <label className="text-xs text-slate-400">
-          Категория
-          <input
-            value={category}
-            onChange={e => {
-              setPage(1);
-              setCategory(e.target.value);
-            }}
-            className="mt-1 h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none focus:border-blue-500"
-            placeholder="auth, order, chat..."
-          />
-        </label>
+      <Card>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div>
+              <Label>Категория</Label>
+              <Input
+                placeholder="auth, order, chat..."
+                value={category}
+                onChange={e => { setPage(1); setCategory(e.target.value); }}
+              />
+            </div>
+            <div>
+              <Label>Уровень</Label>
+              <Select value={level} onChange={val => { setPage(1); setLevel(val as LevelFilter); }}>
+                <option value="">Все</option>
+                <option value="info">Info</option>
+                <option value="warning">Warning</option>
+                <option value="error">Error</option>
+              </Select>
+            </div>
+            <div className="flex items-end">
+              <Button variant="outline" size="sm" onClick={() => { setCategory(''); setLevel(''); setPage(1); }}>
+                Сбросить фильтры
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-        <label className="text-xs text-slate-400">
-          Уровень
-          <select
-            value={level}
-            onChange={e => {
-              setPage(1);
-              setLevel(e.target.value as LevelFilter);
-            }}
-            className="mt-1 h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none focus:border-blue-500"
-          >
-            <option value="">Все</option>
-            <option value="info">Info</option>
-            <option value="warning">Warning</option>
-            <option value="error">Error</option>
-          </select>
-        </label>
+      {error && <Alert variant="error" title="Ошибка" message={error} />}
 
-        <button
-          type="button"
-          onClick={() => {
-            setCategory('');
-            setLevel('');
-            setPage(1);
-          }}
-          className="h-10 rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-slate-300 hover:border-slate-500"
-        >
-          Сбросить фильтры
-        </button>
-      </div>
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-gray-50 dark:bg-gray-900">
+                <TableRow>
+                  {['Время', 'Уровень', 'Категория', 'Аккаунт', 'Сообщение'].map(h => (
+                    <TableCell key={h} isHeader className="px-4 py-3 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{h}</TableCell>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {logs.length === 0 && !loading && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="px-4 py-8 text-center text-gray-400 dark:text-gray-500">
+                      Логи не найдены
+                    </TableCell>
+                  </TableRow>
+                )}
+                {logs.map(log => (
+                  <TableRow key={log.id}>
+                    <TableCell className="whitespace-nowrap px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{new Date(log.created_at).toLocaleString('ru-RU')}</TableCell>
+                    <TableCell className="px-4 py-3">
+                      <Badge variant="light" color={levelColor[log.level] ?? 'light'} size="sm">
+                        {log.level}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">{log.category}</TableCell>
+                    <TableCell className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">{log.funpay_account_id || '—'}</TableCell>
+                    <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">{log.message}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
-      {error && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-          {error}
+      {pages > 1 && (
+        <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+          <span>Всего: {total}</span>
+          <Pagination currentPage={page} totalPages={pages} onPageChange={setPage} />
         </div>
       )}
-
-      <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/70">
-        <table className="min-w-full divide-y divide-slate-800 text-sm">
-          <thead className="bg-slate-900">
-            <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
-              <th className="px-3 py-2">Время</th>
-              <th className="px-3 py-2">Уровень</th>
-              <th className="px-3 py-2">Категория</th>
-              <th className="px-3 py-2">Аккаунт</th>
-              <th className="px-3 py-2">Сообщение</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800">
-            {logs.length === 0 && !loading && (
-              <tr>
-                <td className="px-3 py-6 text-center text-slate-500" colSpan={5}>
-                  Логи не найдены
-                </td>
-              </tr>
-            )}
-
-            {logs.map(log => (
-              <tr key={log.id} className="align-top text-slate-200">
-                <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-400">{new Date(log.created_at).toLocaleString('ru-RU')}</td>
-                <td className="px-3 py-2">
-                  <span className={`inline-flex rounded-md border px-2 py-0.5 text-xs font-medium ${levelClass[log.level as keyof typeof levelClass] || levelClass.info}`}>
-                    {log.level}
-                  </span>
-                </td>
-                <td className="px-3 py-2 text-xs text-slate-300">{log.category}</td>
-                <td className="px-3 py-2 text-xs text-slate-300">{log.funpay_account_id || '—'}</td>
-                <td className="px-3 py-2 text-sm text-slate-200">{log.message}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex items-center justify-between text-sm text-slate-400">
-        <span>
-          Всего: {total} · Страница {page} из {pages}
-        </span>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => setPage(prev => Math.max(1, prev - 1))}
-            className="h-9 rounded-md border border-slate-700 px-3 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Назад
-          </button>
-          <button
-            type="button"
-            disabled={page >= pages}
-            onClick={() => setPage(prev => Math.min(pages, prev + 1))}
-            className="h-9 rounded-md border border-slate-700 px-3 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Вперёд
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

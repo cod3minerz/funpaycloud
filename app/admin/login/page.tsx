@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ShieldCheck } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { Card, CardContent } from '@/platform2/components/ui/card';
+import Alert from '@/platform2/components/ui/alert/Alert';
 import Button from '@/platform2/components/ui/button/Button';
 import Input from '@/platform2/components/form/input/InputField';
 import Label from '@/platform2/components/form/Label';
@@ -86,20 +87,11 @@ export default function AdminLoginPage() {
                 />
               </div>
 
-              {error && (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
-                  {error}
-                </div>
-              )}
+              {error && <Alert variant="error" title="Ошибка" message={error} />}
 
-              {/* raw button so type="submit" works inside <form> */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-brand-500 text-sm font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
-              >
+              <Button disabled={loading} className="w-full">
                 {loading ? 'Входим...' : 'Войти'}
-              </button>
+              </Button>
             </form>
           </CardContent>
         </Card>

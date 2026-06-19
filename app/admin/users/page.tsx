@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adminApi, AdminLog, AdminUser } from '@/lib/api';
 import { Card, CardContent } from '@/platform2/components/ui/card';
+import Alert from '@/platform2/components/ui/alert/Alert';
 import Badge from '@/platform2/components/ui/badge/Badge';
 import Button from '@/platform2/components/ui/button/Button';
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/platform2/components/ui/table';
@@ -117,11 +118,7 @@ export default function AdminUsersPage() {
         </p>
       </div>
 
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
-          {error}
-        </div>
-      )}
+      {error && <Alert variant="error" title="Ошибка" message={error} />}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_1fr]">
         {/* Users list */}
@@ -213,37 +210,38 @@ export default function AdminUsersPage() {
                   <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Тариф</p>
                   <div className="grid grid-cols-2 gap-2">
                     {plans.map(plan => (
-                      <button
+                      <Button
                         key={plan}
-                        type="button"
+                        variant="outline"
+                        size="sm"
                         onClick={() => updatePlan(details.user.id, plan)}
-                        className={`h-9 rounded-md border px-3 text-sm font-medium transition-colors ${
-                          details.user.plan === plan
-                            ? 'border-brand-300 bg-brand-50 text-brand-600 dark:border-brand-500/40 dark:bg-brand-500/20 dark:text-brand-300'
-                            : 'border-gray-200 text-gray-600 hover:border-brand-300 hover:text-brand-600 dark:border-gray-700 dark:text-gray-300 dark:hover:border-brand-500/40'
-                        }`}
+                        className={details.user.plan === plan
+                          ? 'border-brand-300 bg-brand-50 text-brand-600 dark:border-brand-500/40 dark:bg-brand-500/20 dark:text-brand-300'
+                          : ''}
                       >
                         {plan}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => banUser(details.user.id)}
-                    className="h-9 rounded-md border border-red-200 bg-red-50 px-3 text-sm text-red-600 transition-colors hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
+                    className="border-error-200 text-error-600 hover:bg-error-50 dark:border-error-500/30 dark:text-error-400 dark:hover:bg-error-500/10"
                   >
                     Заблокировать
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => unbanUser(details.user.id)}
-                    className="h-9 rounded-md border border-green-200 bg-green-50 px-3 text-sm text-green-700 transition-colors hover:bg-green-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+                    className="border-success-200 text-success-700 hover:bg-success-50 dark:border-success-500/30 dark:text-success-400 dark:hover:bg-success-500/10"
                   >
                     Снять блок
-                  </button>
+                  </Button>
                 </div>
 
                 <div>
