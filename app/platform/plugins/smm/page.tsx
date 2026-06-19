@@ -229,8 +229,8 @@ function ConnectionTab({ accountId }: { accountId: number }) {
       try {
         const s = await smmApi.syncServices(accountId);
         toast.success(`Готово! Загружено ${s.synced} услуг SMM-панели`);
-      } catch {
-        toast.error("Услуги не синхронизированы — попробуйте вручную");
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "Услуги не синхронизированы — попробуйте вручную");
       } finally {
         setSyncing(false);
       }
@@ -263,8 +263,8 @@ function ConnectionTab({ accountId }: { accountId: number }) {
     try {
       const r = await smmApi.syncServices(accountId);
       toast.success(`Синхронизировано ${r.synced} услуг`);
-    } catch {
-      toast.error("Ошибка синхронизации");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Ошибка синхронизации");
     } finally {
       setSyncing(false);
     }
