@@ -24,6 +24,7 @@ import {
   ServerStackIcon,
 } from "../icons/index";
 import SidebarWidget from "./SidebarWidget";
+import { usePinnedPlugins, ALL_PLUGINS } from "@/lib/pinnedPlugins";
 
 type NavItem = {
   name: string;
@@ -103,12 +104,7 @@ const managementNavItems: NavItem[] = [
   {
     icon: <PlugInIcon className="h-5 w-5" />,
     name: "Плагины",
-    path: `${BASE}/plugins`,
-    subItems: [
-      { name: "SMM-накрутка", path: `${BASE}/plugins/smm`, new: true },
-      { name: "Robux / Stars", path: `${BASE}/plugins`, pro: true },
-      { name: "Аренда Steam", path: `${BASE}/plugins`, pro: true },
-    ],
+    subItems: [],
   },
   {
     icon: <DollarLineIcon className="h-5 w-5" />,
@@ -128,6 +124,20 @@ const othersItems: NavItem[] = [];
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered, toggleMobileSidebar } = useSidebar();
   const pathname = usePathname();
+  const { pinned } = usePinnedPlugins();
+
+  const pinnedPluginSubItems = [
+    ...ALL_PLUGINS
+      .filter((p) => pinned.includes(p.slug))
+      .map((p) => ({ name: p.name, path: p.path })),
+    { name: "Маркетплейс плагинов", path: `${BASE}/plugins` },
+  ];
+
+  const dynamicManagementNavItems = managementNavItems.map((item) =>
+    item.name === "Плагины"
+      ? { ...item, subItems: pinnedPluginSubItems }
+      : item
+  );
 
   const renderMenuItems = (
     navItems: NavItem[],
@@ -296,16 +306,16 @@ const AppSidebar: React.FC = () => {
   useEffect(() => {
     // Check if the current path matches any submenu item
     let submenuMatched = false;
-    ["main", "others"].forEach((menuType) => {
-      const items = menuType === "main" ? navItems : othersItems;
+    const menuMap: Array<["main" | "others", NavItem[]]> = [
+      ["main", mainNavItems],
+      ["others", dynamicManagementNavItems],
+    ];
+    menuMap.forEach(([menuType, items]) => {
       items.forEach((nav, index) => {
         if (nav.subItems) {
           nav.subItems.forEach((subItem) => {
             if (isActive(subItem.path)) {
-              setOpenSubmenu({
-                type: menuType as "main" | "others",
-                index,
-              });
+              setOpenSubmenu({ type: menuType, index });
               submenuMatched = true;
             }
           });
@@ -313,11 +323,10 @@ const AppSidebar: React.FC = () => {
       });
     });
 
-    // If no submenu item matches, close the open submenu
     if (!submenuMatched) {
       setOpenSubmenu(null);
     }
-  }, [pathname,isActive]);
+  }, [pathname, isActive, pinned]);
 
   useEffect(() => {
     // Set the height of the submenu items when the submenu is opened
@@ -430,7 +439,7 @@ const AppSidebar: React.FC = () => {
                   <HorizontaLDots />
                 )}
               </h2>
-              {renderMenuItems(managementNavItems, "others")}
+              {renderMenuItems(dynamicManagementNavItems, "others")}
             </div>
           </div>
         </nav>
