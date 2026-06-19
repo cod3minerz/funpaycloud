@@ -28,7 +28,7 @@ export default function AdminLoginPage() {
     setError(null);
     try {
       await adminApi.login(email.trim(), password, totp.trim());
-      router.push('/admin/dashboard');
+      router.push('/ops/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка входа');
     } finally {
