@@ -426,6 +426,23 @@ test('telegram master toggle does not enable weekly report', async ({ page }) =>
   await expect(weeklyToggle).toHaveAttribute('aria-pressed', 'false');
 });
 
+test('weekly report schedule modal is visible on phone viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/platform/settings');
+
+  await page.getByTestId('weekly-report-toggle').click();
+  const modal = page.getByTestId('weekly-report-schedule-modal');
+  await expect(modal).toBeVisible();
+  await expect(page.getByText('Выберите день и время отправки статистики.')).toBeVisible();
+  await expect(page.locator('select')).toBeVisible();
+  await expect(page.locator('input[type="time"]')).toBeVisible();
+
+  const box = await modal.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+});
+
 test('desktop shell: no burger, stable sidebar collapse and no sidebar overflow', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/platform/dashboard');

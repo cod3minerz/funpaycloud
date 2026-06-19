@@ -703,47 +703,49 @@ export default function SettingsPage() {
       </Card>
 
       <Modal isOpen={weeklyReportModalOpen} onClose={closeWeeklyReportModal} className="max-w-md p-6">
-        <div className="pr-10">
-          <p className="text-lg font-semibold text-gray-900 dark:text-white">Недельный отчёт</p>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Выберите день и время отправки статистики.</p>
-        </div>
-
-        <div className="mt-6 space-y-4">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              День недели
-            </label>
-            <select
-              value={draftWeeklyReportDay}
-              onChange={(event) => setDraftWeeklyReportDay(Number(event.target.value))}
-              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            >
-              {weeklyReportDays.map((day) => (
-                <option key={day.value} value={day.value}>{day.label}</option>
-              ))}
-            </select>
+        <div data-testid="weekly-report-schedule-modal">
+          <div className="pr-10">
+            <p className="text-lg font-semibold text-gray-900 dark:text-white">Недельный отчёт</p>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Выберите день и время отправки статистики.</p>
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Время
-            </label>
-            <input
-              type="time"
-              value={draftWeeklyReportTime}
-              onChange={(event) => setDraftWeeklyReportTime(event.target.value)}
-              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            />
-          </div>
-        </div>
+          <div className="mt-6 space-y-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                День недели
+              </label>
+              <select
+                value={draftWeeklyReportDay}
+                onChange={(event) => setDraftWeeklyReportDay(Number(event.target.value))}
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              >
+                {weeklyReportDays.map((day) => (
+                  <option key={day.value} value={day.value}>{day.label}</option>
+                ))}
+              </select>
+            </div>
 
-        <div className="mt-6 flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={closeWeeklyReportModal}>
-            Отмена
-          </Button>
-          <Button variant="primary" className="flex-1" onClick={saveWeeklyReportSchedule}>
-            Сохранить
-          </Button>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Время
+              </label>
+              <input
+                type="time"
+                value={draftWeeklyReportTime}
+                onChange={(event) => setDraftWeeklyReportTime(event.target.value)}
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              />
+            </div>
+          </div>
+
+          <div className="mt-6 flex gap-3">
+            <Button variant="outline" className="flex-1" onClick={closeWeeklyReportModal}>
+              Отмена
+            </Button>
+            <Button variant="primary" className="flex-1" onClick={saveWeeklyReportSchedule}>
+              Сохранить
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>
