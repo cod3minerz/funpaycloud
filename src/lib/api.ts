@@ -1723,3 +1723,123 @@ export const adminApi = {
       method: 'DELETE',
     }),
 };
+
+// ─── SMM Plugin ───────────────────────────────────────────────────────────────
+
+export type SMMConnection = {
+  id: number;
+  funpay_account_id: number;
+  panel_url: string;
+  balance: number;
+  balance_currency: string;
+  balance_updated_at: string | null;
+  min_balance_alert: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SMMService = {
+  id: number;
+  connection_id: number;
+  external_service_id: string;
+  name: string;
+  type: string;
+  rate: number;
+  min_qty: number;
+  max_qty: number;
+  is_active: boolean;
+};
+
+export type SMMMapping = {
+  id: number;
+  funpay_account_id: number;
+  connection_id: number;
+  name: string;
+  external_service_id: string;
+  keywords: string[];
+  link_source: 'message' | 'description' | 'fixed';
+  link_platform: string;
+  fixed_link: string;
+  qty_mode: 'parse' | 'fixed';
+  qty_value: number;
+  notify_message: string;
+  is_enabled: boolean;
+};
+
+export type SMMOrder = {
+  id: number;
+  funpay_account_id: number;
+  connection_id: number;
+  mapping_id: number | null;
+  funpay_order_id: string;
+  smm_order_id: string;
+  external_service_id: string;
+  link: string;
+  quantity: number;
+  buyer_username: string;
+  status: 'pending_link' | 'pending_submit' | 'submitted' | 'in_progress' | 'completed' | 'partial' | 'cancelled' | 'error' | 'manual';
+  error_message: string;
+  start_count: number | null;
+  remains: number | null;
+  charge: number | null;
+  chat_node_id: string;
+  retries: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export const smmApi = {
+  getConnection: (accountId: number) =>
+    apiRequest<{ success: boolean; data: SMMConnection | null }>(`/api/smm/connection?account_id=${accountId}`),
+
+  upsertConnection: (accountId: number, payload: { panel_url: string; api_key: string; min_balance_alert: number }) =>
+    apiRequest<{ success: boolean; data: SMMConnection }>(`/api/smm/connection?account_id=${accountId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
+  testConnection: (accountId: number) =>
+    apiRequest<{ success: boolean; balance: number; currency: string; error?: string }>(`/api/smm/connection/test?account_id=${accountId}`, {
+      method: 'POST',
+    }),
+
+  syncServices: (accountId: number) =>
+    apiRequest<{ success: boolean; synced: number }>(`/api/smm/services/sync?account_id=${accountId}`, {
+      method: 'POST',
+    }),
+
+  getServices: (accountId: number) =>
+    apiRequest<{ success: boolean; data: SMMService[] }>(`/api/smm/services?account_id=${accountId}`),
+
+  getMappings: (accountId: number) =>
+    apiRequest<{ success: boolean; data: SMMMapping[] }>(`/api/smm/mappings?account_id=${accountId}`),
+
+  createMapping: (accountId: number, payload: Partial<SMMMapping>) =>
+    apiRequest<{ success: boolean; data: SMMMapping }>(`/api/smm/mappings?account_id=${accountId}`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  updateMapping: (accountId: number, id: number, payload: Partial<SMMMapping>) =>
+    apiRequest<{ success: boolean; data: SMMMapping }>(`/api/smm/mappings/${id}?account_id=${accountId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
+  deleteMapping: (accountId: number, id: number) =>
+    apiRequest(`/api/smm/mappings/${id}?account_id=${accountId}`, { method: 'DELETE' }),
+
+  getOrders: (accountId: number, page = 1, limit = 50) =>
+    apiRequest<{ success: boolean; data: SMMOrder[]; total: number; page: number; limit: number }>(
+      `/api/smm/orders?account_id=${accountId}&page=${page}&limit=${limit}`
+    ),
+
+  retryOrder: (accountId: number, orderId: number) =>
+    apiRequest<{ success: boolean; smm_order_id: string }>(`/api/smm/orders/${orderId}/retry?account_id=${accountId}`, {
+      method: 'POST',
+    }),
+
+  manualOrder: (accountId: number, orderId: number) =>
+    apiRequest(`/api/smm/orders/${orderId}/manual?account_id=${accountId}`, { method: 'POST' }),
+};

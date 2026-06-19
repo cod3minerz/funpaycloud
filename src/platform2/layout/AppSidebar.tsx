@@ -103,7 +103,12 @@ const managementNavItems: NavItem[] = [
   {
     icon: <PlugInIcon className="h-5 w-5" />,
     name: "Плагины",
-    badge: "Скоро",
+    path: `${BASE}/plugins`,
+    subItems: [
+      { name: "SMM-накрутка", path: `${BASE}/plugins/smm`, new: true },
+      { name: "Robux / Stars", path: `${BASE}/plugins`, pro: true },
+      { name: "Аренда Steam", path: `${BASE}/plugins`, pro: true },
+    ],
   },
   {
     icon: <DollarLineIcon className="h-5 w-5" />,
