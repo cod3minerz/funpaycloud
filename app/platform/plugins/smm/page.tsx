@@ -266,7 +266,7 @@ function ConnectionTab({ accountId }: { accountId: number }) {
         <CardHeader>
           <CardTitle>Настройки SMM-панели</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-6 pb-6">
           <FormField label="URL панели">
             <InputField
               placeholder="https://panel.example.com"
@@ -509,7 +509,7 @@ function MappingForm({
       <CardHeader>
         <CardTitle>{initial ? "Редактировать маппинг" : "Новый маппинг"}</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 px-6 pb-6">
         <FormField label="Название">
           <InputField value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="Напр. ВКонтакте подписчики" />
         </FormField>
