@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { logout } from "@/lib/auth";
 import { Card, CardContent } from "@/platform2/components/ui/card";
 import { Button } from "@/platform2/components/ui/button";
+import { Modal } from "@/platform2/components/ui/modal";
 import {
   EyeIcon,
   EyeSlashIcon,
@@ -83,6 +84,7 @@ function loadTelegramLoginScript(): Promise<void> {
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
   return (
     <button
+      type="button"
       onClick={onChange}
       className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ${
         checked ? "bg-brand-500" : "bg-gray-200 dark:bg-gray-700"
@@ -171,6 +173,19 @@ const notifItems = [
 ];
 
 type NotifKey = "all" | "newOrder" | "newMessage" | "login" | "weeklyReport" | "subscriptionExpiry";
+
+const DEFAULT_WEEKLY_REPORT_DAY = 5;
+const DEFAULT_WEEKLY_REPORT_TIME = "10:00";
+
+const weeklyReportDays = [
+  { value: 1, label: "Понедельник" },
+  { value: 2, label: "Вторник" },
+  { value: 3, label: "Среда" },
+  { value: 4, label: "Четверг" },
+  { value: 5, label: "Пятница" },
+  { value: 6, label: "Суббота" },
+  { value: 7, label: "Воскресенье" },
+];
 
 export default function SettingsPage() {
   const [currentPwd, setCurrentPwd] = useState("");
@@ -360,10 +375,34 @@ export default function SettingsPage() {
     weeklyReport: false,
     subscriptionExpiry: false,
   });
+  const [weeklyReportDay, setWeeklyReportDay] = useState(DEFAULT_WEEKLY_REPORT_DAY);
+  const [weeklyReportTime, setWeeklyReportTime] = useState(DEFAULT_WEEKLY_REPORT_TIME);
+  const [weeklyReportModalOpen, setWeeklyReportModalOpen] = useState(false);
+  const [draftWeeklyReportDay, setDraftWeeklyReportDay] = useState(DEFAULT_WEEKLY_REPORT_DAY);
+  const [draftWeeklyReportTime, setDraftWeeklyReportTime] = useState(DEFAULT_WEEKLY_REPORT_TIME);
+
+  function buildNotificationPayload(
+    state: Record<NotifKey, boolean>,
+    day = weeklyReportDay,
+    time = weeklyReportTime,
+  ): NotificationSettings {
+    return {
+      enabled: state.all,
+      new_order: state.newOrder,
+      new_message: state.newMessage,
+      login: state.login,
+      weekly_report: state.weeklyReport,
+      subscription: state.subscriptionExpiry,
+      weekly_report_day: day,
+      weekly_report_time: time,
+    };
+  }
 
   // Load notifications from API
   useEffect(() => {
     settingsApi.getNotifications().then((n: NotificationSettings) => {
+      const day = n.weekly_report_day || DEFAULT_WEEKLY_REPORT_DAY;
+      const time = n.weekly_report_time || DEFAULT_WEEKLY_REPORT_TIME;
       setNotifs({
         all: n.enabled ?? false,
         newOrder: n.new_order ?? false,
@@ -372,6 +411,10 @@ export default function SettingsPage() {
         weeklyReport: n.weekly_report ?? false,
         subscriptionExpiry: n.subscription ?? false,
       });
+      setWeeklyReportDay(day);
+      setWeeklyReportTime(time);
+      setDraftWeeklyReportDay(day);
+      setDraftWeeklyReportTime(time);
     }).catch(() => {});
   }, []);
 
@@ -380,16 +423,46 @@ export default function SettingsPage() {
       const next = !notifs.all;
       const updated = { all: next, newOrder: next, newMessage: next, login: next, weeklyReport: next, subscriptionExpiry: next };
       setNotifs(updated);
-      settingsApi.updateNotifications({ enabled: next, new_order: next, new_message: next, login: next, weekly_report: next, subscription: next }).catch(() => {});
+      settingsApi.updateNotifications(buildNotificationPayload(updated)).catch(() => {});
     } else {
+      if (key === "weeklyReport" && !notifs.weeklyReport) {
+        setDraftWeeklyReportDay(weeklyReportDay);
+        setDraftWeeklyReportTime(weeklyReportTime);
+        setWeeklyReportModalOpen(true);
+        return;
+      }
       setNotifs((prev) => {
         const updated = { ...prev, [key]: !prev[key] };
         const anyOn = notifItems.some((n) => updated[n.key as NotifKey]);
         const result = { ...updated, all: anyOn };
-        settingsApi.updateNotifications({ enabled: result.all, new_order: result.newOrder, new_message: result.newMessage, login: result.login, weekly_report: result.weeklyReport, subscription: result.subscriptionExpiry }).catch(() => {});
+        settingsApi.updateNotifications(buildNotificationPayload(result)).catch(() => {});
         return result;
       });
     }
+  }
+
+  function closeWeeklyReportModal() {
+    setWeeklyReportModalOpen(false);
+    setDraftWeeklyReportDay(weeklyReportDay);
+    setDraftWeeklyReportTime(weeklyReportTime);
+  }
+
+  function saveWeeklyReportSchedule() {
+    if (!draftWeeklyReportTime) {
+      toast.error("Выберите время отчёта");
+      return;
+    }
+    const updated = { ...notifs, weeklyReport: true, all: true };
+    setWeeklyReportDay(draftWeeklyReportDay);
+    setWeeklyReportTime(draftWeeklyReportTime);
+    setNotifs(updated);
+    setWeeklyReportModalOpen(false);
+    settingsApi.updateNotifications(buildNotificationPayload(updated, draftWeeklyReportDay, draftWeeklyReportTime)).catch((err) => {
+      setNotifs(notifs);
+      setWeeklyReportDay(weeklyReportDay);
+      setWeeklyReportTime(weeklyReportTime);
+      toast.error(err instanceof Error ? err.message : "Не удалось сохранить расписание отчёта");
+    });
   }
 
   async function handleSavePassword() {
@@ -569,7 +642,11 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-800 dark:text-white">{label}</p>
-                    <p className="text-xs text-gray-400">{desc}</p>
+                    <p className="text-xs text-gray-400">
+                      {key === "weeklyReport" && notifs.weeklyReport
+                        ? `${weeklyReportDays.find((d) => d.value === weeklyReportDay)?.label ?? "Пятница"}, ${weeklyReportTime}`
+                        : desc}
+                    </p>
                   </div>
                 </div>
                 <Toggle checked={notifs[key as NotifKey]} onChange={() => toggleNotif(key as NotifKey)} />
@@ -578,6 +655,51 @@ export default function SettingsPage() {
           </ul>
         </CardContent>
       </Card>
+
+      <Modal isOpen={weeklyReportModalOpen} onClose={closeWeeklyReportModal} className="max-w-md p-6">
+        <div className="pr-10">
+          <p className="text-lg font-semibold text-gray-900 dark:text-white">Недельный отчёт</p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Выберите день и время отправки статистики.</p>
+        </div>
+
+        <div className="mt-6 space-y-4">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              День недели
+            </label>
+            <select
+              value={draftWeeklyReportDay}
+              onChange={(event) => setDraftWeeklyReportDay(Number(event.target.value))}
+              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+            >
+              {weeklyReportDays.map((day) => (
+                <option key={day.value} value={day.value}>{day.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Время
+            </label>
+            <input
+              type="time"
+              value={draftWeeklyReportTime}
+              onChange={(event) => setDraftWeeklyReportTime(event.target.value)}
+              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+            />
+          </div>
+        </div>
+
+        <div className="mt-6 flex gap-3">
+          <Button variant="outline" className="flex-1" onClick={closeWeeklyReportModal}>
+            Отмена
+          </Button>
+          <Button variant="primary" className="flex-1" onClick={saveWeeklyReportSchedule}>
+            Сохранить
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

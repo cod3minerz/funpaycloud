@@ -122,6 +122,8 @@ function normalizeNotificationSettings(data: NotificationSettings): Notification
     login: Boolean(data.login),
     weekly_report: Boolean(data.weekly_report),
     subscription: Boolean(data.subscription),
+    weekly_report_day: Number(data.weekly_report_day || 5),
+    weekly_report_time: data.weekly_report_time || '10:00',
   };
 }
 
@@ -157,6 +159,8 @@ export default function Settings() {
     login: false,
     weekly_report: false,
     subscription: false,
+    weekly_report_day: 5,
+    weekly_report_time: '10:00',
   });
   const [notificationsLoading, setNotificationsLoading] = useState(true);
   const [notificationsSaving, setNotificationsSaving] = useState(false);
@@ -231,6 +235,8 @@ export default function Settings() {
           login: false,
           weekly_report: false,
           subscription: false,
+          weekly_report_day: 5,
+          weekly_report_time: '10:00',
         });
       })
       .finally(() => {

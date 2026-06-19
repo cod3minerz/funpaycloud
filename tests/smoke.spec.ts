@@ -85,6 +85,8 @@ test.beforeEach(async ({ page }) => {
       login: false,
       weekly_report: false,
       subscription: false,
+      weekly_report_day: 5,
+      weekly_report_time: '10:00',
     };
     const envelope = (data: unknown) =>
       new Response(JSON.stringify({ success: true, data }), {
@@ -186,6 +188,12 @@ test.beforeEach(async ({ page }) => {
       }
       if (path === '/api/settings/notifications' && method === 'GET') {
         return envelope(notifications);
+      }
+      if (path === '/api/settings/notifications' && method === 'PUT') {
+        const body = JSON.parse(String(init?.body || '{}'));
+        Object.assign(notifications, body);
+        (window as any).__LAST_NOTIFICATION_UPDATE__ = body;
+        return envelope(body);
       }
       if (path === '/api/settings/telegram/link' && method === 'GET') {
         return envelope({ available: false, linked: false });
@@ -345,6 +353,36 @@ test('orders allow manual delivery for completed order without delivery history'
   const deliverButton = page.getByRole('button', { name: /Выдать/ }).first();
   await expect(deliverButton).toBeVisible();
   await expect(deliverButton).toBeEnabled();
+});
+
+test('weekly report toggle opens schedule modal and saves selected schedule', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/platform/settings');
+
+  const row = page.locator('li').filter({ hasText: 'Недельный отчёт' });
+  await expect(row).toBeVisible();
+
+  await row.getByRole('button').click();
+  await expect(page.getByText('Выберите день и время отправки статистики.')).toBeVisible();
+  await page.getByRole('button', { name: 'Отмена' }).click();
+  await expect(page.getByText('Выберите день и время отправки статистики.')).toHaveCount(0);
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__LAST_NOTIFICATION_UPDATE__ ?? null))
+    .toBeNull();
+
+  await row.getByRole('button').click();
+  await page.locator('select').selectOption('2');
+  await page.locator('input[type="time"]').fill('09:30');
+  await page.getByRole('button', { name: 'Сохранить' }).click();
+
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__LAST_NOTIFICATION_UPDATE__ ?? null))
+    .toMatchObject({
+      enabled: true,
+      weekly_report: true,
+      weekly_report_day: 2,
+      weekly_report_time: '09:30',
+    });
 });
 
 test('desktop shell: no burger, stable sidebar collapse and no sidebar overflow', async ({ page }) => {

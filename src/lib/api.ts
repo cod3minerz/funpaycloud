@@ -910,6 +910,8 @@ export type NotificationSettings = {
   login: boolean;
   weekly_report: boolean;
   subscription: boolean;
+  weekly_report_day: number;
+  weekly_report_time: string;
 };
 
 export type TelegramLinkData = {

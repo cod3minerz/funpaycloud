@@ -165,17 +165,17 @@ test.beforeEach(async ({ page }) => {
 test('visual: dashboard desktop baseline', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/platform/dashboard');
-  await expect(page.getByRole('heading', { name: 'Дашборд' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Медиахаб платформы' })).toBeVisible();
   await stabilize(page);
   await page.waitForTimeout(300);
 
-  await expect(page.locator('.platform-main')).toHaveScreenshot('dashboard-desktop.png');
+  await expect(page).toHaveScreenshot('dashboard-desktop.png', { fullPage: true });
 });
 
 test('visual: dashboard mobile baseline', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/platform/dashboard');
-  await expect(page.getByRole('heading', { name: 'Дашборд' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Медиахаб платформы' })).toBeVisible();
   await stabilize(page);
   await page.waitForTimeout(200);
 
