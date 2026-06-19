@@ -1793,10 +1793,10 @@ export type SMMOrder = {
 
 export const smmApi = {
   getConnection: (accountId: number) =>
-    apiRequest<{ success: boolean; data: SMMConnection | null }>(`/api/smm/connection?account_id=${accountId}`),
+    apiRequest<SMMConnection | null>(`/api/smm/connection?account_id=${accountId}`),
 
   upsertConnection: (accountId: number, payload: { panel_url: string; api_key: string; min_balance_alert: number }) =>
-    apiRequest<{ success: boolean; data: SMMConnection }>(`/api/smm/connection?account_id=${accountId}`, {
+    apiRequest<SMMConnection>(`/api/smm/connection?account_id=${accountId}`, {
       method: 'PUT',
       body: JSON.stringify(payload),
     }),
@@ -1813,19 +1813,19 @@ export const smmApi = {
     }),
 
   getServices: (accountId: number) =>
-    apiRequest<{ success: boolean; data: SMMService[] }>(`/api/smm/services?account_id=${accountId}`),
+    apiRequest<SMMService[]>(`/api/smm/services?account_id=${accountId}`),
 
   getMappings: (accountId: number) =>
-    apiRequest<{ success: boolean; data: SMMMapping[] }>(`/api/smm/mappings?account_id=${accountId}`),
+    apiRequest<SMMMapping[]>(`/api/smm/mappings?account_id=${accountId}`),
 
   createMapping: (accountId: number, payload: Partial<SMMMapping>) =>
-    apiRequest<{ success: boolean; data: SMMMapping }>(`/api/smm/mappings?account_id=${accountId}`, {
+    apiRequest<SMMMapping>(`/api/smm/mappings?account_id=${accountId}`, {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
 
   updateMapping: (accountId: number, id: number, payload: Partial<SMMMapping>) =>
-    apiRequest<{ success: boolean; data: SMMMapping }>(`/api/smm/mappings/${id}?account_id=${accountId}`, {
+    apiRequest<SMMMapping>(`/api/smm/mappings/${id}?account_id=${accountId}`, {
       method: 'PUT',
       body: JSON.stringify(payload),
     }),
@@ -1834,12 +1834,12 @@ export const smmApi = {
     apiRequest(`/api/smm/mappings/${id}?account_id=${accountId}`, { method: 'DELETE' }),
 
   getOrders: (accountId: number, page = 1, limit = 50) =>
-    apiRequest<{ success: boolean; data: SMMOrder[]; total: number; page: number; limit: number }>(
+    apiRequest<{ orders: SMMOrder[]; total: number; page: number; limit: number }>(
       `/api/smm/orders?account_id=${accountId}&page=${page}&limit=${limit}`
     ),
 
   retryOrder: (accountId: number, orderId: number) =>
-    apiRequest<{ success: boolean; smm_order_id: string }>(`/api/smm/orders/${orderId}/retry?account_id=${accountId}`, {
+    apiRequest<{ smm_order_id: string }>(`/api/smm/orders/${orderId}/retry?account_id=${accountId}`, {
       method: 'POST',
     }),
 

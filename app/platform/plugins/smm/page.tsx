@@ -142,7 +142,7 @@ function OverviewTab({ accountId }: { accountId: number }) {
   useEffect(() => {
     setLoading(true);
     smmApi.getConnection(accountId)
-      .then((r) => setConn(r.data))
+      .then((conn) => setConn(conn))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [accountId]);
@@ -210,10 +210,10 @@ function ConnectionTab({ accountId }: { accountId: number }) {
   const [testResult, setTestResult] = useState<{ balance?: number; currency?: string; error?: string } | null>(null);
 
   useEffect(() => {
-    smmApi.getConnection(accountId).then((r) => {
-      if (r.data) {
-        setConn(r.data);
-        setForm({ panel_url: r.data.panel_url, api_key: "***", min_balance_alert: r.data.min_balance_alert });
+    smmApi.getConnection(accountId).then((conn) => {
+      if (conn) {
+        setConn(conn);
+        setForm({ panel_url: conn.panel_url, api_key: "***", min_balance_alert: conn.min_balance_alert });
       }
     }).catch(() => {});
   }, [accountId]);
@@ -221,8 +221,8 @@ function ConnectionTab({ accountId }: { accountId: number }) {
   const save = async () => {
     setSaving(true);
     try {
-      const r = await smmApi.upsertConnection(accountId, form);
-      setConn(r.data);
+      const conn = await smmApi.upsertConnection(accountId, form);
+      setConn(conn);
       toast.success("Настройки сохранены — синхронизируем услуги...");
       // Auto-sync services so mappings are immediately available
       setSyncing(true);
@@ -346,8 +346,8 @@ function MappingsTab({ accountId }: { accountId: number }) {
       smmApi.getMappings(accountId),
       smmApi.getServices(accountId),
     ]).then(([m, s]) => {
-      setMappings(m.data ?? []);
-      setServices(s.data ?? []);
+      setMappings(m ?? []);
+      setServices(s ?? []);
     }).catch(() => setError("Ошибка загрузки маппингов"))
       .finally(() => setLoading(false));
   }, [accountId]);
@@ -605,7 +605,7 @@ function OrdersTab({ accountId }: { accountId: number }) {
   const load = useCallback(() => {
     setLoading(true);
     smmApi.getOrders(accountId, page, limit)
-      .then((r) => { setOrders(r.data ?? []); setTotal(r.total); })
+      .then((r) => { setOrders(r.orders ?? []); setTotal(r.total); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [accountId, page]);
