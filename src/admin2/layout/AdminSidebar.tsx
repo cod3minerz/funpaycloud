@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import {
   Squares2X2Icon,
   DocumentTextIcon,
@@ -13,11 +14,20 @@ import {
   UsersIcon,
   NoSymbolIcon,
   ArrowRightOnRectangleIcon,
+  BugAntIcon,
+  LightBulbIcon,
 } from "@heroicons/react/24/outline";
 import { clearAdminToken } from "@/lib/auth";
 import { adminApi } from "@/lib/api";
 
-const navItems = [
+type NavItem = {
+  href: string;
+  label: string;
+  Icon: React.ComponentType<{ className?: string }>;
+  badge?: number;
+};
+
+const staticNavItems: Omit<NavItem, 'badge'>[] = [
   { href: "/ops/dashboard",  label: "Dashboard",        Icon: Squares2X2Icon },
   { href: "/ops/logs",       label: "Логи",             Icon: DocumentTextIcon },
   { href: "/ops/monitoring", label: "Мониторинг",       Icon: ComputerDesktopIcon },
@@ -36,6 +46,17 @@ type AdminSidebarProps = {
 export function AdminSidebar({ isMobileOpen, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const [unreadCounts, setUnreadCounts] = useState({ tickets: 0, ideas: 0 });
+
+  useEffect(() => {
+    adminApi.feedbackCounts().then(setUnreadCounts).catch(() => {});
+  }, [pathname]);
+
+  const navItems: NavItem[] = [
+    ...staticNavItems,
+    { href: "/ops/tickets", label: "Тикеты", Icon: BugAntIcon,    badge: unreadCounts.tickets },
+    { href: "/ops/ideas",   label: "Идеи",   Icon: LightBulbIcon, badge: unreadCounts.ideas },
+  ];
 
   const handleLogout = async () => {
     try {
@@ -83,7 +104,7 @@ export function AdminSidebar({ isMobileOpen, onClose }: AdminSidebarProps) {
           Навигация
         </p>
         <ul className="flex flex-col gap-0.5">
-          {navItems.map(({ href, label, Icon }) => {
+          {navItems.map(({ href, label, Icon, badge }) => {
             const active = pathname === href;
             return (
               <li key={href}>
@@ -96,6 +117,11 @@ export function AdminSidebar({ isMobileOpen, onClose }: AdminSidebarProps) {
                     <Icon className="h-5 w-5" />
                   </span>
                   <span>{label}</span>
+                  {badge != null && badge > 0 && (
+                    <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-error-500 px-1 text-[10px] font-bold text-white">
+                      {badge > 99 ? "99+" : badge}
+                    </span>
+                  )}
                 </Link>
               </li>
             );

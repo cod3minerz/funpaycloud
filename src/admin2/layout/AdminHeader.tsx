@@ -14,6 +14,8 @@ const PAGE_TITLES: Record<string, string> = {
   "/ops/promocodes": "Промокоды",
   "/ops/users":      "Пользователи",
   "/ops/bans":       "Баны",
+  "/ops/tickets":    "Тикеты",
+  "/ops/ideas":      "Идеи",
 };
 
 type AdminHeaderProps = {

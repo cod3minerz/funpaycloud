@@ -1603,6 +1603,23 @@ export type AdminMonitoring = {
   timestamp: string;
 };
 
+export type FeedbackItem = {
+  id: number;
+  type: 'bug' | 'idea';
+  title: string;
+  description: string;
+  telegram: string;
+  is_read: boolean;
+  user_id: number | null;
+  ip_address: string;
+  created_at: string;
+};
+
+export const feedbackApi = {
+  submit: (data: { type: 'bug' | 'idea'; title: string; description: string; telegram?: string }) =>
+    apiRequest<void>('/api/feedback', { method: 'POST', body: JSON.stringify(data) }),
+};
+
 export const adminApi = {
   login: (email: string, password: string, totp: string) =>
     adminApiRequest<{ user: { id: number; email: string } }>('/admin-api/auth/login', {
@@ -1725,6 +1742,14 @@ export const adminApi = {
     adminApiRequest(`/admin-api/bans/${id}`, {
       method: 'DELETE',
     }),
+  feedbackCounts: () =>
+    adminApiRequest<{ tickets: number; ideas: number }>('/admin-api/feedback/counts'),
+  listFeedback: (params: { type: 'bug' | 'idea'; page?: number; limit?: number }) => {
+    const q = new URLSearchParams({ type: params.type, page: String(params.page ?? 1), limit: String(params.limit ?? 20) });
+    return adminApiRequest<{ items: FeedbackItem[]; total: number; page: number; limit: number }>(`/admin-api/feedback?${q.toString()}`);
+  },
+  getFeedback: (id: number) =>
+    adminApiRequest<FeedbackItem>(`/admin-api/feedback/${id}`),
 };
 
 // ─── SMM Plugin ───────────────────────────────────────────────────────────────
