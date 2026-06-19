@@ -81,11 +81,24 @@ function loadTelegramLoginScript(): Promise<void> {
   return telegramLoginScriptPromise;
 }
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+function Toggle({
+  checked,
+  onChange,
+  ariaLabel,
+  testId,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  ariaLabel: string;
+  testId?: string;
+}) {
   return (
     <button
       type="button"
       onClick={onChange}
+      aria-label={ariaLabel}
+      aria-pressed={checked}
+      data-testid={testId}
       className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ${
         checked ? "bg-brand-500" : "bg-gray-200 dark:bg-gray-700"
       }`}
@@ -176,6 +189,8 @@ type NotifKey = "all" | "newOrder" | "newMessage" | "login" | "weeklyReport" | "
 
 const DEFAULT_WEEKLY_REPORT_DAY = 5;
 const DEFAULT_WEEKLY_REPORT_TIME = "10:00";
+const regularNotificationKeys: NotifKey[] = ["newOrder", "newMessage", "login", "subscriptionExpiry"];
+const notificationKeys: NotifKey[] = [...regularNotificationKeys, "weeklyReport"];
 
 const weeklyReportDays = [
   { value: 1, label: "Понедельник" },
@@ -381,13 +396,28 @@ export default function SettingsPage() {
   const [draftWeeklyReportDay, setDraftWeeklyReportDay] = useState(DEFAULT_WEEKLY_REPORT_DAY);
   const [draftWeeklyReportTime, setDraftWeeklyReportTime] = useState(DEFAULT_WEEKLY_REPORT_TIME);
 
+  function hasAnyNotificationEnabled(state: Record<NotifKey, boolean>) {
+    return notificationKeys.some((key) => state[key]);
+  }
+
+  function areRegularNotificationsEnabled(state: Record<NotifKey, boolean>) {
+    return regularNotificationKeys.every((key) => state[key]);
+  }
+
+  function withDerivedMasterState(state: Record<NotifKey, boolean>) {
+    return {
+      ...state,
+      all: areRegularNotificationsEnabled(state),
+    };
+  }
+
   function buildNotificationPayload(
     state: Record<NotifKey, boolean>,
     day = weeklyReportDay,
     time = weeklyReportTime,
   ): NotificationSettings {
     return {
-      enabled: state.all,
+      enabled: hasAnyNotificationEnabled(state),
       new_order: state.newOrder,
       new_message: state.newMessage,
       login: state.login,
@@ -403,14 +433,14 @@ export default function SettingsPage() {
     settingsApi.getNotifications().then((n: NotificationSettings) => {
       const day = n.weekly_report_day || DEFAULT_WEEKLY_REPORT_DAY;
       const time = n.weekly_report_time || DEFAULT_WEEKLY_REPORT_TIME;
-      setNotifs({
-        all: n.enabled ?? false,
+      setNotifs(withDerivedMasterState({
+        all: false,
         newOrder: n.new_order ?? false,
         newMessage: n.new_message ?? false,
         login: n.login ?? false,
         weeklyReport: n.weekly_report ?? false,
         subscriptionExpiry: n.subscription ?? false,
-      });
+      }));
       setWeeklyReportDay(day);
       setWeeklyReportTime(time);
       setDraftWeeklyReportDay(day);
@@ -421,7 +451,14 @@ export default function SettingsPage() {
   function toggleNotif(key: NotifKey) {
     if (key === "all") {
       const next = !notifs.all;
-      const updated = { all: next, newOrder: next, newMessage: next, login: next, weeklyReport: next, subscriptionExpiry: next };
+      const updated = {
+        ...notifs,
+        all: next,
+        newOrder: next,
+        newMessage: next,
+        login: next,
+        subscriptionExpiry: next,
+      };
       setNotifs(updated);
       settingsApi.updateNotifications(buildNotificationPayload(updated)).catch(() => {});
     } else {
@@ -433,8 +470,7 @@ export default function SettingsPage() {
       }
       setNotifs((prev) => {
         const updated = { ...prev, [key]: !prev[key] };
-        const anyOn = notifItems.some((n) => updated[n.key as NotifKey]);
-        const result = { ...updated, all: anyOn };
+        const result = withDerivedMasterState(updated);
         settingsApi.updateNotifications(buildNotificationPayload(result)).catch(() => {});
         return result;
       });
@@ -452,7 +488,7 @@ export default function SettingsPage() {
       toast.error("Выберите время отчёта");
       return;
     }
-    const updated = { ...notifs, weeklyReport: true, all: true };
+    const updated = withDerivedMasterState({ ...notifs, weeklyReport: true });
     setWeeklyReportDay(draftWeeklyReportDay);
     setWeeklyReportTime(draftWeeklyReportTime);
     setNotifs(updated);
@@ -627,9 +663,14 @@ export default function SettingsPage() {
               <p className="text-sm font-semibold text-gray-800 dark:text-white">
                 Уведомления в Telegram
               </p>
-              <p className="text-xs text-gray-400">Включить или выключить все</p>
+              <p className="text-xs text-gray-400">Обычные уведомления без недельного отчёта</p>
             </div>
-            <Toggle checked={notifs.all} onChange={() => toggleNotif("all")} />
+            <Toggle
+              checked={notifs.all}
+              onChange={() => toggleNotif("all")}
+              ariaLabel="Переключить обычные Telegram уведомления"
+              testId="telegram-notifications-master-toggle"
+            />
           </div>
 
           {/* Individual toggles */}
@@ -649,7 +690,12 @@ export default function SettingsPage() {
                     </p>
                   </div>
                 </div>
-                <Toggle checked={notifs[key as NotifKey]} onChange={() => toggleNotif(key as NotifKey)} />
+                <Toggle
+                  checked={notifs[key as NotifKey]}
+                  onChange={() => toggleNotif(key as NotifKey)}
+                  ariaLabel={`Переключить ${label}`}
+                  testId={key === "weeklyReport" ? "weekly-report-toggle" : undefined}
+                />
               </li>
             ))}
           </ul>

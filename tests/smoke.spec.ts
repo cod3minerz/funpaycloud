@@ -88,6 +88,7 @@ test.beforeEach(async ({ page }) => {
       weekly_report_day: 5,
       weekly_report_time: '10:00',
     };
+    (window as any).__LAST_NOTIFICATION_UPDATE__ = null;
     const envelope = (data: unknown) =>
       new Response(JSON.stringify({ success: true, data }), {
         headers: { 'Content-Type': 'application/json' },
@@ -359,18 +360,20 @@ test('weekly report toggle opens schedule modal and saves selected schedule', as
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/platform/settings');
 
-  const row = page.locator('li').filter({ hasText: 'Недельный отчёт' });
-  await expect(row).toBeVisible();
+  const weeklyToggle = page.getByTestId('weekly-report-toggle');
+  await expect(weeklyToggle).toBeVisible();
+  await expect(weeklyToggle).toHaveAttribute('aria-pressed', 'false');
 
-  await row.getByRole('button').click();
+  await weeklyToggle.click();
   await expect(page.getByText('Выберите день и время отправки статистики.')).toBeVisible();
   await page.getByRole('button', { name: 'Отмена' }).click();
   await expect(page.getByText('Выберите день и время отправки статистики.')).toHaveCount(0);
+  await expect(weeklyToggle).toHaveAttribute('aria-pressed', 'false');
   await expect
     .poll(() => page.evaluate(() => (window as any).__LAST_NOTIFICATION_UPDATE__ ?? null))
     .toBeNull();
 
-  await row.getByRole('button').click();
+  await weeklyToggle.click();
   await page.locator('select').selectOption('2');
   await page.locator('input[type="time"]').fill('09:30');
   await page.getByRole('button', { name: 'Сохранить' }).click();
@@ -383,6 +386,44 @@ test('weekly report toggle opens schedule modal and saves selected schedule', as
       weekly_report_day: 2,
       weekly_report_time: '09:30',
     });
+  await expect(weeklyToggle).toHaveAttribute('aria-pressed', 'true');
+
+  await page.evaluate(() => {
+    (window as any).__LAST_NOTIFICATION_UPDATE__ = null;
+  });
+  await weeklyToggle.click();
+  await expect(page.getByText('Выберите день и время отправки статистики.')).toHaveCount(0);
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__LAST_NOTIFICATION_UPDATE__ ?? null))
+    .toMatchObject({
+      enabled: false,
+      weekly_report: false,
+    });
+  await expect(weeklyToggle).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('telegram master toggle does not enable weekly report', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/platform/settings');
+
+  const masterToggle = page.getByTestId('telegram-notifications-master-toggle');
+  const weeklyToggle = page.getByTestId('weekly-report-toggle');
+  await expect(masterToggle).toBeVisible();
+  await expect(weeklyToggle).toHaveAttribute('aria-pressed', 'false');
+
+  await masterToggle.click();
+  await expect(page.getByText('Выберите день и время отправки статистики.')).toHaveCount(0);
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__LAST_NOTIFICATION_UPDATE__ ?? null))
+    .toMatchObject({
+      enabled: true,
+      new_order: true,
+      new_message: true,
+      login: true,
+      subscription: true,
+      weekly_report: false,
+    });
+  await expect(weeklyToggle).toHaveAttribute('aria-pressed', 'false');
 });
 
 test('desktop shell: no burger, stable sidebar collapse and no sidebar overflow', async ({ page }) => {
