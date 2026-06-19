@@ -223,7 +223,17 @@ function ConnectionTab({ accountId }: { accountId: number }) {
     try {
       const r = await smmApi.upsertConnection(accountId, form);
       setConn(r.data);
-      toast.success("Настройки сохранены");
+      toast.success("Настройки сохранены — синхронизируем услуги...");
+      // Auto-sync services so mappings are immediately available
+      setSyncing(true);
+      try {
+        const s = await smmApi.syncServices(accountId);
+        toast.success(`Готово! Загружено ${s.synced} услуг SMM-панели`);
+      } catch {
+        toast.error("Услуги не синхронизированы — попробуйте вручную");
+      } finally {
+        setSyncing(false);
+      }
     } catch {
       toast.error("Ошибка сохранения");
     } finally {
