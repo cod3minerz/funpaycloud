@@ -1807,6 +1807,7 @@ export const smmApi = {
   syncServices: (accountId: number) =>
     apiRequest<{ success: boolean; synced: number }>(`/api/smm/services/sync?account_id=${accountId}`, {
       method: 'POST',
+      timeoutMs: 90000,
     }),
 
   getServices: (accountId: number) =>
