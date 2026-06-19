@@ -1,6 +1,6 @@
 "use client";
 import { ThemeToggleButton } from "@/platform2/components/common/ThemeToggleButton";
-import UserDropdown from "@/platform2/components/header/UserDropdown";
+import UserDropdownAdmin from "@/platform2/layout/UserDropdownAdmin";
 import { useSidebar } from "@/platform2/context/SidebarContext";
 import Image from "next/image";
 import Link from "next/link";
@@ -143,7 +143,7 @@ const AppHeader: React.FC = () => {
           <div className="flex items-center gap-2 2xsm:gap-3">
             <ThemeToggleButton />
           </div>
-          <UserDropdown />
+          <UserDropdownAdmin />
         </div>
       </div>
     </header>

@@ -1,34 +1,39 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Activity,
-  Ban,
-  LayoutDashboard,
-  LogOut,
-  Logs,
-  MonitorSmartphone,
-  Network,
-  PlayCircle,
-  Ticket,
-  Users,
-} from "lucide-react";
+  Squares2X2Icon,
+  DocumentTextIcon,
+  ComputerDesktopIcon,
+  PlayCircleIcon,
+  ServerIcon,
+  TagIcon,
+  UsersIcon,
+  NoSymbolIcon,
+  ArrowRightOnRectangleIcon,
+} from "@heroicons/react/24/outline";
 import { clearAdminToken } from "@/lib/auth";
 import { adminApi } from "@/lib/api";
 
 const navItems = [
-  { href: "/admin/dashboard", label: "Dashboard",      Icon: LayoutDashboard },
-  { href: "/admin/logs",      label: "Логи",           Icon: Logs },
-  { href: "/admin/monitoring",label: "Мониторинг",     Icon: MonitorSmartphone },
-  { href: "/admin/runners",   label: "Воркеры",        Icon: PlayCircle },
-  { href: "/admin/proxies",   label: "Прокси",         Icon: Network },
-  { href: "/admin/promocodes",label: "Промокоды",      Icon: Ticket },
-  { href: "/admin/users",     label: "Пользователи",   Icon: Users },
-  { href: "/admin/bans",      label: "Баны",           Icon: Ban },
+  { href: "/ops/dashboard",  label: "Dashboard",        Icon: Squares2X2Icon },
+  { href: "/ops/logs",       label: "Логи",             Icon: DocumentTextIcon },
+  { href: "/ops/monitoring", label: "Мониторинг",       Icon: ComputerDesktopIcon },
+  { href: "/ops/runners",    label: "Воркеры",          Icon: PlayCircleIcon },
+  { href: "/ops/proxies",    label: "Прокси",           Icon: ServerIcon },
+  { href: "/ops/promocodes", label: "Промокоды",        Icon: TagIcon },
+  { href: "/ops/users",      label: "Пользователи",     Icon: UsersIcon },
+  { href: "/ops/bans",       label: "Баны",             Icon: NoSymbolIcon },
 ];
 
-export function AdminSidebar() {
+type AdminSidebarProps = {
+  isMobileOpen?: boolean;
+  onClose?: () => void;
+};
+
+export function AdminSidebar({ isMobileOpen, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -39,21 +44,37 @@ export function AdminSidebar() {
       // local cleanup still runs
     } finally {
       clearAdminToken();
-      router.push("/admin/login");
+      router.push("/ops/login");
     }
   };
 
   return (
-    <aside className="fixed left-0 top-0 hidden h-screen w-[260px] shrink-0 flex-col overflow-hidden border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 md:flex">
+    <aside
+      className={`fixed left-0 top-0 z-50 flex h-screen w-[260px] shrink-0 flex-col overflow-hidden border-r border-gray-200 bg-white transition-transform duration-300 ease-in-out dark:border-gray-800 dark:bg-gray-900 ${
+        isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+      }`}
+    >
       {/* Logo */}
-      <div className="flex h-16 items-center gap-3 border-b border-gray-200 px-5 dark:border-gray-800">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-500/15 text-brand-500">
-          <Activity size={18} />
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-gray-900 dark:text-white">FunPay Cloud</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Admin Panel</p>
-        </div>
+      <div className="flex h-16 items-center justify-between border-b border-gray-200 px-5 dark:border-gray-800">
+        <Link href="/ops/dashboard" onClick={onClose}>
+          <Image
+            src="/branding/logo_full_new.svg"
+            alt="FunPay Cloud"
+            width={130}
+            height={22}
+            className="dark:hidden"
+          />
+          <Image
+            src="/branding/logo_full_new_dark.svg"
+            alt="FunPay Cloud"
+            width={130}
+            height={22}
+            className="hidden dark:block"
+          />
+        </Link>
+        <span className="rounded-full bg-error-500/10 px-2 py-0.5 text-[10px] font-semibold text-error-600 dark:text-error-400">
+          Admin
+        </span>
       </div>
 
       {/* Nav */}
@@ -68,10 +89,11 @@ export function AdminSidebar() {
               <li key={href}>
                 <Link
                   href={href}
+                  onClick={onClose}
                   className={`menu-item group ${active ? "menu-item-active" : "menu-item-inactive"}`}
                 >
                   <span className={active ? "menu-item-icon-active" : "menu-item-icon-inactive"}>
-                    <Icon size={16} />
+                    <Icon className="h-5 w-5" />
                   </span>
                   <span>{label}</span>
                 </Link>
@@ -89,7 +111,7 @@ export function AdminSidebar() {
           className="menu-item menu-item-inactive group w-full text-left"
         >
           <span className="menu-item-icon-inactive">
-            <LogOut size={16} />
+            <ArrowRightOnRectangleIcon className="h-5 w-5" />
           </span>
           <span>Выйти</span>
         </button>

@@ -19,14 +19,14 @@ export const AdminThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("admin-theme") as Theme | null;
+    const savedTheme = localStorage.getItem("theme") as Theme | null;
     setTheme(savedTheme || "light");
     setIsInitialized(true);
   }, []);
 
   useEffect(() => {
     if (isInitialized) {
-      localStorage.setItem("admin-theme", theme);
+      localStorage.setItem("theme", theme);
       const el = document.querySelector("[data-admin]");
       if (el) {
         if (theme === "dark") {

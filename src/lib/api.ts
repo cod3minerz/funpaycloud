@@ -226,8 +226,8 @@ export async function adminApiRequest<T = unknown>(
 
   if (response.status === 401 || response.status === 403) {
     clearAdminToken();
-    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin/login')) {
-      window.location.href = '/admin/login';
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/ops/login')) {
+      window.location.href = '/ops/login';
     }
     throw new ApiError(envelope.error || 'Доступ запрещён', response.status);
   }
@@ -890,6 +890,7 @@ export type ProfileData = {
   telegram_photo_url?: string;
   telegram_notifications_enabled?: boolean;
   timezone?: string;
+  is_admin?: boolean;
 };
 
 export type SubscriptionData = {

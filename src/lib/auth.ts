@@ -96,5 +96,5 @@ export function clearAdminToken(): void {
 export function logoutAdmin(): void {
   if (typeof window === 'undefined') return;
   clearAdminToken();
-  window.location.href = '/admin/login';
+  window.location.href = '/ops/login';
 }
