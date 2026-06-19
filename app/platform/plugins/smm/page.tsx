@@ -207,7 +207,7 @@ function ConnectionTab({ accountId }: { accountId: number }) {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; balance?: number; currency?: string; error?: string } | null>(null);
+  const [testResult, setTestResult] = useState<{ balance?: number; currency?: string; error?: string } | null>(null);
 
   useEffect(() => {
     smmApi.getConnection(accountId).then((r) => {
@@ -247,11 +247,10 @@ function ConnectionTab({ accountId }: { accountId: number }) {
     try {
       const r = await smmApi.testConnection(accountId);
       setTestResult(r);
-      if (r.success) toast.success(`Подключение успешно! Баланс: ${r.balance?.toFixed(2)} ${r.currency}`);
-      else toast.error(r.error || "Ошибка подключения");
+      toast.success(`Подключение успешно! Баланс: ${r.balance?.toFixed(2)} ${r.currency}`);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Ошибка подключения";
-      setTestResult({ success: false, error: msg });
+      setTestResult({ error: msg });
       toast.error(msg);
     } finally {
       setTesting(false);
@@ -304,9 +303,9 @@ function ConnectionTab({ accountId }: { accountId: number }) {
 
           {testResult && (
             <Alert
-              variant={testResult.success ? "success" : "error"}
-              title={testResult.success ? "Подключение успешно" : "Ошибка подключения"}
-              message={testResult.success ? `Баланс: ${testResult.balance?.toFixed(2)} ${testResult.currency}` : (testResult.error || "Неизвестная ошибка")}
+              variant={testResult.error ? "error" : "success"}
+              title={testResult.error ? "Ошибка подключения" : "Подключение успешно"}
+              message={testResult.error || `Баланс: ${testResult.balance?.toFixed(2)} ${testResult.currency}`}
             />
           )}
 

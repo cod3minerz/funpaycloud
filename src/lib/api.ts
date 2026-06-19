@@ -1802,12 +1802,12 @@ export const smmApi = {
     }),
 
   testConnection: (accountId: number) =>
-    apiRequest<{ success: boolean; balance: number; currency: string; error?: string }>(`/api/smm/connection/test?account_id=${accountId}`, {
+    apiRequest<{ balance: number; currency: string }>(`/api/smm/connection/test?account_id=${accountId}`, {
       method: 'POST',
     }),
 
   syncServices: (accountId: number) =>
-    apiRequest<{ success: boolean; synced: number }>(`/api/smm/services/sync?account_id=${accountId}`, {
+    apiRequest<{ synced: number }>(`/api/smm/services/sync?account_id=${accountId}`, {
       method: 'POST',
       timeoutMs: 90000,
     }),
