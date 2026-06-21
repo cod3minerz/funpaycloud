@@ -78,17 +78,44 @@ test.beforeEach(async ({ page }) => {
       telegram_id: null,
       timezone: 'Europe/Moscow',
     };
+    const initialParams = new URLSearchParams(window.location.search);
+    const weeklyInitiallyOn = initialParams.get('weeklyOn') === '1';
+    const weeklyInitiallyFailed = initialParams.get('weeklyFailed') === '1';
     const notifications = {
-      enabled: false,
+      enabled: weeklyInitiallyOn,
       new_order: false,
       new_message: false,
       login: false,
-      weekly_report: false,
+      weekly_report: weeklyInitiallyOn,
       subscription: false,
       weekly_report_day: 5,
       weekly_report_time: '10:00',
     };
+    const weeklyReportStatus = {
+      enabled: weeklyInitiallyOn,
+      linked: true,
+      timezone: 'Europe/Moscow',
+      weekly_report_day: 5,
+      weekly_report_time: '10:00',
+      next_scheduled_for: weeklyInitiallyOn ? '2026-06-26T07:00:00Z' : null,
+      next_scheduled_for_local: weeklyInitiallyOn ? '2026-06-26T10:00:00+03:00' : '',
+      eligible: weeklyInitiallyOn,
+      blocked_reason: weeklyInitiallyOn ? '' : 'weekly_report_disabled',
+      last_run: weeklyInitiallyFailed
+        ? {
+            scheduled_for: '2026-06-19T07:00:00Z',
+            period_start: '2026-06-12T07:00:00Z',
+            period_end: '2026-06-19T07:00:00Z',
+            status: 'failed',
+            attempts: 2,
+            sent_at: null,
+            telegram_message_id: null,
+            last_error: 'telegram api status=403',
+          }
+        : null,
+    };
     (window as any).__LAST_NOTIFICATION_UPDATE__ = null;
+    (window as any).__MOCK_WEEKLY_REPORT_STATUS__ = weeklyReportStatus;
     const envelope = (data: unknown) =>
       new Response(JSON.stringify({ success: true, data }), {
         headers: { 'Content-Type': 'application/json' },
@@ -187,12 +214,25 @@ test.beforeEach(async ({ page }) => {
           days_left: 30,
         });
       }
+      if (path === '/api/settings/notifications/weekly-report/status' && method === 'GET') {
+        return envelope((window as any).__MOCK_WEEKLY_REPORT_STATUS__);
+      }
       if (path === '/api/settings/notifications' && method === 'GET') {
         return envelope(notifications);
       }
       if (path === '/api/settings/notifications' && method === 'PUT') {
         const body = JSON.parse(String(init?.body || '{}'));
         Object.assign(notifications, body);
+        Object.assign((window as any).__MOCK_WEEKLY_REPORT_STATUS__, {
+          enabled: Boolean(body.weekly_report),
+          weekly_report_day: body.weekly_report_day ?? notifications.weekly_report_day,
+          weekly_report_time: body.weekly_report_time ?? notifications.weekly_report_time,
+          next_scheduled_for: body.weekly_report ? '2026-06-23T06:30:00Z' : null,
+          next_scheduled_for_local: body.weekly_report ? '2026-06-23T09:30:00+03:00' : '',
+          eligible: Boolean(body.weekly_report),
+          blocked_reason: body.weekly_report ? '' : 'weekly_report_disabled',
+          last_run: null,
+        });
         (window as any).__LAST_NOTIFICATION_UPDATE__ = body;
         return envelope(body);
       }
@@ -387,6 +427,7 @@ test('weekly report toggle opens schedule modal and saves selected schedule', as
       weekly_report_time: '09:30',
     });
   await expect(weeklyToggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('weekly-report-next-run')).toContainText('Следующий отчёт');
 
   await page.evaluate(() => {
     (window as any).__LAST_NOTIFICATION_UPDATE__ = null;
@@ -400,6 +441,15 @@ test('weekly report toggle opens schedule modal and saves selected schedule', as
       weekly_report: false,
     });
   await expect(weeklyToggle).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('weekly report shows failed delivery status from backend', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/platform/settings?weeklyOn=1&weeklyFailed=1');
+
+  await expect(page.getByTestId('weekly-report-toggle')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('weekly-report-error')).toContainText('Ошибка отправки');
+  await expect(page.getByTestId('weekly-report-error')).toContainText('telegram api status=403');
 });
 
 test('telegram master toggle does not enable weekly report', async ({ page }) => {

@@ -915,6 +915,30 @@ export type NotificationSettings = {
   weekly_report_time: string;
 };
 
+export type WeeklyReportRunStatus = {
+  scheduled_for: string;
+  period_start: string;
+  period_end: string;
+  status: 'pending' | 'processing' | 'sent' | 'failed' | 'skipped' | string;
+  attempts: number;
+  sent_at: string | null;
+  telegram_message_id: number | null;
+  last_error: string;
+};
+
+export type WeeklyReportStatus = {
+  enabled: boolean;
+  linked: boolean;
+  timezone: string;
+  weekly_report_day: number;
+  weekly_report_time: string;
+  next_scheduled_for: string | null;
+  next_scheduled_for_local: string;
+  eligible: boolean;
+  blocked_reason: string;
+  last_run: WeeklyReportRunStatus | null;
+};
+
 export type TelegramLinkData = {
   available: boolean;
   bot_id?: number;
@@ -1017,6 +1041,8 @@ export const settingsApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+  getWeeklyReportStatus: () =>
+    apiRequest<WeeklyReportStatus>('/api/settings/notifications/weekly-report/status'),
   getTelegramLink: () => apiRequest<TelegramLinkData>('/api/settings/telegram/link'),
   linkTelegram: (data: TelegramAuthPayload) =>
     apiRequest<{ linked: boolean }>('/api/telegram/link', {

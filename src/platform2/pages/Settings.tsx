@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
-import { settingsApi, type NotificationSettings, type TelegramAuthPayload, type TelegramLinkData } from "@/lib/api";
+import { settingsApi, type NotificationSettings, type TelegramAuthPayload, type TelegramLinkData, type WeeklyReportStatus } from "@/lib/api";
 import { toast } from "sonner";
 import { logout } from "@/lib/auth";
 import { Card, CardContent } from "@/platform2/components/ui/card";
@@ -202,6 +202,25 @@ const weeklyReportDays = [
   { value: 7, label: "Воскресенье" },
 ];
 
+function formatWeeklyReportDate(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function truncateWeeklyReportError(value: string) {
+  const clean = value.trim();
+  if (!clean) return "не удалось отправить отчёт";
+  return clean.length > 90 ? `${clean.slice(0, 87)}...` : clean;
+}
+
 export default function SettingsPage() {
   const [currentPwd, setCurrentPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
@@ -303,6 +322,7 @@ export default function SettingsPage() {
     try {
       await settingsApi.linkTelegram(payload);
       await refreshTelegramState();
+      refreshWeeklyReportStatus();
       toast.success("Telegram аккаунт привязан");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Не удалось привязать Telegram аккаунт");
@@ -362,6 +382,8 @@ export default function SettingsPage() {
       await settingsApi.unlinkTelegram();
       setTelegramLinked(false);
       setTelegramUsername("");
+      setWeeklyReportStatus(null);
+      refreshWeeklyReportStatus();
       toast.success("Telegram отвязан");
     } catch {
       toast.error("Не удалось отвязать Telegram");
@@ -395,6 +417,13 @@ export default function SettingsPage() {
   const [weeklyReportModalOpen, setWeeklyReportModalOpen] = useState(false);
   const [draftWeeklyReportDay, setDraftWeeklyReportDay] = useState(DEFAULT_WEEKLY_REPORT_DAY);
   const [draftWeeklyReportTime, setDraftWeeklyReportTime] = useState(DEFAULT_WEEKLY_REPORT_TIME);
+  const [weeklyReportStatus, setWeeklyReportStatus] = useState<WeeklyReportStatus | null>(null);
+
+  function refreshWeeklyReportStatus() {
+    settingsApi.getWeeklyReportStatus()
+      .then(setWeeklyReportStatus)
+      .catch(() => setWeeklyReportStatus(null));
+  }
 
   function hasAnyNotificationEnabled(state: Record<NotifKey, boolean>) {
     return notificationKeys.some((key) => state[key]);
@@ -428,6 +457,22 @@ export default function SettingsPage() {
     };
   }
 
+  function weeklyReportDescription(defaultDescription: string) {
+    if (!notifs.weeklyReport) return defaultDescription;
+
+    const dayLabel = weeklyReportDays.find((day) => day.value === weeklyReportDay)?.label ?? "Пятница";
+    const base = `${dayLabel}, ${weeklyReportTime}`;
+    const lastRun = weeklyReportStatus?.last_run;
+    if (lastRun?.status === "failed") {
+      return `Ошибка отправки: ${truncateWeeklyReportError(lastRun.last_error)}`;
+    }
+
+    const nextDate = formatWeeklyReportDate(
+      weeklyReportStatus?.next_scheduled_for_local || weeklyReportStatus?.next_scheduled_for,
+    );
+    return nextDate ? `${base}. Следующий отчёт: ${nextDate}` : base;
+  }
+
   // Load notifications from API
   useEffect(() => {
     settingsApi.getNotifications().then((n: NotificationSettings) => {
@@ -448,6 +493,10 @@ export default function SettingsPage() {
     }).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    refreshWeeklyReportStatus();
+  }, []);
+
   function toggleNotif(key: NotifKey) {
     if (key === "all") {
       const next = !notifs.all;
@@ -460,7 +509,9 @@ export default function SettingsPage() {
         subscriptionExpiry: next,
       };
       setNotifs(updated);
-      settingsApi.updateNotifications(buildNotificationPayload(updated)).catch(() => {});
+      settingsApi.updateNotifications(buildNotificationPayload(updated))
+        .then(() => refreshWeeklyReportStatus())
+        .catch(() => {});
     } else {
       if (key === "weeklyReport" && !notifs.weeklyReport) {
         setDraftWeeklyReportDay(weeklyReportDay);
@@ -471,7 +522,9 @@ export default function SettingsPage() {
       setNotifs((prev) => {
         const updated = { ...prev, [key]: !prev[key] };
         const result = withDerivedMasterState(updated);
-        settingsApi.updateNotifications(buildNotificationPayload(result)).catch(() => {});
+        settingsApi.updateNotifications(buildNotificationPayload(result))
+          .then(() => refreshWeeklyReportStatus())
+          .catch(() => {});
         return result;
       });
     }
@@ -493,7 +546,9 @@ export default function SettingsPage() {
     setWeeklyReportTime(draftWeeklyReportTime);
     setNotifs(updated);
     setWeeklyReportModalOpen(false);
-    settingsApi.updateNotifications(buildNotificationPayload(updated, draftWeeklyReportDay, draftWeeklyReportTime)).catch((err) => {
+    settingsApi.updateNotifications(buildNotificationPayload(updated, draftWeeklyReportDay, draftWeeklyReportTime)).then(() => {
+      refreshWeeklyReportStatus();
+    }).catch((err) => {
       setNotifs(notifs);
       setWeeklyReportDay(weeklyReportDay);
       setWeeklyReportTime(weeklyReportTime);
@@ -683,10 +738,21 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-800 dark:text-white">{label}</p>
-                    <p className="text-xs text-gray-400">
-                      {key === "weeklyReport" && notifs.weeklyReport
-                        ? `${weeklyReportDays.find((d) => d.value === weeklyReportDay)?.label ?? "Пятница"}, ${weeklyReportTime}`
-                        : desc}
+                    <p
+                      className={`text-xs ${
+                        key === "weeklyReport" && notifs.weeklyReport && weeklyReportStatus?.last_run?.status === "failed"
+                          ? "text-error-500"
+                          : "text-gray-400"
+                      }`}
+                      data-testid={
+                        key === "weeklyReport" && notifs.weeklyReport
+                          ? weeklyReportStatus?.last_run?.status === "failed"
+                            ? "weekly-report-error"
+                            : "weekly-report-next-run"
+                          : undefined
+                      }
+                    >
+                      {key === "weeklyReport" ? weeklyReportDescription(desc) : desc}
                     </p>
                   </div>
                 </div>
