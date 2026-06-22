@@ -984,6 +984,9 @@ export type AIConfig = {
   show_ai_signature: boolean;
   chat_mode?: 'assistant' | 'constructor' | string;
   constructor_scenario_id?: string | null;
+  call_seller_reply?: string;
+  silence_smalltalk?: boolean;
+  silence_after_completion?: boolean;
   used_messages: number;
   limit_messages: number;
   remaining_messages: number;
@@ -994,6 +997,28 @@ export type AIFaqItem = {
   question: string;
   answer: string;
   created_at: string;
+};
+
+export type AITrigger = {
+  id: number;
+  keyword: string;
+  response: string;
+  is_active: boolean;
+  priority: number;
+  created_at: string;
+};
+
+export type AILifecycleMessage = {
+  id?: number;
+  event_type: 'order_paid' | 'order_confirmed' | 'order_refunded';
+  message: string;
+  is_active: boolean;
+};
+
+export type AILotConfig = {
+  lot_id: string;
+  instructions: string;
+  is_active: boolean;
 };
 
 export type AITestHistoryItem = {
@@ -1144,6 +1169,37 @@ export const aiApi = {
       method: 'POST',
       body: JSON.stringify(payload),
       timeoutMs: 30000,
+    }),
+  updateSilence: (
+    accountId: number | string,
+    payload: { call_seller_reply: string; silence_smalltalk: boolean; silence_after_completion: boolean },
+  ) =>
+    apiRequest(`/api/ai/config/${accountId}/silence`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  getTriggers: (accountId: number | string) =>
+    apiRequest<{ data: AITrigger[] }>(`/api/ai/triggers/${accountId}`),
+  addTrigger: (accountId: number | string, payload: { keyword: string; response: string; priority?: number }) =>
+    apiRequest<{ data: AITrigger }>(`/api/ai/triggers/${accountId}`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  deleteTrigger: (accountId: number | string, triggerId: number | string) =>
+    apiRequest(`/api/ai/triggers/${accountId}/${triggerId}`, { method: 'DELETE' }),
+  getLifecycle: (accountId: number | string) =>
+    apiRequest<{ data: AILifecycleMessage[] }>(`/api/ai/lifecycle/${accountId}`),
+  saveLifecycle: (accountId: number | string, payload: { event_type: string; message: string; is_active: boolean }) =>
+    apiRequest(`/api/ai/lifecycle/${accountId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  getLotConfigs: (accountId: number | string) =>
+    apiRequest<{ data: AILotConfig[] }>(`/api/ai/lot-configs/${accountId}`),
+  saveLotConfig: (accountId: number | string, lotId: string, payload: { instructions: string; is_active: boolean }) =>
+    apiRequest(`/api/ai/lot-configs/${accountId}/${lotId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
     }),
 };
 

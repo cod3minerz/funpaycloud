@@ -4,7 +4,11 @@ import Link from "next/link";
 import { Card, CardContent } from "@/platform2/components/ui/card";
 import { Button } from "@/platform2/components/ui/button";
 import Icon from "@/platform2/icons";
-import { aiApi, scenariosApi, accountsApi, AIConfig, AIFaqItem, ApiScenario, ApiAccount } from "@/lib/api";
+import {
+  aiApi, scenariosApi, accountsApi,
+  AIConfig, AIFaqItem, AITrigger, AILifecycleMessage, AILotConfig,
+  ApiScenario, ApiAccount,
+} from "@/lib/api";
 import { toast } from "sonner";
 import TextArea from "@/platform2/components/form/input/TextArea";
 import Input from "@/platform2/components/form/input/InputField";
@@ -24,6 +28,31 @@ const quickPhrases = [
   "Уточнить у продавца",
   "Гарантия 24 часа",
 ];
+
+const lifecycleEventLabels: Record<string, { label: string; hint: string }> = {
+  order_paid: { label: "При оплате заказа", hint: "Отправляется покупателю сразу после оплаты. Переменные: {buyer}, {order_id}, {lot}, {price}" },
+  order_confirmed: { label: "При подтверждении заказа", hint: "Отправляется когда покупатель нажал «Подтвердить выполнение»" },
+  order_refunded: { label: "При возврате / отмене", hint: "Отправляется если заказ был отменён или возвращён" },
+};
+
+function LotConfigEditor({ lotId, initialInstructions, onSave }: {
+  lotId: string;
+  initialInstructions: string;
+  onSave: (instructions: string) => void;
+}) {
+  const [value, setValue] = useState(initialInstructions);
+  return (
+    <div className="border-t border-gray-100 px-5 pb-4 pt-3 space-y-3 dark:border-gray-800">
+      <TextArea
+        value={value}
+        onChange={(val) => setValue(val)}
+        rows={3}
+        placeholder="Особые инструкции для AI при работе с этим товаром..."
+      />
+      <Button variant="primary" size="sm" onClick={() => onSave(value)}>Сохранить</Button>
+    </div>
+  );
+}
 
 export default function AIAssistantPage() {
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
@@ -47,7 +76,26 @@ export default function AIAssistantPage() {
   const [usedMessages, setUsedMessages] = useState(0);
   const [limitMessages, setLimitMessages] = useState(1);
 
-  // Load accounts on mount
+  // Умное молчание
+  const [callSellerReply, setCallSellerReply] = useState("Сейчас позову продавца, он ответит в ближайшее время 🙂");
+  const [silenceSmallTalk, setSilenceSmallTalk] = useState(true);
+  const [silenceAfterCompletion, setSilenceAfterCompletion] = useState(true);
+  const [savingSilence, setSavingSilence] = useState(false);
+
+  // Триггерные слова
+  const [triggers, setTriggers] = useState<AITrigger[]>([]);
+  const [newTriggerKeyword, setNewTriggerKeyword] = useState("");
+  const [newTriggerResponse, setNewTriggerResponse] = useState("");
+  const [addingTrigger, setAddingTrigger] = useState(false);
+
+  // Lifecycle сообщения
+  const [lifecycle, setLifecycle] = useState<AILifecycleMessage[]>([]);
+
+  // Lot конфиги
+  const [lots, setLots] = useState<{ lot_id: string; title: string }[]>([]);
+  const [lotConfigs, setLotConfigs] = useState<Record<string, AILotConfig>>({});
+  const [expandedLot, setExpandedLot] = useState<string | null>(null);
+
   useEffect(() => {
     accountsApi.list().then((list) => {
       setAccounts(list);
@@ -55,9 +103,9 @@ export default function AIAssistantPage() {
     }).catch(() => {});
   }, []);
 
-  // Load AI config + FAQ when account changes
   useEffect(() => {
     if (!account) return;
+
     aiApi.getConfig(account).then((cfg: AIConfig) => {
       setAutoReply(cfg.is_enabled);
       setTone((cfg.tone as Tone) || "formal");
@@ -69,11 +117,29 @@ export default function AIAssistantPage() {
       if (cfg.chat_mode === "constructor") setMode("scenarios");
       else setMode("bot");
       if (cfg.constructor_scenario_id) setScenario(cfg.constructor_scenario_id);
+      if (cfg.call_seller_reply) setCallSellerReply(cfg.call_seller_reply);
+      if (cfg.silence_smalltalk !== undefined) setSilenceSmallTalk(cfg.silence_smalltalk);
+      if (cfg.silence_after_completion !== undefined) setSilenceAfterCompletion(cfg.silence_after_completion);
     }).catch(() => {});
+
     aiApi.getFaq(account).then(setKb).catch(() => {});
+
     scenariosApi.list(account).then((list) => {
       setScenarios(list);
       if (list.length > 0 && !scenario) setScenario(list[0].id);
+    }).catch(() => {});
+
+    aiApi.getTriggers(account).then((r) => setTriggers(r.data ?? [])).catch(() => {});
+    aiApi.getLifecycle(account).then((r) => setLifecycle(r.data ?? [])).catch(() => {});
+    aiApi.getLotConfigs(account).then((r) => {
+      const map: Record<string, AILotConfig> = {};
+      for (const c of r.data ?? []) map[c.lot_id] = c;
+      setLotConfigs(map);
+    }).catch(() => {});
+
+    // Лоты аккаунта для lot-configs
+    fetch(`/api/accounts/${account}/lots`).then(r => r.json()).then((d) => {
+      if (d?.data) setLots(d.data.map((l: { lot_id: string; title: string }) => ({ lot_id: l.lot_id, title: l.title })));
     }).catch(() => {});
   }, [account]);
 
@@ -87,12 +153,8 @@ export default function AIAssistantPage() {
     try {
       const item = await aiApi.addFaq(account, { question: newQ.trim(), answer: newA.trim() });
       setKb((prev) => [...prev, item]);
-      setNewQ("");
-      setNewA("");
-      setAddingKb(false);
-    } catch {
-      // ignore
-    }
+      setNewQ(""); setNewA(""); setAddingKb(false);
+    } catch { /* ignore */ }
   }
 
   async function deleteKbEntry(id: number) {
@@ -100,9 +162,7 @@ export default function AIAssistantPage() {
     try {
       await aiApi.deleteFaq(account, id);
       setKb((prev) => prev.filter((e) => e.id !== id));
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
   }
 
   async function handleSave() {
@@ -126,28 +186,90 @@ export default function AIAssistantPage() {
     }
   }
 
+  async function handleSaveSilence() {
+    if (!account) return;
+    setSavingSilence(true);
+    try {
+      await aiApi.updateSilence(account, {
+        call_seller_reply: callSellerReply.trim() || "Сейчас позову продавца, он ответит в ближайшее время 🙂",
+        silence_smalltalk: silenceSmallTalk,
+        silence_after_completion: silenceAfterCompletion,
+      });
+      toast.success("Настройки молчания сохранены");
+    } catch {
+      toast.error("Не удалось сохранить");
+    } finally {
+      setSavingSilence(false);
+    }
+  }
+
+  async function addTrigger() {
+    if (!newTriggerKeyword.trim() || !newTriggerResponse.trim() || !account) return;
+    try {
+      const r = await aiApi.addTrigger(account, { keyword: newTriggerKeyword.trim(), response: newTriggerResponse.trim() });
+      setTriggers((prev) => [...prev, r.data]);
+      setNewTriggerKeyword(""); setNewTriggerResponse(""); setAddingTrigger(false);
+      toast.success("Триггер добавлен");
+    } catch {
+      toast.error("Не удалось добавить триггер");
+    }
+  }
+
+  async function deleteTrigger(id: number) {
+    if (!account) return;
+    try {
+      await aiApi.deleteTrigger(account, id);
+      setTriggers((prev) => prev.filter((t) => t.id !== id));
+    } catch {
+      toast.error("Не удалось удалить триггер");
+    }
+  }
+
+  async function saveLifecycleMsg(eventType: string, message: string, isActive: boolean) {
+    if (!account) return;
+    try {
+      await aiApi.saveLifecycle(account, { event_type: eventType, message, is_active: isActive });
+      setLifecycle((prev) => {
+        const exists = prev.find((m) => m.event_type === eventType);
+        if (exists) return prev.map((m) => m.event_type === eventType ? { ...m, message, is_active: isActive } : m);
+        return [...prev, { event_type: eventType as AILifecycleMessage["event_type"], message, is_active: isActive }];
+      });
+      toast.success("Сохранено");
+    } catch {
+      toast.error("Не удалось сохранить");
+    }
+  }
+
+  async function saveLotConfig(lotId: string, instructions: string, isActive: boolean) {
+    if (!account) return;
+    try {
+      await aiApi.saveLotConfig(account, lotId, { instructions, is_active: isActive });
+      setLotConfigs((prev) => ({ ...prev, [lotId]: { lot_id: lotId, instructions, is_active: isActive } }));
+      toast.success("Инструкция для лота сохранена");
+    } catch {
+      toast.error("Не удалось сохранить");
+    }
+  }
+
   return (
     <div className="space-y-5 pb-24">
 
-      {/* HEADER */}
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI-Ассистент</h1>
 
       {/* COMBINED: AUTO-REPLY + MODE */}
       <Card>
         <CardContent className="p-6">
-
-          {/* Master toggle row */}
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="mb-1 flex items-center gap-2">
                 {autoReply ? (
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success-400 opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-success-500" />
-                </span>
-              ) : (
-                <span className="h-2 w-2 rounded-full bg-warning-400" />
-              )}
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success-400 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-success-500" />
+                  </span>
+                ) : (
+                  <span className="h-2 w-2 rounded-full bg-warning-400" />
+                )}
                 <span className="text-xs text-gray-400">
                   {autoReply ? "Автоответчик включён" : "Автоответчик выключен"}
                 </span>
@@ -162,45 +284,29 @@ export default function AIAssistantPage() {
                   autoReply ? "bg-brand-500" : "bg-gray-200 dark:bg-gray-700"
                 }`}
               >
-                <span
-                  className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                    autoReply ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
+                <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${autoReply ? "translate-x-6" : "translate-x-1"}`} />
               </button>
               <span className="text-xs text-gray-400">{autoReply ? "Включён" : "Выключен"}</span>
             </div>
           </div>
 
-          {/* Mode selector */}
           <div className="mt-5 border-t border-gray-100 pt-5 dark:border-gray-800">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Режим работы</p>
             <div className="flex items-center gap-4">
-              <span className={`text-sm font-semibold transition-colors ${mode === "bot" ? "text-gray-900 dark:text-white" : "text-gray-400"}`}>
-                ИИ Бот
-              </span>
+              <span className={`text-sm font-semibold transition-colors ${mode === "bot" ? "text-gray-900 dark:text-white" : "text-gray-400"}`}>ИИ Бот</span>
               <button
                 onClick={() => setMode((m) => (m === "bot" ? "scenarios" : "bot"))}
                 className="relative inline-flex h-7 w-12 items-center rounded-full bg-brand-500 transition-colors"
               >
-                <span
-                  className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                    mode === "scenarios" ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
+                <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${mode === "scenarios" ? "translate-x-6" : "translate-x-1"}`} />
               </button>
-              <span className={`text-sm font-semibold transition-colors ${mode === "scenarios" ? "text-gray-900 dark:text-white" : "text-gray-400"}`}>
-                Сценарии
-              </span>
+              <span className={`text-sm font-semibold transition-colors ${mode === "scenarios" ? "text-gray-900 dark:text-white" : "text-gray-400"}`}>Сценарии</span>
             </div>
             <p className="mt-2 text-xs text-gray-400">
-              {mode === "bot"
-                ? "ИИ отвечает по инструкции и базе знаний"
-                : "Ответы идут строго по выбранному сценарию"}
+              {mode === "bot" ? "ИИ отвечает по инструкции и базе знаний" : "Ответы идут строго по выбранному сценарию"}
             </p>
           </div>
 
-          {/* Usage bar */}
           <div className="mt-5 border-t border-gray-100 pt-4 dark:border-gray-800">
             <div className="flex items-center justify-between">
               <div>
@@ -208,20 +314,14 @@ export default function AIAssistantPage() {
                 <p className="mt-0.5 text-xs text-gray-400">Обновится 1-го числа</p>
               </div>
               <div className="text-right">
-                <p className="text-sm font-semibold text-gray-800 dark:text-white">
-                  {usedMessages} / {limitMessages} сообщений
-                </p>
+                <p className="text-sm font-semibold text-gray-800 dark:text-white">{usedMessages} / {limitMessages} сообщений</p>
                 <p className="mt-0.5 text-xs text-gray-400">Аккаунт: {accounts.find((a) => String(a.id) === account)?.username ?? account}</p>
               </div>
             </div>
             <div className="mt-2 h-1.5 rounded-full bg-gray-100 dark:bg-gray-800">
-              <div
-                className="h-1.5 rounded-full bg-brand-500 transition-all"
-                style={{ width: `${(usedMessages / limitMessages) * 100}%` }}
-              />
+              <div className="h-1.5 rounded-full bg-brand-500 transition-all" style={{ width: `${Math.min((usedMessages / limitMessages) * 100, 100)}%` }} />
             </div>
           </div>
-
         </CardContent>
       </Card>
 
@@ -247,7 +347,7 @@ export default function AIAssistantPage() {
         </Card>
       </div>
 
-      {/* SCENARIO SELECTOR — only in scenarios mode */}
+      {/* SCENARIO SELECTOR */}
       {mode === "scenarios" && (
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Сценарий для чатов этого аккаунта</p>
@@ -266,15 +366,8 @@ export default function AIAssistantPage() {
                 <Icon name="chevron-down" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               </div>
               <div className="mt-2 flex items-center justify-between">
-                <p className="text-xs text-gray-400">
-                  Выбранный сценарий будет единственным автоответчиком для этого аккаунта.
-                </p>
-                <Link
-                  href="/constructor"
-                  className="ml-4 shrink-0 text-xs font-medium text-brand-500 hover:text-brand-600"
-                >
-                  Открыть конструктор
-                </Link>
+                <p className="text-xs text-gray-400">Выбранный сценарий будет единственным автоответчиком для этого аккаунта.</p>
+                <Link href="/constructor" className="ml-4 shrink-0 text-xs font-medium text-brand-500 hover:text-brand-600">Открыть конструктор</Link>
               </div>
             </CardContent>
           </Card>
@@ -298,9 +391,7 @@ export default function AIAssistantPage() {
                   : "border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900"
               }`}
             >
-              <p className={`font-semibold ${tone === opt.id ? "text-brand-600" : "text-gray-800 dark:text-white"}`}>
-                {opt.label}
-              </p>
+              <p className={`font-semibold ${tone === opt.id ? "text-brand-600" : "text-gray-800 dark:text-white"}`}>{opt.label}</p>
               <p className="mt-1 text-sm text-gray-400">{opt.subtitle}</p>
             </button>
           ))}
@@ -315,10 +406,7 @@ export default function AIAssistantPage() {
             <p className="text-sm font-semibold text-gray-800 dark:text-white">{delay} сек</p>
           </div>
           <input
-            type="range"
-            min={0}
-            max={30}
-            value={delay}
+            type="range" min={0} max={30} value={delay}
             onChange={(e) => setDelay(Number(e.target.value))}
             className="mt-4 w-full accent-brand-500"
           />
@@ -336,21 +424,13 @@ export default function AIAssistantPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-semibold text-gray-800 dark:text-white">Подпись ассистента</p>
-              <p className="mt-0.5 text-sm text-gray-500">
-                К каждому ответу добавляется строка «— Ассистент FunPay Cloud»
-              </p>
+              <p className="mt-0.5 text-sm text-gray-500">К каждому ответу добавляется строка «— Ассистент FunPay Cloud»</p>
             </div>
             <button
               onClick={() => setSignature((v) => !v)}
-              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
-                signature ? "bg-brand-500" : "bg-gray-200 dark:bg-gray-700"
-              }`}
+              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${signature ? "bg-brand-500" : "bg-gray-200 dark:bg-gray-700"}`}
             >
-              <span
-                className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                  signature ? "translate-x-6" : "translate-x-1"
-                }`}
-              />
+              <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${signature ? "translate-x-6" : "translate-x-1"}`} />
             </button>
           </div>
         </CardContent>
@@ -365,7 +445,7 @@ export default function AIAssistantPage() {
               `Ты вежливый помощник продавца на FunPay. Отвечай кратко и по делу.\n` +
               `При вопросе о товаре — уточни детали заказа.\n` +
               `Если не знаешь ответа — предложи написать продавцу напрямую.\n` +
-              `Будь дружелюбным, используй простой язык. Не используй сложные термины.`
+              `Будь дружелюбным, используй простой язык.`
             )}
             className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 transition-colors"
           >
@@ -376,12 +456,7 @@ export default function AIAssistantPage() {
         <Card>
           <CardContent className="p-5">
             <p className="mb-3 text-sm text-gray-500">Опишите своими словами, как должен вести себя ассистент</p>
-            <TextArea
-              value={instruction}
-              onChange={(val) => setInstruction(val)}
-              maxLength={2000}
-              rows={5}
-            />
+            <TextArea value={instruction} onChange={(val) => setInstruction(val)} maxLength={2000} rows={5} />
             <div className="mt-2 flex items-center justify-between">
               <p className="text-xs text-gray-400">Лоты из вашего аккаунта добавляются автоматически</p>
               <p className="text-xs text-gray-400">{instruction.length} / 2000</p>
@@ -417,7 +492,6 @@ export default function AIAssistantPage() {
             Добавить
           </button>
         </div>
-
         <Card>
           <CardContent className="divide-y divide-gray-100 p-0 dark:divide-gray-800">
             {kb.length === 0 && !addingKb && (
@@ -432,28 +506,15 @@ export default function AIAssistantPage() {
                     <div className="space-y-2">
                       <Input
                         defaultValue={entry.question}
-                        onChange={(e) =>
-                          setKb((prev) =>
-                            prev.map((k) => k.id === entry.id ? { ...k, question: e.target.value } : k)
-                          )
-                        }
+                        onChange={(e) => setKb((prev) => prev.map((k) => k.id === entry.id ? { ...k, question: e.target.value } : k))}
                         placeholder="Вопрос"
                       />
                       <Input
                         defaultValue={entry.answer}
-                        onChange={(e) =>
-                          setKb((prev) =>
-                            prev.map((k) => k.id === entry.id ? { ...k, answer: e.target.value } : k)
-                          )
-                        }
+                        onChange={(e) => setKb((prev) => prev.map((k) => k.id === entry.id ? { ...k, answer: e.target.value } : k))}
                         placeholder="Ответ"
                       />
-                      <button
-                        onClick={() => setEditingKbId(null)}
-                        className="text-xs text-brand-500 hover:text-brand-600"
-                      >
-                        Готово
-                      </button>
+                      <button onClick={() => setEditingKbId(null)} className="text-xs text-brand-500 hover:text-brand-600">Готово</button>
                     </div>
                   ) : (
                     <>
@@ -463,45 +524,222 @@ export default function AIAssistantPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    onClick={() => setEditingKbId(String(entry.id))}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800"
-                  >
+                  <button onClick={() => setEditingKbId(String(entry.id))} className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800">
                     <Icon name="pencil" className="h-3.5 w-3.5" />
                   </button>
-                  <button
-                    onClick={() => deleteKbEntry(entry.id)}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-error-50 hover:text-error-500 dark:hover:bg-error-500/10"
-                  >
+                  <button onClick={() => deleteKbEntry(entry.id)} className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-error-50 hover:text-error-500 dark:hover:bg-error-500/10">
                     <Icon name="trash" className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
             ))}
-
             {addingKb && (
               <div className="space-y-2 px-5 py-4">
-                <Input
-                  value={newQ}
-                  onChange={(e) => setNewQ(e.target.value)}
-                  placeholder="Вопрос покупателя"
-                />
-                <Input
-                  value={newA}
-                  onChange={(e) => setNewA(e.target.value)}
-                  placeholder="Ответ ассистента"
-                />
+                <Input value={newQ} onChange={(e) => setNewQ(e.target.value)} placeholder="Вопрос покупателя" />
+                <Input value={newA} onChange={(e) => setNewA(e.target.value)} placeholder="Ответ ассистента" />
                 <div className="flex gap-2">
                   <Button variant="primary" size="sm" onClick={saveKbEntry}>Сохранить</Button>
-                  <Button variant="outline" size="sm" onClick={() => { setAddingKb(false); setNewQ(""); setNewA(""); }}>
-                    Отмена
-                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => { setAddingKb(false); setNewQ(""); setNewA(""); }}>Отмена</Button>
                 </div>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* TRIGGER WORDS */}
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <div>
+            <p className="font-semibold text-gray-800 dark:text-white">Триггерные слова</p>
+            <p className="text-sm text-gray-500">Мгновенный ответ без LLM — экономит токены и ускоряет реакцию</p>
+          </div>
+          <button
+            onClick={() => setAddingTrigger(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+          >
+            <Icon name="plus" className="h-3.5 w-3.5" />
+            Добавить
+          </button>
+        </div>
+        <Card>
+          <CardContent className="divide-y divide-gray-100 p-0 dark:divide-gray-800">
+            {triggers.length === 0 && !addingTrigger && (
+              <div className="flex flex-col items-center justify-center gap-1.5 py-8">
+                <p className="text-sm text-gray-400">Нет триггеров</p>
+                <p className="text-xs text-gray-300">Например: слово «цена» → ответ с ценой</p>
+              </div>
+            )}
+            {triggers.map((t) => (
+              <div key={t.id} className="flex items-start justify-between gap-4 px-5 py-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-md bg-brand-500/10 px-2 py-0.5 text-xs font-mono font-medium text-brand-600">{t.keyword}</span>
+                    <Icon name="arrow-right" className="h-3 w-3 text-gray-300" />
+                    <span className="truncate text-sm text-gray-600 dark:text-gray-300">{t.response}</span>
+                  </div>
+                </div>
+                <button onClick={() => deleteTrigger(t.id)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-error-50 hover:text-error-500 dark:hover:bg-error-500/10">
+                  <Icon name="trash" className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+            {addingTrigger && (
+              <div className="space-y-2 px-5 py-4">
+                <Input value={newTriggerKeyword} onChange={(e) => setNewTriggerKeyword(e.target.value)} placeholder="Ключевое слово (например: цена)" />
+                <TextArea value={newTriggerResponse} onChange={(val) => setNewTriggerResponse(val)} rows={2} placeholder="Ответ ассистента при совпадении" />
+                <div className="flex gap-2">
+                  <Button variant="primary" size="sm" onClick={addTrigger}>Сохранить</Button>
+                  <Button variant="outline" size="sm" onClick={() => { setAddingTrigger(false); setNewTriggerKeyword(""); setNewTriggerResponse(""); }}>Отмена</Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* LIFECYCLE MESSAGES */}
+      <div>
+        <p className="mb-2 font-semibold text-gray-800 dark:text-white">Сообщения по событиям заказа</p>
+        <p className="mb-3 text-sm text-gray-500">AI автоматически пишет покупателю при изменении статуса заказа</p>
+        <div className="space-y-3">
+          {(["order_paid", "order_confirmed", "order_refunded"] as const).map((evType) => {
+            const meta = lifecycleEventLabels[evType];
+            const msg = lifecycle.find((m) => m.event_type === evType);
+            const isActive = msg?.is_active ?? false;
+            const text = msg?.message ?? "";
+            return (
+              <Card key={evType}>
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <p className="font-medium text-gray-800 dark:text-white">{meta.label}</p>
+                      <p className="mt-0.5 text-xs text-gray-400">{meta.hint}</p>
+                    </div>
+                    <button
+                      onClick={() => saveLifecycleMsg(evType, text, !isActive)}
+                      className={`relative inline-flex h-6 w-10 shrink-0 items-center rounded-full transition-colors ${isActive ? "bg-brand-500" : "bg-gray-200 dark:bg-gray-700"}`}
+                    >
+                      <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${isActive ? "translate-x-5" : "translate-x-1"}`} />
+                    </button>
+                  </div>
+                  {isActive && (
+                    <div className="space-y-2">
+                      <TextArea
+                        value={text}
+                        onChange={(val) => setLifecycle((prev) => {
+                          const exists = prev.find((m) => m.event_type === evType);
+                          if (exists) return prev.map((m) => m.event_type === evType ? { ...m, message: val } : m);
+                          return [...prev, { event_type: evType, message: val, is_active: true }];
+                        })}
+                        rows={2}
+                        placeholder="Текст сообщения..."
+                      />
+                      <Button variant="primary" size="sm" onClick={() => saveLifecycleMsg(evType, text, true)}>
+                        Сохранить
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* SMART SILENCE */}
+      <div>
+        <p className="mb-2 font-semibold text-gray-800 dark:text-white">Умное молчание</p>
+        <p className="mb-3 text-sm text-gray-500">Когда AI не должен отвечать</p>
+        <Card>
+          <CardContent className="divide-y divide-gray-100 p-0 dark:divide-gray-800">
+            {[
+              { key: "smalltalk", label: "Молчать на «ок», «спасибо», 👍", desc: "Не тратить токены на короткие реакции", value: silenceSmallTalk, set: setSilenceSmallTalk },
+              { key: "completion", label: "Молчать после подтверждения заказа", desc: "Заказ закрыт — не беспокоить покупателя", value: silenceAfterCompletion, set: setSilenceAfterCompletion },
+            ].map((item) => (
+              <div key={item.key} className="flex items-center justify-between gap-4 px-5 py-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-800 dark:text-white">{item.label}</p>
+                  <p className="text-xs text-gray-400">{item.desc}</p>
+                </div>
+                <button
+                  onClick={() => item.set((v) => !v)}
+                  className={`relative inline-flex h-6 w-10 shrink-0 items-center rounded-full transition-colors ${item.value ? "bg-brand-500" : "bg-gray-200 dark:bg-gray-700"}`}
+                >
+                  <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${item.value ? "translate-x-5" : "translate-x-1"}`} />
+                </button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ESCALATION */}
+      <div>
+        <p className="mb-2 font-semibold text-gray-800 dark:text-white">Эскалация к продавцу</p>
+        <p className="mb-3 text-sm text-gray-500">
+          Если покупатель напишет «позови продавца» — AI уведомит вас в Telegram и ответит этой фразой
+        </p>
+        <Card>
+          <CardContent className="p-5 space-y-3">
+            <div>
+              <p className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Ответ покупателю</p>
+              <TextArea
+                value={callSellerReply}
+                onChange={(val) => setCallSellerReply(val)}
+                rows={2}
+                placeholder="Сейчас позову продавца, он ответит в ближайшее время 🙂"
+              />
+            </div>
+            <div className="rounded-xl bg-blue-50 px-4 py-3 dark:bg-blue-900/20">
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                Фразы которые запускают эскалацию: «позови продавца», «хочу поговорить с продавцом», «нужен оператор» и другие.
+                После эскалации AI молчит пока продавец сам не ответит.
+              </p>
+            </div>
+            <Button variant="primary" size="sm" disabled={savingSilence} onClick={handleSaveSilence}>
+              {savingSilence ? "Сохранение…" : "Сохранить"}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* LOT CONFIGS */}
+      {lots.length > 0 && (
+        <div>
+          <p className="mb-2 font-semibold text-gray-800 dark:text-white">Инструкции по лотам</p>
+          <p className="mb-3 text-sm text-gray-500">Дополнительные правила AI для конкретного товара</p>
+          <div className="space-y-2">
+            {lots.map((lot) => {
+              const cfg = lotConfigs[lot.lot_id];
+              const isExpanded = expandedLot === lot.lot_id;
+              return (
+                <Card key={lot.lot_id}>
+                  <CardContent className="p-0">
+                    <button
+                      onClick={() => setExpandedLot(isExpanded ? null : lot.lot_id)}
+                      className="flex w-full items-center justify-between px-5 py-4"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-800 dark:text-white">{lot.title}</span>
+                        {cfg?.instructions && <span className="rounded-full bg-brand-500/10 px-2 py-0.5 text-xs text-brand-600">настроено</span>}
+                      </div>
+                      <Icon name={isExpanded ? "chevron-up" : "chevron-down"} className="h-4 w-4 text-gray-400" />
+                    </button>
+                    {isExpanded && (
+                      <LotConfigEditor
+                        lotId={lot.lot_id}
+                        initialInstructions={cfg?.instructions ?? ""}
+                        onSave={(instr) => saveLotConfig(lot.lot_id, instr, true)}
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       </>} {/* end bot-only */}
 
