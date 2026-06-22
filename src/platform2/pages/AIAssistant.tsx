@@ -35,6 +35,77 @@ const lifecycleEventLabels: Record<string, { label: string; hint: string }> = {
   order_refunded: { label: "При возврате / отмене", hint: "Отправляется если заказ был отменён или возвращён" },
 };
 
+function AIHowItWorksPanel() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-2xl border border-brand-200 bg-brand-50/60 dark:border-brand-800 dark:bg-brand-900/20">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-4 py-3 text-left"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-base">💡</span>
+          <span className="text-sm font-semibold text-brand-700 dark:text-brand-300">Как работает AI-ассистент</span>
+        </div>
+        <Icon
+          name={open ? "chevron-up" : "chevron-down"}
+          className="h-4 w-4 text-brand-400 transition-transform"
+        />
+      </button>
+
+      {open && (
+        <div className="border-t border-brand-100 px-4 pb-4 pt-3 dark:border-brand-800 space-y-4">
+
+          {/* Pipeline */}
+          <div className="flex flex-wrap gap-2 text-xs">
+            {[
+              { n: "1", label: "Gate", desc: "Нужно ли вообще отвечать?", color: "bg-gray-400" },
+              { n: "2", label: "Triggers", desc: "Есть готовый ответ?", color: "bg-orange-400" },
+              { n: "3", label: "Context", desc: "Статус заказа, лоты, история", color: "bg-blue-500" },
+              { n: "4", label: "LLM", desc: "Генерация ответа", color: "bg-brand-500" },
+              { n: "5", label: "Send", desc: "Задержка + подпись", color: "bg-success-500" },
+            ].map((s, i, arr) => (
+              <div key={s.n} className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 rounded-xl border border-gray-100 bg-white px-2.5 py-1.5 dark:border-gray-700 dark:bg-gray-800">
+                  <span className={`flex h-4 w-4 items-center justify-center rounded-full ${s.color} text-[10px] font-bold text-white`}>{s.n}</span>
+                  <span className="font-semibold text-gray-700 dark:text-gray-200">{s.label}</span>
+                  <span className="text-gray-400">{s.desc}</span>
+                </div>
+                {i < arr.length - 1 && <span className="text-gray-300">→</span>}
+              </div>
+            ))}
+          </div>
+
+          {/* Key rules */}
+          <div className="grid gap-2 sm:grid-cols-2">
+            {[
+              { icon: "🚫", text: "AI молчит на «ок», «спасибо», 👍 — не тратит токены" },
+              { icon: "🔔", text: "«Позови продавца» → TG-уведомление тебе + AI замолкает" },
+              { icon: "📦", text: "AI знает статус заказа и не просит нажать кнопку не вовремя" },
+              { icon: "⚡", text: "Триггеры срабатывают мгновенно без вызова нейросети" },
+              { icon: "📝", text: "Lifecycle-сообщения — автоответ при оплате/подтверждении/возврате" },
+              { icon: "🎯", text: "Кастомные инструкции для каждого лота отдельно" },
+            ].map((item) => (
+              <div key={item.icon} className="flex items-start gap-2 text-xs text-gray-600 dark:text-gray-300">
+                <span className="text-sm">{item.icon}</span>
+                <span>{item.text}</span>
+              </div>
+            ))}
+          </div>
+
+          <Link
+            href="/platform/ai-guide"
+            className="inline-flex items-center gap-1 text-xs font-medium text-brand-500 hover:text-brand-600 transition-colors"
+          >
+            Подробный гайд
+            <Icon name="arrow-right" className="h-3 w-3" />
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LotConfigEditor({ lotId, initialInstructions, onSave }: {
   lotId: string;
   initialInstructions: string;
@@ -254,13 +325,8 @@ export default function AIAssistantPage() {
   return (
     <div className="space-y-5 pb-24">
 
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI-Ассистент</h1>
-        <Link href="/platform/ai-guide" className="flex items-center gap-1.5 text-xs text-brand-500 hover:text-brand-600 transition-colors">
-          <Icon name="info" className="h-3.5 w-3.5" />
-          Как это работает?
-        </Link>
-      </div>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI-Ассистент</h1>
+      <AIHowItWorksPanel />
 
       {/* COMBINED: AUTO-REPLY + MODE */}
       <Card>
