@@ -254,7 +254,13 @@ export default function AIAssistantPage() {
   return (
     <div className="space-y-5 pb-24">
 
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI-Ассистент</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI-Ассистент</h1>
+        <Link href="/platform/ai-guide" className="flex items-center gap-1.5 text-xs text-brand-500 hover:text-brand-600 transition-colors">
+          <Icon name="info" className="h-3.5 w-3.5" />
+          Как это работает?
+        </Link>
+      </div>
 
       {/* COMBINED: AUTO-REPLY + MODE */}
       <Card>

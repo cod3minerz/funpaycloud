@@ -87,6 +87,11 @@ const managementNavItems: NavItem[] = [
     path: `${BASE}/ai-assistant`,
   },
   {
+    icon: <span className="flex h-5 w-5 items-center justify-center text-base">💡</span>,
+    name: "Как работает AI",
+    path: `${BASE}/ai-guide`,
+  },
+  {
     icon: <WrenchScrewdriverIcon className="h-5 w-5" />,
     name: "Конструктор",
     path: `${BASE}/constructor`,
