@@ -282,8 +282,9 @@ export default function AIAssistantPage() {
     try {
       await aiApi.testEscalation(account);
       toast.success("TG-уведомление отправлено! Проверьте Telegram.");
-    } catch {
-      toast.error("Не удалось отправить. Telegram не подключён?");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Не удалось отправить TG-уведомление";
+      toast.error(msg || "Не удалось отправить TG-уведомление");
     } finally {
       setTestingEscalation(false);
     }

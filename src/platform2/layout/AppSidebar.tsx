@@ -22,6 +22,7 @@ import {
   UserPlusIcon,
   TaskIcon,
   ServerStackIcon,
+  PaperPlaneIcon,
 } from "../icons/index";
 import SidebarWidget from "./SidebarWidget";
 import { usePinnedPlugins, ALL_PLUGINS } from "@/lib/pinnedPlugins";
@@ -85,6 +86,11 @@ const managementNavItems: NavItem[] = [
     icon: <CpuChipIcon className="h-5 w-5" />,
     name: "AI-Ассистент",
     path: `${BASE}/ai-assistant`,
+  },
+  {
+    icon: <PaperPlaneIcon className="h-5 w-5" />,
+    name: "Интеграции",
+    path: `${BASE}/integrations`,
   },
   {
     icon: <WrenchScrewdriverIcon className="h-5 w-5" />,
