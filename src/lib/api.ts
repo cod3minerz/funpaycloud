@@ -1201,6 +1201,10 @@ export const aiApi = {
       method: 'PUT',
       body: JSON.stringify(payload),
     }),
+  testEscalation: (accountId: number | string) =>
+    apiRequest<{ message: string }>(`/api/ai/test-escalation/${accountId}`, { method: 'POST' }),
+  getLots: (accountId: number | string) =>
+    apiRequest<{ data: { lot_id: string; title: string }[] }>(`/api/accounts/${accountId}/lots`),
 };
 
 // ── Proxies ───────────────────────────────────────────────────────────────────

@@ -162,6 +162,9 @@ export default function AIAssistantPage() {
   // Lifecycle сообщения
   const [lifecycle, setLifecycle] = useState<AILifecycleMessage[]>([]);
 
+  // Эскалация
+  const [testingEscalation, setTestingEscalation] = useState(false);
+
   // Lot конфиги
   const [lots, setLots] = useState<{ lot_id: string; title: string }[]>([]);
   const [lotConfigs, setLotConfigs] = useState<Record<string, AILotConfig>>({});
@@ -208,9 +211,8 @@ export default function AIAssistantPage() {
       setLotConfigs(map);
     }).catch(() => {});
 
-    // Лоты аккаунта для lot-configs
-    fetch(`/api/accounts/${account}/lots`).then(r => r.json()).then((d) => {
-      if (d?.data) setLots(d.data.map((l: { lot_id: string; title: string }) => ({ lot_id: l.lot_id, title: l.title })));
+    aiApi.getLots(account).then((r) => {
+      setLots(r.data ?? []);
     }).catch(() => {});
   }, [account]);
 
@@ -271,6 +273,19 @@ export default function AIAssistantPage() {
       toast.error("Не удалось сохранить");
     } finally {
       setSavingSilence(false);
+    }
+  }
+
+  async function handleTestEscalation() {
+    if (!account) return;
+    setTestingEscalation(true);
+    try {
+      await aiApi.testEscalation(account);
+      toast.success("TG-уведомление отправлено! Проверьте Telegram.");
+    } catch {
+      toast.error("Не удалось отправить. Telegram не подключён?");
+    } finally {
+      setTestingEscalation(false);
     }
   }
 
@@ -769,9 +784,14 @@ export default function AIAssistantPage() {
                 После эскалации AI молчит пока продавец сам не ответит.
               </p>
             </div>
-            <Button variant="primary" size="sm" disabled={savingSilence} onClick={handleSaveSilence}>
-              {savingSilence ? "Сохранение…" : "Сохранить"}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="primary" size="sm" disabled={savingSilence} onClick={handleSaveSilence}>
+                {savingSilence ? "Сохранение…" : "Сохранить"}
+              </Button>
+              <Button variant="outline" size="sm" disabled={testingEscalation} onClick={handleTestEscalation}>
+                {testingEscalation ? "Отправка…" : "Тест TG-уведомления"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
