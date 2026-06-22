@@ -804,6 +804,11 @@ export const scenariosApi = {
     }),
   delete: (id: string) => apiRequest<{ deleted: boolean }>(`/api/scenarios/${id}`, { method: 'DELETE' }),
   getLogs: (id: string) => apiRequest<ApiScenarioLog[]>(`/api/scenarios/${id}/logs`),
+  run: (id: string, nodeId: string, withUser: string, text?: string) =>
+    apiRequest<{ message: string }>(`/api/scenarios/${id}/run`, {
+      method: 'POST',
+      body: JSON.stringify({ node_id: nodeId, with_user: withUser, text: text ?? '' }),
+    }),
 };
 
 // ── Plugins ───────────────────────────────────────────────────────────────────

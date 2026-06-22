@@ -100,13 +100,13 @@ export default function DashboardV2() {
                 <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                   ТЕХПОДДЕРЖКА
                 </p>
-                <h3 className="mt-1 text-xl font-bold">@funpay_cloud</h3>
+                <h3 className="mt-1 text-xl font-bold">@fpcloud_support</h3>
                 <p className="mt-2 text-sm text-muted-foreground">
                   Если что-то сломалось — напишите в единый Telegram поддержки.
                 </p>
               </div>
               <Button variant="outline" className="w-full">
-                Написать @funpay_cloud
+                Написать @fpcloud_support
                 <Icon icon="solar:arrow-right-line-duotone" className="ml-2 h-4 w-4" />
               </Button>
             </div>

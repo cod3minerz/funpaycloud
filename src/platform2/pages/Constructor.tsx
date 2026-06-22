@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState, createContext } from "react";
 import {
   ReactFlow,
   MiniMap,
@@ -34,6 +34,16 @@ import { normalizePlanId, PLAN_LIMITS } from "@/shared/subscriptions";
 import { toast } from "sonner";
 import { useTheme } from "@/platform2/context/ThemeContext";
 
+// ── Context для передачи scenarioId + onManualRun в узлы без props drilling ──
+type ConstructorCtx = {
+  scenarioId: string | null;
+  onManualRun: (nodeId: string, withUser: string, text: string) => Promise<void>;
+};
+const ConstructorContext = createContext<ConstructorCtx>({
+  scenarioId: null,
+  onManualRun: async () => {},
+});
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type NodeData = {
@@ -59,8 +69,14 @@ function parseFlowData(input: unknown): { nodes: FlowNode[]; edges: Edge[] } {
 
 // ── Node Components (styled for platform2) ────────────────────────────────────
 
-function TriggerNode({ id, data }: NodeProps<FlowNode>) {
-  const { updateNodeData } = useReactFlow();
+function TriggerNode({ data }: NodeProps<FlowNode>) {
+  const { onManualRun, scenarioId } = useContext(ConstructorContext);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [nodeId, setNodeId] = useState("");
+  const [withUser, setWithUser] = useState("");
+  const [runText, setRunText] = useState("");
+  const [running, setRunning] = useState(false);
+
   const label =
     data.subtype === "new_order"
       ? "Новый заказ"
@@ -68,26 +84,127 @@ function TriggerNode({ id, data }: NodeProps<FlowNode>) {
       ? "Ручной запуск"
       : "Новое сообщение";
 
+  const handleRun = async () => {
+    if (!nodeId.trim()) { toast.error("Укажите Node ID чата"); return; }
+    setRunning(true);
+    try {
+      await onManualRun(nodeId.trim(), withUser.trim() || "покупатель", runText.trim() || "запуск");
+      toast.success("Сценарий запущен!");
+      setModalOpen(false);
+    } catch {
+      toast.error("Ошибка запуска сценария");
+    } finally {
+      setRunning(false);
+    }
+  };
+
   return (
-    <div className="min-w-[220px] overflow-hidden rounded-xl border border-brand-400 bg-white shadow-sm dark:border-brand-500 dark:bg-gray-900">
-      <div className="flex items-center gap-2 border-b border-gray-100 bg-brand-500/10 px-3 py-2 dark:border-gray-800">
-        <Icon name="bolt" className="h-3.5 w-3.5 text-brand-500" />
-        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-200">
-          Триггер
-        </span>
+    <>
+      <div className="min-w-[220px] overflow-hidden rounded-xl border border-brand-400 bg-white shadow-sm dark:border-brand-500 dark:bg-gray-900">
+        <div className="flex items-center gap-2 border-b border-gray-100 bg-brand-500/10 px-3 py-2 dark:border-gray-800">
+          <Icon name="bolt" className="h-3.5 w-3.5 text-brand-500" />
+          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-200">
+            Триггер
+          </span>
+        </div>
+        <div className="p-3">
+          <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-gray-400">
+            Событие
+          </label>
+          <div className="text-[12px] font-medium text-gray-800 dark:text-white">{label}</div>
+          {data.subtype === "manual_start" && (
+            <button
+              onClick={() => setModalOpen(true)}
+              disabled={!scenarioId}
+              className="nodrag mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-[11px] font-semibold text-white hover:opacity-90 disabled:opacity-40"
+            >
+              <Icon name="bolt" className="h-3 w-3" />
+              Запустить вручную
+            </button>
+          )}
+        </div>
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          className="!h-3 !w-3 !border-none !bg-brand-500"
+        />
       </div>
-      <div className="p-3">
-        <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-gray-400">
-          Событие
-        </label>
-        <div className="text-[12px] font-medium text-gray-800 dark:text-white">{label}</div>
-      </div>
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className="!h-3 !w-3 !border-none !bg-brand-500"
-      />
-    </div>
+
+      {/* Modal для ввода параметров ручного запуска */}
+      {modalOpen && (
+        <div
+          className="nodrag fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => !running && setModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-gray-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-800">
+              <h3 className="text-sm font-bold text-gray-800 dark:text-white">Ручной запуск сценария</h3>
+              <button onClick={() => setModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <Icon name="close" className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-3 p-5">
+              <div>
+                <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-gray-400">
+                  Node ID чата <span className="text-error-500">*</span>
+                </label>
+                <input
+                  autoFocus
+                  value={nodeId}
+                  onChange={(e) => setNodeId(e.target.value)}
+                  placeholder="Например: 1234567"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                />
+                <p className="mt-1 text-[10px] text-gray-400">ID чата из URL на FunPay (?node=...)</p>
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-gray-400">
+                  Имя покупателя
+                </label>
+                <input
+                  value={withUser}
+                  onChange={(e) => setWithUser(e.target.value)}
+                  placeholder="покупатель"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-gray-400">
+                  Текст для условий
+                </label>
+                <input
+                  value={runText}
+                  onChange={(e) => setRunText(e.target.value)}
+                  placeholder="запуск"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                />
+                <p className="mt-1 text-[10px] text-gray-400">Используется в условиях «Содержит слово»</p>
+              </div>
+            </div>
+            <div className="flex gap-2 border-t border-gray-100 px-5 py-4 dark:border-gray-800">
+              <button
+                onClick={() => setModalOpen(false)}
+                disabled={running}
+                className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-400"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={() => void handleRun()}
+                disabled={running || !nodeId.trim()}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-500 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              >
+                {running ? <Icon name="time" className="h-4 w-4 animate-spin" /> : <Icon name="bolt" className="h-4 w-4" />}
+                {running ? "Запуск…" : "Запустить"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -406,17 +523,34 @@ function ConstructorFlow() {
   }, [selectedScenarioID, scenarios, setNodes, setEdges, normalizeNode, reactFlow, isReadOnly]);
 
   const onConnect = useCallback(
-    (params: Connection | Edge) => setEdges((eds) => addEdge(params, eds)),
+    (params: Connection | Edge) => {
+      setEdges((eds) => {
+        // Была ли связь между source и target уже?
+        const wasConnected = eds.some(
+          (e) =>
+            e.source === params.source &&
+            e.sourceHandle === (params.sourceHandle ?? null) &&
+            e.target === params.target
+        );
+        // Удаляем старое ребро с того же выхода (если было)
+        const filtered = eds.filter(
+          (e) =>
+            !(e.source === params.source && e.sourceHandle === (params.sourceHandle ?? null))
+        );
+        // Если тянули на тот же узел — это развязка (disconnect)
+        if (wasConnected) return filtered;
+        // Иначе — новая связь (replace)
+        return addEdge(params, filtered);
+      });
+    },
     [setEdges]
   );
 
   const isValidConnection = useCallback(
     (connection: Connection) => {
+      // Нельзя связать узел с самим собой
       if (connection.source === connection.target) return false;
-      const existing = edges.find(
-        (e) => e.source === connection.source && e.sourceHandle === connection.sourceHandle
-      );
-      if (existing) return false;
+      // Проверка на циклы (без блокировки замены рёбер — этим занимается onConnect)
       const hasCycle = (target: string, visited = new Set<string>()): boolean => {
         if (visited.has(target) || target === connection.source) return true;
         visited.add(target);
@@ -424,7 +558,7 @@ function ConstructorFlow() {
       };
       return !hasCycle(connection.target);
     },
-    [nodes, edges]
+    [edges]
   );
 
   const handleSave = async () => {
@@ -546,12 +680,21 @@ function ConstructorFlow() {
     setEdges((eds) => eds.filter((e) => !ids.has(e.source) && !ids.has(e.target)));
   };
 
+  const handleManualRun = useCallback(
+    async (nodeId: string, withUser: string, text: string) => {
+      if (!selectedScenarioID) throw new Error("нет сценария");
+      await scenariosApi.run(selectedScenarioID, nodeId, withUser, text);
+    },
+    [selectedScenarioID]
+  );
+
   const hasSelected = !isReadOnly && nodes.some((n) => n.selected);
   const edgeOpts = { animated: true, style: { stroke: "#465fff", strokeWidth: 2 } };
   const bgDotColor = isDark ? "#374151" : "#d1d5db";
   const bgFill = isDark ? "#030712" : "#f9fafb";
 
   return (
+    <ConstructorContext.Provider value={{ scenarioId: selectedScenarioID, onManualRun: handleManualRun }}>
     <div
       className="-mx-4 -my-4 md:-mx-6 md:-my-6 relative flex flex-col overflow-hidden"
       style={{ height: "calc(100dvh - 4rem)" }}
@@ -958,6 +1101,7 @@ function ConstructorFlow() {
         </div>
       </Modal>
     </div>
+    </ConstructorContext.Provider>
   );
 }
 

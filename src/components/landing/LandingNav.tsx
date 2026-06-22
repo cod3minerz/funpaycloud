@@ -20,7 +20,18 @@ type LandingNavProps = {
 
 export default function LandingNav({ homeAnchors = false }: LandingNavProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const navRef = useRef<HTMLElement | null>(null);
+
+  // Switch to semi-transparent + blur only after the hero title has scrolled out of view.
+  // Using ~60% of viewport height ensures the large 64px hero title is well above the nav
+  // before we drop opacity from 1.0 to 0.82 (which would let the title bleed through).
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > window.innerHeight * 0.6);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     if (!menuOpen) {
@@ -80,14 +91,14 @@ export default function LandingNav({ homeAnchors = false }: LandingNavProps) {
   };
 
   return (
-    <nav className="nav" ref={navRef}>
+    <nav className={`nav${scrolled ? ' nav--scrolled' : ''}`} ref={navRef}>
       <div className="wrap nav-row">
         <a className="logo" href="/">
           <Image
-            src="/branding/logo_full_new.svg"
+            src="/branding/logo_full_new_dark.svg"
             alt="FunPay Cloud"
-            width={479}
-            height={61}
+            width={715}
+            height={113}
             priority
             className="landing-logo-full"
           />
