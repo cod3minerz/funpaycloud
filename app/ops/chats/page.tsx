@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { adminApi, AdminChat, AdminChatMessage } from '@/lib/api';
 import { Card, CardContent } from '@/platform2/components/ui/card';
@@ -28,7 +28,7 @@ function sourceBadge(source?: string | null) {
   );
 }
 
-export default function AdminChatsPage() {
+function AdminChatsInner() {
   const searchParams = useSearchParams();
   const [accountIdInput, setAccountIdInput] = useState(searchParams.get('account_id') ?? '');
   const [loadedAccountId, setLoadedAccountId] = useState<number | null>(null);
@@ -272,5 +272,13 @@ export default function AdminChatsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function AdminChatsPage() {
+  return (
+    <Suspense>
+      <AdminChatsInner />
+    </Suspense>
   );
 }
