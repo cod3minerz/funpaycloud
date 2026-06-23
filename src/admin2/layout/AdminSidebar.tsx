@@ -16,6 +16,8 @@ import {
   ArrowRightOnRectangleIcon,
   BugAntIcon,
   LightBulbIcon,
+  ShoppingBagIcon,
+  ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline";
 import { clearAdminToken } from "@/lib/auth";
 import { adminApi } from "@/lib/api";
@@ -36,6 +38,8 @@ const staticNavItems: Omit<NavItem, 'badge'>[] = [
   { href: "/ops/promocodes", label: "Промокоды",        Icon: TagIcon },
   { href: "/ops/users",      label: "Пользователи",     Icon: UsersIcon },
   { href: "/ops/bans",       label: "Баны",             Icon: NoSymbolIcon },
+  { href: "/ops/orders",    label: "Заказы",           Icon: ShoppingBagIcon },
+  { href: "/ops/chats",     label: "Чаты",             Icon: ChatBubbleLeftRightIcon },
 ];
 
 type AdminSidebarProps = {

@@ -1632,6 +1632,45 @@ export type AdminSharedProxy = {
   expires_at?: string | null;
 };
 
+export type AdminOrder = {
+  id: number;
+  funpay_account_id: number;
+  funpay_order_id: string;
+  description: string;
+  price: number;
+  buyer_username: string;
+  buyer_id: number;
+  status: number;
+  created_at: string;
+  delivered_at?: string | null;
+  delivered_via?: string;
+  delivered_item?: string;
+  ai_message_count: number;
+};
+
+export type AdminChat = {
+  id: number;
+  funpay_account_id: number;
+  node_id: string;
+  with_user: string;
+  last_message: string;
+  unread: boolean;
+  funpay_unread: boolean;
+  updated_at: string;
+};
+
+export type AdminChatMessage = {
+  id: number;
+  funpay_message_id: number;
+  author_name: string;
+  text: string;
+  is_my_msg: boolean;
+  source?: string | null;
+  ingest_kind?: string | null;
+  status: string;
+  created_at: string;
+};
+
 export type AdminPromoCode = {
   id: number;
   code: string;
@@ -1841,6 +1880,26 @@ export const adminApi = {
   },
   getFeedback: (id: number) =>
     adminApiRequest<FeedbackItem>(`/admin-api/feedback/${id}`),
+
+  orders: (params: { account_id?: number; status?: number; search?: string; page?: number; limit?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.account_id != null) q.set('account_id', String(params.account_id));
+    if (params.status != null) q.set('status', String(params.status));
+    if (params.search) q.set('search', params.search);
+    if (params.page) q.set('page', String(params.page));
+    if (params.limit) q.set('limit', String(params.limit));
+    return adminApiRequest<{ orders: AdminOrder[]; total: number; page: number; limit: number }>(`/admin-api/orders?${q.toString()}`);
+  },
+
+  accountChats: (accountId: number) =>
+    adminApiRequest<{ chats: AdminChat[]; account_id: number }>(`/admin-api/accounts/${accountId}/chats`),
+
+  chatMessages: (chatId: number, params: { limit?: number; before_id?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit) q.set('limit', String(params.limit));
+    if (params.before_id) q.set('before_id', String(params.before_id));
+    return adminApiRequest<{ messages: AdminChatMessage[]; chat_id: number }>(`/admin-api/chats/${chatId}/messages?${q.toString()}`);
+  },
 };
 
 // ─── SMM Plugin ───────────────────────────────────────────────────────────────
