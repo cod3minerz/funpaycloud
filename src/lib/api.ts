@@ -158,7 +158,8 @@ export async function apiRequest<T = unknown>(
       if (refreshed) {
         return apiRequest<T>(path, { ...options, _retryAttempted: true });
       }
-      logout();
+      // Don't auto-redirect: public pages (landing) may call auth-required endpoints
+      // to probe login state. Platform layout handles redirect on its own.
     }
     throw new ApiError(envelope.error || 'Сессия истекла. Войдите снова.', 401);
   }
