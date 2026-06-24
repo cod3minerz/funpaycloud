@@ -1,18 +1,28 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, Loader2, Ticket } from '@/shared/streamline/icons';
 import { toast } from "sonner";
 import { AuthShell } from "@/auth/components/AuthShell";
 import { authApi } from "@/lib/api";
 import { readStoredReferralCode, storeReferralCode } from "@/lib/referral";
 import { sanitizeInput, validateEmail, validatePassword } from "@/lib/sanitize";
 
-const fieldClass =
-  "auth-input h-12 w-full rounded-xl border border-[var(--line-2)] bg-[var(--bg)] px-4 text-[16px] font-medium text-[var(--ink)] placeholder:text-[var(--muted)] outline-none transition-all focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10";
-const OAUTH_API_BASE = (process.env.NEXT_PUBLIC_API_URL || "https://api.funpay.cloud").replace(/\/+$/, "");
+const inputClass =
+  "h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-[16px] text-gray-800 placeholder:text-gray-400 outline-none transition-all focus:border-[#8098f9] focus:ring-3 focus:ring-[#465fff]/10 disabled:bg-gray-50 disabled:text-gray-400";
+
+const errorInputClass =
+  "h-11 w-full rounded-lg border border-red-400 bg-white px-4 py-2.5 text-[16px] text-gray-800 placeholder:text-gray-400 outline-none transition-all focus:border-red-400 focus:ring-3 focus:ring-red-400/10 disabled:bg-gray-50";
+
+function Spinner() {
+  return (
+    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+    </svg>
+  );
+}
 
 function strengthScore(password: string) {
   let score = 0;
@@ -22,30 +32,10 @@ function strengthScore(password: string) {
   return score;
 }
 
-function GoogleMark() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        fill="#EA4335"
-        d="M12 10.2v3.9h5.5c-.24 1.25-.95 2.31-2.02 3.02l3.27 2.53c1.9-1.75 3-4.32 3-7.36 0-.7-.06-1.37-.17-2.02H12z"
-      />
-      <path
-        fill="#34A853"
-        d="M12 22c2.7 0 4.97-.9 6.63-2.44l-3.27-2.53c-.9.61-2.05.97-3.36.97-2.58 0-4.76-1.74-5.54-4.08H3.1v2.57A10 10 0 0 0 12 22z"
-      />
-      <path
-        fill="#4A90E2"
-        d="M6.46 13.92A6 6 0 0 1 6.13 12c0-.67.12-1.31.33-1.92V7.51H3.1A10 10 0 0 0 2 12c0 1.62.39 3.16 1.1 4.49l3.36-2.57z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M12 6c1.47 0 2.79.5 3.83 1.49l2.87-2.87C16.96 2.98 14.7 2 12 2a10 10 0 0 0-8.9 5.51l3.36 2.57C7.24 7.74 9.42 6 12 6z"
-      />
-    </svg>
-  );
-}
+const strengthLabel = ["", "Слабый", "Хороший", "Надёжный"] as const;
+const strengthBarColor = ["", "bg-red-400", "bg-yellow-400", "bg-green-500"] as const;
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -64,21 +54,20 @@ export default function RegisterPage() {
   const score = useMemo(() => strengthScore(password), [password]);
 
   useEffect(() => {
-    const fromUrl = (searchParams.get('ref') || '').trim();
+    const fromUrl = (searchParams.get("ref") || "").trim();
     const stored = fromUrl ? storeReferralCode(fromUrl) : readStoredReferralCode();
     setReferralCode(stored);
   }, [searchParams]);
 
   useEffect(() => {
-    const oauthError = (searchParams.get('oauth_error') || '').trim();
+    const oauthError = (searchParams.get("oauth_error") || "").trim();
     if (!oauthError) return;
     toast.error(oauthError);
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      params.delete('oauth_error');
+      params.delete("oauth_error");
       const query = params.toString();
-      const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}`;
-      window.history.replaceState({}, '', nextUrl);
+      window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
     }
   }, [searchParams]);
 
@@ -95,7 +84,6 @@ export default function RegisterPage() {
   async function handleRegister(event: FormEvent) {
     event.preventDefault();
     if (!validate()) return;
-
     setLoading(true);
     try {
       await authApi.register(
@@ -118,124 +106,123 @@ export default function RegisterPage() {
     }
   }
 
-  function handleGoogleRegister() {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams();
-    params.set("mode", "register");
-    if (referralCode) params.set("ref", referralCode);
-    if (promoCode.trim()) params.set("promo", promoCode.trim());
-    window.location.href = `${OAUTH_API_BASE}/api/auth/google/start?${params.toString()}`;
-  }
-
   return (
-    <AuthShell
-      title="Регистрация"
-      subtitle="Создайте аккаунт и запустите рабочее пространство FunPay Cloud."
-    >
-      <form onSubmit={handleRegister} className="space-y-5">
-        <div className="space-y-2">
-          <label className="text-[13px] font-semibold text-[var(--ink-2)]">Email</label>
+    <AuthShell title="Регистрация" subtitle="Создайте аккаунт и запустите автоматизацию FunPay.">
+      <form onSubmit={handleRegister} className="space-y-4">
+
+        {/* Email */}
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium text-gray-700">Email</label>
           <input
             type="email"
-            className={fieldClass}
-            placeholder="you@company.com"
+            autoComplete="email"
+            placeholder="you@example.com"
             value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
+            className={fieldErrors.email ? errorInputClass : inputClass}
           />
           {fieldErrors.email && (
-            <p className="text-[12px] text-[var(--bad)]">{fieldErrors.email}</p>
+            <p className="text-xs text-red-500">{fieldErrors.email}</p>
           )}
         </div>
 
-        <div className="space-y-2">
-          <label className="text-[13px] font-semibold text-[var(--ink-2)]">Пароль</label>
+        {/* Пароль */}
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium text-gray-700">Пароль</label>
           <input
             type="password"
-            className={fieldClass}
+            autoComplete="new-password"
             placeholder="Минимум 8 символов"
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
+            onChange={(e) => setPassword(e.target.value)}
+            className={fieldErrors.password ? errorInputClass : inputClass}
           />
           {fieldErrors.password ? (
-            <p className="text-[12px] text-[var(--bad)]">{fieldErrors.password}</p>
+            <p className="text-xs text-red-500">{fieldErrors.password}</p>
           ) : (
-            <div className="flex flex-wrap items-center gap-2 text-[12px] text-[var(--muted)]">
-              <span>Минимум 8 символов, буквы и цифры</span>
-              <span className="text-[var(--line-2)]">•</span>
-              <span className="text-[var(--ink-2)] font-medium">
-                {score === 0 ? "Слабый" : score === 1 ? "Базовый" : score === 2 ? "Хороший" : "Надежный"}
-              </span>
+            <div className="space-y-1">
+              <div className="flex gap-1">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className={`h-1 flex-1 rounded-full transition-colors duration-200 ${
+                      password.length > 0 && score >= i ? strengthBarColor[score] : "bg-gray-200"
+                    }`}
+                  />
+                ))}
+              </div>
+              {password.length > 0 && (
+                <p className="text-xs text-gray-400">{strengthLabel[score]}</p>
+              )}
             </div>
           )}
         </div>
 
-        <div className="space-y-2">
-          <label className="text-[13px] font-semibold text-[var(--ink-2)]">Подтверждение пароля</label>
+        {/* Подтверждение пароля */}
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium text-gray-700">Повторите пароль</label>
           <input
             type="password"
-            className={fieldClass}
+            autoComplete="new-password"
             placeholder="Повторите пароль"
             value={confirmPassword}
-            onChange={(event) => setConfirmPassword(event.target.value)}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className={fieldErrors.confirm ? errorInputClass : inputClass}
           />
           {fieldErrors.confirm && (
-            <p className="text-[12px] text-[var(--bad)]">{fieldErrors.confirm}</p>
+            <p className="text-xs text-red-500">{fieldErrors.confirm}</p>
           )}
         </div>
 
+        {/* Промокод */}
         <div className="space-y-2">
-          <label className="inline-flex cursor-pointer items-center gap-2 text-[14px] font-semibold text-[var(--ink-2)] hover:text-[var(--ink)]">
+          <label className="inline-flex cursor-pointer items-center gap-2 select-none">
             <input
               type="checkbox"
               checked={hasPromo}
-              onChange={(event) => setHasPromo(event.target.checked)}
-              className="h-4 w-4 rounded border border-[var(--line-2)] accent-[var(--accent)]"
+              onChange={(e) => setHasPromo(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 accent-[#465fff]"
             />
-            <Ticket size={16} />
-            Есть промокод
+            <span className="text-sm font-medium text-gray-700">Есть промокод</span>
           </label>
           {hasPromo && (
-            <div className="animate-in slide-in-from-top-2">
-              <input
-                className={fieldClass}
-                placeholder="Введите код"
-                value={promoCode}
-                onChange={(event) => setPromoCode(event.target.value)}
-              />
-            </div>
+            <input
+              className={inputClass}
+              placeholder="Введите промокод"
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value)}
+            />
           )}
         </div>
 
-        <div className="space-y-3 pt-1">
+        {/* Кнопка */}
+        <div className="pt-1">
           <button
             type="submit"
             disabled={loading}
-            className="auth-btn-main flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0e1116] text-white hover:opacity-90 active:scale-[0.98] transition-all text-[15px] font-bold disabled:opacity-60"
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#465fff] px-5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#3a52e0] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {loading ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
-              <>Создать аккаунт <ArrowRight size={18} /></>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={handleGoogleRegister}
-            className="auth-btn-secondary flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[var(--line-2)] bg-[var(--card)] hover:bg-[var(--bg)] active:scale-[0.98] transition-all text-[15px] font-bold text-[var(--ink)]"
-          >
-            <GoogleMark />
-            Зарегистрироваться с Google
+            {loading ? <Spinner /> : "Создать аккаунт"}
           </button>
         </div>
 
-        <p className="text-center text-[13px] leading-6 text-[var(--muted)]">
+        {/* Вход */}
+        <p className="pt-1 text-center text-sm text-gray-500">
           Уже есть аккаунт?{" "}
-          <Link href="/auth/login" className="font-semibold text-[var(--accent)] hover:opacity-90">
+          <Link href="/auth/login" className="font-semibold text-[#465fff] hover:opacity-80 transition-opacity">
             Войти
           </Link>
         </p>
+
       </form>
     </AuthShell>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
   );
 }
