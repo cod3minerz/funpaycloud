@@ -95,7 +95,7 @@ export default function LandingNav({ homeAnchors = false }: LandingNavProps) {
       <div className="wrap nav-row">
         <a className="logo" href="/">
           <Image
-            src="/branding/logo_full_new_dark.svg"
+            src="/branding/logo_full_new.svg"
             alt="FunPay Cloud"
             width={715}
             height={113}
