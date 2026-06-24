@@ -1,14 +1,177 @@
 "use client";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/platform2/components/ui/card";
 import { Button } from "@/platform2/components/ui/button";
 import Icon from "@/platform2/icons";
+import { accountsApi, settingsApi, ApiAccount } from "@/lib/api";
+import Link from "next/link";
 
 const TELEGRAM_CHANNEL = "https://t.me/funpay_cloud";
 const TELEGRAM_SUPPORT = "https://t.me/fpcloud_support";
+const STORAGE_KEY = "onboarding_done";
+
+type OnboardingState = {
+  hasAccount: boolean;
+  hasProxy: boolean;
+  hasRunner: boolean;
+  hasTelegram: boolean;
+};
+
+function OnboardingChecklist({ state, onDismiss }: { state: OnboardingState; onDismiss: () => void }) {
+  const steps = [
+    {
+      num: 1,
+      done: state.hasAccount,
+      title: "Добавьте аккаунт FunPay",
+      hint: "Нужен Golden Key из настроек профиля на FunPay",
+      action: "Перейти",
+      href: "/platform/accounts",
+    },
+    {
+      num: 2,
+      done: state.hasProxy,
+      title: "Подключите прокси",
+      hint: "Без прокси воркер не запустится — обязательный шаг",
+      action: "Перейти",
+      href: "/platform/accounts",
+    },
+    {
+      num: 3,
+      done: state.hasRunner,
+      title: "Запустите автоматизацию",
+      hint: "Откройте аккаунт и нажмите «Запустить Runner»",
+      action: "Перейти",
+      href: "/platform/accounts",
+    },
+    {
+      num: 4,
+      done: state.hasTelegram,
+      title: "Подключите Telegram",
+      hint: "Получайте уведомления о заказах и сообщениях (опционально)",
+      action: "Настроить",
+      href: "/platform/integrations",
+    },
+  ];
+
+  const completedCount = steps.filter((s) => s.done).length;
+  const allDone = completedCount === steps.length;
+
+  return (
+    <div className="rounded-2xl border border-brand-200 bg-brand-50 p-6 dark:border-brand-900/40 dark:bg-brand-950/20">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+            Начало работы
+          </h2>
+          <p className="mt-0.5 text-sm text-gray-500">
+            {allDone
+              ? "Всё готово! Автоматизация запущена."
+              : `Выполните шаги чтобы запустить автоматизацию — ${completedCount} из ${steps.length} готово`}
+          </p>
+        </div>
+        <button
+          onClick={onDismiss}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-brand-100 dark:hover:bg-brand-900/30"
+          title="Скрыть"
+        >
+          <Icon name="close" className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="mt-5 space-y-3">
+        {steps.map((step) => (
+          <div
+            key={step.num}
+            className={`flex items-center gap-4 rounded-xl border p-4 transition-colors ${
+              step.done
+                ? "border-success-200 bg-white dark:border-success-900/40 dark:bg-success-950/10"
+                : "border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900/40"
+            }`}
+          >
+            <div
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                step.done
+                  ? "bg-success-500 text-white"
+                  : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+              }`}
+            >
+              {step.done ? <Icon name="check-circle" className="h-4 w-4" /> : step.num}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className={`font-semibold ${step.done ? "text-success-700 dark:text-success-400 line-through" : "text-gray-800 dark:text-white"}`}>
+                {step.title}
+              </p>
+              {!step.done && (
+                <p className="mt-0.5 text-sm text-gray-400">{step.hint}</p>
+              )}
+            </div>
+            {!step.done && (
+              <Link
+                href={step.href}
+                className="shrink-0 rounded-lg border border-brand-300 bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-600 hover:bg-brand-100 dark:border-brand-700 dark:bg-brand-950/30 dark:text-brand-400"
+              >
+                {step.action} →
+              </Link>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Progress bar */}
+      <div className="mt-4">
+        <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
+          <div
+            className="h-1.5 rounded-full bg-brand-500 transition-all duration-500"
+            style={{ width: `${(completedCount / steps.length) * 100}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
+  const [onboardingState, setOnboardingState] = useState<OnboardingState | null>(null);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && localStorage.getItem(STORAGE_KEY) === "1") {
+      setDismissed(true);
+      return;
+    }
+
+    Promise.all([
+      accountsApi.list().catch(() => [] as ApiAccount[]),
+      settingsApi.getProfile().catch(() => null),
+    ]).then(([accounts, profile]) => {
+      const hasAccount = accounts.length > 0;
+      const hasProxy = accounts.some((a) => a.proxy_connected);
+      const hasRunner = accounts.some((a) => a.runner_active);
+      const hasTelegram = profile?.telegram_linked === true;
+      setOnboardingState({ hasAccount, hasProxy, hasRunner, hasTelegram });
+
+      // auto-dismiss only when all 4 steps done
+      if (hasAccount && hasProxy && hasRunner && hasTelegram) {
+        if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, "1");
+        setDismissed(true);
+      }
+    });
+  }, []);
+
+  function handleDismiss() {
+    if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, "1");
+    setDismissed(true);
+  }
+
+  const showOnboarding = !dismissed && onboardingState !== null;
+
   return (
     <div className="space-y-6">
+
+      {/* ОНБОРДИНГ ЧЕКЛИСТ */}
+      {showOnboarding && (
+        <OnboardingChecklist state={onboardingState} onDismiss={handleDismiss} />
+      )}
 
       {/* ЗАГОЛОВОК */}
       <div>

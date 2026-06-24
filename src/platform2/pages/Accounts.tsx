@@ -107,6 +107,7 @@ export default function AccountsPage() {
   const [runningAll, setRunningAll] = useState(false);
   const [stoppingAll, setStoppingAll] = useState(false);
   const [proxyPaymentLoading, setProxyPaymentLoading] = useState(false);
+  const [showProxyBanner, setShowProxyBanner] = useState(false);
 
   useEffect(() => {
     accountsApi.list().then((list) => setAccounts(list.map(mapApiAccount))).catch(() => {});
@@ -152,8 +153,14 @@ export default function AccountsPage() {
     try {
       await accountsApi.add(goldenKey);
       const list = await accountsApi.list();
-      setAccounts(list.map(mapApiAccount));
+      const mapped = list.map(mapApiAccount);
+      setAccounts(mapped);
       toast.success("Аккаунт успешно добавлен");
+      // Показать баннер если у нового аккаунта нет прокси
+      const justAdded = mapped[mapped.length - 1];
+      if (justAdded && !justAdded.proxyConnected) {
+        setShowProxyBanner(true);
+      }
     } catch {
       toast.error("Не удалось добавить аккаунт. Проверьте Golden Key.");
     } finally {
@@ -347,6 +354,27 @@ export default function AccountsPage() {
         </div>
       </div>
 
+      {/* БАННЕР: подключите прокси после добавления аккаунта */}
+      {showProxyBanner && (
+        <div className="flex items-start gap-4 rounded-xl border border-warning-300 bg-warning-50 p-4 dark:border-warning-700/40 dark:bg-warning-950/20">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-warning-500/10">
+            <Icon name="alert" className="h-5 w-5 text-warning-500" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-warning-800 dark:text-warning-300">Аккаунт добавлен — подключите прокси</p>
+            <p className="mt-0.5 text-sm text-warning-700/80 dark:text-warning-400/80">
+              Без прокси воркер не запустится. Нажмите «Открыть» у аккаунта и выберите прокси — или сделайте это прямо сейчас.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowProxyBanner(false)}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-warning-400 hover:text-warning-600"
+          >
+            <Icon name="close" className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* STAT CARDS */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -433,6 +461,33 @@ export default function AccountsPage() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
+          {accounts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-500/10 mb-4">
+                <Icon name="plug-in" className="h-8 w-8 text-brand-500" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800 dark:text-white">
+                Добавьте первый аккаунт FunPay
+              </h3>
+              <p className="mt-2 max-w-sm text-sm text-gray-500">
+                Чтобы начать автоматизацию, введите Golden Key из настроек профиля на FunPay.
+              </p>
+              <div className="mt-4 flex flex-col items-center gap-3 sm:flex-row">
+                <a
+                  href="/blog/kak-naiti-golden-key-funpay"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-brand-500 underline underline-offset-2 hover:text-brand-600"
+                >
+                  Где найти Golden Key →
+                </a>
+                <Button variant="primary" onClick={() => setIsAddModal(true)}>
+                  <Icon name="plus" className="mr-2 h-4 w-4" />
+                  Добавить аккаунт
+                </Button>
+              </div>
+            </div>
+          ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -482,11 +537,19 @@ export default function AccountsPage() {
                     </TableCell>
                     <TableCell className="px-5 py-4">
                       <div className="flex items-center gap-1.5">
-                        <span className="relative flex h-2 w-2">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success-400 opacity-75" />
-                          <span className="relative inline-flex h-2 w-2 rounded-full bg-success-500" />
+                        {account.proxyConnected ? (
+                          <span className="relative flex h-2 w-2">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success-400 opacity-75" />
+                            <span className="relative inline-flex h-2 w-2 rounded-full bg-success-500" />
+                          </span>
+                        ) : (
+                          <span className="relative flex h-2 w-2">
+                            <span className="relative inline-flex h-2 w-2 rounded-full bg-warning-400" />
+                          </span>
+                        )}
+                        <span className={`text-sm ${account.proxyConnected ? "text-gray-700 dark:text-gray-300" : "text-warning-600 dark:text-warning-400"}`}>
+                          {account.proxy}
                         </span>
-                        <span className="text-sm text-gray-700 dark:text-gray-300">{account.proxy}</span>
                       </div>
                     </TableCell>
                     <TableCell className="px-5 py-4">
@@ -504,6 +567,7 @@ export default function AccountsPage() {
               </TableBody>
             </Table>
           </div>
+          )}
         </CardContent>
       </Card>
 
@@ -724,6 +788,19 @@ export default function AccountsPage() {
                 </div>
               </div>
 
+              {/* Предупреждение если нет прокси */}
+              {!drawerAccount.proxyConnected && (
+                <div className="flex items-start gap-3 rounded-xl border border-warning-300 bg-warning-50 p-4 dark:border-warning-700/40 dark:bg-warning-950/20">
+                  <Icon name="alert" className="h-5 w-5 shrink-0 text-warning-500 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-warning-800 dark:text-warning-300">Прокси не подключён</p>
+                    <p className="mt-0.5 text-xs text-warning-700/80 dark:text-warning-400/80">
+                      Воркер не запустится без прокси. Подключите прокси ниже.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Workers */}
               <div>
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Воркеры</p>
@@ -835,9 +912,13 @@ export default function AccountsPage() {
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Действия</p>
                 <div className="space-y-2">
                   <button
+                    disabled={!drawerAccount.proxyConnected && !drawerAccount.runner}
                     onClick={() => drawerAccount.runner ? handleStopRuntime(drawerAccount) : handleStartRuntime(drawerAccount)}
+                    title={!drawerAccount.proxyConnected && !drawerAccount.runner ? "Сначала подключите прокси" : undefined}
                     className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-colors ${
-                      drawerAccount.runner
+                      !drawerAccount.proxyConnected && !drawerAccount.runner
+                        ? "cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500"
+                        : drawerAccount.runner
                         ? "bg-error-500/10 text-error-500 hover:bg-error-500/20"
                         : "bg-success-500/10 text-success-600 hover:bg-success-500/20"
                     }`}>
