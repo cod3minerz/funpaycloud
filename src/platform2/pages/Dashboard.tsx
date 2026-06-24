@@ -8,7 +8,6 @@ import Link from "next/link";
 
 const TELEGRAM_CHANNEL = "https://t.me/funpay_cloud";
 const TELEGRAM_SUPPORT = "https://t.me/fpcloud_support";
-const STORAGE_KEY = "onboarding_done";
 
 type OnboardingState = {
   hasAccount: boolean;
@@ -17,7 +16,7 @@ type OnboardingState = {
   hasTelegram: boolean;
 };
 
-function OnboardingChecklist({ state, onDismiss }: { state: OnboardingState; onDismiss: () => void }) {
+function OnboardingChecklist({ state }: { state: OnboardingState }) {
   const steps = [
     {
       num: 1,
@@ -69,13 +68,6 @@ function OnboardingChecklist({ state, onDismiss }: { state: OnboardingState; onD
               : `Выполните шаги чтобы запустить автоматизацию — ${completedCount} из ${steps.length} готово`}
           </p>
         </div>
-        <button
-          onClick={onDismiss}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-brand-100 dark:hover:bg-brand-900/30"
-          title="Скрыть"
-        >
-          <Icon name="close" className="h-4 w-4" />
-        </button>
       </div>
 
       <div className="mt-5 space-y-3">
@@ -132,14 +124,7 @@ function OnboardingChecklist({ state, onDismiss }: { state: OnboardingState; onD
 
 export default function DashboardPage() {
   const [onboardingState, setOnboardingState] = useState<OnboardingState | null>(null);
-  const [dismissed, setDismissed] = useState(false);
-
   useEffect(() => {
-    if (typeof window !== "undefined" && localStorage.getItem(STORAGE_KEY) === "1") {
-      setDismissed(true);
-      return;
-    }
-
     Promise.all([
       accountsApi.list().catch(() => [] as ApiAccount[]),
       settingsApi.getProfile().catch(() => null),
@@ -149,28 +134,23 @@ export default function DashboardPage() {
       const hasRunner = accounts.some((a) => a.runner_active);
       const hasTelegram = profile?.telegram_linked === true;
       setOnboardingState({ hasAccount, hasProxy, hasRunner, hasTelegram });
-
-      // auto-dismiss only when all 4 steps done
-      if (hasAccount && hasProxy && hasRunner && hasTelegram) {
-        if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, "1");
-        setDismissed(true);
-      }
     });
   }, []);
 
-  function handleDismiss() {
-    if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, "1");
-    setDismissed(true);
-  }
+  const allDone = onboardingState !== null &&
+    onboardingState.hasAccount &&
+    onboardingState.hasProxy &&
+    onboardingState.hasRunner &&
+    onboardingState.hasTelegram;
 
-  const showOnboarding = !dismissed && onboardingState !== null;
+  const showOnboarding = onboardingState !== null && !allDone;
 
   return (
     <div className="space-y-6">
 
       {/* ОНБОРДИНГ ЧЕКЛИСТ */}
       {showOnboarding && (
-        <OnboardingChecklist state={onboardingState} onDismiss={handleDismiss} />
+        <OnboardingChecklist state={onboardingState} />
       )}
 
       {/* ЗАГОЛОВОК */}
