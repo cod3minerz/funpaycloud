@@ -1,0 +1,61 @@
+# FunPay Cloud
+
+> Облачный SaaS для автоматизации продаж на маркетплейсе FunPay.ru.
+> Автоподнятие лотов, автовыдача цифровых товаров, AI-автоответы в чатах, аналитика продавца.
+> Работает без VPS и без компьютера — 24/7 в облаке. Пробный период 7 дней бесплатно.
+
+## Что умеет
+
+- **Автоподнятие лотов**: автоматически поднимает товары продавца в поиске FunPay по расписанию
+- **Автовыдача товаров**: мгновенно выдаёт цифровые товары (ключи, аккаунты, валюту) после оплаты без участия продавца
+- **AI-автоответы**: нейросеть обрабатывает входящие сообщения в чатах, отвечает как живой человек, эскалирует сложные вопросы продавцу
+- **Сценарии**: настраиваемые цепочки действий при разных событиях (новый заказ, сообщение, изменение статуса)
+- **Аналитика**: еженедельные отчёты в Telegram, метрики выручки, конверсии чатов, среднего чека
+- **Мультиаккаунт**: управление несколькими аккаунтами FunPay из одной панели
+
+## Для кого
+
+Продавцы на FunPay.ru в нишах: игровые аккаунты, игровая валюта, Steam/Discord/Spotify ключи, программное обеспечение, цифровые услуги.
+
+## Тарифы
+
+- **Старт**: базовые функции, 1 аккаунт
+- **Pro**: AI-ответы, до 5 аккаунтов, аналитика
+- **Ultra**: без ограничений, API, приоритетная поддержка 24/7
+
+## Блог — руководства для продавцов FunPay
+
+- [Как работает автоматизация FunPay](https://funpay.cloud/blog/kak-rabotaet-avtomatizaciya-funpay)
+- [Автоподнятие лотов FunPay: полный гайд](https://funpay.cloud/blog/avtopodnyatie-lotov-funpay)
+- [Автовыдача на FunPay без VPS](https://funpay.cloud/blog/avtovydacha-funpay-bez-vps)
+- [AI-автоответы FunPay и рост продаж](https://funpay.cloud/blog/ai-avtootvety-funpay-prodazhi)
+- [Автоответы на FunPay — настройка](https://funpay.cloud/blog/avtootvety-na-funpay)
+- [Что такое Golden Key FunPay](https://funpay.cloud/blog/chto-takoe-golden-key-funpay)
+- [Как выбрать бот для FunPay 2026](https://funpay.cloud/blog/kak-vybrat-bot-dlya-funpay-2026)
+- [Cardinal vs облачный сервис FunPay](https://funpay.cloud/blog/cardinal-vs-oblachnyj-servis-funpay)
+- [Скрипт, бот или облачный сервис — что выбрать](https://funpay.cloud/blog/skript-bot-ili-oblachnyj-servis-chto-vybrat-prodavcu-funpay)
+- [Облачная vs Desktop автоматизация](https://funpay.cloud/blog/oblachnaya-vs-desktop)
+- [10 ошибок при автоматизации FunPay](https://funpay.cloud/blog/10-oshibok-pri-avtomatizacii-funpay)
+- [ROI автоматизации FunPay за 30 дней](https://funpay.cloud/blog/roi-avtomatizacii-funpay-za-30-dnej)
+- [Как увеличить выручку без роста времени в операционке](https://funpay.cloud/blog/kak-uvelichit-vyruchku-bez-rosta-vremeni-v-operacionke)
+- [Метрики продавца FunPay каждую неделю](https://funpay.cloud/blog/metriky-prodavca-funpay-kazhduyu-nedelyu)
+- [Как масштабировать магазин на FunPay](https://funpay.cloud/blog/kak-masshtabirovat-magazin-na-funpay)
+- [Как сократить время ответа в чатах FunPay](https://funpay.cloud/blog/kak-sokratit-vremya-otveta-v-chatah-funpay)
+- [Как не терять клиентов в ночные часы](https://funpay.cloud/blog/kak-ne-teryat-klientov-v-nochnye-chasy-funpay)
+- [Сценарии автоматизации для разных ниш FunPay](https://funpay.cloud/blog/scenarii-avtomatizacii-dlya-raznyh-nish-funpay)
+- [Безопасная настройка выдачи цифровых товаров](https://funpay.cloud/blog/bezopasnaya-nastrojka-vydachi-cifrovyh-tovarov-funpay)
+- [Склад товаров для автовыдачи FunPay](https://funpay.cloud/blog/sklad-tovarov-dlya-avtovydachi-funpay)
+- [Оптимальные интервалы автоподнятия FunPay](https://funpay.cloud/blog/optimalnye-intervaly-avtopodnyatiya-funpay)
+- [Чеклист перед запуском автопродаж FunPay](https://funpay.cloud/blog/cheklist-pered-zapuskom-avtoprodazh-funpay)
+- [Операционный чеклист продавца FunPay](https://funpay.cloud/blog/operacionnyj-cheklist-prodavca-funpay)
+- [Переход с ручного режима на автоматизацию](https://funpay.cloud/blog/perehod-s-ruchnogo-rezhima-na-avtomatizaciyu)
+- [Как запускать автоматизацию без технической команды](https://funpay.cloud/blog/kak-zapuskat-avtomatizaciyu-bez-tehnicheskoj-komandy)
+- [Как собрать FAQ для AI-ассистента FunPay](https://funpay.cloud/blog/kak-sobrat-faq-dlya-ai-assistenta-funpay)
+- [Как выбирать плагины FunPay без перегруза](https://funpay.cloud/blog/kak-vybirat-plaginy-funpay-bez-peregruza)
+- [Как работает автоподнятие на FunPay](https://funpay.cloud/blog/kak-rabotaet-avtopodnyatie-na-funpay)
+
+## Контакт
+
+- Сайт: https://funpay.cloud
+- Поддержка: @fpcloud_support (Telegram)
+- Email: legal@funpay.cloud
