@@ -126,19 +126,43 @@ export default function AccountsPage() {
       return;
     }
 
+    function pollProvision(pid: string, attempts = 0) {
+      if (attempts >= 20) {
+        toast.error("Прокси подключается дольше обычного. Обратитесь в @fpcloud_support");
+        return;
+      }
+      billingApi.getProxyCheckoutStatus(pid)
+        .then((status) => {
+          if (status.status === "paid" && status.provision_status === "success") {
+            toast.success("Прокси оплачен и подключён!");
+            accountsApi.list().then((list) => setAccounts(list.map(mapApiAccount))).catch(() => {});
+          } else if (status.status === "paid" && status.provision_status === "failed") {
+            toast.error(status.provision_error || "Оплата прошла, но прокси не подключился. Напишите в @fpcloud_support");
+          } else if (status.status === "failed") {
+            toast.error("Оплата прокси не прошла");
+          } else {
+            // pending provision or pending payment — poll again
+            setTimeout(() => pollProvision(pid, attempts + 1), 3000);
+          }
+        })
+        .catch(() => {
+          setTimeout(() => pollProvision(pid, attempts + 1), 3000);
+        });
+    }
+
     billingApi.getProxyCheckoutStatus(paymentId)
       .then((status) => {
-        if (status.status === "paid" && status.provision_status === "success") {
-          toast.success("Прокси оплачен и подключен");
-          return accountsApi.list().then((list) => setAccounts(list.map(mapApiAccount)));
+        if (status.status === "failed") {
+          toast.error("Оплата прокси не прошла");
+        } else if (status.status === "paid" && status.provision_status === "success") {
+          toast.success("Прокси оплачен и подключён!");
+          accountsApi.list().then((list) => setAccounts(list.map(mapApiAccount))).catch(() => {});
         } else if (status.status === "paid" && status.provision_status === "failed") {
           toast.error(status.provision_error || "Оплата прошла, но прокси не подключился. Напишите в @fpcloud_support");
-        } else if (status.status === "paid") {
-          toast.message("Оплата прошла, прокси подключается");
-        } else if (status.status === "failed") {
-          toast.error("Оплата прокси не прошла");
         } else {
-          toast.message("Платеж создан, статус еще обновляется");
+          // paid but provision still pending, or status unknown — start polling
+          toast.message("Оплата прошла, подключаем прокси...");
+          setTimeout(() => pollProvision(paymentId, 1), 3000);
         }
       })
       .catch((err) => {

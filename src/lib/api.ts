@@ -1734,6 +1734,24 @@ export type AdminMonitoring = {
   timestamp: string;
 };
 
+export type AdminPurchase = {
+  id: number;
+  user_id?: number;
+  user_email?: string;
+  funpay_account_id?: number;
+  funpay_username?: string;
+  type: 'proxy' | 'subscription' | string;
+  product?: string;
+  amount: number;
+  currency: string;
+  status: string;
+  provision_status?: 'pending' | 'success' | 'failed' | string;
+  provision_error?: string;
+  created_at: string;
+  paid_at?: string | null;
+  failed_at?: string | null;
+};
+
 export type FeedbackItem = {
   id: number;
   type: 'bug' | 'idea';
@@ -1900,6 +1918,37 @@ export const adminApi = {
     if (params.limit) q.set('limit', String(params.limit));
     if (params.before_id) q.set('before_id', String(params.before_id));
     return adminApiRequest<{ messages: AdminChatMessage[]; chat_id: number }>(`/admin-api/chats/${chatId}/messages?${q.toString()}`);
+  },
+  purchases: (params: {
+    page?: number;
+    limit?: number;
+    user_id?: number;
+    from?: string;
+    to?: string;
+    status?: string;
+    provision_status?: string;
+    type?: string;
+  } = {}) => {
+    const q = new URLSearchParams();
+    if (params.page !== undefined) q.set('page', String(params.page));
+    if (params.limit !== undefined) q.set('limit', String(params.limit));
+    if (params.user_id !== undefined) q.set('user_id', String(params.user_id));
+    if (params.from) q.set('from', params.from);
+    if (params.to) q.set('to', params.to);
+    if (params.status) q.set('status', params.status);
+    if (params.provision_status) q.set('provision_status', params.provision_status);
+    if (params.type) q.set('type', params.type);
+    return adminApiRequest<{ items: AdminPurchase[]; total: number; page: number; limit: number }>(`/admin-api/billing/purchases?${q.toString()}`);
+  },
+  purchasesCsv: (params: { user_id?: number; from?: string; to?: string; status?: string; provision_status?: string; type?: string } = {}) => {
+    const q = new URLSearchParams({ format: 'csv' });
+    if (params.user_id !== undefined) q.set('user_id', String(params.user_id));
+    if (params.from) q.set('from', params.from);
+    if (params.to) q.set('to', params.to);
+    if (params.status) q.set('status', params.status);
+    if (params.provision_status) q.set('provision_status', params.provision_status);
+    if (params.type) q.set('type', params.type);
+    return fetch(`/admin-api/billing/purchases?${q.toString()}`, { credentials: 'include' });
   },
 };
 

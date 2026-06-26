@@ -18,6 +18,7 @@ import {
   LightBulbIcon,
   ShoppingBagIcon,
   ChatBubbleLeftRightIcon,
+  CreditCardIcon,
 } from "@heroicons/react/24/outline";
 import { clearAdminToken } from "@/lib/auth";
 import { adminApi } from "@/lib/api";
@@ -36,6 +37,7 @@ const staticNavItems: Omit<NavItem, 'badge'>[] = [
   { href: "/ops/runners",    label: "Воркеры",          Icon: PlayCircleIcon },
   { href: "/ops/proxies",    label: "Прокси",           Icon: ServerIcon },
   { href: "/ops/promocodes", label: "Промокоды",        Icon: TagIcon },
+  { href: "/ops/purchases",  label: "Покупки",          Icon: CreditCardIcon },
   { href: "/ops/users",      label: "Пользователи",     Icon: UsersIcon },
   { href: "/ops/bans",       label: "Баны",             Icon: NoSymbolIcon },
   { href: "/ops/orders",    label: "Заказы",           Icon: ShoppingBagIcon },
