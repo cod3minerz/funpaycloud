@@ -11,7 +11,6 @@ import {
   Loader2,
   LifeBuoy,
   Network,
-  Pause,
   Play,
   Plus,
   Search,
@@ -22,6 +21,7 @@ import {
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { Sheet, SheetContent } from '@/app/components/ui/sheet';
+import { Switch } from '@/app/components/ui/switch';
 import { accountsApi, billingApi, ApiAccount } from '@/lib/api';
 import { sanitizeInput, validateGoldenKey } from '@/lib/sanitize';
 import {
@@ -78,41 +78,6 @@ function formatRelativeTime(value?: string | null): string {
   return `${diffDays} дн назад`;
 }
 
-function getMinutesInTimezone(timezone: string): number {
-  try {
-    const parts = new Intl.DateTimeFormat('en-GB', {
-      timeZone: timezone,
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).formatToParts(new Date());
-    const hour = Number(parts.find(part => part.type === 'hour')?.value ?? 0);
-    const minute = Number(parts.find(part => part.type === 'minute')?.value ?? 0);
-    return hour * 60 + minute;
-  } catch {
-    const now = new Date();
-    return now.getHours() * 60 + now.getMinutes();
-  }
-}
-
-function getNextRaiseCountdown(timeValue?: string, timezoneValue?: string): string {
-  const raw = (timeValue || '').trim();
-  if (!/^\d{2}:\d{2}$/.test(raw)) return '—';
-  const [hh, mm] = raw.split(':').map(Number);
-  if (Number.isNaN(hh) || Number.isNaN(mm)) return '—';
-
-  const currentMinutes = getMinutesInTimezone(timezoneValue || 'Europe/Moscow');
-  const targetMinutes = hh * 60 + mm;
-  let delta = targetMinutes - currentMinutes;
-  if (delta <= 0) delta += 24 * 60;
-
-  const hours = Math.floor(delta / 60);
-  const minutes = delta % 60;
-  if (hours === 0) return `через ${minutes}м`;
-  if (minutes === 0) return `через ${hours}ч`;
-  return `через ${hours}ч ${minutes}м`;
-}
-
 function getRecencyClass(value?: string | null): string {
   if (!value) return 'text-[var(--pf-text-soft)]';
   const date = new Date(value);
@@ -147,8 +112,6 @@ export default function Accounts() {
   // Map of accountId → loading state for raiser toggle
   const [raisingIds, setRaisingIds] = useState<Set<string | number>>(new Set());
   const [runtimeLoadingIds, setRuntimeLoadingIds] = useState<Set<string | number>>(new Set());
-  const [savingScheduleIds, setSavingScheduleIds] = useState<Set<string | number>>(new Set());
-  const [scheduleDrafts, setScheduleDrafts] = useState<Record<string, string>>({});
   const [selectedAccountID, setSelectedAccountID] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -169,7 +132,6 @@ export default function Accounts() {
   const [externalProxyPassword, setExternalProxyPassword] = useState('');
   const [handledAutoProxyAccountID, setHandledAutoProxyAccountID] = useState<number | null>(null);
   const [autoProxyQueryAccountID, setAutoProxyQueryAccountID] = useState<number | null>(null);
-  const [, setMinuteTick] = useState(Date.now());
 
   async function loadAccounts() {
     setLoading(true);
@@ -178,7 +140,6 @@ export default function Accounts() {
       const data = await accountsApi.list();
       const next = Array.isArray(data) ? data : [];
       setList(next);
-      setScheduleDrafts(Object.fromEntries(next.map(acc => [String(acc.id), String(acc.raiser_time ?? '12:00').slice(0, 5)])));
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Ошибка загрузки аккаунтов';
       setLoadError(message);
@@ -189,10 +150,6 @@ export default function Accounts() {
   }
 
   useEffect(() => { loadAccounts(); }, []);
-  useEffect(() => {
-    const interval = setInterval(() => setMinuteTick(Date.now()), 60_000);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -356,24 +313,6 @@ export default function Accounts() {
       toast.error(err instanceof Error ? err.message : 'Ошибка управления воркерами');
     } finally {
       setBulkRuntimeLoading(false);
-    }
-  }
-
-  async function saveSchedule(acc: ApiAccount) {
-    const nextTime = scheduleDrafts[String(acc.id)] || '12:00';
-    setSavingScheduleIds(prev => new Set(prev).add(acc.id));
-    try {
-      await accountsApi.updateRaiserSchedule(acc.id, nextTime, acc.raiser_timezone || 'Europe/Moscow');
-      setList(prev => prev.map(a => (a.id === acc.id ? { ...a, raiser_time: nextTime } : a)));
-      toast.success(`Расписание сохранено (${displayName(acc)})`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Ошибка сохранения расписания');
-    } finally {
-      setSavingScheduleIds(prev => {
-        const next = new Set(prev);
-        next.delete(acc.id);
-        return next;
-      });
     }
   }
 
@@ -874,64 +813,26 @@ export default function Accounts() {
                         {selectedAccount.raiser_active ? 'Запущен' : 'Остановлен'}
                       </span>
                     </div>
-                    <p className="mt-2 text-xs text-[var(--pf-text-dim)]">
-                      Следующее поднятие:{' '}
-                      {getNextRaiseCountdown(
-                        scheduleDrafts[String(selectedAccount.id)] || selectedAccount.raiser_time,
-                        selectedAccount.raiser_timezone,
-                      )}
-                    </p>
-                    <button
-                      type="button"
-                      className="platform-account-inline-btn mt-3 inline-flex h-10 w-full items-center justify-center gap-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-60"
-                      onClick={() => toggleRaiser(selectedAccount)}
-                      disabled={raisingIds.has(selectedAccount.id)}
-                    >
-                      {raisingIds.has(selectedAccount.id) ? (
-                        <Loader2 size={14} className="animate-spin" />
-                      ) : selectedAccount.raiser_active ? (
-                        <>
-                          <Pause size={14} />
-                          Пауза Raiser
-                        </>
-                      ) : (
-                        <>
-                          <Play size={14} />
-                          Запуск Raiser
-                        </>
-                      )}
-                    </button>
                   </div>
                 </section>
 
                 <section className="space-y-3">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--pf-text-dim)]">Расписание</h4>
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--pf-text-dim)]">АВТОПОДНЯТИЕ</h4>
                   <div className="platform-account-sheet-block rounded-xl p-3">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="time"
-                        className="platform-input h-11 flex-1"
-                        value={scheduleDrafts[String(selectedAccount.id)] || '12:00'}
-                        onChange={event =>
-                          setScheduleDrafts(prev => ({ ...prev, [String(selectedAccount.id)]: event.target.value }))
-                        }
-                      />
-                      <button
-                        type="button"
-                        className="platform-account-inline-btn inline-flex h-11 items-center justify-center px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
-                        onClick={() => saveSchedule(selectedAccount)}
-                        disabled={savingScheduleIds.has(selectedAccount.id)}
-                      >
-                        {savingScheduleIds.has(selectedAccount.id) ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                          'Сохранить'
-                        )}
-                      </button>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className={selectedAccount.raiser_active ? 'text-sm font-semibold text-[var(--pf-success)]' : 'text-sm font-semibold text-[var(--pf-text-soft)]'}>
+                        {selectedAccount.raiser_active ? 'Включено' : 'Выключено'}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {raisingIds.has(selectedAccount.id) ? <Loader2 size={14} className="animate-spin text-[var(--pf-text-dim)]" /> : null}
+                        <Switch
+                          checked={selectedAccount.raiser_active}
+                          onCheckedChange={() => toggleRaiser(selectedAccount)}
+                          disabled={raisingIds.has(selectedAccount.id)}
+                          aria-label="Автоподнятие"
+                        />
+                      </div>
                     </div>
-                    <p className="mt-2 text-xs text-[var(--pf-text-soft)]">
-                      Часовой пояс: {selectedAccount.raiser_timezone || 'Europe/Moscow'}
-                    </p>
                   </div>
                 </section>
 

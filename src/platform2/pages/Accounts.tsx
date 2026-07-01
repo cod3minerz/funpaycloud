@@ -30,8 +30,6 @@ type Account = {
   eventsToday: number;
   lastEvent: string;
   sessionUpdated: string;
-  nextRaise: string;
-  scheduleTime: string;
 };
 
 function mapApiAccount(a: ApiAccount): Account {
@@ -51,8 +49,6 @@ function mapApiAccount(a: ApiAccount): Account {
       ? new Date(a.runner_last_event_at).toLocaleString("ru-RU", { hour: "2-digit", minute: "2-digit" })
       : "—",
     sessionUpdated: "—",
-    nextRaise: "—",
-    scheduleTime: a.raiser_time ?? "12:00",
   };
 }
 
@@ -91,13 +87,42 @@ const proxyOptions = [
   },
 ];
 
+function AutoRaiseSwitch({
+  checked,
+  disabled,
+  onChange,
+}: {
+  checked: boolean;
+  disabled?: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label="Автоподнятие"
+      disabled={disabled}
+      onClick={onChange}
+      className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${
+        checked ? "bg-brand-500" : "bg-gray-200 dark:bg-white/10"
+      }`}
+    >
+      <span
+        className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-theme-sm transition-transform duration-200 ${
+          checked ? "translate-x-5" : "translate-x-0"
+        }`}
+      />
+    </button>
+  );
+}
+
 export default function AccountsPage() {
   const [isAddModal, setIsAddModal] = useState(false);
   const [isProxyModal, setIsProxyModal] = useState(false);
   const [isExternalProxyModal, setIsExternalProxyModal] = useState(false);
   const [drawerAccount, setDrawerAccount] = useState<Account | null>(null);
   const [goldenKey, setGoldenKey] = useState("");
-  const [scheduleTime, setScheduleTime] = useState("12:00");
   const [extProxy, setExtProxy] = useState({ host: "", port: "8080", protocol: "HTTP", login: "", password: "" });
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [proxyTargetId, setProxyTargetId] = useState<number | null>(null);
@@ -106,6 +131,7 @@ export default function AccountsPage() {
   const [filterStatus, setFilterStatus] = useState<"" | "online" | "offline">("");
   const [runningAll, setRunningAll] = useState(false);
   const [stoppingAll, setStoppingAll] = useState(false);
+  const [raiserTogglingIds, setRaiserTogglingIds] = useState<Set<string>>(new Set());
   const [proxyPaymentLoading, setProxyPaymentLoading] = useState(false);
   const [showProxyBanner, setShowProxyBanner] = useState(false);
 
@@ -228,6 +254,7 @@ export default function AccountsPage() {
   }
 
   async function handleToggleRaiser(acc: Account) {
+    setRaiserTogglingIds((prev) => new Set(prev).add(acc.id));
     try {
       if (acc.raiser) {
         await accountsApi.stopRaiser(acc.apiId);
@@ -240,15 +267,12 @@ export default function AccountsPage() {
       toast.success(acc.raiser ? "Raiser остановлен" : "Raiser запущен");
     } catch {
       toast.error("Не удалось переключить Raiser");
-    }
-  }
-
-  async function handleSaveSchedule(acc: Account) {
-    try {
-      await accountsApi.updateRaiserSchedule(acc.apiId, scheduleTime, "Europe/Moscow");
-      toast.success("Расписание сохранено");
-    } catch {
-      toast.error("Не удалось сохранить расписание");
+    } finally {
+      setRaiserTogglingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(acc.id);
+        return next;
+      });
     }
   }
 
@@ -864,38 +888,25 @@ export default function AccountsPage() {
                         {drawerAccount.raiser ? "Активен" : "Остановлен"}
                       </span>
                     </div>
-                    <p className="mt-1 text-sm text-gray-500">Следующее поднятие: {drawerAccount.nextRaise}</p>
-                    <button
-                      onClick={() => handleToggleRaiser(drawerAccount)}
-                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
-                      <Icon name="arrow-right" className="h-4 w-4" />
-                      {drawerAccount.raiser ? "Остановить Raiser" : "Запуск Raiser"}
-                    </button>
                   </div>
 
                 </div>
               </div>
 
-              {/* Schedule */}
+              {/* Auto raise */}
               <div>
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Расписание</p>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">АВТОПОДНЯТИЕ</p>
                 <div className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
-                  <div className="flex gap-3">
-                    <div className="relative flex-1">
-                      <input
-                        type="time"
-                        value={scheduleTime}
-                        onChange={(e) => setScheduleTime(e.target.value)}
-                        className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-800 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                      />
-                    </div>
-                    <button
-                      onClick={() => handleSaveSchedule(drawerAccount)}
-                      className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
-                      Сохранить
-                    </button>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className={`text-sm font-medium ${drawerAccount.raiser ? "text-success-500" : "text-gray-400"}`}>
+                      {drawerAccount.raiser ? "Включено" : "Выключено"}
+                    </span>
+                    <AutoRaiseSwitch
+                      checked={drawerAccount.raiser}
+                      disabled={raiserTogglingIds.has(drawerAccount.id)}
+                      onChange={() => handleToggleRaiser(drawerAccount)}
+                    />
                   </div>
-                  <p className="mt-2 text-xs text-gray-400">Часовой пояс: Europe/Moscow</p>
                 </div>
               </div>
 
