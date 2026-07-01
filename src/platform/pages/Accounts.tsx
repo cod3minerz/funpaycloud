@@ -21,7 +21,6 @@ import {
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { Sheet, SheetContent } from '@/app/components/ui/sheet';
-import { Switch } from '@/app/components/ui/switch';
 import { accountsApi, billingApi, ApiAccount } from '@/lib/api';
 import { sanitizeInput, validateGoldenKey } from '@/lib/sanitize';
 import {
@@ -813,26 +812,29 @@ export default function Accounts() {
                         {selectedAccount.raiser_active ? 'Запущен' : 'Остановлен'}
                       </span>
                     </div>
-                  </div>
-                </section>
-
-                <section className="space-y-3">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--pf-text-dim)]">АВТОПОДНЯТИЕ</h4>
-                  <div className="platform-account-sheet-block rounded-xl p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className={selectedAccount.raiser_active ? 'text-sm font-semibold text-[var(--pf-success)]' : 'text-sm font-semibold text-[var(--pf-text-soft)]'}>
-                        {selectedAccount.raiser_active ? 'Включено' : 'Выключено'}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        {raisingIds.has(selectedAccount.id) ? <Loader2 size={14} className="animate-spin text-[var(--pf-text-dim)]" /> : null}
-                        <Switch
-                          checked={selectedAccount.raiser_active}
-                          onCheckedChange={() => toggleRaiser(selectedAccount)}
-                          disabled={raisingIds.has(selectedAccount.id)}
-                          aria-label="Автоподнятие"
-                        />
-                      </div>
-                    </div>
+                    <p className="mt-2 text-xs text-[var(--pf-text-dim)]">
+                      Автоподнятие: {selectedAccount.raiser_active ? 'включено' : 'выключено'}
+                    </p>
+                    <button
+                      type="button"
+                      className="platform-account-inline-btn mt-3 inline-flex h-10 w-full items-center justify-center gap-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={() => toggleRaiser(selectedAccount)}
+                      disabled={raisingIds.has(selectedAccount.id)}
+                    >
+                      {raisingIds.has(selectedAccount.id) ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : selectedAccount.raiser_active ? (
+                        <>
+                          <Square size={14} />
+                          Остановить Raiser
+                        </>
+                      ) : (
+                        <>
+                          <Play size={14} />
+                          Запуск Raiser
+                        </>
+                      )}
+                    </button>
                   </div>
                 </section>
 
