@@ -21,47 +21,55 @@ const LOCK_ALLOWED: string[] = [
 function SubscriptionWarningBanner({
   daysLeft,
   expiresAt,
+  isTrial,
   onClose,
 }: {
   daysLeft: number;
   expiresAt: string | null;
+  isTrial: boolean;
   onClose: () => void;
 }) {
   const dateStr = expiresAt
     ? ` (до ${new Date(expiresAt).toLocaleDateString("ru-RU")})`
     : "";
 
+  const isUrgent = daysLeft <= 3;
+  const borderColor = isTrial && !isUrgent
+    ? "border-violet-200 dark:border-violet-900/40"
+    : "border-red-200 dark:border-red-900/40";
+  const bgColor = isTrial && !isUrgent
+    ? "bg-violet-50 dark:bg-violet-900/10"
+    : "bg-red-50 dark:bg-red-900/20";
+  const textColor = isTrial && !isUrgent
+    ? "text-violet-700 dark:text-violet-400"
+    : "text-red-700 dark:text-red-400";
+  const btnColor = isTrial && !isUrgent
+    ? "bg-violet-600 hover:bg-violet-700"
+    : "bg-red-500 hover:bg-red-600";
+
+  const message = isTrial
+    ? `🚀 Пробный период: осталось ${daysLeft} ${pluralDays(daysLeft)}${dateStr}. После окончания AI-ответы и плагины будут недоступны.`
+    : `⚠️ Осталось ${daysLeft} ${pluralDays(daysLeft)} доступа${dateStr}. Продлите подписку, чтобы не остановить автоматизацию.`;
+
+  const btnLabel = isTrial ? "Перейти на Pro" : "Продлить";
+
   return (
-    <div className="relative flex items-center justify-between gap-3 border-b border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-400 sm:px-6">
-      <p className="font-medium">
-        ⚠️ Осталось {daysLeft} {pluralDays(daysLeft)} доступа{dateStr}. Продлите
-        подписку, чтобы не остановить автоматизацию.
-      </p>
+    <div className={`relative flex items-center justify-between gap-3 border-b ${borderColor} ${bgColor} px-4 py-2.5 text-sm ${textColor} sm:px-6`}>
+      <p className="font-medium">{message}</p>
       <div className="flex shrink-0 items-center gap-2">
         <Link
           href="/platform/subscription"
-          className="whitespace-nowrap rounded-md bg-red-500 px-3 py-1 text-xs font-semibold text-white hover:bg-red-600 transition-colors"
+          className={`whitespace-nowrap rounded-md ${btnColor} px-3 py-1 text-xs font-semibold text-white transition-colors`}
         >
-          Продлить
+          {btnLabel}
         </Link>
         <button
           onClick={onClose}
           aria-label="Закрыть"
-          className="flex h-6 w-6 items-center justify-center rounded-full text-red-400 hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-900/40 transition-colors"
+          className={`flex h-6 w-6 items-center justify-center rounded-full opacity-60 hover:opacity-100 transition-opacity`}
         >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              fillRule="evenodd"
-              clipRule="evenodd"
-              d="M6.04289 16.5413C5.65237 16.9318 5.65237 17.565 6.04289 17.9555C6.43342 18.346 7.06658 18.346 7.45711 17.9555L11.9987 13.4139L16.5408 17.956C16.9313 18.3466 17.5645 18.3466 17.955 17.956C18.3455 17.5655 18.3455 16.9323 17.955 16.5418L13.4129 11.9997L17.955 7.4576C18.3455 7.06707 18.3455 6.43391 17.955 6.04338C17.5645 5.65286 16.9313 5.65286 16.5408 6.04338L11.9987 10.5855L7.45711 6.0439C7.06658 5.65338 6.43342 5.65338 6.04289 6.0439C5.65237 6.43442 5.65237 7.06759 6.04289 7.45811L10.5845 11.9997L6.04289 16.5413Z"
-              fill="currentColor"
-            />
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path fillRule="evenodd" clipRule="evenodd" d="M6.04289 16.5413C5.65237 16.9318 5.65237 17.565 6.04289 17.9555C6.43342 18.346 7.06658 18.346 7.45711 17.9555L11.9987 13.4139L16.5408 17.956C16.9313 18.3466 17.5645 18.3466 17.955 17.956C18.3455 17.5655 18.3455 16.9323 17.955 16.5418L13.4129 11.9997L17.955 7.4576C18.3455 7.06707 18.3455 6.43391 17.955 6.04338C17.5645 5.65286 16.9313 5.65286 16.5408 6.04338L11.9987 10.5855L7.45711 6.0439C7.06658 5.65338 6.43342 5.65338 6.04289 6.0439C5.65237 6.43442 5.65237 7.06759 6.04289 7.45811L10.5845 11.9997L6.04289 16.5413Z" fill="currentColor"/>
           </svg>
         </button>
       </div>
@@ -161,18 +169,19 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
 
   const [checked, setChecked] = useState(false);
   const [locked, setLocked] = useState(false);
+  const [isTrial, setIsTrial] = useState(false);
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    setBannerDismissed(false);
 
     authApi
       .me()
       .then((profile) => {
         if (cancelled) return;
-        // Check all possible expired signals: boolean flags + status_code string
         const isLocked = Boolean(
           profile.subscription_expired ||
           profile.trial_expired ||
@@ -180,12 +189,16 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
           profile.status_code === "trial_expired"
         );
         setLocked(isLocked);
+        setIsTrial(profile.plan === "trial");
 
         if (
           typeof profile.subscription_days_left === "number" &&
           Number.isFinite(profile.subscription_days_left)
         ) {
           setDaysLeft(Math.max(0, Math.ceil(profile.subscription_days_left)));
+        } else if (profile.trial_expires_at) {
+          const diff = new Date(profile.trial_expires_at).getTime() - Date.now();
+          setDaysLeft(Math.max(0, Math.ceil(diff / 86400000)));
         } else {
           setDaysLeft(null);
         }
@@ -196,7 +209,6 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {
         if (cancelled) return;
-        // On network/server error — don't block the user, but don't unlock either
         setDaysLeft(null);
         setExpiresAt(null);
       })
@@ -211,12 +223,13 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
 
   const isAllowedPath = LOCK_ALLOWED.some((p) => pathname.startsWith(p));
 
+  // Trial-баннер: показываем всё время пока идёт trial (не только последние 3 дня)
   const showBanner =
     checked &&
     !locked &&
     typeof daysLeft === "number" &&
     daysLeft >= 1 &&
-    daysLeft <= 3 &&
+    (isTrial || daysLeft <= 3) &&
     !bannerDismissed;
 
   const showModal = checked && locked && !isAllowedPath;
@@ -227,6 +240,7 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
         <SubscriptionWarningBanner
           daysLeft={daysLeft!}
           expiresAt={expiresAt}
+          isTrial={isTrial}
           onClose={() => setBannerDismissed(true)}
         />
       )}

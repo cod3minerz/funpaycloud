@@ -402,6 +402,58 @@ function SoonBadge() {
   );
 }
 
+// ── Upgrade to Pro modal ───────────────────────────────────────────────────────
+
+function UpgradeProModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  if (!open) return null;
+  return (
+    <Modal isOpen={open} onClose={onClose} className="max-w-[480px] p-8">
+      <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/30">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-violet-500">
+          <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </div>
+      <h2 className="mb-2 text-center text-xl font-bold text-gray-900 dark:text-white">
+        AI-узлы доступны на Pro
+      </h2>
+      <p className="mb-6 text-center text-sm leading-6 text-gray-500 dark:text-gray-400">
+        Добавь AI-ответ в сценарий — бот будет самостоятельно отвечать покупателям,
+        обрабатывать возражения и повышать конверсию. Без тебя.
+      </p>
+      <div className="mb-5 rounded-xl border border-violet-100 bg-violet-50 p-4 dark:border-violet-900/30 dark:bg-violet-900/10">
+        <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+          {[
+            "AI-ответы клиентам в сценариях",
+            "500 AI-сообщений в месяц",
+            "Суммаризация диалога",
+            "Плагины и интеграции",
+            "До 5 аккаунтов FunPay",
+          ].map((f) => (
+            <li key={f} className="flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="shrink-0 text-violet-500">
+                <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              {f}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <a
+        href="/platform/subscription"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
+      >
+        Перейти на Pro →
+      </a>
+      <button
+        onClick={onClose}
+        className="mt-3 w-full rounded-xl px-5 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+      >
+        Позже
+      </button>
+    </Modal>
+  );
+}
+
 // ── Main Flow Component ───────────────────────────────────────────────────────
 
 function ConstructorFlow() {
@@ -418,6 +470,7 @@ function ConstructorFlow() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activePalette, setActivePalette] = useState<string | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isLogsOpen, setIsLogsOpen] = useState(false);
   const [logs, setLogs] = useState<ApiScenarioLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
@@ -644,8 +697,8 @@ function ConstructorFlow() {
       return;
     }
     if (type === "aiNode" && !planLimits.ai_nodes) {
-      toast.error("AI-узлы доступны начиная с тарифа Pro.");
       setActivePalette(null);
+      setShowUpgradeModal(true);
       return;
     }
     setNodes((nds) => [
@@ -695,8 +748,9 @@ function ConstructorFlow() {
 
   return (
     <ConstructorContext.Provider value={{ scenarioId: selectedScenarioID, onManualRun: handleManualRun }}>
+    <UpgradeProModal open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
     <div
-      className="-mx-4 -my-4 md:-mx-6 md:-my-6 relative flex flex-col overflow-hidden"
+      className="-mx-4 -my-4 md:-mx-6 md:-me-6 relative flex flex-col overflow-hidden"
       style={{ height: "calc(100dvh - 4rem)" }}
     >
       {/* ── TOOLBAR ── */}
@@ -977,13 +1031,13 @@ function ConstructorFlow() {
                       key={btn.id}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (aiLocked) { toast.error("AI-узлы доступны начиная с тарифа Pro."); return; }
+                        if (aiLocked) { setShowUpgradeModal(true); return; }
                         setActivePalette((p) => (p === btn.id ? null : btn.id));
                       }}
-                      title={aiLocked ? "Доступно начиная с тарифа Pro" : undefined}
+                      title={aiLocked ? "AI-узлы доступны на Pro — нажми, чтобы узнать больше" : undefined}
                       className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors whitespace-nowrap ${
                         aiLocked
-                          ? "cursor-not-allowed border-gray-100 bg-white text-gray-300 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-600"
+                          ? "cursor-pointer border-violet-200 bg-violet-50 text-violet-400 hover:border-violet-300 hover:bg-violet-100 dark:border-violet-900/40 dark:bg-violet-900/10 dark:text-violet-400"
                           : activePalette === btn.id
                           ? `border-transparent ${btn.activeColor}`
                           : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
@@ -991,11 +1045,16 @@ function ConstructorFlow() {
                     >
                       <Icon name={btn.icon} className="h-4 w-4" />
                       {btn.label}
-                      {aiLocked && <span className="ml-0.5 text-[9px] font-bold uppercase text-gray-300 dark:text-gray-600">Pro+</span>}
-                      <Icon
+                      {aiLocked && (
+                        <span className="ml-0.5 flex items-center gap-0.5 rounded-full bg-violet-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-600 dark:text-violet-400">
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none"><rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" strokeWidth="2.5"/><path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" strokeWidth="2.5"/></svg>
+                          Pro
+                        </span>
+                      )}
+                      {!aiLocked && <Icon
                         name="chevron-up"
                         className={`h-3.5 w-3.5 transition-transform ${activePalette === btn.id ? "rotate-180" : "text-gray-400"}`}
-                      />
+                      />}
                     </button>
                   );})}
                 </div>
