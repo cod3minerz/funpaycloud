@@ -32,8 +32,8 @@ function Shell({ children }: { children: React.ReactNode }) {
       <div
         className="min-w-0 flex-1 transition-[margin-left] duration-300 ease-in-out [backface-visibility:hidden] lg:ml-[var(--p2-sidebar-width)]"
       >
-        <AppHeader />
         <TelegramChannelBanner />
+        <AppHeader />
         <SubscriptionGuard>
           <div className="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">
             {children}

@@ -101,14 +101,13 @@ const notifItems = [
   { key: "newMessage", icon: ChatBubbleLeftIcon, label: "Новое сообщение", desc: "При входящем сообщении в чате" },
   { key: "login", icon: ArrowRightEndOnRectangleIcon, label: "Вход в аккаунт", desc: "При авторизации на платформе" },
   { key: "weeklyReport", icon: DocumentChartBarIcon, label: "Недельный отчёт", desc: "Статистика продаж за неделю" },
-  { key: "subscriptionExpiry", icon: BellAlertIcon, label: "Подписка истекает", desc: "За 3 дня до окончания" },
 ];
 
-type NotifKey = "all" | "newOrder" | "newMessage" | "login" | "weeklyReport" | "subscriptionExpiry";
+type NotifKey = "all" | "newOrder" | "newMessage" | "login" | "weeklyReport";
 
 const DEFAULT_WEEKLY_REPORT_DAY = 5;
 const DEFAULT_WEEKLY_REPORT_TIME = "10:00";
-const regularNotificationKeys: NotifKey[] = ["newOrder", "newMessage", "login", "subscriptionExpiry"];
+const regularNotificationKeys: NotifKey[] = ["newOrder", "newMessage", "login"];
 const notificationKeys: NotifKey[] = [...regularNotificationKeys, "weeklyReport"];
 
 const weeklyReportDays = [
@@ -156,7 +155,7 @@ export default function IntegrationsPage() {
 
   // ── Notifications state ──
   const [notifs, setNotifs] = useState<Record<NotifKey, boolean>>({
-    all: false, newOrder: false, newMessage: false, login: false, weeklyReport: false, subscriptionExpiry: false,
+    all: false, newOrder: false, newMessage: false, login: false, weeklyReport: false,
   });
   const [weeklyReportDay, setWeeklyReportDay] = useState(DEFAULT_WEEKLY_REPORT_DAY);
   const [weeklyReportTime, setWeeklyReportTime] = useState(DEFAULT_WEEKLY_REPORT_TIME);
@@ -315,7 +314,7 @@ export default function IntegrationsPage() {
       new_message: state.newMessage,
       login: state.login,
       weekly_report: state.weeklyReport,
-      subscription: state.subscriptionExpiry,
+      subscription: true,
       weekly_report_day: day,
       weekly_report_time: time,
     };
@@ -345,7 +344,6 @@ export default function IntegrationsPage() {
         newMessage: n.new_message ?? false,
         login: n.login ?? false,
         weeklyReport: n.weekly_report ?? false,
-        subscriptionExpiry: n.subscription ?? false,
       }));
       setWeeklyReportDay(day);
       setWeeklyReportTime(time);
@@ -359,7 +357,7 @@ export default function IntegrationsPage() {
   function toggleNotif(key: NotifKey) {
     if (key === "all") {
       const next = !notifs.all;
-      const updated = { ...notifs, all: next, newOrder: next, newMessage: next, login: next, subscriptionExpiry: next };
+      const updated = { ...notifs, all: next, newOrder: next, newMessage: next, login: next };
       setNotifs(updated);
       settingsApi.updateNotifications(buildNotificationPayload(updated))
         .then(() => refreshWeeklyReportStatus()).catch(() => {});
