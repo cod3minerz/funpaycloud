@@ -26,6 +26,7 @@ import {
 } from "../icons/index";
 import SidebarWidget from "./SidebarWidget";
 import { usePinnedPlugins, ALL_PLUGINS } from "@/lib/pinnedPlugins";
+import { settingsApi } from "@/lib/api";
 
 type NavItem = {
   name: string;
@@ -131,6 +132,11 @@ const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered, toggleMobileSidebar } = useSidebar();
   const pathname = usePathname();
   const { pinned } = usePinnedPlugins();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    settingsApi.getProfile().then((p) => setIsAdmin(Boolean(p.is_admin))).catch(() => {});
+  }, []);
 
   const pinnedPluginSubItems = [
     ...ALL_PLUGINS
@@ -447,6 +453,41 @@ const AppSidebar: React.FC = () => {
               </h2>
               {renderMenuItems(dynamicManagementNavItems, "others")}
             </div>
+
+            {isAdmin && (
+              <div>
+                <h2
+                  className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
+                    !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
+                  }`}
+                >
+                  {isExpanded || isHovered || isMobileOpen ? "Dev" : <HorizontaLDots />}
+                </h2>
+                <ul className="flex flex-col gap-1">
+                  <li>
+                    <Link
+                      href={`${BASE}/reviews`}
+                      onClick={() => { if (isMobileOpen) toggleMobileSidebar(); }}
+                      className={`menu-item group ${isActive(`${BASE}/reviews`) ? "menu-item-active" : "menu-item-inactive"}`}
+                    >
+                      <span className={`${isActive(`${BASE}/reviews`) ? "menu-item-icon-active" : "menu-item-icon-inactive"}`}>
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+                        </svg>
+                      </span>
+                      {(isExpanded || isHovered || isMobileOpen) && (
+                        <span className="menu-item-text">Отзывы</span>
+                      )}
+                      {(isExpanded || isHovered || isMobileOpen) && (
+                        <span className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-semibold bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500">
+                          DEV
+                        </span>
+                      )}
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
         </nav>
         {isExpanded || isHovered || isMobileOpen ? <SidebarWidget /> : null}

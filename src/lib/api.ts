@@ -2072,3 +2072,24 @@ export const smmApi = {
   manualOrder: (accountId: number, orderId: number) =>
     apiRequest(`/api/smm/orders/${orderId}/manual?account_id=${accountId}`, { method: 'POST' }),
 };
+
+export type ReviewReply = {
+  enabled: boolean;
+  template: string;
+};
+
+export type ReviewSettings = {
+  enabled: boolean;
+  replies: Record<string, ReviewReply>;
+};
+
+export const reviewsApi = {
+  getSettings: (accountId: number) =>
+    apiRequest<ReviewSettings>(`/api/accounts/${accountId}/review-settings`),
+
+  saveSettings: (accountId: number, data: ReviewSettings) =>
+    apiRequest<ReviewSettings>(`/api/accounts/${accountId}/review-settings`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+};
