@@ -102,35 +102,39 @@ const AppHeader: React.FC = () => {
 
         </div>
 
-        {/* ── Second row: theme + user dropdown ── */}
-        {/* Mobile: toggled by 3-dots | Desktop: always visible in flex-row */}
+        {/* ── Second row: feedback buttons + theme + user dropdown ── */}
+        {/* Mobile: toggled by 3-dots | Desktop: always visible inline */}
         <div
           className={`${
             isApplicationMenuOpen ? "flex" : "hidden"
-          } items-center justify-between w-full gap-4 px-5 py-4 border-b border-gray-200 dark:border-gray-800 lg:flex lg:border-b-0 lg:justify-end lg:px-0 lg:py-0 shadow-theme-md lg:shadow-none`}
+          } flex-col gap-3 w-full px-4 py-4 border-b border-gray-200 dark:border-gray-800 shadow-theme-md
+            lg:flex lg:flex-row lg:items-center lg:justify-end lg:border-b-0 lg:px-0 lg:py-0 lg:gap-2 lg:shadow-none`}
         >
-          <div className="flex items-center gap-1">
+          {/* Feedback buttons — stack as full-width row on mobile, compact inline on desktop */}
+          <div className="flex items-center gap-2 lg:mr-1">
             <button
               type="button"
               onClick={() => setBugModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+              className="flex flex-1 lg:flex-initial items-center justify-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200 lg:px-3 lg:py-1.5 lg:text-xs"
             >
-              <BugAntIcon className="h-3.5 w-3.5 shrink-0" />
-              <span className="hidden sm:inline">Нашли ошибку?</span>
+              <BugAntIcon className="h-4 w-4 shrink-0" />
+              <span>Нашли ошибку?</span>
             </button>
             <button
               type="button"
               onClick={() => setIdeaModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+              className="flex flex-1 lg:flex-initial items-center justify-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200 lg:px-3 lg:py-1.5 lg:text-xs"
             >
-              <LightBulbIcon className="h-3.5 w-3.5 shrink-0" />
-              <span className="hidden sm:inline">Предложить идею</span>
+              <LightBulbIcon className="h-4 w-4 shrink-0" />
+              <span>Предложить идею</span>
             </button>
           </div>
-          <div className="flex items-center gap-2 2xsm:gap-3">
+
+          {/* Theme toggle + user — row on both mobile and desktop */}
+          <div className="flex items-center justify-between lg:gap-2">
             <ThemeToggleButton />
+            <UserDropdownAdmin />
           </div>
-          <UserDropdownAdmin />
         </div>
       </div>
 

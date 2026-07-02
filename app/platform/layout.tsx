@@ -10,6 +10,7 @@ import AppHeader from "@/platform2/layout/AppHeader";
 import AppSidebar from "@/platform2/layout/AppSidebar";
 import Backdrop from "@/platform2/layout/Backdrop";
 import { SubscriptionGuard } from "@/platform2/layout/SubscriptionGuard";
+import { TelegramChannelBanner } from "@/platform2/layout/TelegramChannelBanner";
 
 function Shell({ children }: { children: React.ReactNode }) {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
@@ -32,6 +33,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         className="min-w-0 flex-1 transition-[margin-left] duration-300 ease-in-out [backface-visibility:hidden] lg:ml-[var(--p2-sidebar-width)]"
       >
         <AppHeader />
+        <TelegramChannelBanner />
         <SubscriptionGuard>
           <div className="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">
             {children}
