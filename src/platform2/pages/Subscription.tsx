@@ -11,6 +11,7 @@ import {
   ChevronUpIcon,
 } from "@heroicons/react/24/outline";
 import { authApi, billingApi, SubscriptionPaymentHistoryItem } from "@/lib/api";
+import { WelcomeOfferBanner } from "@/platform2/components/WelcomeOfferBanner";
 import { normalizePlanId, PLAN_LIMITS } from "@/shared/subscriptions";
 
 const plans = [
@@ -229,13 +230,14 @@ export default function SubscriptionPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  async function handleChoosePlan(planId: string, allowCurrent = false) {
+  async function handleChoosePlan(planId: string, allowCurrent = false, welcomeOffer = false) {
     if (planId === currentPlan && !allowCurrent) return;
     setPurchasing(planId);
     try {
       const resp = await billingApi.createSubscriptionPayment({
         plan: planId as "lite" | "pro" | "ultra",
-        period_days: annual ? 365 : 30,
+        period_days: welcomeOffer ? 30 : (annual ? 365 : 30),
+        welcome_offer: welcomeOffer || undefined,
       });
       window.location.assign(resp.checkout_url);
     } catch (err) {
@@ -254,6 +256,11 @@ export default function SubscriptionPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Подписка</h1>
+
+      <WelcomeOfferBanner
+        onActivate={(plan, useOffer) => handleChoosePlan(plan, true, useOffer)}
+        purchasing={purchasing}
+      />
 
       {/* Active plan banner */}
       <Card className={isExpired ? "border-red-200 dark:border-red-900/40" : ""}>

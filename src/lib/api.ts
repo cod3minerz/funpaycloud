@@ -1403,14 +1403,24 @@ export const financesApi = {
   },
 };
 
+export type WelcomeOfferPlanPrice = { original: number; discount: number };
+export type WelcomeOffer = {
+  active: boolean;
+  expires_at?: string;
+  prices: Record<'lite' | 'pro' | 'ultra', WelcomeOfferPlanPrice>;
+};
+
 export const billingApi = {
   listSubscriptionHistory: (limit = 50) =>
     apiRequest<{ items: SubscriptionPaymentHistoryItem[] }>(`/api/billing/subscriptions/history?limit=${limit}`),
+  getWelcomeOffer: () =>
+    apiRequest<WelcomeOffer>('/api/billing/welcome-offer'),
   createSubscriptionPayment: (payload: {
     plan: 'lite' | 'pro' | 'ultra';
     period_days?: number;
     idempotency_key?: string;
     provider?: string;
+    welcome_offer?: boolean;
   }) =>
     apiRequest<CreateSubscriptionPaymentResponse>('/api/billing/subscriptions/create-payment', {
       method: 'POST',
