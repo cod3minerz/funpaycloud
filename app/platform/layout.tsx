@@ -11,6 +11,7 @@ import AppSidebar from "@/platform2/layout/AppSidebar";
 import Backdrop from "@/platform2/layout/Backdrop";
 import { SubscriptionGuard } from "@/platform2/layout/SubscriptionGuard";
 import { TelegramChannelBanner } from "@/platform2/layout/TelegramChannelBanner";
+import { WelcomeOfferFloat } from "@/platform2/components/WelcomeOfferFloat";
 
 function Shell({ children }: { children: React.ReactNode }) {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
@@ -34,6 +35,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       >
         <TelegramChannelBanner />
         <AppHeader />
+        <WelcomeOfferFloat />
         <SubscriptionGuard>
           <div className="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">
             {children}

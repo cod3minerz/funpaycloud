@@ -3,9 +3,10 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/platform2/components/ui/card";
 import { Button } from "@/platform2/components/ui/button";
+import { Modal } from "@/platform2/components/ui/modal";
 import Icon from "@/platform2/icons";
 import {
-  aiApi, scenariosApi, accountsApi,
+  aiApi, scenariosApi, accountsApi, authApi,
   AIConfig, AIFaqItem, AITrigger, AILifecycleMessage, AILotConfig,
   ApiScenario, ApiAccount,
 } from "@/lib/api";
@@ -34,6 +35,56 @@ const lifecycleEventLabels: Record<string, { label: string; hint: string }> = {
   order_confirmed: { label: "При подтверждении заказа", hint: "Отправляется когда покупатель нажал «Подтвердить выполнение»" },
   order_refunded: { label: "При возврате / отмене", hint: "Отправляется если заказ был отменён или возвращён" },
 };
+
+function UpgradeAIModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  if (!open) return null;
+  return (
+    <Modal isOpen={open} onClose={onClose} className="max-w-[480px] p-8">
+      <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-900/30">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-brand-500">
+          <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </div>
+      <h2 className="mb-2 text-center text-xl font-bold text-gray-900 dark:text-white">
+        AI-Ассистент доступен на Pro
+      </h2>
+      <p className="mb-6 text-center text-sm leading-6 text-gray-500 dark:text-gray-400">
+        Подключи AI-ассистента — бот будет самостоятельно отвечать покупателям,
+        обрабатывать вопросы и повышать конверсию без твоего участия.
+      </p>
+      <div className="mb-5 rounded-xl border border-brand-100 bg-brand-50 p-4 dark:border-brand-900/30 dark:bg-brand-900/10">
+        <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+          {[
+            "AI-ответы покупателям 24/7",
+            "500 AI-сообщений в месяц",
+            "Триггерные слова и lifecycle-сообщения",
+            "Умное молчание и эскалация",
+            "До 5 аккаунтов FunPay",
+          ].map((f) => (
+            <li key={f} className="flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="shrink-0 text-brand-500">
+                <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              {f}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <a
+        href="/platform/subscription"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-600"
+      >
+        Перейти на Pro →
+      </a>
+      <button
+        onClick={onClose}
+        className="mt-3 w-full rounded-xl px-5 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+      >
+        Позже
+      </button>
+    </Modal>
+  );
+}
 
 function AIHowItWorksPanel() {
   const [open, setOpen] = useState(false);
@@ -131,6 +182,9 @@ export default function AIAssistantPage() {
   const [scenarios, setScenarios] = useState<ApiScenario[]>([]);
   const [scenario, setScenario] = useState<string>("");
 
+  const [isTrial, setIsTrial] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
   const [mode, setMode] = useState<"bot" | "scenarios">("bot");
   const [autoReply, setAutoReply] = useState(false);
   const [tone, setTone] = useState<Tone>("formal");
@@ -175,6 +229,7 @@ export default function AIAssistantPage() {
       setAccounts(list);
       if (list.length > 0) setAccount(String(list[0].id));
     }).catch(() => {});
+    authApi.me().then((me) => setIsTrial(me.plan === "trial")).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -340,6 +395,7 @@ export default function AIAssistantPage() {
 
   return (
     <div className="space-y-5 pb-24">
+      <UpgradeAIModal open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
 
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI-Ассистент</h1>
       <AIHowItWorksPanel />
@@ -367,7 +423,10 @@ export default function AIAssistantPage() {
             </div>
             <div className="flex flex-col items-end gap-1">
               <button
-                onClick={() => setAutoReply((v) => !v)}
+                onClick={() => {
+                  if (!autoReply && isTrial) { setShowUpgradeModal(true); return; }
+                  setAutoReply((v) => !v);
+                }}
                 className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
                   autoReply ? "bg-brand-500" : "bg-gray-200 dark:bg-gray-700"
                 }`}

@@ -175,8 +175,18 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
   useEffect(() => {
+    try {
+      if (sessionStorage.getItem("sub_banner_dismissed") === "1") setBannerDismissed(true);
+    } catch {}
+  }, []);
+
+  function dismissBanner() {
+    setBannerDismissed(true);
+    try { sessionStorage.setItem("sub_banner_dismissed", "1"); } catch {}
+  }
+
+  useEffect(() => {
     let cancelled = false;
-    setBannerDismissed(false);
 
     authApi
       .me()
@@ -241,7 +251,7 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
           daysLeft={daysLeft!}
           expiresAt={expiresAt}
           isTrial={isTrial}
-          onClose={() => setBannerDismissed(true)}
+          onClose={dismissBanner}
         />
       )}
       {children}

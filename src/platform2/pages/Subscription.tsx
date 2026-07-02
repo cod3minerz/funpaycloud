@@ -11,7 +11,6 @@ import {
   ChevronUpIcon,
 } from "@heroicons/react/24/outline";
 import { authApi, billingApi, SubscriptionPaymentHistoryItem } from "@/lib/api";
-import { WelcomeOfferBanner } from "@/platform2/components/WelcomeOfferBanner";
 import { normalizePlanId, PLAN_LIMITS } from "@/shared/subscriptions";
 
 const plans = [
@@ -51,7 +50,7 @@ const plans = [
       "Приоритет @fpcloud_support",
     ],
     missing: [],
-    cta: "Текущий тариф",
+    cta: "Выбрать Pro",
     color: "brand",
   },
   {
@@ -141,7 +140,7 @@ export default function SubscriptionPage() {
   const searchParams = useSearchParams();
   const [annual, setAnnual] = useState(false);
   const [showComparison, setShowComparison] = useState(true);
-  const [currentPlan, setCurrentPlan] = useState("pro");
+  const [currentPlan, setCurrentPlan] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isExpired, setIsExpired] = useState(false);
   const [isTrial, setIsTrial] = useState(false);
@@ -257,11 +256,6 @@ export default function SubscriptionPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Подписка</h1>
 
-      <WelcomeOfferBanner
-        onActivate={(plan, useOffer) => handleChoosePlan(plan, true, useOffer)}
-        purchasing={purchasing}
-      />
-
       {/* Active plan banner */}
       <Card className={isExpired ? "border-red-200 dark:border-red-900/40" : ""}>
         <CardContent className="p-6">
@@ -304,14 +298,24 @@ export default function SubscriptionPage() {
               </div>
             </div>
             <div className="shrink-0">
-              <Button
-                variant={isExpired ? "primary" : "outline"}
-                className="whitespace-nowrap"
-                onClick={() => handleChoosePlan(currentPlan, true)}
-                disabled={purchasing === currentPlan}
-              >
-                {isExpired ? "Возобновить подписку" : annual ? "Продлить на год" : "Продлить на месяц"}
-              </Button>
+              {isTrial ? (
+                <Button
+                  variant="primary"
+                  className="whitespace-nowrap"
+                  onClick={() => document.getElementById("plans-grid")?.scrollIntoView({ behavior: "smooth" })}
+                >
+                  Выбрать тариф
+                </Button>
+              ) : (
+                <Button
+                  variant={isExpired ? "primary" : "outline"}
+                  className="whitespace-nowrap"
+                  onClick={() => handleChoosePlan(currentPlan, true)}
+                  disabled={purchasing === currentPlan}
+                >
+                  {isExpired ? "Возобновить подписку" : annual ? "Продлить на год" : "Продлить на месяц"}
+                </Button>
+              )}
             </div>
           </div>
 
@@ -351,7 +355,7 @@ export default function SubscriptionPage() {
       </div>
 
       {/* Plans grid */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div id="plans-grid" className="grid gap-4 sm:grid-cols-3">
         {plansWithCurrent.map((plan) => {
           const price = annual ? plan.yearlyPrice : plan.monthlyPrice;
           return (
