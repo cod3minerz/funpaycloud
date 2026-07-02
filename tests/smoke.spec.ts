@@ -9,6 +9,7 @@ const PLATFORM_ROUTES = [
   '/platform/accounts',
   '/platform/analytics',
   '/platform/automation',
+  '/platform/reviews',
   '/platform/plugins',
   '/platform/finances',
   '/platform/settings',
@@ -71,16 +72,28 @@ test.beforeEach(async ({ page }) => {
       accounts_count: 1,
       transactions: [],
     };
+    const initialParams = new URLSearchParams(window.location.search);
+    const isAdmin = initialParams.get('admin') !== '0';
     const profile = {
       login: 'qa',
       email: 'qa@test.local',
       telegram_linked: false,
       telegram_id: null,
       timezone: 'Europe/Moscow',
+      is_admin: isAdmin,
     };
-    const initialParams = new URLSearchParams(window.location.search);
     const weeklyInitiallyOn = initialParams.get('weeklyOn') === '1';
     const weeklyInitiallyFailed = initialParams.get('weeklyFailed') === '1';
+    let reviewSettings = {
+      enabled: false,
+      replies: {
+        '1': { enabled: false, template: '' },
+        '2': { enabled: false, template: '' },
+        '3': { enabled: false, template: '' },
+        '4': { enabled: false, template: '' },
+        '5': { enabled: false, template: '' },
+      },
+    };
     const notifications = {
       enabled: weeklyInitiallyOn,
       new_order: false,
@@ -164,6 +177,13 @@ test.beforeEach(async ({ page }) => {
             raiser_active: false,
           },
         ]);
+      }
+      if (path === `/api/accounts/${accountID}/review-settings` && method === 'GET') {
+        return envelope(reviewSettings);
+      }
+      if (path === `/api/accounts/${accountID}/review-settings` && method === 'PUT') {
+        reviewSettings = JSON.parse(String(init?.body || '{}'));
+        return envelope(reviewSettings);
       }
       if (path === `/api/accounts/${accountID}/chats/history` && method === 'GET') {
         return envelope([chat]);
@@ -450,6 +470,39 @@ test('weekly report shows failed delivery status from backend', async ({ page })
   await expect(page.getByTestId('weekly-report-toggle')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('weekly-report-error')).toContainText('Ошибка отправки');
   await expect(page.getByTestId('weekly-report-error')).toContainText('telegram api status=403');
+});
+
+test('reviews require saved template before enabling switches', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/platform/reviews');
+
+  await expect(page.getByTestId('reviews-page')).toBeVisible();
+  const textarea = page.getByTestId('reviews-template-5');
+  const ratingToggle = page.getByTestId('reviews-rating-toggle-5');
+  const globalToggle = page.getByTestId('reviews-global-toggle');
+
+  await expect(ratingToggle).toBeDisabled();
+  await expect(globalToggle).toBeDisabled();
+
+  await textarea.fill('Спасибо за отзыв!');
+  await expect(ratingToggle).toBeDisabled();
+
+  await page.getByTestId('reviews-save').click();
+  await expect(ratingToggle).toBeEnabled();
+  await expect(globalToggle).toBeDisabled();
+
+  await ratingToggle.click();
+  await expect(ratingToggle).toHaveAttribute('aria-checked', 'true');
+  await expect(globalToggle).toBeEnabled();
+
+  await globalToggle.click();
+  await expect(globalToggle).toHaveAttribute('aria-checked', 'true');
+});
+
+test('reviews page redirects non-admin user', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/platform/reviews?admin=0');
+  await expect(page).toHaveURL(/\/platform\/dashboard/);
 });
 
 test('telegram master toggle does not enable weekly report', async ({ page }) => {

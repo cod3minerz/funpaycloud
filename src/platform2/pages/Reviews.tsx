@@ -1,259 +1,384 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Card, CardContent } from "@/platform2/components/ui/card";
-import { Button } from "@/platform2/components/ui/button";
-import Switch from "@/platform2/components/form/switch/Switch";
-import TextArea from "@/platform2/components/form/input/TextArea";
-import { accountsApi, settingsApi, reviewsApi, type ReviewSettings, type ApiAccount } from "@/lib/api";
+import {
+  accountsApi,
+  settingsApi,
+  type ApiAccount,
+  type ReviewRatingKey,
+  type ReviewSettings,
+} from "@/lib/api";
 
-const MAX_TEMPLATE_LENGTH = 1000;
+const RATING_KEYS: ReviewRatingKey[] = ["5", "4", "3", "2", "1"];
 
-const STAR_CONFIG = [
-  { stars: 5, label: "Отличный отзыв", accent: "border-l-green-500",  bg: "bg-green-50 dark:bg-green-900/10",  text: "text-green-700 dark:text-green-400"  },
-  { stars: 4, label: "Хороший отзыв",  accent: "border-l-blue-500",   bg: "bg-blue-50 dark:bg-blue-900/10",    text: "text-blue-700 dark:text-blue-400"    },
-  { stars: 3, label: "Нейтральный",    accent: "border-l-yellow-500", bg: "bg-yellow-50 dark:bg-yellow-900/10",text: "text-yellow-700 dark:text-yellow-500" },
-  { stars: 2, label: "Плохой отзыв",   accent: "border-l-orange-500", bg: "bg-orange-50 dark:bg-orange-900/10",text: "text-orange-700 dark:text-orange-400" },
-  { stars: 1, label: "Ужасный отзыв",  accent: "border-l-red-500",    bg: "bg-red-50 dark:bg-red-900/10",      text: "text-red-700 dark:text-red-400"      },
-] as const;
+const RATING_META: Record<ReviewRatingKey, { label: string; accent: string; surface: string }> = {
+  "5": {
+    label: "Отличный отзыв",
+    accent: "text-emerald-500",
+    surface: "border-emerald-500/15 bg-emerald-500/[0.06]",
+  },
+  "4": {
+    label: "Хороший отзыв",
+    accent: "text-blue-500",
+    surface: "border-blue-500/15 bg-blue-500/[0.06]",
+  },
+  "3": {
+    label: "Нейтральный",
+    accent: "text-amber-500",
+    surface: "border-amber-500/15 bg-amber-500/[0.06]",
+  },
+  "2": {
+    label: "Плохой отзыв",
+    accent: "text-orange-500",
+    surface: "border-orange-500/15 bg-orange-500/[0.06]",
+  },
+  "1": {
+    label: "Критичный отзыв",
+    accent: "text-rose-500",
+    surface: "border-rose-500/15 bg-rose-500/[0.06]",
+  },
+};
 
-function StarRow({ count }: { count: number }) {
-  return (
-    <span className="flex gap-0.5">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <svg
-          key={i}
-          className={`h-4 w-4 ${i < count ? "text-yellow-400" : "text-gray-200 dark:text-gray-700"}`}
-          fill="currentColor"
-          viewBox="0 0 20 20"
-        >
-          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-        </svg>
-      ))}
-    </span>
-  );
+function emptyReviewSettings(): ReviewSettings {
+  return {
+    enabled: false,
+    replies: {
+      "1": { enabled: false, template: "" },
+      "2": { enabled: false, template: "" },
+      "3": { enabled: false, template: "" },
+      "4": { enabled: false, template: "" },
+      "5": { enabled: false, template: "" },
+    },
+  };
 }
 
-function emptySettings(): ReviewSettings {
-  const replies: ReviewSettings["replies"] = {};
-  for (let i = 1; i <= 5; i++) {
-    replies[String(i)] = { enabled: false, template: "" };
+function normalizeSettings(settings?: Partial<ReviewSettings> | null): ReviewSettings {
+  const normalized = emptyReviewSettings();
+  normalized.enabled = Boolean(settings?.enabled);
+  for (const key of RATING_KEYS) {
+    const cfg = settings?.replies?.[key];
+    const template = (cfg?.template || "").slice(0, 1000);
+    normalized.replies[key] = {
+      enabled: Boolean(cfg?.enabled && template.trim()),
+      template,
+    };
   }
-  return { enabled: false, replies };
+  return normalized;
+}
+
+function cloneSettings(settings: ReviewSettings): ReviewSettings {
+  return normalizeSettings(JSON.parse(JSON.stringify(settings)) as ReviewSettings);
+}
+
+function SwitchButton({
+  checked,
+  disabled,
+  onClick,
+  testId,
+}: {
+  checked: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  testId?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      data-testid={testId}
+      disabled={disabled}
+      onClick={onClick}
+      className={`relative h-8 w-14 shrink-0 rounded-full transition focus:outline-none focus:ring-2 focus:ring-brand-500/40 ${
+        checked ? "bg-brand-500" : "bg-gray-200 dark:bg-gray-800"
+      } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+    >
+      <span
+        className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition ${
+          checked ? "left-7" : "left-1"
+        }`}
+      />
+    </button>
+  );
 }
 
 export default function ReviewsPage() {
   const router = useRouter();
-
-  const [accessChecked, setAccessChecked] = useState(false);
-  const [accounts, setAccounts] = useState<ApiAccount[]>([]);
-  const [selectedAccount, setSelectedAccount] = useState<number | null>(null);
-  const [settings, setSettings] = useState<ReviewSettings>(emptySettings());
-  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [accounts, setAccounts] = useState<ApiAccount[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+  const [saved, setSaved] = useState<ReviewSettings>(emptyReviewSettings);
+  const [draft, setDraft] = useState<ReviewSettings>(emptyReviewSettings);
 
-  // Admin gate
   useEffect(() => {
-    settingsApi.getProfile().then((p) => {
-      if (!p.is_admin) {
-        router.replace("/platform/dashboard");
-      } else {
-        setAccessChecked(true);
-      }
-    }).catch(() => router.replace("/platform/dashboard"));
+    let alive = true;
+    settingsApi
+      .getProfile()
+      .then((profile) => {
+        if (!alive) return;
+        if (!profile.is_admin) {
+          router.replace("/platform/dashboard");
+          return;
+        }
+        setCheckingAccess(false);
+      })
+      .catch(() => {
+        if (alive) router.replace("/platform/dashboard");
+      });
+    return () => {
+      alive = false;
+    };
   }, [router]);
 
-  // Load accounts
   useEffect(() => {
-    if (!accessChecked) return;
-    accountsApi.list().then((list) => {
-      setAccounts(list);
-      if (list.length > 0) setSelectedAccount(list[0].id);
-    }).catch(() => {});
-  }, [accessChecked]);
+    if (checkingAccess) return;
+    let alive = true;
+    setLoading(true);
+    accountsApi
+      .list()
+      .then((items) => {
+        if (!alive) return;
+        setAccounts(items);
+        setSelectedAccountId((current) => current ?? items[0]?.id ?? null);
+      })
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : "Не удалось загрузить аккаунты");
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [checkingAccess]);
 
-  // Load settings when account changes
   useEffect(() => {
-    if (!selectedAccount) return;
-    setSettingsLoaded(false);
-    reviewsApi.getSettings(selectedAccount).then((data) => {
-      const merged = emptySettings();
-      merged.enabled = Boolean(data?.enabled);
-      for (let i = 1; i <= 5; i++) {
-        const key = String(i);
-        if (data?.replies?.[key]) {
-          merged.replies[key] = {
-            enabled: Boolean(data.replies[key].enabled),
-            template: data.replies[key].template ?? "",
-          };
-        }
-      }
-      setSettings(merged);
-    }).catch(() => {
-      setSettings(emptySettings());
-    }).finally(() => setSettingsLoaded(true));
-  }, [selectedAccount]);
+    if (!selectedAccountId || checkingAccess) return;
+    let alive = true;
+    setLoading(true);
+    accountsApi
+      .getReviewSettings(selectedAccountId)
+      .then((settings) => {
+        if (!alive) return;
+        const normalized = normalizeSettings(settings);
+        setSaved(normalized);
+        setDraft(cloneSettings(normalized));
+      })
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : "Не удалось загрузить настройки отзывов");
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [selectedAccountId, checkingAccess]);
 
-  function setGlobalEnabled(val: boolean) {
-    setSettings((s) => ({ ...s, enabled: val }));
-  }
+  const dirtyByRating = useMemo(() => {
+    const result: Record<ReviewRatingKey, boolean> = {
+      "1": false,
+      "2": false,
+      "3": false,
+      "4": false,
+      "5": false,
+    };
+    for (const key of RATING_KEYS) {
+      result[key] = draft.replies[key].template !== saved.replies[key].template;
+    }
+    return result;
+  }, [draft, saved]);
 
-  function setReplyEnabled(star: number, val: boolean) {
-    setSettings((s) => ({
-      ...s,
-      replies: { ...s.replies, [String(star)]: { ...s.replies[String(star)], enabled: val } },
-    }));
-  }
+  const hasDirtyTemplates = RATING_KEYS.some((key) => dirtyByRating[key]);
+  const hasEnabledSavedTemplate = RATING_KEYS.some((key) => {
+    const cfg = saved.replies[key];
+    return cfg.enabled && cfg.template.trim().length > 0;
+  });
 
-  function setTemplate(star: number, val: string) {
-    if (val.length > MAX_TEMPLATE_LENGTH) return;
-    setSettings((s) => ({
-      ...s,
-      replies: { ...s.replies, [String(star)]: { ...s.replies[String(star)], template: val } },
-    }));
-  }
-
-  async function handleSave() {
-    if (!selectedAccount) return;
+  async function persist(next: ReviewSettings, successMessage: string) {
+    if (!selectedAccountId) return;
     setSaving(true);
     try {
-      await reviewsApi.saveSettings(selectedAccount, settings);
-      toast.success("Настройки сохранены");
-    } catch {
-      toast.error("Не удалось сохранить настройки");
+      const normalized = normalizeSettings(await accountsApi.saveReviewSettings(selectedAccountId, next));
+      setSaved(normalized);
+      setDraft(cloneSettings(normalized));
+      toast.success(successMessage);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось сохранить настройки");
     } finally {
       setSaving(false);
     }
   }
 
-  if (!accessChecked) return null;
+  function buildTemplateSavePayload(): ReviewSettings {
+    const next = cloneSettings(saved);
+    for (const key of RATING_KEYS) {
+      const template = draft.replies[key].template.trim();
+      next.replies[key] = {
+        enabled: saved.replies[key].enabled && template.length > 0,
+        template,
+      };
+    }
+    const hasActive = RATING_KEYS.some((key) => next.replies[key].enabled && next.replies[key].template);
+    next.enabled = saved.enabled && hasActive;
+    return next;
+  }
+
+  function handleTemplateChange(key: ReviewRatingKey, value: string) {
+    setDraft((current) => {
+      const next = cloneSettings(current);
+      next.replies[key] = {
+        ...next.replies[key],
+        template: value.slice(0, 1000),
+      };
+      return next;
+    });
+  }
+
+  async function handleSaveTemplates() {
+    await persist(buildTemplateSavePayload(), "Шаблоны сохранены");
+  }
+
+  async function handleToggleRating(key: ReviewRatingKey) {
+    const next = cloneSettings(saved);
+    next.replies[key].enabled = !next.replies[key].enabled;
+    const hasActive = RATING_KEYS.some((rating) => next.replies[rating].enabled && next.replies[rating].template.trim());
+    if (!hasActive) {
+      next.enabled = false;
+    }
+    await persist(next, next.replies[key].enabled ? "Авто-ответ для оценки включён" : "Авто-ответ для оценки выключен");
+  }
+
+  async function handleToggleGlobal() {
+    const next = cloneSettings(saved);
+    next.enabled = !next.enabled;
+    await persist(next, next.enabled ? "Авто-ответы включены" : "Авто-ответы выключены");
+  }
+
+  if (checkingAccess) {
+    return <div className="text-sm text-gray-500 dark:text-gray-400">Загрузка...</div>;
+  }
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+    <div data-testid="reviews-page" className="mx-auto max-w-5xl space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Авто-ответы на отзывы</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Бот автоматически ответит на отзыв покупателя на FunPay в зависимости от оценки.
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white md:text-3xl">
+              Авто-ответы на отзывы
+            </h1>
+            <span className="rounded-md bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+              DEV
+            </span>
+          </div>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            Бот отвечает на новые отзывы FunPay в зависимости от оценки.
           </p>
         </div>
-        <span className="shrink-0 rounded-md bg-gray-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-          DEV
-        </span>
+
+        <div className="flex w-full flex-col gap-2 md:w-72">
+          <label className="text-xs font-semibold uppercase tracking-wide text-gray-400">Аккаунт</label>
+          <select
+            value={selectedAccountId ?? ""}
+            onChange={(event) => setSelectedAccountId(Number(event.target.value) || null)}
+            disabled={loading || accounts.length === 0}
+            className="h-11 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-white"
+          >
+            {accounts.length === 0 ? (
+              <option value="">Нет аккаунтов</option>
+            ) : (
+              accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.username || `Аккаунт #${account.id}`}
+                </option>
+              ))
+            )}
+          </select>
+        </div>
       </div>
 
-      {/* Account selector */}
-      {accounts.length > 1 && (
-        <Card>
-          <CardContent className="p-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Аккаунт FunPay
-            </label>
-            <select
-              value={selectedAccount ?? ""}
-              onChange={(e) => setSelectedAccount(Number(e.target.value))}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+      <section className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+        <div>
+          <p className="font-semibold text-gray-900 dark:text-white">Включить авто-ответы</p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            При выключении бот не будет отвечать ни на один отзыв.
+          </p>
+        </div>
+        <SwitchButton
+          checked={saved.enabled}
+          disabled={saving || hasDirtyTemplates || !hasEnabledSavedTemplate || !selectedAccountId}
+          onClick={handleToggleGlobal}
+          testId="reviews-global-toggle"
+        />
+      </section>
+
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          {hasDirtyTemplates ? "Есть несохранённые изменения" : "Шаблоны синхронизированы"}
+        </p>
+        <button
+          type="button"
+          data-testid="reviews-save"
+          disabled={saving || !hasDirtyTemplates || !selectedAccountId}
+          onClick={handleSaveTemplates}
+          className="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
+        >
+          {saving ? "Сохранение..." : "Сохранить шаблоны"}
+        </button>
+      </div>
+
+      <div className="space-y-4">
+        {RATING_KEYS.map((key) => {
+          const meta = RATING_META[key];
+          const draftTemplate = draft.replies[key].template;
+          const savedTemplate = saved.replies[key].template.trim();
+          const ratingDisabled =
+            saving || loading || !selectedAccountId || !savedTemplate || dirtyByRating[key];
+          return (
+            <section
+              key={key}
+              className={`rounded-lg border p-5 ${meta.surface}`}
             >
-              {accounts.map((acc) => (
-                <option key={acc.id} value={acc.id}>
-                  {acc.username || `Аккаунт #${acc.id}`}
-                </option>
-              ))}
-            </select>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Global toggle */}
-      <Card>
-        <CardContent className="flex items-center justify-between p-5">
-          <div>
-            <p className="text-sm font-semibold text-gray-800 dark:text-white">Включить авто-ответы</p>
-            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-              При выключении бот не будет отвечать ни на один отзыв
-            </p>
-          </div>
-          {settingsLoaded && (
-            <Switch
-              key={`global-${selectedAccount}-${settings.enabled}`}
-              label=""
-              defaultChecked={settings.enabled}
-              onChange={setGlobalEnabled}
-            />
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Per-star cards */}
-      {settingsLoaded && (
-        <div className="space-y-3">
-          {STAR_CONFIG.map(({ stars, label, accent, bg, text }) => {
-            const key = String(stars);
-            const reply = settings.replies[key] ?? { enabled: false, template: "" };
-            const charCount = reply.template.length;
-            const isDisabled = !settings.enabled;
-
-            return (
-              <Card key={stars} className={`border-l-4 ${accent} ${isDisabled ? "opacity-60" : ""}`}>
-                <CardContent className={`p-5 ${bg} rounded-r-xl`}>
-                  {/* Star header */}
-                  <div className="mb-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <StarRow count={stars} />
-                      <span className={`text-sm font-semibold ${text}`}>{label}</span>
-                    </div>
-                    <Switch
-                      key={`star-${selectedAccount}-${stars}-${reply.enabled}`}
-                      label=""
-                      defaultChecked={reply.enabled}
-                      disabled={isDisabled}
-                      onChange={(val) => setReplyEnabled(stars, val)}
-                    />
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="whitespace-nowrap text-lg leading-none text-yellow-400">
+                      {"★".repeat(Number(key))}
+                      <span className="text-gray-300 dark:text-gray-700">{"★".repeat(5 - Number(key))}</span>
+                    </span>
+                    <span className={`font-semibold ${meta.accent}`}>{meta.label}</span>
                   </div>
+                </div>
+                <SwitchButton
+                  checked={saved.replies[key].enabled}
+                  disabled={ratingDisabled}
+                  onClick={() => handleToggleRating(key)}
+                  testId={`reviews-rating-toggle-${key}`}
+                />
+              </div>
 
-                  {/* Template */}
-                  <TextArea
-                    placeholder={`Текст ответа на отзыв с оценкой ${stars}★...`}
-                    rows={3}
-                    value={reply.template}
-                    disabled={isDisabled || !reply.enabled}
-                    onChange={(val) => setTemplate(stars, val)}
-                  />
-                  <div className="mt-1.5 text-right text-xs text-gray-400">
-                    {charCount} / {MAX_TEMPLATE_LENGTH}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Loading skeleton */}
-      {!settingsLoaded && selectedAccount && (
-        <div className="space-y-3">
-          {[5, 4, 3, 2, 1].map((s) => (
-            <div key={s} className="h-36 animate-pulse rounded-xl border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800" />
-          ))}
-        </div>
-      )}
-
-      {/* Save button */}
-      {settingsLoaded && (
-        <div className="flex justify-end">
-          <Button
-            variant="primary"
-            size="md"
-            disabled={saving || !selectedAccount}
-            onClick={handleSave}
-          >
-            {saving ? "Сохранение…" : "Сохранить настройки"}
-          </Button>
-        </div>
-      )}
+              <div className="mt-4">
+                <textarea
+                  data-testid={`reviews-template-${key}`}
+                  value={draftTemplate}
+                  onChange={(event) => handleTemplateChange(key, event.target.value)}
+                  rows={4}
+                  maxLength={1000}
+                  placeholder={`Текст ответа на отзыв с оценкой ${key}★...`}
+                  className="min-h-28 w-full resize-y rounded-lg border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-950/40 dark:text-white dark:placeholder:text-gray-600"
+                />
+                <div className="mt-2 flex justify-end text-sm text-gray-400">
+                  {draftTemplate.length} / 1000
+                </div>
+              </div>
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }

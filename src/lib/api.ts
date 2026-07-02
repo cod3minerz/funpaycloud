@@ -365,6 +365,18 @@ export type ApiAccount = {
   proxy_max_accounts?: number;
 };
 
+export type ReviewRatingKey = '1' | '2' | '3' | '4' | '5';
+
+export type ReviewReplyConfig = {
+  enabled: boolean;
+  template: string;
+};
+
+export type ReviewSettings = {
+  enabled: boolean;
+  replies: Record<ReviewRatingKey, ReviewReplyConfig>;
+};
+
 export type ConnectProxyPayload =
   | { mode: 'free' | 'individual' }
   | {
@@ -389,6 +401,13 @@ export const accountsApi = {
     apiRequest(`/api/accounts/${id}/raiser/start`, { method: 'POST' }),
   stopRaiser: (id: number | string) =>
     apiRequest(`/api/accounts/${id}/raiser/stop`, { method: 'POST' }),
+  getReviewSettings: (id: number | string) =>
+    apiRequest<ReviewSettings>(`/api/accounts/${id}/review-settings`),
+  saveReviewSettings: (id: number | string, payload: ReviewSettings) =>
+    apiRequest<ReviewSettings>(`/api/accounts/${id}/review-settings`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
   updateRaiserSchedule: (id: number | string, time: string, timezone: string) =>
     apiRequest(`/api/accounts/${id}/raiser/schedule`, {
       method: 'PUT',
@@ -2081,25 +2100,4 @@ export const smmApi = {
 
   manualOrder: (accountId: number, orderId: number) =>
     apiRequest(`/api/smm/orders/${orderId}/manual?account_id=${accountId}`, { method: 'POST' }),
-};
-
-export type ReviewReply = {
-  enabled: boolean;
-  template: string;
-};
-
-export type ReviewSettings = {
-  enabled: boolean;
-  replies: Record<string, ReviewReply>;
-};
-
-export const reviewsApi = {
-  getSettings: (accountId: number) =>
-    apiRequest<ReviewSettings>(`/api/accounts/${accountId}/review-settings`),
-
-  saveSettings: (accountId: number, data: ReviewSettings) =>
-    apiRequest<ReviewSettings>(`/api/accounts/${accountId}/review-settings`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    }),
 };
