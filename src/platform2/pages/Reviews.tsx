@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -85,6 +85,27 @@ function formatDateTime(value?: string | null) {
   }).format(date);
 }
 
+function formatTime(value?: string | null) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(date);
+}
+
+function formatScanCountdown(seconds?: number) {
+  if (seconds == null || seconds <= 0) return "сейчас";
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  if (minutes <= 0) return `${rest} сек.`;
+  if (minutes < 60) return `${minutes} мин. ${rest.toString().padStart(2, "0")} сек.`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours} ч. ${String(minutes % 60).padStart(2, "0")} мин.`;
+}
+
 function proxyReasonText(reason?: string) {
   switch (reason) {
     case "proxy_missing":
@@ -117,6 +138,37 @@ function statusLabel(status: string) {
       return "ошибка";
     default:
       return status;
+  }
+}
+
+function scanStateText(state?: string) {
+  switch (state) {
+    case "running":
+      return "Выполняется";
+    case "overdue":
+      return "Просрочено";
+    case "error":
+      return "Ошибка";
+    case "due":
+      return "Ожидает проверки";
+    case "waiting":
+      return "Ожидает";
+    default:
+      return "Ожидает";
+  }
+}
+
+function scanStateClass(state?: string) {
+  switch (state) {
+    case "running":
+      return "text-blue-500";
+    case "overdue":
+    case "error":
+      return "text-amber-500";
+    case "due":
+      return "text-brand-500";
+    default:
+      return "text-emerald-500";
   }
 }
 
@@ -162,6 +214,9 @@ export default function ReviewsPage() {
   const [saved, setSaved] = useState<ReviewSettings>(emptyReviewSettings);
   const [draft, setDraft] = useState<ReviewSettings>(emptyReviewSettings);
   const [status, setStatus] = useState<ReviewStatus | null>(null);
+  const [statusUpdatedAt, setStatusUpdatedAt] = useState<Date | null>(null);
+  const [statusRefreshing, setStatusRefreshing] = useState(false);
+  const [requestingScan, setRequestingScan] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -205,6 +260,20 @@ export default function ReviewsPage() {
     };
   }, [checkingAccess]);
 
+  const refreshStatus = useCallback(async (accountID = selectedAccountId, quiet = false) => {
+    if (!accountID) return;
+    try {
+      if (!quiet) setStatusRefreshing(true);
+      const reviewStatus = await accountsApi.getReviewStatus(accountID);
+      setStatus(reviewStatus);
+      setStatusUpdatedAt(new Date());
+    } catch {
+      setStatus(null);
+    } finally {
+      if (!quiet) setStatusRefreshing(false);
+    }
+  }, [selectedAccountId]);
+
   useEffect(() => {
     if (!selectedAccountId || checkingAccess) return;
     let alive = true;
@@ -219,6 +288,7 @@ export default function ReviewsPage() {
         setSaved(normalized);
         setDraft(cloneSettings(normalized));
         setStatus(reviewStatus);
+        setStatusUpdatedAt(new Date());
       })
       .catch((err) => {
         toast.error(err instanceof Error ? err.message : "Не удалось загрузить настройки отзывов");
@@ -231,6 +301,25 @@ export default function ReviewsPage() {
       alive = false;
     };
   }, [selectedAccountId, checkingAccess]);
+
+  useEffect(() => {
+    if (!selectedAccountId || checkingAccess) return;
+    const poll = () => {
+      void refreshStatus(selectedAccountId, true);
+    };
+    const interval = window.setInterval(poll, 15000);
+    const onFocus = () => poll();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") poll();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [selectedAccountId, checkingAccess, refreshStatus]);
 
   const dirtyByRating = useMemo(() => {
     const result: Record<ReviewRatingKey, boolean> = {
@@ -258,15 +347,11 @@ export default function ReviewsPage() {
     : !runtimeReady
       ? runtimeReasonText(status?.runtime_reason)
       : "";
-
-  async function refreshStatus(accountID = selectedAccountId) {
-    if (!accountID) return;
-    try {
-      setStatus(await accountsApi.getReviewStatus(accountID));
-    } catch {
-      setStatus(null);
-    }
-  }
+  const scanRunning = status?.scan_state === "running";
+  const canRequestScan = Boolean(selectedAccountId && saved.enabled && hasEnabledSavedTemplate && proxyReady && !scanRunning);
+  const requestScanDisabled = saving || loading || requestingScan || !canRequestScan;
+  const baselineCount = status?.counts?.baseline ?? 0;
+  const lastScanError = status?.last_scan_error || status?.recent?.find((item) => item.last_error)?.last_error || "";
 
   async function persist(next: ReviewSettings, successMessage: string) {
     if (!selectedAccountId) return;
@@ -275,7 +360,7 @@ export default function ReviewsPage() {
       const normalized = normalizeSettings(await accountsApi.saveReviewSettings(selectedAccountId, next));
       setSaved(normalized);
       setDraft(cloneSettings(normalized));
-      await refreshStatus(selectedAccountId);
+      await refreshStatus(selectedAccountId, true);
       toast.success(successMessage);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Не удалось сохранить настройки");
@@ -327,6 +412,22 @@ export default function ReviewsPage() {
     const next = cloneSettings(saved);
     next.enabled = !next.enabled;
     await persist(next, next.enabled ? "Авто-ответы включены" : "Авто-ответы выключены");
+  }
+
+  async function handleRequestScan() {
+    if (!selectedAccountId) return;
+    setRequestingScan(true);
+    try {
+      const reviewStatus = await accountsApi.requestReviewScan(selectedAccountId);
+      setStatus(reviewStatus);
+      setStatusUpdatedAt(new Date());
+      toast.success("Проверка отзывов поставлена в очередь");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось поставить проверку в очередь");
+      await refreshStatus(selectedAccountId, true);
+    } finally {
+      setRequestingScan(false);
+    }
   }
 
   if (checkingAccess) {
@@ -390,7 +491,36 @@ export default function ReviewsPage() {
         data-testid="reviews-status"
         className="rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900"
       >
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="font-semibold text-gray-900 dark:text-white">Статус проверки</p>
+            <p data-testid="reviews-status-updated" className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              Обновлено: {formatTime(statusUpdatedAt?.toISOString() || status?.server_time)}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              data-testid="reviews-refresh-status"
+              disabled={statusRefreshing || !selectedAccountId}
+              onClick={() => selectedAccountId && void refreshStatus(selectedAccountId)}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 transition hover:border-brand-300 hover:text-brand-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-800 dark:text-gray-200"
+            >
+              {statusRefreshing ? "Обновление..." : "Обновить"}
+            </button>
+            <button
+              type="button"
+              data-testid="reviews-request-scan"
+              disabled={requestScanDisabled}
+              onClick={handleRequestScan}
+              className="rounded-lg bg-brand-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
+            >
+              {requestingScan ? "Постановка..." : "Проверить сейчас"}
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Прокси</p>
             <p
@@ -410,9 +540,42 @@ export default function ReviewsPage() {
             </p>
           </div>
           <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Состояние</p>
+            <p
+              data-testid="reviews-scan-state"
+              className={`mt-1 text-sm font-semibold ${scanStateClass(status?.scan_state)}`}
+            >
+              {scanStateText(status?.scan_state)}
+            </p>
+          </div>
+          <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Следующая проверка</p>
             <p data-testid="reviews-next-scan" className="mt-1 text-sm font-semibold text-gray-900 dark:text-white">
               {formatDateTime(status?.next_scan_at)}
+            </p>
+            <p data-testid="reviews-next-scan-countdown" className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {formatScanCountdown(status?.seconds_until_next_scan)}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 text-sm text-gray-500 dark:text-gray-400 md:grid-cols-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Последний scan</p>
+            <p data-testid="reviews-last-scan" className="mt-1 font-semibold text-gray-900 dark:text-white">
+              {formatDateTime(status?.last_scan_at)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Baseline</p>
+            <p data-testid="reviews-baseline-hint" className="mt-1 font-semibold text-gray-900 dark:text-white">
+              {baselineCount > 0 ? `${baselineCount} старых отзывов без автоответа` : "Пока пусто"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Lock до</p>
+            <p data-testid="reviews-scan-lock" className="mt-1 font-semibold text-gray-900 dark:text-white">
+              {formatDateTime(status?.scan_locked_until)}
             </p>
           </div>
         </div>
@@ -425,6 +588,15 @@ export default function ReviewsPage() {
             </div>
           ))}
         </div>
+
+        {lastScanError ? (
+          <div
+            data-testid="reviews-last-error"
+            className="mt-5 rounded-md border border-amber-300/40 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300"
+          >
+            {lastScanError}
+          </div>
+        ) : null}
 
         {status?.recent?.length ? (
           <div className="mt-5 space-y-2">

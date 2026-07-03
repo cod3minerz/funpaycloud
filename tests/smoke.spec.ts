@@ -86,20 +86,30 @@ test.beforeEach(async ({ page }) => {
     const weeklyInitiallyFailed = initialParams.get('weeklyFailed') === '1';
     const reviewProxyReady = initialParams.get('proxy') !== '0';
     const reviewRuntimeReady = initialParams.get('runtime') !== '0';
+    const reviewInitiallyEnabled = initialParams.get('reviewEnabled') === '1';
+    const initialScanState = initialParams.get('scan') || 'waiting';
+    let reviewStatusGets = 0;
     let reviewSettings = {
-      enabled: false,
+      enabled: reviewInitiallyEnabled,
       replies: {
         '1': { enabled: false, template: '' },
         '2': { enabled: false, template: '' },
         '3': { enabled: false, template: '' },
         '4': { enabled: false, template: '' },
-        '5': { enabled: false, template: '' },
+        '5': { enabled: reviewInitiallyEnabled, template: reviewInitiallyEnabled ? 'Спасибо за отзыв!' : '' },
       },
     };
     let reviewStatus = {
-      last_scan_at: null,
-      next_scan_at: '2026-07-03T12:00:00Z',
-      baselined_at: null,
+      server_time: '2026-07-03T12:00:00Z',
+      scan_state: initialScanState,
+      scan_started_at: initialScanState === 'running' ? '2026-07-03T11:59:00Z' : null,
+      scan_locked_until: initialScanState === 'running' ? '2026-07-03T12:29:00Z' : null,
+      last_scan_status: initialScanState === 'error' ? 'error' : 'success',
+      last_scan_error: initialScanState === 'error' ? 'profile fetch failed' : '',
+      seconds_until_next_scan: initialScanState === 'due' ? 0 : 600,
+      last_scan_at: '2026-07-03T11:45:00Z',
+      next_scan_at: '2026-07-03T12:10:00Z',
+      baselined_at: '2026-07-03T11:45:00Z',
       counts: {
         baseline: 1,
         pending: 0,
@@ -107,7 +117,23 @@ test.beforeEach(async ({ page }) => {
         skipped: 0,
         failed: 0,
       },
-      recent: [],
+      recent: [
+        {
+          order_id: 'W9XD5V5M',
+          buyer_funpay_user_id: 20334942,
+          buyer_username: 'trevoga1111',
+          rating: 5,
+          status: 'baseline',
+          skip_reason: 'initial_baseline',
+          last_error: '',
+          attempt_count: 0,
+          detected_at: '2026-07-03T11:45:00Z',
+          last_attempt_at: null,
+          next_retry_at: null,
+          replied_at: null,
+          updated_at: '2026-07-03T11:45:00Z',
+        },
+      ],
       proxy_connected: reviewProxyReady,
       proxy_ready: reviewProxyReady,
       proxy_reason: reviewProxyReady ? '' : 'proxy_missing',
@@ -149,6 +175,7 @@ test.beforeEach(async ({ page }) => {
     };
     (window as any).__LAST_NOTIFICATION_UPDATE__ = null;
     (window as any).__MOCK_WEEKLY_REPORT_STATUS__ = weeklyReportStatus;
+    (window as any).__REVIEW_STATUS_GETS__ = 0;
     const envelope = (data: unknown) =>
       new Response(JSON.stringify({ success: true, data }), {
         headers: { 'Content-Type': 'application/json' },
@@ -204,6 +231,35 @@ test.beforeEach(async ({ page }) => {
         return envelope(reviewSettings);
       }
       if (path === `/api/accounts/${accountID}/review-status` && method === 'GET') {
+        reviewStatusGets += 1;
+        (window as any).__REVIEW_STATUS_GETS__ = reviewStatusGets;
+        reviewStatus = {
+          ...reviewStatus,
+          server_time: `2026-07-03T12:00:${String(Math.min(reviewStatusGets, 59)).padStart(2, '0')}Z`,
+        };
+        return envelope(reviewStatus);
+      }
+      if (path === `/api/accounts/${accountID}/review-scan` && method === 'POST') {
+        if (!reviewSettings.enabled || !reviewStatus.proxy_ready) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'включите авто-ответы и прокси перед ручной проверкой',
+            }),
+            {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' },
+            }
+          );
+        }
+        reviewStatus = {
+          ...reviewStatus,
+          scan_state: 'due',
+          last_scan_status: 'queued',
+          last_scan_error: '',
+          seconds_until_next_scan: 0,
+          next_scan_at: '2026-07-03T12:00:05Z',
+        };
         return envelope(reviewStatus);
       }
       if (path === `/api/accounts/${accountID}/review-settings` && method === 'PUT') {
@@ -522,12 +578,16 @@ test('reviews require saved template before enabling switches', async ({ page })
   await expect(page.getByTestId('reviews-status')).toBeVisible();
   await expect(page.getByTestId('reviews-proxy-status')).toContainText('Прокси готов');
   await expect(page.getByTestId('reviews-runtime-status')).toContainText('Runtime готов');
+  await expect(page.getByTestId('reviews-scan-state')).toContainText('Ожидает');
+  await expect(page.getByTestId('reviews-baseline-hint')).toContainText('1 старых отзывов без автоответа');
   const textarea = page.getByTestId('reviews-template-5');
   const ratingToggle = page.getByTestId('reviews-rating-toggle-5');
   const globalToggle = page.getByTestId('reviews-global-toggle');
+  const requestScan = page.getByTestId('reviews-request-scan');
 
   await expect(ratingToggle).toBeDisabled();
   await expect(globalToggle).toBeDisabled();
+  await expect(requestScan).toBeDisabled();
 
   await textarea.fill('Спасибо за отзыв!');
   await expect(ratingToggle).toBeDisabled();
@@ -542,6 +602,37 @@ test('reviews require saved template before enabling switches', async ({ page })
 
   await globalToggle.click();
   await expect(globalToggle).toHaveAttribute('aria-checked', 'true');
+  await expect(requestScan).toBeEnabled();
+  await requestScan.click();
+  await expect(page.getByTestId('reviews-scan-state')).toContainText('Ожидает проверки');
+  await expect(page.getByTestId('reviews-next-scan-countdown')).toContainText('сейчас');
+});
+
+test('reviews status refreshes on focus and shows scan diagnostics', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/platform/reviews');
+
+  await expect(page.getByTestId('reviews-status')).toBeVisible();
+  await expect(page.getByTestId('reviews-status-updated')).toContainText('Обновлено');
+  await expect(page.getByTestId('reviews-last-scan')).toContainText('03.07');
+  await expect(page.getByTestId('reviews-scan-lock')).toContainText('—');
+
+  const before = await page.evaluate(() => (window as any).__REVIEW_STATUS_GETS__);
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__REVIEW_STATUS_GETS__))
+    .toBeGreaterThan(before);
+});
+
+test('reviews renders error and running scan states', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/platform/reviews?scan=error');
+  await expect(page.getByTestId('reviews-scan-state')).toContainText('Ошибка');
+  await expect(page.getByTestId('reviews-last-error')).toContainText('profile fetch failed');
+
+  await page.goto('/platform/reviews?reviewEnabled=1&scan=running');
+  await expect(page.getByTestId('reviews-scan-state')).toContainText('Выполняется');
+  await expect(page.getByTestId('reviews-request-scan')).toBeDisabled();
 });
 
 test('reviews global switch stays blocked without proxy', async ({ page }) => {

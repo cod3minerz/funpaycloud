@@ -394,6 +394,13 @@ export type ReviewAutoReplyAttempt = {
 };
 
 export type ReviewStatus = {
+  server_time?: string;
+  scan_state?: 'waiting' | 'running' | 'overdue' | 'error' | 'due' | string;
+  scan_started_at?: string | null;
+  scan_locked_until?: string | null;
+  last_scan_status?: string;
+  last_scan_error?: string;
+  seconds_until_next_scan?: number;
   last_scan_at?: string | null;
   next_scan_at?: string | null;
   baselined_at?: string | null;
@@ -434,6 +441,8 @@ export const accountsApi = {
     apiRequest<ReviewSettings>(`/api/accounts/${id}/review-settings`),
   getReviewStatus: (id: number | string) =>
     apiRequest<ReviewStatus>(`/api/accounts/${id}/review-status`),
+  requestReviewScan: (id: number | string) =>
+    apiRequest<ReviewStatus>(`/api/accounts/${id}/review-scan`, { method: 'POST' }),
   saveReviewSettings: (id: number | string, payload: ReviewSettings) =>
     apiRequest<ReviewSettings>(`/api/accounts/${id}/review-settings`, {
       method: 'PUT',
