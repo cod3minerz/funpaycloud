@@ -604,7 +604,7 @@ test('reviews require saved template before enabling switches', async ({ page })
   await expect(globalToggle).toHaveAttribute('aria-checked', 'true');
   await expect(requestScan).toBeEnabled();
   await requestScan.click();
-  await expect(page.getByTestId('reviews-scan-state')).toContainText('Ожидает проверки');
+  await expect(page.getByTestId('reviews-scan-state')).toContainText('Пора проверить');
   await expect(page.getByTestId('reviews-next-scan-countdown')).toContainText('сейчас');
 });
 

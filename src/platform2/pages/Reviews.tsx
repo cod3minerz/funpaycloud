@@ -150,7 +150,7 @@ function scanStateText(state?: string) {
     case "error":
       return "Ошибка";
     case "due":
-      return "Ожидает проверки";
+      return "Пора проверить";
     case "waiting":
       return "Ожидает";
     default:
@@ -166,7 +166,7 @@ function scanStateClass(state?: string) {
     case "error":
       return "text-amber-500";
     case "due":
-      return "text-brand-500";
+      return "text-amber-500";
     default:
       return "text-emerald-500";
   }

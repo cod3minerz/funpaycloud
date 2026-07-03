@@ -1,4 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
+import path from 'node:path';
+
+const nodeBinDir = path.dirname(process.execPath);
 
 export default defineConfig({
   testDir: './tests',
@@ -27,12 +30,13 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'node ./node_modules/next/dist/bin/next dev --port 3100',
+    command: `"${process.execPath}" ./node_modules/next/dist/bin/next dev --webpack --port 3100`,
     url: 'http://localhost:3100/platform/dashboard',
     timeout: 120_000,
     reuseExistingServer: !process.env.CI,
     env: {
       ...process.env,
+      PATH: `${nodeBinDir}${path.delimiter}${process.env.PATH ?? ''}`,
       NEXT_PUBLIC_API_URL: 'http://localhost:3100',
     },
   },
