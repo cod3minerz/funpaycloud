@@ -27,7 +27,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev -- --port 3100',
+    command: 'node ./node_modules/next/dist/bin/next dev --port 3100',
     url: 'http://localhost:3100/platform/dashboard',
     timeout: 120_000,
     reuseExistingServer: !process.env.CI,

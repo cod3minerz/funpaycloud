@@ -84,6 +84,8 @@ test.beforeEach(async ({ page }) => {
     };
     const weeklyInitiallyOn = initialParams.get('weeklyOn') === '1';
     const weeklyInitiallyFailed = initialParams.get('weeklyFailed') === '1';
+    const reviewProxyReady = initialParams.get('proxy') !== '0';
+    const reviewRuntimeReady = initialParams.get('runtime') !== '0';
     let reviewSettings = {
       enabled: false,
       replies: {
@@ -93,6 +95,24 @@ test.beforeEach(async ({ page }) => {
         '4': { enabled: false, template: '' },
         '5': { enabled: false, template: '' },
       },
+    };
+    let reviewStatus = {
+      last_scan_at: null,
+      next_scan_at: '2026-07-03T12:00:00Z',
+      baselined_at: null,
+      counts: {
+        baseline: 1,
+        pending: 0,
+        replied: 0,
+        skipped: 0,
+        failed: 0,
+      },
+      recent: [],
+      proxy_connected: reviewProxyReady,
+      proxy_ready: reviewProxyReady,
+      proxy_reason: reviewProxyReady ? '' : 'proxy_missing',
+      runtime_ready: reviewRuntimeReady,
+      runtime_reason: reviewRuntimeReady ? '' : 'runtime_unavailable',
     };
     const notifications = {
       enabled: weeklyInitiallyOn,
@@ -175,14 +195,36 @@ test.beforeEach(async ({ page }) => {
             username: 'tonminerz',
             keeper_active: true,
             raiser_active: false,
+            proxy_connected: reviewProxyReady,
+            proxy_healthy: reviewProxyReady && reviewRuntimeReady,
           },
         ]);
       }
       if (path === `/api/accounts/${accountID}/review-settings` && method === 'GET') {
         return envelope(reviewSettings);
       }
+      if (path === `/api/accounts/${accountID}/review-status` && method === 'GET') {
+        return envelope(reviewStatus);
+      }
       if (path === `/api/accounts/${accountID}/review-settings` && method === 'PUT') {
-        reviewSettings = JSON.parse(String(init?.body || '{}'));
+        const nextSettings = JSON.parse(String(init?.body || '{}'));
+        if (nextSettings.enabled && !reviewStatus.proxy_ready) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'подключите активный прокси перед включением авто-ответов на отзывы',
+            }),
+            {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' },
+            }
+          );
+        }
+        reviewSettings = nextSettings;
+        reviewStatus = {
+          ...reviewStatus,
+          next_scan_at: reviewSettings.enabled ? '2026-07-03T12:10:00Z' : reviewStatus.next_scan_at,
+        };
         return envelope(reviewSettings);
       }
       if (path === `/api/accounts/${accountID}/chats/history` && method === 'GET') {
@@ -477,6 +519,9 @@ test('reviews require saved template before enabling switches', async ({ page })
   await page.goto('/platform/reviews');
 
   await expect(page.getByTestId('reviews-page')).toBeVisible();
+  await expect(page.getByTestId('reviews-status')).toBeVisible();
+  await expect(page.getByTestId('reviews-proxy-status')).toContainText('Прокси готов');
+  await expect(page.getByTestId('reviews-runtime-status')).toContainText('Runtime готов');
   const textarea = page.getByTestId('reviews-template-5');
   const ratingToggle = page.getByTestId('reviews-rating-toggle-5');
   const globalToggle = page.getByTestId('reviews-global-toggle');
@@ -497,6 +542,26 @@ test('reviews require saved template before enabling switches', async ({ page })
 
   await globalToggle.click();
   await expect(globalToggle).toHaveAttribute('aria-checked', 'true');
+});
+
+test('reviews global switch stays blocked without proxy', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/platform/reviews?proxy=0');
+
+  await expect(page.getByTestId('reviews-page')).toBeVisible();
+  await expect(page.getByTestId('reviews-proxy-status')).toContainText('Подключите прокси');
+
+  const textarea = page.getByTestId('reviews-template-5');
+  const ratingToggle = page.getByTestId('reviews-rating-toggle-5');
+  const globalToggle = page.getByTestId('reviews-global-toggle');
+
+  await textarea.fill('Спасибо за отзыв!');
+  await page.getByTestId('reviews-save').click();
+  await expect(ratingToggle).toBeEnabled();
+
+  await ratingToggle.click();
+  await expect(ratingToggle).toHaveAttribute('aria-checked', 'true');
+  await expect(globalToggle).toBeDisabled();
 });
 
 test('reviews page redirects non-admin user', async ({ page }) => {

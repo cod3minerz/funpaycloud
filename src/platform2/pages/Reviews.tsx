@@ -9,6 +9,7 @@ import {
   type ApiAccount,
   type ReviewRatingKey,
   type ReviewSettings,
+  type ReviewStatus,
 } from "@/lib/api";
 
 const RATING_KEYS: ReviewRatingKey[] = ["5", "4", "3", "2", "1"];
@@ -72,6 +73,53 @@ function cloneSettings(settings: ReviewSettings): ReviewSettings {
   return normalizeSettings(JSON.parse(JSON.stringify(settings)) as ReviewSettings);
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function proxyReasonText(reason?: string) {
+  switch (reason) {
+    case "proxy_missing":
+      return "Подключите прокси к аккаунту";
+    case "proxy_inactive":
+      return "Прокси аккаунта неактивен";
+    case "proxy_expired":
+      return "Прокси аккаунта истёк";
+    default:
+      return "Прокси готов";
+  }
+}
+
+function runtimeReasonText(reason?: string) {
+  if (!reason) return "Runtime готов";
+  return "Runtime временно недоступен";
+}
+
+function statusLabel(status: string) {
+  switch (status) {
+    case "baseline":
+      return "baseline";
+    case "pending":
+      return "ожидает";
+    case "replied":
+      return "отвечено";
+    case "skipped":
+      return "пропущено";
+    case "failed":
+      return "ошибка";
+    default:
+      return status;
+  }
+}
+
 function SwitchButton({
   checked,
   disabled,
@@ -113,6 +161,7 @@ export default function ReviewsPage() {
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
   const [saved, setSaved] = useState<ReviewSettings>(emptyReviewSettings);
   const [draft, setDraft] = useState<ReviewSettings>(emptyReviewSettings);
+  const [status, setStatus] = useState<ReviewStatus | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -160,16 +209,20 @@ export default function ReviewsPage() {
     if (!selectedAccountId || checkingAccess) return;
     let alive = true;
     setLoading(true);
-    accountsApi
-      .getReviewSettings(selectedAccountId)
-      .then((settings) => {
+    Promise.all([
+      accountsApi.getReviewSettings(selectedAccountId),
+      accountsApi.getReviewStatus(selectedAccountId),
+    ])
+      .then(([settings, reviewStatus]) => {
         if (!alive) return;
         const normalized = normalizeSettings(settings);
         setSaved(normalized);
         setDraft(cloneSettings(normalized));
+        setStatus(reviewStatus);
       })
       .catch((err) => {
         toast.error(err instanceof Error ? err.message : "Не удалось загрузить настройки отзывов");
+        if (alive) setStatus(null);
       })
       .finally(() => {
         if (alive) setLoading(false);
@@ -198,6 +251,22 @@ export default function ReviewsPage() {
     const cfg = saved.replies[key];
     return cfg.enabled && cfg.template.trim().length > 0;
   });
+  const proxyReady = status?.proxy_ready ?? false;
+  const runtimeReady = status?.runtime_ready ?? false;
+  const globalBlockReason = !proxyReady
+    ? proxyReasonText(status?.proxy_reason)
+    : !runtimeReady
+      ? runtimeReasonText(status?.runtime_reason)
+      : "";
+
+  async function refreshStatus(accountID = selectedAccountId) {
+    if (!accountID) return;
+    try {
+      setStatus(await accountsApi.getReviewStatus(accountID));
+    } catch {
+      setStatus(null);
+    }
+  }
 
   async function persist(next: ReviewSettings, successMessage: string) {
     if (!selectedAccountId) return;
@@ -206,6 +275,7 @@ export default function ReviewsPage() {
       const normalized = normalizeSettings(await accountsApi.saveReviewSettings(selectedAccountId, next));
       setSaved(normalized);
       setDraft(cloneSettings(normalized));
+      await refreshStatus(selectedAccountId);
       toast.success(successMessage);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Не удалось сохранить настройки");
@@ -305,15 +375,74 @@ export default function ReviewsPage() {
         <div>
           <p className="font-semibold text-gray-900 dark:text-white">Включить авто-ответы</p>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            При выключении бот не будет отвечать ни на один отзыв.
+            {globalBlockReason || "При выключении бот не будет отвечать ни на один отзыв."}
           </p>
         </div>
         <SwitchButton
           checked={saved.enabled}
-          disabled={saving || hasDirtyTemplates || !hasEnabledSavedTemplate || !selectedAccountId}
+          disabled={saving || loading || hasDirtyTemplates || !hasEnabledSavedTemplate || !selectedAccountId || !proxyReady}
           onClick={handleToggleGlobal}
           testId="reviews-global-toggle"
         />
+      </section>
+
+      <section
+        data-testid="reviews-status"
+        className="rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900"
+      >
+        <div className="grid gap-4 md:grid-cols-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Прокси</p>
+            <p
+              data-testid="reviews-proxy-status"
+              className={`mt-1 text-sm font-semibold ${proxyReady ? "text-emerald-500" : "text-amber-500"}`}
+            >
+              {proxyReasonText(status?.proxy_reason)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Runtime</p>
+            <p
+              data-testid="reviews-runtime-status"
+              className={`mt-1 text-sm font-semibold ${runtimeReady ? "text-emerald-500" : "text-amber-500"}`}
+            >
+              {runtimeReasonText(status?.runtime_reason)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Следующая проверка</p>
+            <p data-testid="reviews-next-scan" className="mt-1 text-sm font-semibold text-gray-900 dark:text-white">
+              {formatDateTime(status?.next_scan_at)}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 text-sm text-gray-500 dark:text-gray-400 sm:grid-cols-5">
+          {["baseline", "pending", "replied", "skipped", "failed"].map((key) => (
+            <div key={key} className="rounded-md border border-gray-200 px-3 py-2 dark:border-gray-800">
+              <p className="text-xs uppercase tracking-wide text-gray-400">{statusLabel(key)}</p>
+              <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{status?.counts?.[key] ?? 0}</p>
+            </div>
+          ))}
+        </div>
+
+        {status?.recent?.length ? (
+          <div className="mt-5 space-y-2">
+            {status.recent.slice(0, 3).map((item) => (
+              <div
+                key={`${item.order_id}-${item.updated_at}`}
+                className="flex flex-col gap-1 rounded-md border border-gray-200 px-3 py-2 text-sm dark:border-gray-800 md:flex-row md:items-center md:justify-between"
+              >
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  #{item.order_id} · {item.rating}★ · {statusLabel(item.status)}
+                </span>
+                <span className="text-gray-500 dark:text-gray-400">
+                  {item.last_error || item.skip_reason || formatDateTime(item.updated_at)}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <div className="flex items-center justify-between gap-3">

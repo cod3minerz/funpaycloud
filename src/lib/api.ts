@@ -377,6 +377,35 @@ export type ReviewSettings = {
   replies: Record<ReviewRatingKey, ReviewReplyConfig>;
 };
 
+export type ReviewAutoReplyAttempt = {
+  order_id: string;
+  buyer_funpay_user_id: number;
+  buyer_username: string;
+  rating: number;
+  status: 'baseline' | 'pending' | 'replied' | 'skipped' | 'failed' | string;
+  skip_reason: string;
+  last_error: string;
+  attempt_count: number;
+  detected_at: string;
+  last_attempt_at?: string | null;
+  next_retry_at?: string | null;
+  replied_at?: string | null;
+  updated_at: string;
+};
+
+export type ReviewStatus = {
+  last_scan_at?: string | null;
+  next_scan_at?: string | null;
+  baselined_at?: string | null;
+  counts: Record<string, number>;
+  recent: ReviewAutoReplyAttempt[];
+  proxy_connected: boolean;
+  proxy_ready: boolean;
+  proxy_reason: string;
+  runtime_ready: boolean;
+  runtime_reason: string;
+};
+
 export type ConnectProxyPayload =
   | { mode: 'free' | 'individual' }
   | {
@@ -403,6 +432,8 @@ export const accountsApi = {
     apiRequest(`/api/accounts/${id}/raiser/stop`, { method: 'POST' }),
   getReviewSettings: (id: number | string) =>
     apiRequest<ReviewSettings>(`/api/accounts/${id}/review-settings`),
+  getReviewStatus: (id: number | string) =>
+    apiRequest<ReviewStatus>(`/api/accounts/${id}/review-status`),
   saveReviewSettings: (id: number | string, payload: ReviewSettings) =>
     apiRequest<ReviewSettings>(`/api/accounts/${id}/review-settings`, {
       method: 'PUT',
