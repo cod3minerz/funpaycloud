@@ -42,7 +42,8 @@ function deliveryViaLabel(value?: string) {
 }
 
 function canDeliverOrder(order: ApiOrder) {
-  return !order.delivered_at && (order.status === 0 || order.status === 1);
+  const visibleSale = !order.hidden_at && (!order.order_direction || order.order_direction === "sale");
+  return visibleSale && !order.delivered_at && (order.status === 0 || order.status === 1);
 }
 
 const statusLabel: Record<OrderStatus, string> = {
@@ -117,6 +118,7 @@ export default function OrdersPage() {
   }
 
   const totalPages = Math.max(1, Math.ceil(total / LIMIT));
+  const accountNameById = new Map(accounts.map((account) => [account.id, account.username || `#${account.id}`]));
 
   return (
     <div className="space-y-6">
@@ -179,6 +181,7 @@ export default function OrdersPage() {
                   {orders.map((order) => {
                     const localStatus = apiStatusToLocal(order.status);
                     const delivered = Boolean(order.delivered_at);
+                    const visibleSale = !order.hidden_at && (!order.order_direction || order.order_direction === "sale");
                     return (
                       <TableRow key={order.id}>
                         <TableCell className="px-5 py-4 whitespace-nowrap">
@@ -194,7 +197,9 @@ export default function OrdersPage() {
                           <span className="line-clamp-2 text-sm text-gray-700 dark:text-gray-300">{order.description}</span>
                         </TableCell>
                         <TableCell className="px-5 py-4">
-                          <span className="text-sm text-gray-500">{order.funpay_account_id}</span>
+                          <span className="text-sm text-gray-500">
+                            {accountNameById.get(order.funpay_account_id) || `#${order.funpay_account_id}`}
+                          </span>
                         </TableCell>
                         <TableCell className="px-5 py-4">
                           <span className="text-sm font-semibold text-gray-800 dark:text-white">
@@ -240,7 +245,7 @@ export default function OrdersPage() {
                                 {delivering === order.id ? "…" : delivered ? "Выдан" : "Выдать"}
                               </Button>
                             ) : null}
-                            {!delivered && order.status !== 2 ? (
+                            {visibleSale && !delivered && order.status !== 2 ? (
                               <Button
                                 variant="outline"
                                 size="sm"

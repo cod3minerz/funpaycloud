@@ -514,6 +514,37 @@ test('orders allow manual delivery for completed order without delivery history'
   await expect(deliverButton).toBeEnabled();
 });
 
+test('orders render account name and hide actions for non-sale rows', async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as any).__MOCK_ORDERS__ = [
+      {
+        id: 903,
+        funpay_account_id: 8,
+        funpay_order_id: 'BP61TQAD',
+        description: 'review baseline row',
+        price: 0,
+        buyer_username: 'reviewBuyer',
+        buyer_id: 456,
+        status: 0,
+        order_direction: 'review',
+        order_source: 'review_auto_reply',
+        hidden_at: '2026-07-03T18:00:00Z',
+        hidden_reason: 'review_auto_reply_reference',
+        created_at: '2026-07-03T18:00:00Z',
+        delivered_at: null,
+        delivered_via: '',
+        delivered_item: '',
+      },
+    ];
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/platform/orders');
+  await expect(page.getByText('BP61TQAD')).toBeVisible();
+  await expect(page.getByRole('table').getByText('tonminerz')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Выдать/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Синхронизировать/ })).toHaveCount(0);
+});
+
 test('weekly report toggle opens schedule modal and saves selected schedule', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/platform/settings');

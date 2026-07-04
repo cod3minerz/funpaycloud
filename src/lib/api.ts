@@ -719,6 +719,10 @@ export type ApiOrder = {
   buyer_username: string;
   buyer_id: number;
   status: number;
+  order_direction?: string;
+  order_source?: string;
+  hidden_at?: string | null;
+  hidden_reason?: string;
   created_at: string;
   delivered_at?: string | null;
   delivered_via?: string;
