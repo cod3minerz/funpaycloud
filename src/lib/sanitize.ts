@@ -2,7 +2,6 @@
 export function sanitizeInput(value: string): string {
   return value
     .replace(/[<>'"]/g, '') // XSS символы
-    .replace(/(\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE|EXEC)\b)/gi, '') // SQL keywords
     .trim()
     .slice(0, 1000); // максимальная длина
 }

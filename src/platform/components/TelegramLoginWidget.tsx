@@ -27,7 +27,7 @@ export function TelegramLoginWidget({ botUsername, onAuth }: TelegramLoginWidget
 
     setLoading(true);
     setLoadError(null);
-    container.innerHTML = '';
+    container.textContent = '';
 
     window.onTelegramAuth = (user: TelegramAuthPayload) => {
       onAuth(user);
@@ -54,7 +54,7 @@ export function TelegramLoginWidget({ botUsername, onAuth }: TelegramLoginWidget
     container.appendChild(script);
 
     return () => {
-      container.innerHTML = '';
+      container.textContent = '';
       if (window.onTelegramAuth) {
         delete window.onTelegramAuth;
       }
