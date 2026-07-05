@@ -372,6 +372,26 @@ export type ReviewReplyConfig = {
   template: string;
 };
 
+export type LotRaiseTargetResult = {
+  node_id: number;
+  category_name: string;
+  trade_url: string;
+  game_id?: number;
+  status: string;
+  message?: string;
+  error?: string;
+};
+
+export type LotRaiseLogEntry = {
+  id: number;
+  funpay_account_id: number;
+  raised: number;
+  found: number;
+  errors_count: number;
+  targets: LotRaiseTargetResult[];
+  raised_at: string;
+};
+
 export type ReviewSettings = {
   enabled: boolean;
   replies: Record<ReviewRatingKey, ReviewReplyConfig>;
@@ -433,6 +453,8 @@ export const accountsApi = {
     }),
   delete: (id: number | string) =>
     apiRequest(`/api/accounts/${id}`, { method: 'DELETE' }),
+  getRaiseLog: (id: number | string, limit = 50) =>
+    apiRequest<{ logs: LotRaiseLogEntry[] }>(`/api/accounts/${id}/raise-log?limit=${limit}`),
   startRaiser: (id: number | string) =>
     apiRequest(`/api/accounts/${id}/raiser/start`, { method: 'POST' }),
   stopRaiser: (id: number | string) =>
