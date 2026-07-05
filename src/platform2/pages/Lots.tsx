@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
+import { RaiseLogTable } from "@/platform2/components/RaiseLogTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/platform2/components/ui/card";
 import { Button } from "@/platform2/components/ui/button";
 import { Badge } from "@/platform2/components/ui/badge";
@@ -934,6 +935,11 @@ export default function LotsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* История подъёма лотов */}
+      {filterAccount && (
+        <RaiseLogTable accountId={Number(filterAccount)} />
+      )}
 
       {/* MODALS */}
       <LotCreateModal
