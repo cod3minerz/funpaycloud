@@ -124,10 +124,10 @@ const AppHeader: React.FC = () => {
             <button
               type="button"
               onClick={() => setIdeaModalOpen(true)}
-              title="Предложить идею"
-              className="flex items-center justify-center px-2.5 py-2 transition hover:bg-gray-50 dark:hover:bg-white/[0.03] lg:py-1.5"
+              className="flex items-center justify-center gap-2 px-3 py-2 transition hover:bg-gray-50 dark:hover:bg-white/[0.03] lg:px-3 lg:py-1.5 lg:text-xs"
             >
               <LightBulbIcon className="h-4 w-4 shrink-0" />
+              <span>Идея</span>
             </button>
           </div>
 
