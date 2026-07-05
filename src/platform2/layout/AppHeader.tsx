@@ -110,22 +110,22 @@ const AppHeader: React.FC = () => {
           } flex-col gap-3 w-full px-4 py-4 border-b border-gray-200 dark:border-gray-800 shadow-theme-md
             lg:flex lg:flex-row lg:items-center lg:justify-end lg:border-b-0 lg:px-0 lg:py-0 lg:gap-2 lg:shadow-none`}
         >
-          {/* Split button: left = bug, right = idea */}
-          <div className="flex flex-1 lg:flex-initial items-stretch rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden lg:mr-1">
+          {/* Split button in outline style matching Button component */}
+          <div className="flex flex-1 lg:flex-initial items-stretch rounded-lg bg-white dark:bg-gray-800 ring-1 ring-inset ring-gray-300 dark:ring-gray-700 overflow-hidden font-medium text-sm text-gray-700 dark:text-gray-400 lg:mr-1">
             <button
               type="button"
               onClick={() => setBugModalOpen(true)}
-              className="flex flex-1 lg:flex-initial items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200 lg:px-3 lg:py-1.5 lg:text-xs"
+              className="flex flex-1 lg:flex-initial items-center justify-center gap-2 px-3 py-2 transition hover:bg-gray-50 dark:hover:bg-white/[0.03] lg:py-1.5 lg:text-xs"
             >
               <BugAntIcon className="h-4 w-4 shrink-0" />
               <span>Обратная связь</span>
             </button>
-            <div className="w-px bg-gray-200 dark:bg-gray-700 shrink-0" />
+            <div className="w-px bg-gray-300 dark:bg-gray-700 shrink-0" />
             <button
               type="button"
               onClick={() => setIdeaModalOpen(true)}
               title="Предложить идею"
-              className="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200 lg:px-2.5 lg:py-1.5"
+              className="flex items-center justify-center px-2.5 py-2 transition hover:bg-gray-50 dark:hover:bg-white/[0.03] lg:py-1.5"
             >
               <LightBulbIcon className="h-4 w-4 shrink-0" />
             </button>
