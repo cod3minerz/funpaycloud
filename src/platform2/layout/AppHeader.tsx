@@ -111,12 +111,12 @@ const AppHeader: React.FC = () => {
           } flex-col gap-3 w-full px-4 py-4 border-b border-gray-200 dark:border-gray-800 shadow-theme-md
             lg:flex lg:flex-row lg:items-center lg:justify-end lg:border-b-0 lg:px-0 lg:py-0 lg:gap-2 lg:shadow-none`}
         >
-          {/* Split button — точно как UserDropdownAdmin, только два сегмента */}
-          <div className="flex flex-1 lg:flex-initial items-stretch rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-transparent overflow-hidden lg:mr-1">
+          {/* Split button — h-11 = точно как UserDropdownAdmin (py-2 + h-7 аватар = 44px) */}
+          <div className="flex flex-1 lg:flex-none lg:shrink-0 items-stretch h-11 rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-transparent overflow-hidden lg:mr-1">
             <button
               type="button"
               onClick={() => setBugModalOpen(true)}
-              className="flex flex-1 lg:flex-none items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/[0.05]"
+              className="flex flex-1 lg:flex-none items-center gap-2 px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/[0.05] lg:text-xs lg:px-2.5"
             >
               <BugAntIcon className="h-4 w-4 shrink-0" />
               <span>Обратная связь</span>
@@ -125,7 +125,7 @@ const AppHeader: React.FC = () => {
             <button
               type="button"
               onClick={() => setIdeaModalOpen(true)}
-              className="flex flex-1 lg:flex-none items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/[0.05]"
+              className="flex flex-1 lg:flex-none items-center gap-2 px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/[0.05] lg:text-xs lg:px-2.5"
             >
               <LightBulbIcon className="h-4 w-4 shrink-0" />
               <span>Идея</span>
