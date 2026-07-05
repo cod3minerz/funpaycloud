@@ -111,28 +111,25 @@ const AppHeader: React.FC = () => {
           } flex-col gap-3 w-full px-4 py-4 border-b border-gray-200 dark:border-gray-800 shadow-theme-md
             lg:flex lg:flex-row lg:items-center lg:justify-end lg:border-b-0 lg:px-0 lg:py-0 lg:gap-2 lg:shadow-none`}
         >
-          {/* Split button — two Button components joined */}
-          <div className="flex flex-1 lg:flex-initial -space-x-px lg:mr-1">
-            <Button
+          {/* Split button — точно как UserDropdownAdmin, только два сегмента */}
+          <div className="flex flex-1 lg:flex-initial items-stretch rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-transparent overflow-hidden lg:mr-1">
+            <button
               type="button"
-              variant="outline"
-              size="sm"
               onClick={() => setBugModalOpen(true)}
-              className="flex-1 lg:flex-none justify-center rounded-r-none relative hover:z-10 lg:text-xs lg:py-1.5"
-              startIcon={<BugAntIcon className="h-4 w-4 shrink-0" />}
+              className="flex flex-1 lg:flex-none items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/[0.05]"
             >
-              Обратная связь
-            </Button>
-            <Button
+              <BugAntIcon className="h-4 w-4 shrink-0" />
+              <span>Обратная связь</span>
+            </button>
+            <div className="w-px shrink-0 bg-gray-200 dark:bg-gray-700" />
+            <button
               type="button"
-              variant="outline"
-              size="sm"
               onClick={() => setIdeaModalOpen(true)}
-              className="flex-1 lg:flex-none justify-center rounded-l-none relative hover:z-10 lg:text-xs lg:py-1.5"
-              startIcon={<LightBulbIcon className="h-4 w-4 shrink-0" />}
+              className="flex flex-1 lg:flex-none items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/[0.05]"
             >
-              Идея
-            </Button>
+              <LightBulbIcon className="h-4 w-4 shrink-0" />
+              <span>Идея</span>
+            </button>
           </div>
 
           {/* Theme toggle + user — row on both mobile and desktop */}
