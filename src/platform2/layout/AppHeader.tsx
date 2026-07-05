@@ -110,23 +110,24 @@ const AppHeader: React.FC = () => {
           } flex-col gap-3 w-full px-4 py-4 border-b border-gray-200 dark:border-gray-800 shadow-theme-md
             lg:flex lg:flex-row lg:items-center lg:justify-end lg:border-b-0 lg:px-0 lg:py-0 lg:gap-2 lg:shadow-none`}
         >
-          {/* Feedback buttons — stack as full-width row on mobile, compact inline on desktop */}
-          <div className="flex items-center gap-2 lg:mr-1">
+          {/* Split button: left = bug, right = idea */}
+          <div className="flex flex-1 lg:flex-initial items-stretch rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden lg:mr-1">
             <button
               type="button"
               onClick={() => setBugModalOpen(true)}
-              className="flex flex-1 lg:flex-initial items-center justify-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200 lg:px-3 lg:py-1.5 lg:text-xs"
+              className="flex flex-1 lg:flex-initial items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200 lg:px-3 lg:py-1.5 lg:text-xs"
             >
               <BugAntIcon className="h-4 w-4 shrink-0" />
-              <span>Нашли ошибку?</span>
+              <span>Обратная связь</span>
             </button>
+            <div className="w-px bg-gray-200 dark:bg-gray-700 shrink-0" />
             <button
               type="button"
               onClick={() => setIdeaModalOpen(true)}
-              className="flex flex-1 lg:flex-initial items-center justify-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200 lg:px-3 lg:py-1.5 lg:text-xs"
+              title="Предложить идею"
+              className="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200 lg:px-2.5 lg:py-1.5"
             >
               <LightBulbIcon className="h-4 w-4 shrink-0" />
-              <span>Предложить идею</span>
             </button>
           </div>
 
