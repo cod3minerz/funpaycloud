@@ -643,6 +643,7 @@ function LotEditModal({
 // ──────────────────────────────────────────────────────────────────────────────
 export default function LotsPage() {
   const [lots, setLots] = useState<ApiLot[]>([]);
+  const [lotsLoading, setLotsLoading] = useState(true);
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [search, setSearch] = useState("");
   const [filterAccount, setFilterAccount] = useState("");
@@ -654,7 +655,7 @@ export default function LotsPage() {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    lotsApi.listAll().then(setLots).catch(() => {});
+    lotsApi.listAll().then(setLots).catch(() => {}).finally(() => setLotsLoading(false));
     accountsApi.list().then(setAccounts).catch(() => {});
   }, []);
 
@@ -796,7 +797,17 @@ export default function LotsPage() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {filtered.length === 0 ? (
+          {lotsLoading ? (
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex gap-3 p-4 animate-pulse">
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/5" />
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/6 ml-auto" />
+                </div>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20">
               <Icon name="box-cube" className="h-16 w-16 text-gray-300" />
               <h3 className="mt-4 text-lg font-semibold text-gray-800 dark:text-white">

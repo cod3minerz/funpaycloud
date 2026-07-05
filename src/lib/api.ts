@@ -2167,3 +2167,35 @@ export const smmApi = {
   manualOrder: (accountId: number, orderId: number) =>
     apiRequest(`/api/smm/orders/${orderId}/manual?account_id=${accountId}`, { method: 'POST' }),
 };
+
+
+export interface UserNotification {
+  id: number;
+  funpay_account_id: number;
+  type: 'new_message' | 'new_order' | 'new_review' | 'system';
+  title: string;
+  body: string;
+  meta?: Record<string, unknown>;
+  is_read: boolean;
+  created_at: string;
+}
+
+export const notificationsApi = {
+  getNotifications: (params?: { page?: number; unreadOnly?: boolean }) => {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.unreadOnly) qs.set('unread_only', 'true');
+    return apiRequest<{ items: UserNotification[]; total: number; page: number; unread: number }>(
+      `/api/notifications?${qs}`
+    );
+  },
+
+  markRead: (id: number) =>
+    apiRequest<{ success: boolean }>(`/api/notifications/${id}/read`, { method: 'POST' }),
+
+  markAllRead: () =>
+    apiRequest<{ success: boolean }>('/api/notifications/read-all', { method: 'POST' }),
+
+  getUnreadCount: () =>
+    apiRequest<{ count: number }>('/api/notifications/unread-count'),
+};

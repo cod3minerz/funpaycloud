@@ -68,18 +68,20 @@ export default function OrdersPage() {
   const [selectedAccount, setSelectedAccount] = useState<string>("all");
   const [delivering, setDelivering] = useState<number | null>(null);
   const [reconciling, setReconciling] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     accountsApi.list().then(setAccounts).catch(() => {});
   }, []);
 
   useEffect(() => {
+    setLoading(true);
     const params: Parameters<typeof ordersApi.list>[0] = { page, limit: LIMIT };
     if (selectedAccount !== "all") params.account_id = selectedAccount;
     ordersApi.list(params).then((resp) => {
       setOrders(resp.orders);
       setTotal(resp.total);
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => setLoading(false));
   }, [page, selectedAccount]);
 
   async function handleDeliver(id: number) {
@@ -152,7 +154,18 @@ export default function OrdersPage() {
         </CardHeader>
 
         <CardContent className="p-0">
-          {orders.length === 0 ? (
+          {loading ? (
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex gap-3 p-4 animate-pulse">
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/6" />
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/5" />
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/5 ml-auto" />
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/6" />
+                </div>
+              ))}
+            </div>
+          ) : orders.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20">
               <Icon name="box" className="h-16 w-16 text-gray-300" />
               <h3 className="mt-4 text-lg font-semibold text-gray-800 dark:text-white">

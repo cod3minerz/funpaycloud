@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
 import {
   BoxCubeIcon,
+  BellIcon,
+  BoltIcon,
   ChevronDownIcon,
   GridIcon,
   HorizontaLDots,
@@ -14,20 +16,17 @@ import {
   BoxIcon,
   DollarLineIcon,
   PlugInIcon,
-  ChatIcon,
   ChartBarIcon,
   CpuChipIcon,
   WrenchScrewdriverIcon,
-  ChatBubbleOvalLeftEllipsisIcon,
   UserPlusIcon,
   TaskIcon,
   ServerStackIcon,
-  PaperPlaneIcon,
   ShootingStarIcon,
 } from "../icons/index";
 import SidebarWidget from "./SidebarWidget";
 import { usePinnedPlugins, ALL_PLUGINS } from "@/lib/pinnedPlugins";
-import { settingsApi } from "@/lib/api";
+import { notificationsApi } from "@/lib/api";
 
 type NavItem = {
   name: string;
@@ -46,15 +45,19 @@ const mainNavItems: NavItem[] = [
     path: `${BASE}/dashboard`,
   },
   {
-    icon: <ChatIcon className="h-5 w-5" />,
-    name: "Чаты",
-    path: `${BASE}/chats`,
-    badge: "BETA",
+    icon: <BellIcon className="h-5 w-5" />,
+    name: "Уведомления",
+    path: `${BASE}/notifications`,
   },
   {
     icon: <ListIcon className="h-5 w-5" />,
     name: "Заказы",
     path: `${BASE}/orders`,
+  },
+  {
+    icon: <ShootingStarIcon className="h-5 w-5" />,
+    name: "Отзывы",
+    path: `${BASE}/reviews`,
   },
   {
     icon: <BoxCubeIcon className="h-5 w-5" />,
@@ -90,7 +93,7 @@ const managementNavItems: NavItem[] = [
     path: `${BASE}/ai-assistant`,
   },
   {
-    icon: <PaperPlaneIcon className="h-5 w-5" />,
+    icon: <BoltIcon className="h-5 w-5" />,
     name: "Интеграции",
     path: `${BASE}/integrations`,
   },
@@ -98,11 +101,6 @@ const managementNavItems: NavItem[] = [
     icon: <WrenchScrewdriverIcon className="h-5 w-5" />,
     name: "Конструктор",
     path: `${BASE}/constructor`,
-  },
-  {
-    icon: <ChatBubbleOvalLeftEllipsisIcon className="h-5 w-5" />,
-    name: "Тест-чат",
-    path: `${BASE}/test-chat`,
   },
   {
     icon: <TaskIcon className="h-5 w-5" />,
@@ -129,20 +127,25 @@ const managementNavItems: NavItem[] = [
 const navItems = mainNavItems;
 const othersItems: NavItem[] = [];
 
-const devNavItems: NavItem[] = [
-  {
-    icon: <ShootingStarIcon className="h-5 w-5" />,
-    name: "Отзывы",
-    path: `${BASE}/reviews`,
-    badge: "DEV",
-  },
-];
+const devNavItems: NavItem[] = [];
 
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered, toggleMobileSidebar } = useSidebar();
   const pathname = usePathname();
   const { pinned } = usePinnedPlugins();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    let alive = true;
+    const loadUnread = () => {
+      notificationsApi.getUnreadCount()
+        .then(r => { if (alive) setUnreadCount(r.count); })
+        .catch(() => {});
+    };
+    loadUnread();
+    const t = setInterval(loadUnread, 30_000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
 
   const pinnedPluginSubItems = [
     ...ALL_PLUGINS
@@ -157,20 +160,12 @@ const AppSidebar: React.FC = () => {
       : item
   );
 
-  useEffect(() => {
-    let alive = true;
-    settingsApi
-      .getProfile()
-      .then((profile) => {
-        if (alive) setIsAdmin(Boolean(profile.is_admin));
-      })
-      .catch(() => {
-        if (alive) setIsAdmin(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
+  const dynamicMainNavItems = mainNavItems.map((item) =>
+    item.name === "Уведомления"
+      ? { ...item, badge: unreadCount > 0 ? String(unreadCount) : undefined }
+      : item
+  );
+
 
   const renderMenuItems = (
     navItems: NavItem[],
@@ -340,7 +335,7 @@ const AppSidebar: React.FC = () => {
     // Check if the current path matches any submenu item
     let submenuMatched = false;
     const menuMap: Array<["main" | "others", NavItem[]]> = [
-      ["main", mainNavItems],
+      ["main", dynamicMainNavItems],
       ["others", dynamicManagementNavItems],
     ];
     menuMap.forEach(([menuType, items]) => {
@@ -455,7 +450,7 @@ const AppSidebar: React.FC = () => {
                   <HorizontaLDots />
                 )}
               </h2>
-              {renderMenuItems(mainNavItems, "main")}
+              {renderMenuItems(dynamicMainNavItems, "main")}
             </div>
 
             <div className="">
@@ -475,7 +470,7 @@ const AppSidebar: React.FC = () => {
               {renderMenuItems(dynamicManagementNavItems, "others")}
             </div>
 
-            {isAdmin && (
+            {devNavItems.length > 0 && (
               <div className="">
                 <h2
                   className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${

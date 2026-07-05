@@ -95,6 +95,7 @@ export default function AccountsPage() {
   const [goldenKey, setGoldenKey] = useState("");
   const [extProxy, setExtProxy] = useState({ host: "", port: "8080", protocol: "HTTP", login: "", password: "" });
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(true);
   const [proxyTargetId, setProxyTargetId] = useState<number | null>(null);
   const [addingAccount, setAddingAccount] = useState(false);
   const [search, setSearch] = useState("");
@@ -106,7 +107,10 @@ export default function AccountsPage() {
   const [showProxyBanner, setShowProxyBanner] = useState(false);
 
   useEffect(() => {
-    accountsApi.list().then((list) => setAccounts(list.map(mapApiAccount))).catch(() => {});
+    accountsApi.list()
+      .then((list) => setAccounts(list.map(mapApiAccount)))
+      .catch(() => {})
+      .finally(() => setAccountsLoading(false));
   }, []);
 
   useEffect(() => {
@@ -479,7 +483,19 @@ export default function AccountsPage() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {accounts.length === 0 ? (
+          {accountsLoading ? (
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex gap-3 p-4 animate-pulse">
+                  <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
+                  <div className="flex-1 space-y-2 py-1">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : accounts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-500/10 mb-4">
                 <Icon name="plug-in" className="h-8 w-8 text-brand-500" />
