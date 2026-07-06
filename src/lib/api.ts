@@ -1907,7 +1907,8 @@ export type AdminOperations = {
     }>;
     total_rate_limited_events: number;
   };
-  payments: AdminPurchase[];
+  payments?: AdminPurchase[];
+  recent_payments?: AdminPurchase[];
   payment_issues: Array<{
     id: number;
     user_id: number;

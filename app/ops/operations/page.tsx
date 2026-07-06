@@ -106,8 +106,16 @@ export default function OperationsPage() {
   }, []);
 
   const updatedAt = useMemo(() => formatDate(data?.checked_at), [data?.checked_at]);
-  const critical = data?.summary.critical ?? 0;
-  const warning = data?.summary.warning ?? 0;
+  const critical = data?.summary?.critical ?? 0;
+  const warning = data?.summary?.warning ?? 0;
+  const incidents = data?.incidents ?? [];
+  const accountHealth = data?.account_health ?? [];
+  const pulseGate = data?.pulsegate;
+  const activeCooldowns = pulseGate?.active_cooldowns ?? [];
+  const paymentIssues = data?.payment_issues ?? [];
+  const aiMemory = data?.ai_memory ?? [];
+  const recentPayments = data?.payments ?? data?.recent_payments ?? [];
+  const proxyCost = data?.proxy_cost;
 
   return (
     <div className="space-y-6">
@@ -135,24 +143,24 @@ export default function OperationsPage() {
         />
         <MetricCard
           title="Аккаунты"
-          value={loading && !data ? '…' : `${data?.summary.unhealthy_accounts ?? 0} / ${data?.summary.accounts_total ?? 0}`}
+          value={loading && !data ? '…' : `${data?.summary?.unhealthy_accounts ?? 0} / ${data?.summary?.accounts_total ?? 0}`}
           helper="требуют внимания / всего"
           Icon={ShieldCheckIcon}
-          tone={(data?.summary.unhealthy_accounts ?? 0) > 0 ? 'warning' : 'success'}
+          tone={(data?.summary?.unhealthy_accounts ?? 0) > 0 ? 'warning' : 'success'}
         />
         <MetricCard
           title="PulseGate"
-          value={loading && !data ? '…' : data?.pulsegate.mode ?? '—'}
-          helper={`${data?.pulsegate.active_cooldowns?.length ?? 0} cooldown, ${data?.pulsegate.total_rate_limited_events ?? 0} 429`}
+          value={loading && !data ? '…' : pulseGate?.mode ?? '—'}
+          helper={`${activeCooldowns.length} cooldown, ${pulseGate?.total_rate_limited_events ?? 0} 429`}
           Icon={BoltIcon}
-          tone={(data?.pulsegate.total_rate_limited_events ?? 0) > 0 ? 'warning' : 'info'}
+          tone={(pulseGate?.total_rate_limited_events ?? 0) > 0 ? 'warning' : 'info'}
         />
         <MetricCard
           title="Прокси"
-          value={loading && !data ? '…' : `${data?.proxy_cost.shared_free_slots ?? 0} сл.`}
-          helper={`оценка ${rub(data?.proxy_cost.estimated_monthly_rub ?? 0)}/мес`}
+          value={loading && !data ? '…' : `${proxyCost?.shared_free_slots ?? 0} сл.`}
+          helper={`оценка ${rub(proxyCost?.estimated_monthly_rub ?? 0)}/мес`}
           Icon={SparklesIcon}
-          tone={(data?.proxy_cost.shared_free_slots ?? 0) < 3 ? 'warning' : 'success'}
+          tone={(proxyCost?.shared_free_slots ?? 0) < 3 ? 'warning' : 'success'}
         />
       </div>
 
@@ -160,17 +168,17 @@ export default function OperationsPage() {
         <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-gray-100 dark:border-gray-800">
           <CardTitle>Incident Center</CardTitle>
           <Badge color={critical > 0 ? 'error' : warning > 0 ? 'warning' : 'success'} size="sm">
-            {data?.incidents.length ?? 0} событий
+            {incidents.length} событий
           </Badge>
         </CardHeader>
         <CardContent className="p-0">
-          {!data?.incidents.length ? (
+          {!incidents.length ? (
             <div className="p-6 text-sm text-gray-500 dark:text-gray-400">
               {loading ? 'Загружаем инциденты…' : 'Критичных событий нет. Система выглядит спокойно.'}
             </div>
           ) : (
             <div className="divide-y divide-gray-100 dark:divide-gray-800">
-              {data.incidents.slice(0, 12).map((item) => (
+              {incidents.slice(0, 12).map((item) => (
                 <div key={item.id} className="flex flex-col gap-3 p-5 lg:flex-row lg:items-center">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -202,7 +210,7 @@ export default function OperationsPage() {
           </CardHeader>
           <CardContent className="px-6 pb-6">
             <div className="space-y-3">
-              {(data?.account_health ?? []).slice(0, 12).map((account) => (
+              {accountHealth.slice(0, 12).map((account) => (
                 <div key={account.account_id} className="rounded-xl border border-gray-100 p-4 dark:border-gray-800">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div className="min-w-0">
@@ -229,7 +237,7 @@ export default function OperationsPage() {
                   )}
                 </div>
               ))}
-              {!loading && !data?.account_health.length && (
+              {!loading && !accountHealth.length && (
                 <p className="text-sm text-gray-500 dark:text-gray-400">Аккаунты не найдены.</p>
               )}
             </div>
@@ -243,7 +251,7 @@ export default function OperationsPage() {
             </CardHeader>
             <CardContent className="px-6 pb-6">
               <div className="space-y-3">
-                {(data?.payment_issues ?? []).slice(0, 6).map((payment) => (
+                {paymentIssues.slice(0, 6).map((payment) => (
                   <div key={payment.id} className="rounded-xl border border-gray-100 p-3 dark:border-gray-800">
                     <div className="flex items-center justify-between gap-3">
                       <p className="font-semibold text-gray-900 dark:text-white">#{payment.id}</p>
@@ -259,7 +267,7 @@ export default function OperationsPage() {
                     )}
                   </div>
                 ))}
-                {!loading && !data?.payment_issues.length && (
+                {!loading && !paymentIssues.length && (
                   <p className="text-sm text-gray-500 dark:text-gray-400">Зависших платежей нет.</p>
                 )}
               </div>
@@ -274,19 +282,19 @@ export default function OperationsPage() {
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="rounded-xl bg-gray-50 p-3 dark:bg-white/[0.03]">
                   <p className="text-gray-500">Shared active</p>
-                  <p className="mt-1 font-semibold text-gray-900 dark:text-white">{data?.proxy_cost.shared_active ?? '…'}</p>
+                  <p className="mt-1 font-semibold text-gray-900 dark:text-white">{proxyCost?.shared_active ?? '…'}</p>
                 </div>
                 <div className="rounded-xl bg-gray-50 p-3 dark:bg-white/[0.03]">
                   <p className="text-gray-500">Free slots</p>
-                  <p className="mt-1 font-semibold text-gray-900 dark:text-white">{data?.proxy_cost.shared_free_slots ?? '…'}</p>
+                  <p className="mt-1 font-semibold text-gray-900 dark:text-white">{proxyCost?.shared_free_slots ?? '…'}</p>
                 </div>
                 <div className="rounded-xl bg-gray-50 p-3 dark:bg-white/[0.03]">
                   <p className="text-gray-500">Unhealthy</p>
-                  <p className="mt-1 font-semibold text-gray-900 dark:text-white">{data?.proxy_cost.shared_unhealthy ?? '…'}</p>
+                  <p className="mt-1 font-semibold text-gray-900 dark:text-white">{proxyCost?.shared_unhealthy ?? '…'}</p>
                 </div>
                 <div className="rounded-xl bg-gray-50 p-3 dark:bg-white/[0.03]">
                   <p className="text-gray-500">Paid</p>
-                  <p className="mt-1 font-semibold text-gray-900 dark:text-white">{data?.proxy_cost.paid_active ?? '…'}</p>
+                  <p className="mt-1 font-semibold text-gray-900 dark:text-white">{proxyCost?.paid_active ?? '…'}</p>
                 </div>
               </div>
             </CardContent>
@@ -298,27 +306,27 @@ export default function OperationsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-3">
             <CardTitle>PulseGate Control</CardTitle>
-            <Badge color={data?.pulsegate.mode === 'enforce' ? 'success' : 'warning'} size="sm">
-              {data?.pulsegate.mode ?? '…'}
+            <Badge color={pulseGate?.mode === 'enforce' ? 'success' : 'warning'} size="sm">
+              {pulseGate?.mode ?? '…'}
             </Badge>
           </CardHeader>
           <CardContent className="px-6 pb-6">
             <div className="grid grid-cols-3 gap-3 text-sm">
               <div className="rounded-xl bg-gray-50 p-3 dark:bg-white/[0.03]">
                 <p className="text-gray-500">Buckets</p>
-                <p className="mt-1 font-semibold text-gray-900 dark:text-white">{data?.pulsegate.buckets_total ?? '…'}</p>
+                <p className="mt-1 font-semibold text-gray-900 dark:text-white">{pulseGate?.buckets_total ?? '…'}</p>
               </div>
               <div className="rounded-xl bg-gray-50 p-3 dark:bg-white/[0.03]">
                 <p className="text-gray-500">Cooldown</p>
-                <p className="mt-1 font-semibold text-gray-900 dark:text-white">{data?.pulsegate.active_cooldowns.length ?? '…'}</p>
+                <p className="mt-1 font-semibold text-gray-900 dark:text-white">{activeCooldowns.length}</p>
               </div>
               <div className="rounded-xl bg-gray-50 p-3 dark:bg-white/[0.03]">
                 <p className="text-gray-500">429</p>
-                <p className="mt-1 font-semibold text-gray-900 dark:text-white">{data?.pulsegate.total_rate_limited_events ?? '…'}</p>
+                <p className="mt-1 font-semibold text-gray-900 dark:text-white">{pulseGate?.total_rate_limited_events ?? '…'}</p>
               </div>
             </div>
             <div className="mt-4 space-y-2">
-              {(data?.pulsegate.active_cooldowns ?? []).slice(0, 5).map((item) => (
+              {activeCooldowns.slice(0, 5).map((item) => (
                 <div key={item.key} className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2 text-sm dark:border-gray-800">
                   <span className="truncate text-gray-700 dark:text-gray-300">{item.key}</span>
                   <Badge color="warning" size="sm">{Math.ceil(item.remaining_sec)} сек</Badge>
@@ -331,11 +339,11 @@ export default function OperationsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-3">
             <CardTitle>AI Conversation Memory</CardTitle>
-            <Badge color="info" size="sm">{data?.ai_memory.length ?? 0} summaries</Badge>
+            <Badge color="info" size="sm">{aiMemory.length} summaries</Badge>
           </CardHeader>
           <CardContent className="px-6 pb-6">
             <div className="space-y-3">
-              {(data?.ai_memory ?? []).slice(0, 8).map((item) => (
+              {aiMemory.slice(0, 8).map((item) => (
                 <div key={item.id} className="rounded-xl border border-gray-100 p-3 dark:border-gray-800">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -353,7 +361,7 @@ export default function OperationsPage() {
                   </p>
                 </div>
               ))}
-              {!loading && !data?.ai_memory.length && (
+              {!loading && !aiMemory.length && (
                 <p className="text-sm text-gray-500 dark:text-gray-400">Память диалогов пока не накоплена.</p>
               )}
             </div>
@@ -368,7 +376,7 @@ export default function OperationsPage() {
         </CardHeader>
         <CardContent className="px-6 pb-6">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {(data?.payments ?? []).slice(0, 8).map((payment) => (
+            {recentPayments.slice(0, 8).map((payment) => (
               <div key={payment.id} className="rounded-xl border border-gray-100 p-3 dark:border-gray-800">
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-semibold text-gray-900 dark:text-white">#{payment.id}</p>
