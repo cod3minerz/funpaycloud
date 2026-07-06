@@ -19,6 +19,7 @@ import {
   ShoppingBagIcon,
   ChatBubbleLeftRightIcon,
   CreditCardIcon,
+  WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
 import { clearAdminToken } from "@/lib/auth";
 import { adminApi } from "@/lib/api";
@@ -32,6 +33,7 @@ type NavItem = {
 
 const staticNavItems: Omit<NavItem, 'badge'>[] = [
   { href: "/ops/dashboard",  label: "Dashboard",        Icon: Squares2X2Icon },
+  { href: "/ops/operations", label: "Операции",         Icon: WrenchScrewdriverIcon },
   { href: "/ops/logs",       label: "Логи",             Icon: DocumentTextIcon },
   { href: "/ops/monitoring", label: "Мониторинг",       Icon: ComputerDesktopIcon },
   { href: "/ops/runners",    label: "Воркеры",          Icon: PlayCircleIcon },

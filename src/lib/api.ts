@@ -1847,6 +1847,130 @@ export type AdminPurchase = {
   failed_at?: string | null;
 };
 
+export type AdminOperationIncident = {
+  id: string;
+  level: 'critical' | 'warning' | 'info' | string;
+  source: string;
+  title: string;
+  message: string;
+  action_label?: string;
+  action_href?: string;
+  created_at: string;
+};
+
+export type AdminOperationAccountHealth = {
+  account_id: number;
+  username: string;
+  user_email?: string;
+  plan: string;
+  proxy_id?: number | null;
+  proxy_label?: string;
+  proxy_health?: string;
+  runner_active: boolean;
+  keeper_active: boolean;
+  raiser_active: boolean;
+  score: number;
+  issues: string[];
+  recommendation: string;
+  last_error?: string;
+  updated_at?: string;
+};
+
+export type AdminOperations = {
+  summary: {
+    critical: number;
+    warning: number;
+    accounts_total: number;
+    unhealthy_accounts: number;
+    payment_issues: number;
+    proxy_issues: number;
+    ai_memory_items: number;
+  };
+  incidents: AdminOperationIncident[];
+  account_health: AdminOperationAccountHealth[];
+  pulsegate: {
+    mode: string;
+    buckets_total: number;
+    active_cooldowns: Array<{
+      key: string;
+      kind: string;
+      scope: string;
+      remaining_sec: number;
+      until: string;
+    }>;
+    penalized_buckets: Array<{
+      key: string;
+      kind: string;
+      scope: string;
+      score: number;
+      until?: string | null;
+    }>;
+    total_rate_limited_events: number;
+  };
+  payments: AdminPurchase[];
+  payment_issues: Array<{
+    id: number;
+    user_id: number;
+    user_email?: string;
+    type: string;
+    product?: string;
+    amount: number;
+    currency: string;
+    status: string;
+    provision_status?: string;
+    provision_error?: string;
+    created_at: string;
+    paid_at?: string | null;
+    metadata?: Record<string, unknown>;
+  }>;
+  proxy_cost: {
+    shared_total: number;
+    shared_active: number;
+    shared_free_slots: number;
+    shared_used_slots: number;
+    shared_unhealthy: number;
+    shared_expiring_soon: number;
+    paid_active: number;
+    external_active: number;
+    estimated_monthly_rub: number;
+  };
+  ai_memory: Array<{
+    id: number;
+    chat_id: number;
+    account_id: number;
+    account_username?: string;
+    user_email?: string;
+    with_user?: string;
+    last_message_id: number;
+    summary_preview: string;
+    updated_at: string;
+  }>;
+  chat_alerts: AdminChatRuntime['alerts'];
+  checked_at: string;
+};
+
+export type UserProblem = {
+  id: string;
+  severity: 'critical' | 'warning' | 'info' | string;
+  kind: string;
+  title: string;
+  message: string;
+  action_label: string;
+  action_href: string;
+  account_id?: number;
+  account_username?: string;
+  created_at?: string | null;
+  deadline_at?: string | null;
+};
+
+export type ProblemInbox = {
+  items: UserProblem[];
+  total: number;
+  critical: number;
+  warning: number;
+  checked_at: string;
+};
+
 export type FeedbackItem = {
   id: number;
   type: 'bug' | 'idea';
@@ -1862,6 +1986,10 @@ export type FeedbackItem = {
 export const feedbackApi = {
   submit: (data: { type: 'bug' | 'idea'; title: string; description: string; telegram?: string }) =>
     apiRequest<void>('/api/feedback', { method: 'POST', body: JSON.stringify(data) }),
+};
+
+export const problemsApi = {
+  get: () => apiRequest<ProblemInbox>('/api/problems'),
 };
 
 export const adminApi = {
@@ -1880,6 +2008,7 @@ export const adminApi = {
     adminApiRequest<{ current: AdminMetric; history: AdminMetric[]; period: string }>(`/admin-api/metrics?period=${period}`),
   monitoring: () => adminApiRequest<AdminMonitoring>('/admin-api/monitoring'),
   chatRuntime: () => adminApiRequest<AdminChatRuntime>('/admin-api/chat-runtime'),
+  operations: () => adminApiRequest<AdminOperations>('/admin-api/operations'),
   logs: (params: { category?: string; level?: string; user_id?: number; account_id?: number; from?: string; to?: string; page?: number; limit?: number }) => {
     const query = new URLSearchParams();
     if (params.category) query.set('category', params.category);

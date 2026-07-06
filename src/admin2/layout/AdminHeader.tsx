@@ -7,6 +7,7 @@ import Badge from '@/platform2/components/ui/badge/Badge';
 
 const PAGE_TITLES: Record<string, string> = {
   "/ops/dashboard":  "Dashboard",
+  "/ops/operations": "Операции",
   "/ops/logs":       "Системные логи",
   "/ops/monitoring": "Мониторинг",
   "/ops/runners":    "Runtime воркеры",

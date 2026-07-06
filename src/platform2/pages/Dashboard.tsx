@@ -2,8 +2,9 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/platform2/components/ui/card";
 import { Button } from "@/platform2/components/ui/button";
+import Badge from "@/platform2/components/ui/badge/Badge";
 import Icon from "@/platform2/icons";
-import { accountsApi, settingsApi, ApiAccount } from "@/lib/api";
+import { accountsApi, settingsApi, problemsApi, ApiAccount, UserProblem } from "@/lib/api";
 import Link from "next/link";
 
 const TELEGRAM_CHANNEL = "https://t.me/funpay_cloud";
@@ -122,18 +123,85 @@ function OnboardingChecklist({ state }: { state: OnboardingState }) {
   );
 }
 
+function problemColor(severity: string): "error" | "warning" | "info" {
+  if (severity === "critical") return "error";
+  if (severity === "warning") return "warning";
+  return "info";
+}
+
+function ProblemInbox({ problems }: { problems: UserProblem[] }) {
+  if (problems.length === 0) return null;
+
+  return (
+    <Card className="border-warning-200 bg-warning-50/60 dark:border-warning-900/40 dark:bg-warning-950/10">
+      <CardHeader>
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <CardTitle>Требует внимания</CardTitle>
+            <p className="mt-1 text-sm text-body">
+              Собрали проблемы, которые могут мешать автоматизации прямо сейчас.
+            </p>
+          </div>
+          <Badge color={problems.some((item) => item.severity === "critical") ? "error" : "warning"} size="sm">
+            {problems.length} событий
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="px-6 pb-6">
+        <div className="grid gap-3 lg:grid-cols-2">
+          {problems.slice(0, 4).map((problem) => (
+            <div
+              key={problem.id}
+              className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900/70"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge color={problemColor(problem.severity)} size="sm">
+                      {problem.severity === "critical" ? "Важно" : problem.severity === "warning" ? "Проверьте" : "Инфо"}
+                    </Badge>
+                    {problem.account_username && (
+                      <span className="truncate text-xs text-body">{problem.account_username}</span>
+                    )}
+                  </div>
+                  <h3 className="mt-2 font-semibold text-dark dark:text-white">{problem.title}</h3>
+                  <p className="mt-1 text-sm text-body">{problem.message}</p>
+                </div>
+              </div>
+              <Link
+                href={problem.action_href || "/platform/accounts"}
+                className="mt-3 inline-flex items-center gap-2 rounded-lg border border-brand-300 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-600 hover:bg-brand-100 dark:border-brand-700 dark:bg-brand-950/30 dark:text-brand-400"
+              >
+                {problem.action_label || "Открыть"}
+                <Icon name="arrow-right" className="h-4 w-4" />
+              </Link>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function DashboardPage() {
   const [onboardingState, setOnboardingState] = useState<OnboardingState | null>(null);
+  const [problems, setProblems] = useState<UserProblem[]>([]);
+
   useEffect(() => {
     Promise.all([
       accountsApi.list().catch(() => [] as ApiAccount[]),
       settingsApi.getProfile().catch(() => null),
-    ]).then(([accounts, profile]) => {
+      problemsApi.get().catch(() => ({ items: [] as UserProblem[] })),
+    ]).then(([accounts, profile, problemInbox]) => {
       const hasAccount = accounts.length > 0;
       const hasProxy = accounts.some((a) => a.proxy_connected);
       const hasRunner = accounts.some((a) => a.runner_active);
       const hasTelegram = profile?.telegram_linked === true;
       setOnboardingState({ hasAccount, hasProxy, hasRunner, hasTelegram });
+      setProblems(problemInbox.items ?? []);
+    }).catch(() => {
+      setOnboardingState({ hasAccount: false, hasProxy: false, hasRunner: false, hasTelegram: false });
+      setProblems([]);
     });
   }, []);
 
@@ -152,6 +220,8 @@ export default function DashboardPage() {
       {showOnboarding && (
         <OnboardingChecklist state={onboardingState} />
       )}
+
+      <ProblemInbox problems={problems} />
 
       {/* ЗАГОЛОВОК */}
       <div>
