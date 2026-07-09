@@ -30,6 +30,40 @@ const quickPhrases = [
   "Гарантия 24 часа",
 ];
 
+const DEFAULT_CALL_SELLER_REPLY = "Сейчас позову продавца, он ответит в ближайшее время 🙂";
+
+const DEFAULT_CALL_SELLER_KEYWORDS = [
+  "позови продавца",
+  "позовите продавца",
+  "хочу поговорить с продавцом",
+  "нужен продавец",
+  "дай продавца",
+  "соедини с продавцом",
+  "позови живого",
+  "живого человека",
+  "оператора",
+  "позовите оператора",
+];
+
+function formatCallSellerKeywords(keywords: string[]) {
+  return keywords.join("\n");
+}
+
+function parseCallSellerKeywords(text: string) {
+  const seen = new Set<string>();
+  const keywords: string[] = [];
+  for (const line of text.split(/\r?\n/)) {
+    const keyword = line.trim().replace(/\s+/g, " ");
+    if (!keyword) continue;
+    const key = keyword.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    keywords.push(Array.from(keyword).slice(0, 120).join(""));
+    if (keywords.length >= 30) break;
+  }
+  return keywords;
+}
+
 const lifecycleEventLabels: Record<string, { label: string; hint: string }> = {
   order_paid: { label: "При оплате заказа", hint: "Отправляется покупателю сразу после оплаты. Переменные: {buyer}, {order_id}, {lot}, {price}" },
   order_confirmed: { label: "При подтверждении заказа", hint: "Отправляется когда покупатель нажал «Подтвердить выполнение»" },
@@ -202,7 +236,8 @@ export default function AIAssistantPage() {
   const [limitMessages, setLimitMessages] = useState(1);
 
   // Умное молчание
-  const [callSellerReply, setCallSellerReply] = useState("Сейчас позову продавца, он ответит в ближайшее время 🙂");
+  const [callSellerReply, setCallSellerReply] = useState(DEFAULT_CALL_SELLER_REPLY);
+  const [callSellerKeywordsText, setCallSellerKeywordsText] = useState(formatCallSellerKeywords(DEFAULT_CALL_SELLER_KEYWORDS));
   const [silenceSmallTalk, setSilenceSmallTalk] = useState(true);
   const [savingSilence, setSavingSilence] = useState(false);
 
@@ -246,6 +281,8 @@ export default function AIAssistantPage() {
       else setMode("bot");
       if (cfg.constructor_scenario_id) setScenario(cfg.constructor_scenario_id);
       if (cfg.call_seller_reply) setCallSellerReply(cfg.call_seller_reply);
+      if (Array.isArray(cfg.call_seller_keywords)) setCallSellerKeywordsText(formatCallSellerKeywords(cfg.call_seller_keywords));
+      else setCallSellerKeywordsText(formatCallSellerKeywords(DEFAULT_CALL_SELLER_KEYWORDS));
       if (cfg.silence_smalltalk !== undefined) setSilenceSmallTalk(cfg.silence_smalltalk);
     }).catch(() => {});
 
@@ -317,10 +354,11 @@ export default function AIAssistantPage() {
     setSavingSilence(true);
     try {
       await aiApi.updateSilence(account, {
-        call_seller_reply: callSellerReply.trim() || "Сейчас позову продавца, он ответит в ближайшее время 🙂",
+        call_seller_reply: callSellerReply.trim() || DEFAULT_CALL_SELLER_REPLY,
+        call_seller_keywords: parseCallSellerKeywords(callSellerKeywordsText),
         silence_smalltalk: silenceSmallTalk,
       });
-      toast.success("Настройки молчания сохранены");
+      toast.success("Настройки эскалации сохранены");
     } catch {
       toast.error("Не удалось сохранить");
     } finally {
@@ -831,12 +869,23 @@ export default function AIAssistantPage() {
                 value={callSellerReply}
                 onChange={(val) => setCallSellerReply(val)}
                 rows={2}
-                placeholder="Сейчас позову продавца, он ответит в ближайшее время 🙂"
+                placeholder={DEFAULT_CALL_SELLER_REPLY}
               />
+            </div>
+            <div>
+              <p className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Фразы для вызова продавца</p>
+              <TextArea
+                value={callSellerKeywordsText}
+                onChange={(val) => setCallSellerKeywordsText(val)}
+                rows={6}
+                placeholder={formatCallSellerKeywords(DEFAULT_CALL_SELLER_KEYWORDS)}
+              />
+              <p className="mt-1 text-xs text-gray-400">
+                Каждая фраза с новой строки. Если покупатель напишет одну из них, AI отправит TG-уведомление.
+              </p>
             </div>
             <div className="rounded-xl bg-blue-50 px-4 py-3 dark:bg-blue-900/20">
               <p className="text-xs text-blue-700 dark:text-blue-300">
-                Фразы которые запускают эскалацию: «позови продавца», «хочу поговорить с продавцом», «нужен оператор» и другие.
                 После эскалации AI молчит пока продавец сам не ответит.
               </p>
             </div>

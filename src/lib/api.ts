@@ -1076,6 +1076,7 @@ export type AIConfig = {
   chat_mode?: 'assistant' | 'constructor' | string;
   constructor_scenario_id?: string | null;
   call_seller_reply?: string;
+  call_seller_keywords?: string[];
   silence_smalltalk?: boolean;
   used_messages: number;
   limit_messages: number;
@@ -1262,7 +1263,7 @@ export const aiApi = {
     }),
   updateSilence: (
     accountId: number | string,
-    payload: { call_seller_reply: string; silence_smalltalk: boolean },
+    payload: { call_seller_reply: string; call_seller_keywords: string[]; silence_smalltalk: boolean },
   ) =>
     apiRequest(`/api/ai/config/${accountId}/silence`, {
       method: 'PATCH',
