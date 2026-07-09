@@ -204,7 +204,6 @@ export default function AIAssistantPage() {
   // Умное молчание
   const [callSellerReply, setCallSellerReply] = useState("Сейчас позову продавца, он ответит в ближайшее время 🙂");
   const [silenceSmallTalk, setSilenceSmallTalk] = useState(true);
-  const [silenceAfterCompletion, setSilenceAfterCompletion] = useState(true);
   const [savingSilence, setSavingSilence] = useState(false);
 
   // Триггерные слова
@@ -248,7 +247,6 @@ export default function AIAssistantPage() {
       if (cfg.constructor_scenario_id) setScenario(cfg.constructor_scenario_id);
       if (cfg.call_seller_reply) setCallSellerReply(cfg.call_seller_reply);
       if (cfg.silence_smalltalk !== undefined) setSilenceSmallTalk(cfg.silence_smalltalk);
-      if (cfg.silence_after_completion !== undefined) setSilenceAfterCompletion(cfg.silence_after_completion);
     }).catch(() => {});
 
     aiApi.getFaq(account).then(setKb).catch(() => {});
@@ -321,7 +319,6 @@ export default function AIAssistantPage() {
       await aiApi.updateSilence(account, {
         call_seller_reply: callSellerReply.trim() || "Сейчас позову продавца, он ответит в ближайшее время 🙂",
         silence_smalltalk: silenceSmallTalk,
-        silence_after_completion: silenceAfterCompletion,
       });
       toast.success("Настройки молчания сохранены");
     } catch {
@@ -802,7 +799,6 @@ export default function AIAssistantPage() {
           <CardContent className="divide-y divide-gray-100 p-0 dark:divide-gray-800">
             {[
               { key: "smalltalk", label: "Молчать на «ок», «спасибо», 👍", desc: "Не тратить токены на короткие реакции", value: silenceSmallTalk, set: setSilenceSmallTalk },
-              { key: "completion", label: "Молчать после подтверждения заказа", desc: "Заказ закрыт — не беспокоить покупателя", value: silenceAfterCompletion, set: setSilenceAfterCompletion },
             ].map((item) => (
               <div key={item.key} className="flex items-center justify-between gap-4 px-5 py-4">
                 <div>
