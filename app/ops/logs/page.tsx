@@ -21,6 +21,38 @@ const levelColor: Record<string, 'light' | 'warning' | 'error'> = {
   error: 'error',
 };
 
+const proxy6PayloadFields = [
+  { key: 'error', label: 'Ошибка' },
+  { key: 'count', label: 'Кол-во' },
+  { key: 'price', label: 'Цена' },
+  { key: 'balance', label: 'Баланс' },
+  { key: 'country', label: 'Страна' },
+  { key: 'version', label: 'Версия' },
+] as const;
+
+type PayloadDetail = { label: string; value: string };
+
+function formatPayloadValue(value: unknown): string | null {
+  if (value == null || value === '') return null;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function proxy6PayloadDetails(log: AdminLog): PayloadDetail[] {
+  if (log.category !== 'proxy6_autobuy' || !log.payload) return [];
+
+  return proxy6PayloadFields.reduce<PayloadDetail[]>((details, field) => {
+    const value = formatPayloadValue(log.payload?.[field.key]);
+    if (value) details.push({ label: field.label, value });
+    return details;
+  }, []);
+}
+
 export default function AdminLogsPage() {
   const [logs, setLogs] = useState<AdminLog[]>([]);
   const [total, setTotal] = useState(0);
@@ -194,28 +226,44 @@ export default function AdminLogsPage() {
                     </TableCell>
                   </TableRow>
                 )}
-                {logs.map(log => (
-                  <TableRow key={log.id}>
-                    <TableCell className="whitespace-nowrap px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
-                      {new Date(log.created_at).toLocaleString('ru-RU')}
-                    </TableCell>
-                    <TableCell className="px-4 py-3">
-                      <Badge variant="light" color={levelColor[log.level] ?? 'light'} size="sm">
-                        {log.level}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">{log.category}</TableCell>
-                    <TableCell className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
-                      {log.user_id != null ? (
-                        <a href={`/ops/users/${log.user_id}`} className="font-mono text-brand-600 hover:underline dark:text-brand-400">
-                          #{log.user_id}
-                        </a>
-                      ) : '—'}
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">{log.funpay_account_id || '—'}</TableCell>
-                    <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">{log.message}</TableCell>
-                  </TableRow>
-                ))}
+                {logs.map(log => {
+                  const payloadDetails = proxy6PayloadDetails(log);
+
+                  return (
+                    <TableRow key={log.id}>
+                      <TableCell className="whitespace-nowrap px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(log.created_at).toLocaleString('ru-RU')}
+                      </TableCell>
+                      <TableCell className="px-4 py-3">
+                        <Badge variant="light" color={levelColor[log.level] ?? 'light'} size="sm">
+                          {log.level}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">{log.category}</TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
+                        {log.user_id != null ? (
+                          <a href={`/ops/users/${log.user_id}`} className="font-mono text-brand-600 hover:underline dark:text-brand-400">
+                            #{log.user_id}
+                          </a>
+                        ) : '—'}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">{log.funpay_account_id || '—'}</TableCell>
+                      <TableCell className="max-w-[720px] px-4 py-3 text-sm text-gray-700 dark:text-gray-200">
+                        <div className="break-words">{log.message}</div>
+                        {payloadDetails.length > 0 && (
+                          <div className="mt-2 space-y-1 text-xs text-gray-500 dark:text-gray-400">
+                            {payloadDetails.map(detail => (
+                              <div key={detail.label} className="break-words">
+                                <span className="font-medium text-gray-600 dark:text-gray-300">{detail.label}: </span>
+                                <span className="font-mono">{detail.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
