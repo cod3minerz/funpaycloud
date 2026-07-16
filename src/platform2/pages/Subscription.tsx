@@ -203,23 +203,43 @@ export default function SubscriptionPage() {
     const paymentId = searchParams.get("paymentId");
     if (!paymentResult || !paymentId) return;
 
+    // T-Bank may redirect back before payment reaches CONFIRMED status.
+    // Poll up to 8 times with 2.5s delay to wait for AUTHORIZED → CONFIRMED.
     let cancelled = false;
     async function verifyPayment() {
-      try {
-        const status = await billingApi.getCheckoutStatus(paymentId);
+      if (paymentResult === "failed") {
+        toast.error("Платеж не прошел");
+        return;
+      }
+      const maxAttempts = 8;
+      const delay = 2500;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
         if (cancelled) return;
-        if (status.status === "paid") {
-          toast.success("Подписка оплачена и активирована");
-          await refreshProfile();
-          return;
+        try {
+          const status = await billingApi.getCheckoutStatus(paymentId);
+          if (cancelled) return;
+          if (status.status === "paid") {
+            toast.success("Подписка оплачена и активирована!");
+            await refreshProfile();
+            return;
+          }
+          if (status.status === "failed") {
+            toast.error("Платеж не прошел");
+            return;
+          }
+          // pending — ждём перед следующей попыткой
+          if (attempt < maxAttempts - 1) {
+            await new Promise<void>((r) => setTimeout(r, delay));
+          }
+        } catch {
+          if (cancelled) return;
+          if (attempt < maxAttempts - 1) {
+            await new Promise<void>((r) => setTimeout(r, delay));
+          }
         }
-        if (status.status === "failed" || paymentResult === "failed") {
-          toast.error("Платеж не прошел");
-          return;
-        }
-        toast.info("Платеж еще обрабатывается");
-      } catch {
-        if (!cancelled) toast.error("Не удалось проверить статус платежа");
+      }
+      if (!cancelled) {
+        toast.info("Платеж обрабатывается. Статус обновится автоматически.");
       }
     }
     verifyPayment();
