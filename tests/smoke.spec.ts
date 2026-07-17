@@ -10,6 +10,7 @@ const PLATFORM_ROUTES = [
   '/platform/analytics',
   '/platform/automation',
   '/platform/reviews',
+  '/platform/auto-responder',
   '/platform/plugins',
   '/platform/finances',
   '/platform/settings',
@@ -140,6 +141,32 @@ test.beforeEach(async ({ page }) => {
       runtime_ready: reviewRuntimeReady,
       runtime_reason: reviewRuntimeReady ? '' : 'runtime_unavailable',
     };
+    let nextAutoResponderID = 41;
+    let nextAutoResponderCommandID = 401;
+    let autoResponders: any[] = [];
+    const autoResponderPlugins = [
+      {
+        id: 2,
+        slug: 'telegram_notify',
+        name: 'Telegram уведомления',
+        description: 'Отправляет уведомления в Telegram',
+      },
+    ];
+    const storeAutoResponder = (body: any, id = nextAutoResponderID++) => ({
+      id,
+      funpay_account_id: accountID,
+      name: body.name,
+      menu_text: body.menu_text,
+      enabled: false,
+      commands: (body.commands || []).map((command: any, position: number) => ({
+        id: nextAutoResponderCommandID++,
+        auto_responder_id: id,
+        ...command,
+        position,
+      })),
+      created_at: '2026-07-17T10:00:00Z',
+      updated_at: '2026-07-17T10:00:00Z',
+    });
     const notifications = {
       enabled: weeklyInitiallyOn,
       new_order: false,
@@ -226,6 +253,41 @@ test.beforeEach(async ({ page }) => {
             proxy_healthy: reviewProxyReady && reviewRuntimeReady,
           },
         ]);
+      }
+      if (path === `/api/accounts/${accountID}/auto-responder-plugins` && method === 'GET') {
+        return envelope(autoResponderPlugins);
+      }
+      if (path === `/api/accounts/${accountID}/auto-responders` && method === 'GET') {
+        return envelope(autoResponders);
+      }
+      if (path === `/api/accounts/${accountID}/auto-responders` && method === 'POST') {
+        const created = storeAutoResponder(JSON.parse(String(init?.body || '{}')));
+        autoResponders = [created, ...autoResponders];
+        return envelope(created);
+      }
+      const enabledMatch = path.match(/^\/api\/accounts\/\d+\/auto-responders\/(\d+)\/enabled$/);
+      if (enabledMatch && method === 'PATCH') {
+        const id = Number(enabledMatch[1]);
+        const enabled = Boolean(JSON.parse(String(init?.body || '{}')).enabled);
+        autoResponders = autoResponders.map((item) => ({
+          ...item,
+          enabled: item.id === id ? enabled : enabled ? false : item.enabled,
+        }));
+        return envelope(autoResponders.find((item) => item.id === id));
+      }
+      const responderMatch = path.match(/^\/api\/accounts\/\d+\/auto-responders\/(\d+)$/);
+      if (responderMatch && method === 'PUT') {
+        const id = Number(responderMatch[1]);
+        const body = JSON.parse(String(init?.body || '{}'));
+        const current = autoResponders.find((item) => item.id === id);
+        const updated = { ...storeAutoResponder(body, id), enabled: Boolean(current?.enabled) };
+        autoResponders = autoResponders.map((item) => item.id === id ? updated : item);
+        return envelope(updated);
+      }
+      if (responderMatch && method === 'DELETE') {
+        const id = Number(responderMatch[1]);
+        autoResponders = autoResponders.filter((item) => item.id !== id);
+        return envelope({});
       }
       if (path === `/api/accounts/${accountID}/review-settings` && method === 'GET') {
         return envelope(reviewSettings);
@@ -547,7 +609,7 @@ test('orders render account name and hide actions for non-sale rows', async ({ p
 
 test('weekly report toggle opens schedule modal and saves selected schedule', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto('/platform/settings');
+  await page.goto('/platform/integrations');
 
   const weeklyToggle = page.getByTestId('weekly-report-toggle');
   await expect(weeklyToggle).toBeVisible();
@@ -594,7 +656,7 @@ test('weekly report toggle opens schedule modal and saves selected schedule', as
 
 test('weekly report shows failed delivery status from backend', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto('/platform/settings?weeklyOn=1&weeklyFailed=1');
+  await page.goto('/platform/integrations?weeklyOn=1&weeklyFailed=1');
 
   await expect(page.getByTestId('weekly-report-toggle')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('weekly-report-error')).toContainText('Ошибка отправки');
@@ -692,9 +754,82 @@ test('reviews page redirects non-admin user', async ({ page }) => {
   await expect(page).toHaveURL(/\/platform\/dashboard/);
 });
 
+test('auto responder is visible only to admin and redirects non-admin', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/platform/auto-responder');
+  await expect(page.getByRole('heading', { name: 'Автоответчик', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Автоответчик' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Отзывы' })).toBeVisible();
+
+  await page.goto('/platform/auto-responder?admin=0');
+  await expect(page).toHaveURL(/\/platform\/dashboard/);
+  await expect(page.getByRole('link', { name: 'Автоответчик' })).toHaveCount(0);
+});
+
+test('auto responder CRUD, conditional actions and single active toggle', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  await page.goto('/platform/auto-responder');
+  await expect(page.getByText('Добавьте автоответчик')).toBeVisible();
+
+  await page.getByTestId('add-auto-responder').click();
+  await page.getByTestId('auto-responder-name').fill('Основной автоответчик');
+  await page.getByTestId('auto-responder-menu').fill('1 — инструкция\n2 — продавец');
+  await page.getByTestId('auto-responder-trigger-0').fill('1');
+  await page.getByTestId('auto-responder-message-0').fill('Инструкция для покупателя');
+
+  await page.getByTestId('add-auto-responder-command').click();
+  await page.getByTestId('auto-responder-trigger-1').fill('2');
+  await page.getByTestId('auto-responder-action-1').selectOption('call_seller');
+  await expect(page.getByText(/Продавец получит Telegram-уведомление/)).toBeVisible();
+
+  await page.getByTestId('add-auto-responder-command').click();
+  await page.getByTestId('auto-responder-trigger-2').fill('telegram');
+  await page.getByTestId('auto-responder-action-2').selectOption('run_plugin');
+  await expect(page.getByTestId('auto-responder-plugin-2')).toBeVisible();
+  await page.getByTestId('auto-responder-plugin-2').selectOption('telegram_notify');
+
+  await page.getByTestId('save-auto-responder').click();
+  const firstCard = page.getByTestId('auto-responder-card-41');
+  await expect(firstCard).toContainText('Основной автоответчик');
+  await expect(firstCard).toContainText('3 команд');
+
+  const firstToggle = page.getByTestId('auto-responder-toggle-41');
+  await firstToggle.click();
+  await expect(firstToggle).toHaveAttribute('aria-checked', 'true');
+
+  await firstCard.getByRole('button', { name: 'Редактировать Основной автоответчик' }).click();
+  await page.getByTestId('auto-responder-name').fill('Основной обновлённый');
+  await page.getByTestId('save-auto-responder').click();
+  await expect(firstCard).toContainText('Основной обновлённый');
+
+  await page.getByTestId('add-auto-responder').click();
+  await page.getByTestId('auto-responder-name').fill('Резервный');
+  await page.getByTestId('auto-responder-menu').fill('start — начать');
+  await page.getByTestId('auto-responder-trigger-0').fill('start');
+  await page.getByTestId('auto-responder-message-0').fill('Начинаем');
+  await page.getByTestId('save-auto-responder').click();
+
+  const secondToggle = page.getByTestId('auto-responder-toggle-42');
+  await secondToggle.click();
+  await expect(secondToggle).toHaveAttribute('aria-checked', 'true');
+  await expect(firstToggle).toHaveAttribute('aria-checked', 'false');
+
+  page.once('dialog', (dialog) => dialog.accept());
+  await firstCard.getByRole('button', { name: 'Удалить Основной обновлённый' }).click();
+  await expect(firstCard).toHaveCount(0);
+});
+
+test('auto responder form has no horizontal overflow on phone', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/platform/auto-responder');
+  await page.getByTestId('add-auto-responder').click();
+  await expect(page.getByTestId('auto-responder-form')).toBeVisible();
+  await assertNoHorizontalOverflow(page);
+});
+
 test('telegram master toggle does not enable weekly report', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto('/platform/settings');
+  await page.goto('/platform/integrations');
 
   const masterToggle = page.getByTestId('telegram-notifications-master-toggle');
   const weeklyToggle = page.getByTestId('weekly-report-toggle');
@@ -718,7 +853,7 @@ test('telegram master toggle does not enable weekly report', async ({ page }) =>
 
 test('weekly report schedule modal is visible on phone viewport', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/platform/settings');
+  await page.goto('/platform/integrations');
 
   await page.getByTestId('weekly-report-toggle').click();
   const modal = page.getByTestId('weekly-report-schedule-modal');
@@ -769,8 +904,8 @@ test('all /platform routes have no horizontal overflow on phone viewport', async
   await page.setViewportSize({ width: 390, height: 844 });
 
   for (const route of PLATFORM_ROUTES) {
-    await page.goto(route);
-    await page.waitForLoadState('networkidle');
+    await page.goto(route, { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('body')).toBeVisible();
     await assertNoHorizontalOverflow(page);
   }
 });

@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState,useCallback } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -26,7 +26,7 @@ import {
 } from "../icons/index";
 import SidebarWidget from "./SidebarWidget";
 import { usePinnedPlugins, ALL_PLUGINS } from "@/lib/pinnedPlugins";
-import { notificationsApi } from "@/lib/api";
+import { notificationsApi, settingsApi } from "@/lib/api";
 
 type NavItem = {
   name: string;
@@ -53,11 +53,6 @@ const mainNavItems: NavItem[] = [
     icon: <ListIcon className="h-5 w-5" />,
     name: "Заказы",
     path: `${BASE}/orders`,
-  },
-  {
-    icon: <ShootingStarIcon className="h-5 w-5" />,
-    name: "Отзывы",
-    path: `${BASE}/reviews`,
   },
   {
     icon: <BoxCubeIcon className="h-5 w-5" />,
@@ -124,16 +119,39 @@ const managementNavItems: NavItem[] = [
   },
 ];
 
-const navItems = mainNavItems;
-const othersItems: NavItem[] = [];
-
-const devNavItems: NavItem[] = [];
+const devNavItems: NavItem[] = [
+  {
+    icon: <ShootingStarIcon className="h-5 w-5" />,
+    name: "Отзывы",
+    path: `${BASE}/reviews`,
+  },
+  {
+    icon: <BoltIcon className="h-5 w-5" />,
+    name: "Автоответчик",
+    path: `${BASE}/auto-responder`,
+  },
+];
 
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered, toggleMobileSidebar } = useSidebar();
   const pathname = usePathname();
   const { pinned } = usePinnedPlugins();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    settingsApi.getProfile()
+      .then((profile) => {
+        if (alive) setIsAdmin(Boolean(profile.is_admin));
+      })
+      .catch(() => {
+        if (alive) setIsAdmin(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -470,7 +488,7 @@ const AppSidebar: React.FC = () => {
               {renderMenuItems(dynamicManagementNavItems, "others")}
             </div>
 
-            {devNavItems.length > 0 && (
+            {isAdmin && devNavItems.length > 0 && (
               <div className="">
                 <h2
                   className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${

@@ -365,6 +365,54 @@ export type ApiAccount = {
   proxy_max_accounts?: number;
 };
 
+export type AutoResponderTriggerType = 'keyword';
+export type AutoResponderActionType = 'send_message' | 'call_seller' | 'run_plugin';
+
+export type AutoResponderCommand = {
+  id: number;
+  auto_responder_id: number;
+  trigger_type: AutoResponderTriggerType;
+  trigger_value: string;
+  action_type: AutoResponderActionType;
+  action_value?: string;
+  plugin_slug?: string | null;
+  position: number;
+};
+
+export type AutoResponder = {
+  id: number;
+  funpay_account_id: number;
+  name: string;
+  menu_text: string;
+  enabled: boolean;
+  commands: AutoResponderCommand[];
+  created_at: string;
+  updated_at: string;
+};
+
+export type AutoResponderCommandInput = {
+  trigger_type: AutoResponderTriggerType;
+  trigger_value: string;
+  action_type: AutoResponderActionType;
+  action_value?: string;
+  plugin_slug?: string | null;
+  position: number;
+};
+
+export type AutoResponderInput = {
+  name: string;
+  menu_text: string;
+  commands: AutoResponderCommandInput[];
+};
+
+export type AutoResponderPlugin = {
+  id: number;
+  slug: string;
+  name: string;
+  description?: string;
+  icon_url?: string;
+};
+
 export type ReviewRatingKey = '1' | '2' | '3' | '4' | '5';
 
 export type ReviewReplyConfig = {
@@ -507,6 +555,30 @@ export const accountsApi = {
       method: 'POST',
       body: JSON.stringify(typeof payload === 'string' ? { mode: payload } : payload),
     }),
+};
+
+export const autoRespondersApi = {
+  list: (accountId: number | string) =>
+    apiRequest<AutoResponder[]>(`/api/accounts/${accountId}/auto-responders`),
+  create: (accountId: number | string, payload: AutoResponderInput) =>
+    apiRequest<AutoResponder>(`/api/accounts/${accountId}/auto-responders`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  update: (accountId: number | string, responderId: number | string, payload: AutoResponderInput) =>
+    apiRequest<AutoResponder>(`/api/accounts/${accountId}/auto-responders/${responderId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  delete: (accountId: number | string, responderId: number | string) =>
+    apiRequest(`/api/accounts/${accountId}/auto-responders/${responderId}`, { method: 'DELETE' }),
+  setEnabled: (accountId: number | string, responderId: number | string, enabled: boolean) =>
+    apiRequest<AutoResponder>(`/api/accounts/${accountId}/auto-responders/${responderId}/enabled`, {
+      method: 'PATCH',
+      body: JSON.stringify({ enabled }),
+    }),
+  plugins: (accountId: number | string) =>
+    apiRequest<AutoResponderPlugin[]>(`/api/accounts/${accountId}/auto-responder-plugins`),
 };
 
 // ── Lots ──────────────────────────────────────────────────────────────────────

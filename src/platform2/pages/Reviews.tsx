@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   accountsApi,
+  settingsApi,
   type ApiAccount,
   type ReviewRatingKey,
   type ReviewSettings,
@@ -203,7 +205,8 @@ function SwitchButton({
 }
 
 export default function ReviewsPage() {
-  const [checkingAccess] = useState(false);
+  const router = useRouter();
+  const [checkingAccess, setCheckingAccess] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
@@ -214,6 +217,25 @@ export default function ReviewsPage() {
   const [statusUpdatedAt, setStatusUpdatedAt] = useState<Date | null>(null);
   const [statusRefreshing, setStatusRefreshing] = useState(false);
   const [requestingScan, setRequestingScan] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    settingsApi.getProfile()
+      .then((profile) => {
+        if (!alive) return;
+        if (!profile.is_admin) {
+          router.replace("/platform/dashboard");
+          return;
+        }
+        setCheckingAccess(false);
+      })
+      .catch(() => {
+        if (alive) router.replace("/platform/dashboard");
+      });
+    return () => {
+      alive = false;
+    };
+  }, [router]);
 
   useEffect(() => {
     if (checkingAccess) return;
