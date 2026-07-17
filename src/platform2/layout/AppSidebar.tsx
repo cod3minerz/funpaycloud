@@ -83,6 +83,11 @@ const managementNavItems: NavItem[] = [
     path: `${BASE}/analytics`,
   },
   {
+    icon: <ShootingStarIcon className="h-5 w-5" />,
+    name: "Отзывы",
+    path: `${BASE}/reviews`,
+  },
+  {
     icon: <CpuChipIcon className="h-5 w-5" />,
     name: "AI-Ассистент",
     path: `${BASE}/ai-assistant`,
@@ -120,11 +125,6 @@ const managementNavItems: NavItem[] = [
 ];
 
 const devNavItems: NavItem[] = [
-  {
-    icon: <ShootingStarIcon className="h-5 w-5" />,
-    name: "Отзывы",
-    path: `${BASE}/reviews`,
-  },
   {
     icon: <BoltIcon className="h-5 w-5" />,
     name: "Автоответчик",

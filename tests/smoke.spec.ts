@@ -748,10 +748,13 @@ test('reviews global switch stays blocked without proxy', async ({ page }) => {
   await expect(globalToggle).toBeDisabled();
 });
 
-test('reviews page redirects non-admin user', async ({ page }) => {
+test('reviews page and navigation are available to non-admin user', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/platform/reviews?admin=0');
-  await expect(page).toHaveURL(/\/platform\/dashboard/);
+  await expect(page).toHaveURL(/\/platform\/reviews/);
+  await expect(page.getByTestId('reviews-page')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Отзывы' })).toBeVisible();
+  await expect(page.getByText('DEV', { exact: true })).toHaveCount(0);
 });
 
 test('auto responder is visible only to admin and redirects non-admin', async ({ page }) => {
@@ -764,6 +767,7 @@ test('auto responder is visible only to admin and redirects non-admin', async ({
   await page.goto('/platform/auto-responder?admin=0');
   await expect(page).toHaveURL(/\/platform\/dashboard/);
   await expect(page.getByRole('link', { name: 'Автоответчик' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Отзывы' })).toBeVisible();
 });
 
 test('auto responder CRUD, conditional actions and single active toggle', async ({ page }) => {

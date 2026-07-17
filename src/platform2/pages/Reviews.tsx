@@ -1,11 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   accountsApi,
-  settingsApi,
   type ApiAccount,
   type ReviewRatingKey,
   type ReviewSettings,
@@ -205,8 +203,6 @@ function SwitchButton({
 }
 
 export default function ReviewsPage() {
-  const router = useRouter();
-  const [checkingAccess, setCheckingAccess] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
@@ -219,26 +215,6 @@ export default function ReviewsPage() {
   const [requestingScan, setRequestingScan] = useState(false);
 
   useEffect(() => {
-    let alive = true;
-    settingsApi.getProfile()
-      .then((profile) => {
-        if (!alive) return;
-        if (!profile.is_admin) {
-          router.replace("/platform/dashboard");
-          return;
-        }
-        setCheckingAccess(false);
-      })
-      .catch(() => {
-        if (alive) router.replace("/platform/dashboard");
-      });
-    return () => {
-      alive = false;
-    };
-  }, [router]);
-
-  useEffect(() => {
-    if (checkingAccess) return;
     let alive = true;
     setLoading(true);
     accountsApi
@@ -257,7 +233,7 @@ export default function ReviewsPage() {
     return () => {
       alive = false;
     };
-  }, [checkingAccess]);
+  }, []);
 
   const refreshStatus = useCallback(async (accountID = selectedAccountId, quiet = false) => {
     if (!accountID) return;
@@ -274,7 +250,7 @@ export default function ReviewsPage() {
   }, [selectedAccountId]);
 
   useEffect(() => {
-    if (!selectedAccountId || checkingAccess) return;
+    if (!selectedAccountId) return;
     let alive = true;
     setLoading(true);
     Promise.all([
@@ -299,10 +275,10 @@ export default function ReviewsPage() {
     return () => {
       alive = false;
     };
-  }, [selectedAccountId, checkingAccess]);
+  }, [selectedAccountId]);
 
   useEffect(() => {
-    if (!selectedAccountId || checkingAccess) return;
+    if (!selectedAccountId) return;
     const poll = () => {
       void refreshStatus(selectedAccountId, true);
     };
@@ -318,7 +294,7 @@ export default function ReviewsPage() {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [selectedAccountId, checkingAccess, refreshStatus]);
+  }, [selectedAccountId, refreshStatus]);
 
   const dirtyByRating = useMemo(() => {
     const result: Record<ReviewRatingKey, boolean> = {
@@ -429,22 +405,13 @@ export default function ReviewsPage() {
     }
   }
 
-  if (checkingAccess) {
-    return <div className="text-sm text-gray-500 dark:text-gray-400">Загрузка...</div>;
-  }
-
   return (
     <div data-testid="reviews-page" className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white md:text-3xl">
-              Авто-ответы на отзывы
-            </h1>
-            <span className="rounded-md bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-              DEV
-            </span>
-          </div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white md:text-3xl">
+            Авто-ответы на отзывы
+          </h1>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             Бот отвечает на новые отзывы FunPay в зависимости от оценки.
           </p>
