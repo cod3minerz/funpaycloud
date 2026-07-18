@@ -19,8 +19,10 @@ export class ApiError extends Error {
   constructor(
     public message: string,
     public status?: number,
+    public code?: string,
   ) {
     super(message);
+    this.name = 'ApiError';
   }
 }
 
@@ -28,6 +30,7 @@ type ApiEnvelope<T> = {
   success: boolean;
   data?: T;
   error?: string;
+  code?: string;
 };
 
 type ApiRequestOptions = RequestInit & {
@@ -161,7 +164,7 @@ export async function apiRequest<T = unknown>(
       // Don't auto-redirect: public pages (landing) may call auth-required endpoints
       // to probe login state. Platform layout handles redirect on its own.
     }
-    throw new ApiError(envelope.error || 'Сессия истекла. Войдите снова.', 401);
+    throw new ApiError(envelope.error || 'Сессия истекла. Войдите снова.', 401, envelope.code);
   }
 
   if (response.status === 403 && !_csrfRetryAttempted && isStateChangingMethod(method)) {
@@ -173,7 +176,7 @@ export async function apiRequest<T = unknown>(
   }
 
   if (!response.ok || !envelope.success) {
-    throw new ApiError(envelope.error || 'Ошибка запроса', response.status);
+    throw new ApiError(envelope.error || 'Ошибка запроса', response.status, envelope.code);
   }
 
   return (envelope.data as T) ?? ({} as T);
@@ -230,14 +233,14 @@ export async function adminApiRequest<T = unknown>(
     if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/ops/login')) {
       window.location.href = '/ops/login';
     }
-    throw new ApiError(envelope.error || 'Доступ запрещён', response.status);
+    throw new ApiError(envelope.error || 'Доступ запрещён', response.status, envelope.code);
   }
 
   if (!response.ok || !envelope.success) {
     const fallback = rawBody
       ? `Ошибка admin-запроса (${response.status}): ${rawBody.slice(0, 180)}`
       : `Ошибка admin-запроса (${response.status})`;
-    throw new ApiError(envelope.error || fallback, response.status);
+    throw new ApiError(envelope.error || fallback, response.status, envelope.code);
   }
 
   return (envelope.data as T) ?? ({} as T);
@@ -500,6 +503,7 @@ export const accountsApi = {
     apiRequest<{ id: number }>('/api/accounts', {
       method: 'POST',
       body: JSON.stringify({ golden_key }),
+      timeoutMs: 20000,
     }),
   delete: (id: number | string) =>
     apiRequest(`/api/accounts/${id}`, { method: 'DELETE' }),

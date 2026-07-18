@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/platform2/components/ui/table";
 import Icon from "@/platform2/icons";
-import { accountsApi, billingApi, ApiAccount } from "@/lib/api";
+import { accountsApi, billingApi, ApiAccount, ApiError } from "@/lib/api";
 import { toast } from "sonner";
 
 type Account = {
@@ -31,6 +31,8 @@ type Account = {
   lastEvent: string;
   sessionUpdated: string;
 };
+
+const GOLDEN_KEY_PATTERN = /^[A-Za-z0-9]{20,64}$/;
 
 function mapApiAccount(a: ApiAccount): Account {
   return {
@@ -96,7 +98,7 @@ export default function AccountsPage() {
   const [extProxy, setExtProxy] = useState({ host: "", port: "8080", protocol: "HTTP", login: "", password: "" });
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(true);
-  const [proxyTargetId, setProxyTargetId] = useState<number | null>(null);
+  const [proxyTarget, setProxyTarget] = useState<Account | null>(null);
   const [addingAccount, setAddingAccount] = useState(false);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<"" | "online" | "offline">("");
@@ -105,6 +107,44 @@ export default function AccountsPage() {
   const [raiserTogglingIds, setRaiserTogglingIds] = useState<Set<string>>(new Set());
   const [proxyPaymentLoading, setProxyPaymentLoading] = useState(false);
   const [showProxyBanner, setShowProxyBanner] = useState(false);
+  const currentProxyTarget = useMemo(
+    () => proxyTarget ? accounts.find((account) => account.apiId === proxyTarget.apiId) ?? null : null,
+    [accounts, proxyTarget],
+  );
+
+  function closeAddModal() {
+    if (addingAccount) return;
+    setIsAddModal(false);
+    setGoldenKey("");
+  }
+
+  function closeProxyFlow() {
+    setIsProxyModal(false);
+    setIsExternalProxyModal(false);
+    setProxyTarget(null);
+  }
+
+  async function refreshProxyTarget(): Promise<Account | null> {
+    if (!proxyTarget) {
+      closeProxyFlow();
+      return null;
+    }
+    try {
+      const freshAccounts = (await accountsApi.list()).map(mapApiAccount);
+      setAccounts(freshAccounts);
+      const freshTarget = freshAccounts.find((account) => account.apiId === proxyTarget.apiId) ?? null;
+      if (!freshTarget) {
+        toast.error("Аккаунт больше недоступен. Обновите список и выберите его снова.");
+        closeProxyFlow();
+        return null;
+      }
+      setProxyTarget(freshTarget);
+      return freshTarget;
+    } catch {
+      toast.error("Не удалось обновить список аккаунтов. Попробуйте ещё раз.");
+      return null;
+    }
+  }
 
   useEffect(() => {
     accountsApi.list()
@@ -112,6 +152,19 @@ export default function AccountsPage() {
       .catch(() => {})
       .finally(() => setAccountsLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!proxyTarget) return;
+    if (!currentProxyTarget) {
+      setIsProxyModal(false);
+      setIsExternalProxyModal(false);
+      setProxyTarget(null);
+      return;
+    }
+    if (currentProxyTarget !== proxyTarget) {
+      setProxyTarget(currentProxyTarget);
+    }
+  }, [currentProxyTarget, proxyTarget]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -172,10 +225,14 @@ export default function AccountsPage() {
   }, []);
 
   async function handleAddAccount() {
-    if (goldenKey.length < 20) return;
+    const normalizedKey = goldenKey.trim();
+    if (!GOLDEN_KEY_PATTERN.test(normalizedKey)) {
+      toast.error("Golden Key должен содержать от 20 до 64 латинских букв или цифр.");
+      return;
+    }
     setAddingAccount(true);
     try {
-      await accountsApi.add(goldenKey);
+      await accountsApi.add(normalizedKey);
       const list = await accountsApi.list();
       const mapped = list.map(mapApiAccount);
       setAccounts(mapped);
@@ -185,12 +242,16 @@ export default function AccountsPage() {
       if (justAdded && !justAdded.proxyConnected) {
         setShowProxyBanner(true);
       }
-    } catch {
-      toast.error("Не удалось добавить аккаунт. Проверьте Golden Key.");
-    } finally {
-      setAddingAccount(false);
       setIsAddModal(false);
       setGoldenKey("");
+    } catch (error) {
+      const apiError = error instanceof ApiError ? error : null;
+      toast.error(apiError?.message || "Не удалось добавить аккаунт. Попробуйте ещё раз.");
+      if (apiError?.code === "invalid_golden_key" || apiError?.code === "funpay_account_already_linked") {
+        setGoldenKey("");
+      }
+    } finally {
+      setAddingAccount(false);
     }
   }
 
@@ -199,6 +260,7 @@ export default function AccountsPage() {
       await accountsApi.delete(acc.apiId);
       setAccounts((prev) => prev.filter((a) => a.id !== acc.id));
       if (drawerAccount?.id === acc.id) setDrawerAccount(null);
+      if (proxyTarget?.id === acc.id) closeProxyFlow();
       toast.success(`Аккаунт ${acc.username} удалён`);
     } catch {
       toast.error("Не удалось удалить аккаунт");
@@ -250,22 +312,26 @@ export default function AccountsPage() {
     }
   }
 
-  async function handleConnectFreeProxy(accountId: number) {
+  async function handleConnectFreeProxy() {
+    const target = await refreshProxyTarget();
+    if (!target) return;
     try {
-      await accountsApi.connectProxy(accountId, "free");
+      await accountsApi.connectProxy(target.apiId, "free");
       const list = await accountsApi.list();
       setAccounts(list.map(mapApiAccount));
       toast.success("Бесплатный прокси подключён");
     } catch {
       toast.error("Не удалось подключить прокси");
     }
-    setIsProxyModal(false);
+    closeProxyFlow();
   }
 
-  async function handlePaidProxyPayment(accountId: number, product: "proxy_lite" | "proxy_pro") {
+  async function handlePaidProxyPayment(product: "proxy_lite" | "proxy_pro") {
+    const target = await refreshProxyTarget();
+    if (!target) return;
     setProxyPaymentLoading(true);
     try {
-      const result = await billingApi.createProxyPayment({ account_id: accountId, product });
+      const result = await billingApi.createProxyPayment({ account_id: target.apiId, product });
       toast.success("Переходим к оплате T-Bank...");
       if (result.checkout_url) {
         window.location.assign(result.checkout_url);
@@ -280,10 +346,12 @@ export default function AccountsPage() {
     }
   }
 
-  async function handleConnectExternalProxy(accountId: number) {
+  async function handleConnectExternalProxy() {
     if (!extProxy.host || !extProxy.port) return;
+    const target = await refreshProxyTarget();
+    if (!target) return;
     try {
-      await accountsApi.connectProxy(accountId, {
+      await accountsApi.connectProxy(target.apiId, {
         mode: "external",
         protocol: extProxy.protocol as "HTTP" | "HTTPS" | "SOCKS5",
         host: extProxy.host,
@@ -297,7 +365,7 @@ export default function AccountsPage() {
     } catch {
       toast.error("Не удалось подключить прокси. Проверьте данные.");
     }
-    setIsExternalProxyModal(false);
+    closeProxyFlow();
   }
 
   async function handleStartAll() {
@@ -591,7 +659,7 @@ export default function AccountsPage() {
                         <Button variant="outline" size="sm" onClick={() => setDrawerAccount(account)}>
                           Открыть
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => { setProxyTargetId(account.apiId); setIsProxyModal(true); }}>
+                        <Button variant="outline" size="sm" onClick={() => { setProxyTarget(account); setIsProxyModal(true); }}>
                           Сменить прокси
                         </Button>
                       </div>
@@ -606,14 +674,19 @@ export default function AccountsPage() {
       </Card>
 
       {/* ── MODAL: Add account ── */}
-      <Modal isOpen={isAddModal} onClose={() => setIsAddModal(false)} className="max-w-md p-8">
+      <Modal isOpen={isAddModal} onClose={closeAddModal} className="max-w-md p-8">
         <h2 className="text-xl font-bold text-gray-800 dark:text-white">Новый аккаунт</h2>
         <p className="mt-2 text-sm text-gray-500">
           Введите Golden Key от аккаунта FunPay для подключения к ферме.
         </p>
         <div className="mt-6">
           <input
-            type="text"
+            type="password"
+            data-testid="golden-key-input"
+            name="funpay-golden-key"
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
             value={goldenKey}
             onChange={(e) => setGoldenKey(e.target.value)}
             placeholder="Golden Key (20–64 символа)"
@@ -622,11 +695,11 @@ export default function AccountsPage() {
           <p className="mt-2 text-xs text-gray-400">Найти в настройках профиля на FunPay</p>
         </div>
         <div className="mt-8 flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={() => { setIsAddModal(false); setGoldenKey(""); }}>
+          <Button variant="outline" className="flex-1" disabled={addingAccount} onClick={closeAddModal}>
             Отмена
           </Button>
-          <Button variant="primary" className="flex-1" disabled={goldenKey.length < 20 || addingAccount} onClick={handleAddAccount}>
-            Добавить
+          <Button variant="primary" className="flex-1" disabled={!GOLDEN_KEY_PATTERN.test(goldenKey.trim()) || addingAccount} onClick={handleAddAccount}>
+            {addingAccount ? "Проверяем…" : "Добавить"}
           </Button>
         </div>
       </Modal>
@@ -634,14 +707,14 @@ export default function AccountsPage() {
       {/* ── MODAL: Proxy picker ── */}
       <Modal
         isOpen={isProxyModal}
-        onClose={() => setIsProxyModal(false)}
+        onClose={closeProxyFlow}
         className="w-[min(1120px,calc(100vw-2rem))] max-h-[calc(100vh-3rem)] overflow-y-auto p-5 sm:p-8"
       >
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Выберите прокси</h2>
         <p className="mt-1 text-sm text-gray-500">
           Аккаунт:{" "}
           <span className="font-semibold text-gray-800 dark:text-white">
-            {accounts.find((acc) => acc.apiId === proxyTargetId)?.username ?? "—"}
+            {currentProxyTarget?.username ?? "—"}
           </span>
         </p>
         <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -665,12 +738,12 @@ export default function AccountsPage() {
                   if (opt.id === "external") {
                     setIsProxyModal(false);
                     setIsExternalProxyModal(true);
-                  } else if (opt.id === "free" && proxyTargetId != null) {
-                    handleConnectFreeProxy(proxyTargetId);
-                  } else if ((opt.id === "proxy_lite" || opt.id === "proxy_pro") && proxyTargetId != null) {
-                    handlePaidProxyPayment(proxyTargetId, opt.id);
+                  } else if (opt.id === "free") {
+                    handleConnectFreeProxy();
+                  } else if (opt.id === "proxy_lite" || opt.id === "proxy_pro") {
+                    handlePaidProxyPayment(opt.id);
                   } else {
-                    setIsProxyModal(false);
+                    closeProxyFlow();
                   }
                 }}
                 className={`mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium leading-tight transition-colors ${
@@ -688,10 +761,10 @@ export default function AccountsPage() {
       </Modal>
 
       {/* ── MODAL: External proxy ── */}
-      <Modal isOpen={isExternalProxyModal} onClose={() => setIsExternalProxyModal(false)} className="max-w-lg p-8">
+      <Modal isOpen={isExternalProxyModal} onClose={closeProxyFlow} className="max-w-lg p-8">
         <h2 className="text-xl font-bold text-gray-800 dark:text-white">Настройка внешнего прокси</h2>
         <p className="mt-1 text-sm text-gray-500">
-          Аккаунт: <span className="font-semibold text-gray-800 dark:text-white">tonminerz</span>
+          Аккаунт: <span className="font-semibold text-gray-800 dark:text-white">{currentProxyTarget?.username ?? "—"}</span>
         </p>
 
         <div className="mt-6 space-y-3">
@@ -759,13 +832,13 @@ export default function AccountsPage() {
         </div>
 
         <div className="mt-8 flex justify-end gap-3">
-          <Button variant="outline" onClick={() => setIsExternalProxyModal(false)}>
+          <Button variant="outline" onClick={closeProxyFlow}>
             Отмена
           </Button>
           <Button
             variant="primary"
             disabled={!extProxy.host || !extProxy.port}
-            onClick={() => proxyTargetId != null && handleConnectExternalProxy(proxyTargetId)}
+            onClick={handleConnectExternalProxy}
           >
             Подтвердить
           </Button>
@@ -913,7 +986,7 @@ export default function AccountsPage() {
                       : "Прокси не подключён. Рекомендуем подключить для защиты аккаунта."}
                   </p>
                   <button
-                    onClick={() => { setProxyTargetId(drawerAccount.apiId); setDrawerAccount(null); setIsProxyModal(true); }}
+                    onClick={() => { setProxyTarget(drawerAccount); setDrawerAccount(null); setIsProxyModal(true); }}
                     className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                   >
                     <Icon name="plug-in" className="h-4 w-4" />
