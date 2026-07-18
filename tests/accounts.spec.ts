@@ -66,6 +66,7 @@ test.beforeEach(async ({ page }) => {
     const params = new URLSearchParams(window.location.search);
     const addError = params.get('addError');
     const slowComplete = params.get('slowComplete') === '1';
+    const holdCompleteRequest = params.get('holdCompleteRequest') === '1';
     const retryFlow = params.get('retryFlow') === '1';
     const startEmpty = params.get('empty') === '1';
     const startStopped = params.get('stopped') === '1';
@@ -115,12 +116,15 @@ test.beforeEach(async ({ page }) => {
       __LEGACY_ACCOUNT_POSTS__?: number;
       __ONBOARDING_CANCELS__?: number;
       __ASYNC_PREFER_CALLS__?: number;
+      __ONBOARDING_COMPLETE_RESOLVED__?: boolean;
+      __RELEASE_ONBOARDING_COMPLETE__?: () => void;
     };
     testScope.__PROXY_CONNECT_CALLS__ = 0;
     testScope.__DROP_PROXY_TARGET_NOW__ = false;
     testScope.__LEGACY_ACCOUNT_POSTS__ = 0;
     testScope.__ONBOARDING_CANCELS__ = 0;
     testScope.__ASYNC_PREFER_CALLS__ = 0;
+    testScope.__ONBOARDING_COMPLETE_RESOLVED__ = false;
 
     const session = (id: string, type: string, label: string, status = 'ready', product?: string) => ({
       id,
@@ -223,6 +227,12 @@ test.beforeEach(async ({ page }) => {
         if (new Headers(init?.headers).get('Prefer') === 'respond-async') testScope.__ASYNC_PREFER_CALLS__! += 1;
         activeOperationKind = 'add';
         operationPolls = 0;
+        if (holdCompleteRequest) {
+          await new Promise<void>((resolve) => {
+            testScope.__RELEASE_ONBOARDING_COMPLETE__ = resolve;
+          });
+        }
+        testScope.__ONBOARDING_COMPLETE_RESOLVED__ = true;
         return ok({ operation: operation('add-operation', 'queued', 0) }, 202);
       }
       if (/^\/api\/accounts\/\d+\/runtime\/start$/.test(path) && method === 'POST') {
@@ -333,6 +343,32 @@ test('onboarding shows a blocking 45 second attempt while FunPay validates', asy
   await expect(page.getByRole('heading', { name: 'Новый аккаунт' })).toBeHidden();
 });
 
+test('onboarding overlay is visible before the complete request returns', async ({ page }) => {
+  await page.goto('/platform/accounts?empty=1&holdCompleteRequest=1');
+  await openAddAccount(page);
+  await chooseFreeProxy(page);
+  await page.getByTestId('golden-key-input').fill(TEST_GOLDEN_KEY);
+  await page.getByRole('button', { name: 'Добавить аккаунт', exact: true }).last().click();
+
+  const overlay = page.getByTestId('blocking-operation-overlay');
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toContainText('Добавляем аккаунт');
+  await expect(overlay).toContainText('Попытка 1 из 3');
+  await expect(page.getByTestId('blocking-operation-progress')).toHaveAttribute('data-duration-ms', '45000');
+  expect(await page.evaluate(() => (
+    window as typeof window & { __ONBOARDING_COMPLETE_RESOLVED__?: boolean }
+  ).__ONBOARDING_COMPLETE_RESOLVED__)).toBe(false);
+
+  await expect.poll(() => page.evaluate(() => typeof (
+    window as typeof window & { __RELEASE_ONBOARDING_COMPLETE__?: () => void }
+  ).__RELEASE_ONBOARDING_COMPLETE__)).toBe('function');
+  await page.evaluate(() => {
+    (window as typeof window & { __RELEASE_ONBOARDING_COMPLETE__?: () => void }).__RELEASE_ONBOARDING_COMPLETE__?.();
+  });
+  await expect(overlay).toBeHidden();
+  await expect(page.getByText('CurrentTenantNew', { exact: true })).toBeVisible();
+});
+
 test('onboarding overlay follows attempts 1 to 3 and resets the progress attempt', async ({ page }) => {
   await page.goto('/platform/accounts?empty=1&retryFlow=1');
   await openAddAccount(page);
@@ -385,6 +421,8 @@ test('active operation overlay is restored after page reload without storing Gol
   await page.getByRole('button', { name: 'Добавить аккаунт', exact: true }).last().click();
   await expect(page.getByTestId('blocking-operation-overlay')).toBeVisible();
 
+  await expect.poll(() => page.evaluate(() => window.sessionStorage.getItem('fpcloud:accounts:active-operation')))
+    .toContain('add-operation');
   const storedBeforeReload = await page.evaluate(() => window.sessionStorage.getItem('fpcloud:accounts:active-operation'));
   expect(storedBeforeReload).toContain('add-operation');
   expect(storedBeforeReload).not.toContain(TEST_GOLDEN_KEY);

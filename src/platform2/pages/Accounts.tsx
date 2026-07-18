@@ -21,6 +21,7 @@ import {
   ApiAccount,
   AccountOnboarding,
   ApiError,
+  AsyncOperationStart,
   BackgroundOperation,
   MyProxyItem,
   operationsApi,
@@ -47,6 +48,23 @@ type Account = {
 
 const GOLDEN_KEY_PATTERN = /^[A-Za-z0-9]{20,64}$/;
 const ACCOUNT_OPERATION_STORAGE_KEY = "fpcloud:accounts:active-operation";
+const OPERATION_OVERLAY_MIN_VISIBLE_MS = 900;
+
+function pendingOperation(kind: string): BackgroundOperation {
+  const startedAt = new Date();
+  return {
+    id: `pending-${kind}`,
+    kind,
+    status: "running",
+    attempt: 1,
+    max_attempts: 3,
+    attempt_started_at: startedAt.toISOString(),
+    attempt_deadline_at: new Date(startedAt.getTime() + 45_000).toISOString(),
+    result: {},
+    created_at: startedAt.toISOString(),
+    updated_at: startedAt.toISOString(),
+  };
+}
 
 function mapApiAccount(a: ApiAccount): Account {
   return {
@@ -129,6 +147,7 @@ export default function AccountsPage() {
   const [activeOperation, setActiveOperation] = useState<BackgroundOperation | null>(null);
   const [operationTitle, setOperationTitle] = useState("");
   const operationRestoreStarted = useRef(false);
+  const operationOverlayShownAt = useRef(0);
   const currentProxyTarget = useMemo(
     () => proxyTarget ? accounts.find((account) => account.apiId === proxyTarget.apiId) ?? null : null,
     [accounts, proxyTarget],
@@ -192,7 +211,31 @@ export default function AccountsPage() {
     setProxyTarget(null);
   }
 
-  async function monitorOperation(initial: BackgroundOperation, title: string) {
+  async function showPendingOperation(title: string, kind: string) {
+    operationOverlayShownAt.current = Date.now();
+    setOperationTitle(title);
+    setActiveOperation(pendingOperation(kind));
+
+    // Wait through one complete paint before starting the HTTP request. Without
+    // this, a fast terminal response can be batched with the cleanup and the
+    // user never sees the waiting state at all.
+    await new Promise<void>((resolve) => {
+      window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
+    });
+  }
+
+  async function hideOperationOverlay() {
+    const shownAt = operationOverlayShownAt.current;
+    const remaining = OPERATION_OVERLAY_MIN_VISIBLE_MS - (Date.now() - shownAt);
+    if (shownAt > 0 && remaining > 0) {
+      await new Promise<void>((resolve) => window.setTimeout(resolve, remaining));
+    }
+    setActiveOperation(null);
+    setOperationTitle("");
+    operationOverlayShownAt.current = 0;
+  }
+
+  async function monitorOperation(initial: BackgroundOperation, title: string, overlayVisible = false) {
     setOperationTitle(title);
     setActiveOperation(initial);
     if (typeof window !== "undefined") {
@@ -201,10 +244,32 @@ export default function AccountsPage() {
     try {
       return await waitForBackgroundOperation(initial, operationsApi.get, setActiveOperation);
     } finally {
-      setActiveOperation(null);
-      setOperationTitle("");
+      if (overlayVisible) {
+        await hideOperationOverlay();
+      } else {
+        setActiveOperation(null);
+        setOperationTitle("");
+      }
       if (typeof window !== "undefined") {
         window.sessionStorage.removeItem(ACCOUNT_OPERATION_STORAGE_KEY);
+      }
+    }
+  }
+
+  async function startAndMonitorOperation(
+    title: string,
+    kind: string,
+    start: () => Promise<AsyncOperationStart>,
+  ) {
+    await showPendingOperation(title, kind);
+    let serverOperationStarted = false;
+    try {
+      const started = await start();
+      serverOperationStarted = true;
+      return await monitorOperation(started.operation, title, true);
+    } finally {
+      if (!serverOperationStarted) {
+        await hideOperationOverlay();
       }
     }
   }
@@ -463,8 +528,11 @@ export default function AccountsPage() {
     }
     setAddingAccount(true);
     try {
-      const started = await accountOnboardingApi.complete(onboarding.id, normalizedKey);
-      const completed = await monitorOperation(started.operation, "Добавляем аккаунт");
+      const completed = await startAndMonitorOperation(
+        "Добавляем аккаунт",
+        "account_onboarding_complete",
+        () => accountOnboardingApi.complete(onboarding.id, normalizedKey),
+      );
       if (!isOperationTerminal(completed) || completed.status !== "succeeded") {
         throw operationFailure(completed);
       }
