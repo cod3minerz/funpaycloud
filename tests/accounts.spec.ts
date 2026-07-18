@@ -65,6 +65,7 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem('token', 'test-token');
     const params = new URLSearchParams(window.location.search);
     const addError = params.get('addError');
+    const slowComplete = params.get('slowComplete') === '1';
     const startEmpty = params.get('empty') === '1';
     const dropTarget = params.get('dropTarget') === '1';
     let accounts = startEmpty ? [] : [
@@ -185,6 +186,7 @@ test.beforeEach(async ({ page }) => {
         return ok({});
       }
       if (/^\/api\/account-onboarding\/[^/]+\/complete$/.test(path) && method === 'POST') {
+        if (slowComplete) await new Promise((resolve) => setTimeout(resolve, 1200));
         if (addError && failures[addError]) {
           const failure = failures[addError];
           return json({ success: false, code: addError, error: failure.message }, failure.status);
@@ -239,6 +241,23 @@ test('free onboarding succeeds and never calls legacy account add', async ({ pag
   await expect(page.getByText('CurrentTenantNew', { exact: true })).toBeVisible();
   const legacyCalls = await page.evaluate(() => (window as typeof window & { __LEGACY_ACCOUNT_POSTS__?: number }).__LEGACY_ACCOUNT_POSTS__ || 0);
   expect(legacyCalls).toBe(0);
+});
+
+test('onboarding shows a 45 second waiting progress while FunPay validates', async ({ page }) => {
+  await page.goto('/platform/accounts?empty=1&slowComplete=1');
+  await openAddAccount(page);
+  await chooseFreeProxy(page);
+  await page.getByTestId('golden-key-input').fill(TEST_GOLDEN_KEY);
+  await page.getByRole('button', { name: 'Добавить аккаунт', exact: true }).last().click();
+
+  const waitPanel = page.getByTestId('account-onboarding-wait');
+  await expect(waitPanel).toBeVisible();
+  await expect(waitPanel).toContainText('Ожидание ответа FunPay…');
+  await expect(waitPanel).toContainText('до 45 секунд');
+  await expect(page.getByTestId('account-onboarding-progress')).toHaveAttribute('data-duration-ms', '45000');
+  await expect(page.getByRole('button', { name: 'Ожидание…', exact: true })).toBeDisabled();
+
+  await expect(page.getByRole('heading', { name: 'Новый аккаунт' })).toBeHidden();
 });
 
 test('paid onboarding restores after checkout and shows server proxy label', async ({ page }) => {

@@ -1006,11 +1006,46 @@ export default function AccountsPage() {
               <p className="mt-1 font-semibold text-gray-900 dark:text-white">{onboarding.proxy.label}</p>
               {onboarding.proxy.id && <p className="mt-1 text-xs text-gray-500">ID: {onboarding.proxy.id}</p>}
             </div>
+            {addingAccount && (
+              <div
+                className="mt-5 rounded-xl border border-brand-200 bg-brand-50/70 p-4 dark:border-brand-800 dark:bg-brand-950/20"
+                data-testid="account-onboarding-wait"
+                aria-live="polite"
+              >
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="font-medium text-gray-800 dark:text-gray-100">Ожидание ответа FunPay…</span>
+                  <span className="shrink-0 text-xs text-gray-500">до 45 секунд</span>
+                </div>
+                <div
+                  className="mt-3 h-2 overflow-hidden rounded-full bg-brand-100 dark:bg-brand-950"
+                  role="progressbar"
+                  aria-label="Ожидание ответа FunPay"
+                  aria-valuemin={0}
+                  aria-valuemax={45}
+                >
+                  <div
+                    className="account-onboarding-progress h-full origin-left rounded-full bg-brand-500"
+                    data-testid="account-onboarding-progress"
+                    data-duration-ms="45000"
+                  />
+                </div>
+                <style jsx>{`
+                  .account-onboarding-progress {
+                    animation: account-onboarding-progress 45s linear forwards;
+                  }
+
+                  @keyframes account-onboarding-progress {
+                    from { transform: scaleX(0); }
+                    to { transform: scaleX(1); }
+                  }
+                `}</style>
+              </div>
+            )}
             <div className="mt-6 flex flex-wrap gap-3">
               <Button variant="outline" disabled={addingAccount} onClick={() => void changeOnboardingProxy()}>Изменить прокси</Button>
               <Button variant="outline" disabled={addingAccount} onClick={closeAddModal}>Отмена</Button>
               <Button variant="primary" disabled={!GOLDEN_KEY_PATTERN.test(goldenKey.trim()) || addingAccount} onClick={() => void handleCompleteOnboarding()}>
-                {addingAccount ? "Проверяем…" : "Добавить аккаунт"}
+                {addingAccount ? "Ожидание…" : "Добавить аккаунт"}
               </Button>
             </div>
           </div>

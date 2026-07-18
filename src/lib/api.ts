@@ -547,7 +547,7 @@ export const accountOnboardingApi = {
       {
         method: 'POST',
         body: JSON.stringify({ golden_key }),
-        timeoutMs: 20000,
+        timeoutMs: 45000,
       },
     ),
   cancel: (id: string) =>
