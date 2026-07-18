@@ -21,7 +21,9 @@ import {
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { Sheet, SheetContent } from '@/app/components/ui/sheet';
-import { accountsApi, billingApi, ApiAccount } from '@/lib/api';
+import { accountsApi, billingApi, ApiAccount, BackgroundOperation, operationsApi } from '@/lib/api';
+import { operationFailure, waitForBackgroundOperation } from '@/lib/backgroundOperations';
+import BlockingOperationOverlay from '@/platform2/components/BlockingOperationOverlay';
 import { sanitizeInput, validateGoldenKey } from '@/lib/sanitize';
 import {
   DataTableWrap,
@@ -108,6 +110,8 @@ export default function Accounts() {
   const [goldenKey, setGoldenKey] = useState('');
   const [creating, setCreating] = useState(false);
   const [bulkRuntimeLoading, setBulkRuntimeLoading] = useState(false);
+  const [activeOperation, setActiveOperation] = useState<BackgroundOperation | null>(null);
+  const [operationTitle, setOperationTitle] = useState('');
   // Map of accountId → loading state for raiser toggle
   const [raisingIds, setRaisingIds] = useState<Set<string | number>>(new Set());
   const [runtimeLoadingIds, setRuntimeLoadingIds] = useState<Set<string | number>>(new Set());
@@ -272,13 +276,17 @@ export default function Accounts() {
         setList(prev => prev.map(a => (a.id === acc.id ? { ...a, runner_active: false, keeper_active: false, raiser_active: false } : a)));
         toast.success(`Аккаунт выключен (${displayName(acc)})`);
       } else {
-        await accountsApi.startRuntime(acc.id);
-        setList(prev => prev.map(a => (a.id === acc.id ? { ...a, runner_active: true, keeper_active: true, raiser_active: true } : a)));
+        const started = await accountsApi.startRuntime(acc.id);
+        setOperationTitle('Запускаем Runner');
+        const completed = await waitForBackgroundOperation(started.operation, operationsApi.get, setActiveOperation);
+        if (completed.status !== 'succeeded') throw operationFailure(completed);
+        await loadAccounts();
         toast.success(`Аккаунт включен (${displayName(acc)})`);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Ошибка управления аккаунтом');
     } finally {
+      setActiveOperation(null);
       setRuntimeLoadingIds(prev => {
         const next = new Set(prev);
         next.delete(acc.id);
@@ -297,13 +305,14 @@ export default function Accounts() {
         setList(prev => prev.map(a => ({ ...a, runner_active: false, keeper_active: false, raiser_active: false })));
         toast.success('Все аккаунты выключены');
       } else {
-        const result = await accountsApi.startAllRuntime();
-        const failedIDs = new Set(Object.keys(result.failed || {}).map(Number));
-        setList(prev =>
-          prev.map(a => (failedIDs.has(Number(a.id)) ? a : { ...a, runner_active: true, keeper_active: true, raiser_active: true })),
-        );
-        if (failedIDs.size > 0) {
-          toast.warning(`Запущено: ${result.started}. Не удалось запустить: ${failedIDs.size}. Проверьте прокси.`);
+        const started = await accountsApi.startAllRuntime();
+        setOperationTitle('Запускаем все Runner');
+        const completed = await waitForBackgroundOperation(started.operation, operationsApi.get, setActiveOperation);
+        if (completed.status === 'failed' || completed.status === 'interrupted') throw operationFailure(completed);
+        await loadAccounts();
+        if (completed.status === 'partially_succeeded') {
+          const failed = completed.result?.failed && typeof completed.result.failed === 'object' ? Object.keys(completed.result.failed).length : 0;
+          toast.warning(`Не удалось запустить: ${failed}. Проверьте прокси.`);
         } else {
           toast.success('Все аккаунты запущены');
         }
@@ -311,6 +320,7 @@ export default function Accounts() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Ошибка управления воркерами');
     } finally {
+      setActiveOperation(null);
       setBulkRuntimeLoading(false);
     }
   }
@@ -475,6 +485,7 @@ export default function Accounts() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
+      {activeOperation && <BlockingOperationOverlay operation={activeOperation} title={operationTitle} />}
       <PageShell>
         <PageHeader>
           <PageTitle

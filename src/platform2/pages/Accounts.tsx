@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/platform2/components/ui/card";
 import { Button } from "@/platform2/components/ui/button";
 import { Badge } from "@/platform2/components/ui/badge";
@@ -21,8 +21,12 @@ import {
   ApiAccount,
   AccountOnboarding,
   ApiError,
+  BackgroundOperation,
   MyProxyItem,
+  operationsApi,
 } from "@/lib/api";
+import { isOperationTerminal, operationFailure, waitForBackgroundOperation } from "@/lib/backgroundOperations";
+import BlockingOperationOverlay from "@/platform2/components/BlockingOperationOverlay";
 import { toast } from "sonner";
 
 type Account = {
@@ -42,6 +46,7 @@ type Account = {
 };
 
 const GOLDEN_KEY_PATTERN = /^[A-Za-z0-9]{20,64}$/;
+const ACCOUNT_OPERATION_STORAGE_KEY = "fpcloud:accounts:active-operation";
 
 function mapApiAccount(a: ApiAccount): Account {
   return {
@@ -121,6 +126,9 @@ export default function AccountsPage() {
   const [raiserTogglingIds, setRaiserTogglingIds] = useState<Set<string>>(new Set());
   const [proxyPaymentLoading, setProxyPaymentLoading] = useState(false);
   const [showProxyBanner, setShowProxyBanner] = useState(false);
+  const [activeOperation, setActiveOperation] = useState<BackgroundOperation | null>(null);
+  const [operationTitle, setOperationTitle] = useState("");
+  const operationRestoreStarted = useRef(false);
   const currentProxyTarget = useMemo(
     () => proxyTarget ? accounts.find((account) => account.apiId === proxyTarget.apiId) ?? null : null,
     [accounts, proxyTarget],
@@ -184,6 +192,23 @@ export default function AccountsPage() {
     setProxyTarget(null);
   }
 
+  async function monitorOperation(initial: BackgroundOperation, title: string) {
+    setOperationTitle(title);
+    setActiveOperation(initial);
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(ACCOUNT_OPERATION_STORAGE_KEY, JSON.stringify({ id: initial.id, title }));
+    }
+    try {
+      return await waitForBackgroundOperation(initial, operationsApi.get, setActiveOperation);
+    } finally {
+      setActiveOperation(null);
+      setOperationTitle("");
+      if (typeof window !== "undefined") {
+        window.sessionStorage.removeItem(ACCOUNT_OPERATION_STORAGE_KEY);
+      }
+    }
+  }
+
   async function refreshProxyTarget(): Promise<Account | null> {
     if (!proxyTarget) {
       closeProxyFlow();
@@ -211,6 +236,35 @@ export default function AccountsPage() {
       .then((list) => setAccounts(list.map(mapApiAccount)))
       .catch(() => {})
       .finally(() => setAccountsLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (operationRestoreStarted.current || typeof window === "undefined") return;
+    operationRestoreStarted.current = true;
+    const raw = window.sessionStorage.getItem(ACCOUNT_OPERATION_STORAGE_KEY);
+    if (!raw) return;
+    try {
+      const saved = JSON.parse(raw) as { id?: string; title?: string };
+      if (!saved.id) {
+        window.sessionStorage.removeItem(ACCOUNT_OPERATION_STORAGE_KEY);
+        return;
+      }
+      operationsApi.get(saved.id)
+        .then((operation) => monitorOperation(operation, saved.title || "Выполняем операцию"))
+        .then(async (operation) => {
+          const list = await accountsApi.list();
+          setAccounts(list.map(mapApiAccount));
+          if (operation.status === "succeeded") toast.success("Операция успешно завершена");
+          else if (operation.status === "partially_succeeded") toast.warning(operation.error_message || "Операция завершена частично");
+          else toast.error(operation.error_message || "Операция не выполнена");
+        })
+        .catch((error) => {
+          window.sessionStorage.removeItem(ACCOUNT_OPERATION_STORAGE_KEY);
+          toast.error(error instanceof Error ? error.message : "Не удалось восстановить операцию");
+        });
+    } catch {
+      window.sessionStorage.removeItem(ACCOUNT_OPERATION_STORAGE_KEY);
+    }
   }, []);
 
   useEffect(() => {
@@ -409,7 +463,11 @@ export default function AccountsPage() {
     }
     setAddingAccount(true);
     try {
-      await accountOnboardingApi.complete(onboarding.id, normalizedKey);
+      const started = await accountOnboardingApi.complete(onboarding.id, normalizedKey);
+      const completed = await monitorOperation(started.operation, "Добавляем аккаунт");
+      if (!isOperationTerminal(completed) || completed.status !== "succeeded") {
+        throw operationFailure(completed);
+      }
       const list = await accountsApi.list();
       setAccounts(list.map(mapApiAccount));
       toast.success("Аккаунт успешно добавлен через выбранный прокси");
@@ -451,12 +509,16 @@ export default function AccountsPage() {
 
   async function handleStartRuntime(acc: Account) {
     try {
-      await accountsApi.startRuntime(acc.apiId);
-      setAccounts((prev) => prev.map((a) => a.id === acc.id ? { ...a, runner: true } : a));
-      if (drawerAccount?.id === acc.id) setDrawerAccount((d) => d ? { ...d, runner: true } : d);
+      const started = await accountsApi.startRuntime(acc.apiId);
+      const completed = await monitorOperation(started.operation, "Запускаем Runner");
+      if (completed.status !== "succeeded") throw operationFailure(completed);
+      const list = await accountsApi.list();
+      const mapped = list.map(mapApiAccount);
+      setAccounts(mapped);
+      if (drawerAccount?.id === acc.id) setDrawerAccount(mapped.find((item) => item.id === acc.id) ?? null);
       toast.success("Runner запущен");
-    } catch {
-      toast.error("Не удалось запустить Runner");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Не удалось запустить Runner");
     }
   }
 
@@ -542,12 +604,20 @@ export default function AccountsPage() {
   async function handleStartAll() {
     setRunningAll(true);
     try {
-      await accountsApi.startAllRuntime();
+      const started = await accountsApi.startAllRuntime();
+      const completed = await monitorOperation(started.operation, "Запускаем все Runner");
       const list = await accountsApi.list();
       setAccounts(list.map(mapApiAccount));
-      toast.success("Все Runner запущены");
-    } catch {
-      toast.error("Не удалось запустить все Runner");
+      if (completed.status === "failed" || completed.status === "interrupted") throw operationFailure(completed);
+      if (completed.status === "partially_succeeded") {
+        const result = completed.result || {};
+        const failed = result.failed && typeof result.failed === "object" ? Object.keys(result.failed).length : 0;
+        toast.warning(`Runner запущены частично. Ошибок: ${failed}`);
+      } else {
+        toast.success("Все Runner запущены");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Не удалось запустить все Runner");
     } finally {
       setRunningAll(false);
     }
@@ -582,6 +652,8 @@ export default function AccountsPage() {
 
   return (
     <div className="space-y-6">
+
+      {activeOperation && <BlockingOperationOverlay operation={activeOperation} title={operationTitle} />}
 
       {/* HEADER */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1006,41 +1078,6 @@ export default function AccountsPage() {
               <p className="mt-1 font-semibold text-gray-900 dark:text-white">{onboarding.proxy.label}</p>
               {onboarding.proxy.id && <p className="mt-1 text-xs text-gray-500">ID: {onboarding.proxy.id}</p>}
             </div>
-            {addingAccount && (
-              <div
-                className="mt-5 rounded-xl border border-brand-200 bg-brand-50/70 p-4 dark:border-brand-800 dark:bg-brand-950/20"
-                data-testid="account-onboarding-wait"
-                aria-live="polite"
-              >
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="font-medium text-gray-800 dark:text-gray-100">Ожидание ответа FunPay…</span>
-                  <span className="shrink-0 text-xs text-gray-500">до 45 секунд</span>
-                </div>
-                <div
-                  className="mt-3 h-2 overflow-hidden rounded-full bg-brand-100 dark:bg-brand-950"
-                  role="progressbar"
-                  aria-label="Ожидание ответа FunPay"
-                  aria-valuemin={0}
-                  aria-valuemax={45}
-                >
-                  <div
-                    className="account-onboarding-progress h-full origin-left rounded-full bg-brand-500"
-                    data-testid="account-onboarding-progress"
-                    data-duration-ms="45000"
-                  />
-                </div>
-                <style jsx>{`
-                  .account-onboarding-progress {
-                    animation: account-onboarding-progress 45s linear forwards;
-                  }
-
-                  @keyframes account-onboarding-progress {
-                    from { transform: scaleX(0); }
-                    to { transform: scaleX(1); }
-                  }
-                `}</style>
-              </div>
-            )}
             <div className="mt-6 flex flex-wrap gap-3">
               <Button variant="outline" disabled={addingAccount} onClick={() => void changeOnboardingProxy()}>Изменить прокси</Button>
               <Button variant="outline" disabled={addingAccount} onClick={closeAddModal}>Отмена</Button>

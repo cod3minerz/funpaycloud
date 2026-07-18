@@ -66,7 +66,9 @@ test.beforeEach(async ({ page }) => {
     const params = new URLSearchParams(window.location.search);
     const addError = params.get('addError');
     const slowComplete = params.get('slowComplete') === '1';
+    const retryFlow = params.get('retryFlow') === '1';
     const startEmpty = params.get('empty') === '1';
+    const startStopped = params.get('stopped') === '1';
     const dropTarget = params.get('dropTarget') === '1';
     let accounts = startEmpty ? [] : [
       {
@@ -89,6 +91,11 @@ test.beforeEach(async ({ page }) => {
         proxy_label: 'Индивидуальный прокси',
       },
     ];
+    if (startStopped) {
+      accounts = accounts.map((account) => ({ ...account, runner_active: false, keeper_active: false, raiser_active: false }));
+    }
+    let operationPolls = 0;
+    let activeOperationKind: 'add' | 'runner' | 'batch' | null = null;
     const failures: Record<string, { status: number; message: string }> = {
       invalid_golden_key: { status: 422, message: 'Golden Key недействителен или сессия FunPay истекла. Получите новый ключ и попробуйте снова.' },
       funpay_account_already_linked: { status: 409, message: 'Этот Golden Key относится к FunPay-аккаунту, уже привязанному к другому профилю FunPay Cloud. Войдите в нужный аккаунт FunPay и получите его новый Golden Key.' },
@@ -107,11 +114,13 @@ test.beforeEach(async ({ page }) => {
       __DROP_PROXY_TARGET_NOW__?: boolean;
       __LEGACY_ACCOUNT_POSTS__?: number;
       __ONBOARDING_CANCELS__?: number;
+      __ASYNC_PREFER_CALLS__?: number;
     };
     testScope.__PROXY_CONNECT_CALLS__ = 0;
     testScope.__DROP_PROXY_TARGET_NOW__ = false;
     testScope.__LEGACY_ACCOUNT_POSTS__ = 0;
     testScope.__ONBOARDING_CANCELS__ = 0;
+    testScope.__ASYNC_PREFER_CALLS__ = 0;
 
     const session = (id: string, type: string, label: string, status = 'ready', product?: string) => ({
       id,
@@ -126,6 +135,31 @@ test.beforeEach(async ({ page }) => {
             ? 'payment_failed'
             : 'wait',
     });
+    const operation = (
+      id: string,
+      status: string,
+      attempt: number,
+      errorCode = '',
+      errorMessage = '',
+      result: Record<string, unknown> = {},
+    ) => {
+      const started = new Date(Date.now() - 250).toISOString();
+      return {
+        id,
+        kind: activeOperationKind === 'add' ? 'account_onboarding_complete' : activeOperationKind === 'batch' ? 'runtime_start_batch' : 'runtime_start',
+        status,
+        attempt,
+        max_attempts: 3,
+        attempt_started_at: started,
+        attempt_deadline_at: new Date(new Date(started).getTime() + 45_000).toISOString(),
+        next_retry_at: status === 'retry_wait' ? new Date(Date.now() + 1000).toISOString() : null,
+        error_code: errorCode,
+        error_message: errorMessage,
+        result,
+        created_at: started,
+        updated_at: new Date().toISOString(),
+      };
+    };
 
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const rawURL = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
@@ -186,22 +220,58 @@ test.beforeEach(async ({ page }) => {
         return ok({});
       }
       if (/^\/api\/account-onboarding\/[^/]+\/complete$/.test(path) && method === 'POST') {
-        if (slowComplete) await new Promise((resolve) => setTimeout(resolve, 1200));
-        if (addError && failures[addError]) {
+        if (new Headers(init?.headers).get('Prefer') === 'respond-async') testScope.__ASYNC_PREFER_CALLS__! += 1;
+        activeOperationKind = 'add';
+        operationPolls = 0;
+        return ok({ operation: operation('add-operation', 'queued', 0) }, 202);
+      }
+      if (/^\/api\/accounts\/\d+\/runtime\/start$/.test(path) && method === 'POST') {
+        if (new Headers(init?.headers).get('Prefer') === 'respond-async') testScope.__ASYNC_PREFER_CALLS__! += 1;
+        activeOperationKind = 'runner';
+        operationPolls = 0;
+        return ok({ operation: operation('runner-operation', 'queued', 0) }, 202);
+      }
+      if (path === '/api/accounts/runtime/start-all' && method === 'POST') {
+        if (new Headers(init?.headers).get('Prefer') === 'respond-async') testScope.__ASYNC_PREFER_CALLS__! += 1;
+        activeOperationKind = 'batch';
+        operationPolls = 0;
+        return ok({ operation: operation('batch-operation', 'queued', 0) }, 202);
+      }
+      if (/^\/api\/operations\/[^/]+$/.test(path) && method === 'GET') {
+        operationPolls += 1;
+        const id = path.split('/').pop() || 'operation';
+        if (id === 'add-operation') activeOperationKind = 'add';
+        if (id === 'runner-operation') activeOperationKind = 'runner';
+        if (id === 'batch-operation') activeOperationKind = 'batch';
+        if (activeOperationKind === 'add' && addError && failures[addError]) {
           const failure = failures[addError];
-          return json({ success: false, code: addError, error: failure.message }, failure.status);
+          return ok(operation(id, 'failed', 1, addError, failure.message));
         }
-        accounts = [{
-          id: 83,
-          funpay_user_id: 8301,
-          username: 'CurrentTenantNew',
-          runner_active: true,
-          keeper_active: true,
-          raiser_active: false,
-          proxy_connected: true,
-          proxy_label: 'Бесплатный прокси',
-        }];
-        return ok({ account_id: 83, username: 'CurrentTenantNew', proxy_id: 501 });
+        if (activeOperationKind === 'add' && retryFlow) {
+          if (operationPolls === 1) return ok(operation(id, 'running', 1));
+          if (operationPolls === 2) return ok(operation(id, 'retry_wait', 1, 'funpay_validation_timeout', 'Повторяем попытку'));
+          if (operationPolls === 3) return ok(operation(id, 'running', 2));
+          if (operationPolls === 4) return ok(operation(id, 'retry_wait', 2, 'funpay_unavailable', 'Повторяем попытку'));
+          if (operationPolls === 5) return ok(operation(id, 'running', 3));
+        }
+        if ((slowComplete || activeOperationKind !== 'add') && operationPolls < 2) {
+          return ok(operation(id, 'running', 1));
+        }
+        if (activeOperationKind === 'add') {
+          accounts = [{
+            id: 83,
+            funpay_user_id: 8301,
+            username: 'CurrentTenantNew',
+            runner_active: true,
+            keeper_active: true,
+            raiser_active: false,
+            proxy_connected: true,
+            proxy_label: 'Бесплатный прокси',
+          }];
+          return ok(operation(id, 'succeeded', retryFlow ? 3 : 1, '', '', { account_id: 83, username: 'CurrentTenantNew', proxy_id: 501 }));
+        }
+        accounts = accounts.map((account) => ({ ...account, runner_active: true, keeper_active: true, raiser_active: true }));
+        return ok(operation(id, 'succeeded', 1, '', '', activeOperationKind === 'batch' ? { started: accounts.length, failed: {} } : { account_id: 81 }));
       }
       if (path === '/api/accounts/81/proxy/connect' && method === 'POST') {
         testScope.__PROXY_CONNECT_CALLS__ = (testScope.__PROXY_CONNECT_CALLS__ || 0) + 1;
@@ -243,21 +313,87 @@ test('free onboarding succeeds and never calls legacy account add', async ({ pag
   expect(legacyCalls).toBe(0);
 });
 
-test('onboarding shows a 45 second waiting progress while FunPay validates', async ({ page }) => {
+test('onboarding shows a blocking 45 second attempt while FunPay validates', async ({ page }) => {
   await page.goto('/platform/accounts?empty=1&slowComplete=1');
   await openAddAccount(page);
   await chooseFreeProxy(page);
   await page.getByTestId('golden-key-input').fill(TEST_GOLDEN_KEY);
   await page.getByRole('button', { name: 'Добавить аккаунт', exact: true }).last().click();
 
-  const waitPanel = page.getByTestId('account-onboarding-wait');
+  const waitPanel = page.getByTestId('blocking-operation-overlay');
   await expect(waitPanel).toBeVisible();
-  await expect(waitPanel).toContainText('Ожидание ответа FunPay…');
-  await expect(waitPanel).toContainText('до 45 секунд');
-  await expect(page.getByTestId('account-onboarding-progress')).toHaveAttribute('data-duration-ms', '45000');
+  await expect(waitPanel).toContainText('Добавляем аккаунт');
+  await expect(waitPanel).toContainText('Ожидание ответа FunPay');
+  await expect(waitPanel).toContainText('Попытка 1 из 3');
+  await expect(page.getByTestId('blocking-operation-progress')).toHaveAttribute('data-duration-ms', '45000');
   await expect(page.getByRole('button', { name: 'Ожидание…', exact: true })).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('heading', { name: 'Новый аккаунт' })).toBeVisible();
 
   await expect(page.getByRole('heading', { name: 'Новый аккаунт' })).toBeHidden();
+});
+
+test('onboarding overlay follows attempts 1 to 3 and resets the progress attempt', async ({ page }) => {
+  await page.goto('/platform/accounts?empty=1&retryFlow=1');
+  await openAddAccount(page);
+  await chooseFreeProxy(page);
+  await page.getByTestId('golden-key-input').fill(TEST_GOLDEN_KEY);
+  await page.getByRole('button', { name: 'Добавить аккаунт', exact: true }).last().click();
+
+  const overlay = page.getByTestId('blocking-operation-overlay');
+  await expect(overlay).toContainText('Попытка 1 из 3');
+  await expect(overlay).toContainText('Попытка 2 из 3', { timeout: 5000 });
+  await expect(page.getByTestId('blocking-operation-progress')).toHaveAttribute('data-attempt', '2');
+  await expect(overlay).toContainText('Попытка 3 из 3', { timeout: 5000 });
+  await expect(page.getByTestId('blocking-operation-progress')).toHaveAttribute('data-attempt', '3');
+  await expect(overlay).toBeHidden();
+  await expect(page.getByText('CurrentTenantNew', { exact: true })).toBeVisible();
+});
+
+test('start all Runner uses one async request and the blocking overlay', async ({ page }) => {
+  await page.goto('/platform/accounts');
+  await page.getByRole('button', { name: 'Запустить всё', exact: true }).click();
+
+  const overlay = page.getByTestId('blocking-operation-overlay');
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toContainText('Запускаем все Runner');
+  await expect(overlay).toContainText('Попытка 1 из 3');
+  await expect(overlay).toBeHidden();
+  const preferCalls = await page.evaluate(() => (window as typeof window & { __ASYNC_PREFER_CALLS__?: number }).__ASYNC_PREFER_CALLS__ || 0);
+  expect(preferCalls).toBe(1);
+});
+
+test('individual Runner start uses one async request and the blocking overlay', async ({ page }) => {
+  await page.goto('/platform/accounts?stopped=1');
+  const row = page.getByRole('row').filter({ hasText: 'BetaSeller' });
+  await row.getByRole('button', { name: 'Открыть' }).click();
+  await page.getByRole('button', { name: 'Запустить Runner' }).click();
+
+  const overlay = page.getByTestId('blocking-operation-overlay');
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toContainText('Запускаем Runner');
+  await expect(overlay).toBeHidden();
+  const preferCalls = await page.evaluate(() => (window as typeof window & { __ASYNC_PREFER_CALLS__?: number }).__ASYNC_PREFER_CALLS__ || 0);
+  expect(preferCalls).toBe(1);
+});
+
+test('active operation overlay is restored after page reload without storing Golden Key', async ({ page }) => {
+  await page.goto('/platform/accounts?empty=1&slowComplete=1');
+  await openAddAccount(page);
+  await chooseFreeProxy(page);
+  await page.getByTestId('golden-key-input').fill(TEST_GOLDEN_KEY);
+  await page.getByRole('button', { name: 'Добавить аккаунт', exact: true }).last().click();
+  await expect(page.getByTestId('blocking-operation-overlay')).toBeVisible();
+
+  const storedBeforeReload = await page.evaluate(() => window.sessionStorage.getItem('fpcloud:accounts:active-operation'));
+  expect(storedBeforeReload).toContain('add-operation');
+  expect(storedBeforeReload).not.toContain(TEST_GOLDEN_KEY);
+  await page.reload();
+
+  await expect(page.getByTestId('blocking-operation-overlay')).toBeVisible();
+  await expect(page.getByTestId('blocking-operation-overlay')).toContainText('Добавляем аккаунт');
+  await expect(page.getByTestId('blocking-operation-overlay')).toBeHidden();
+  await expect(page.getByText('CurrentTenantNew', { exact: true })).toBeVisible();
 });
 
 test('paid onboarding restores after checkout and shows server proxy label', async ({ page }) => {

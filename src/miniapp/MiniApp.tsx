@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AppRoot,
   Badge,
@@ -16,6 +16,9 @@ import {
   Title,
 } from "@telegram-apps/telegram-ui";
 import PulseCloud from "./PulseCloud";
+import BlockingOperationOverlay from "@/platform2/components/BlockingOperationOverlay";
+import type { AsyncOperationStart, BackgroundOperation } from "@/lib/api";
+import { operationFailure, waitForBackgroundOperation } from "@/lib/backgroundOperations";
 import {
   MiniAppAccount,
   MiniAppAttentionItem,
@@ -46,6 +49,7 @@ const tabs: Array<{ id: TabID; text: string; glyph: string }> = [
 
 const TELEGRAM_BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "fpc1oudbot";
 const TELEGRAM_BOT_URL = `https://t.me/${TELEGRAM_BOT_USERNAME}`;
+const MINIAPP_OPERATION_STORAGE_KEY = "fpcloud:miniapp:active-operation";
 
 function platformURL(path: string) {
   if (typeof window !== "undefined") {
@@ -121,6 +125,9 @@ export default function MiniApp() {
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [promoCode, setPromoCode] = useState("");
+  const [activeOperation, setActiveOperation] = useState<BackgroundOperation | null>(null);
+  const [operationTitle, setOperationTitle] = useState("");
+  const operationRestoreStarted = useRef(false);
 
   const token = session?.token || "";
   useEffect(() => {
@@ -181,13 +188,51 @@ export default function MiniApp() {
     return pulse?.status || "loading";
   }, [loading, pulse?.status]);
 
-  async function runAction(id: string, action: () => Promise<unknown>, success: string) {
+  async function monitorOperation(initial: BackgroundOperation, title: string) {
+    setOperationTitle(title);
+    setActiveOperation(initial);
+    window.sessionStorage.setItem(MINIAPP_OPERATION_STORAGE_KEY, JSON.stringify({ id: initial.id, title }));
+    try {
+      return await waitForBackgroundOperation(initial, (id) => miniAppApi.operation(token, id), setActiveOperation);
+    } finally {
+      setActiveOperation(null);
+      setOperationTitle("");
+      window.sessionStorage.removeItem(MINIAPP_OPERATION_STORAGE_KEY);
+    }
+  }
+
+  useEffect(() => {
+    if (!token || operationRestoreStarted.current) return;
+    operationRestoreStarted.current = true;
+    const raw = window.sessionStorage.getItem(MINIAPP_OPERATION_STORAGE_KEY);
+    if (!raw) return;
+    try {
+      const saved = JSON.parse(raw) as { id?: string; title?: string };
+      if (!saved.id) return;
+      miniAppApi.operation(token, saved.id)
+        .then((operation) => monitorOperation(operation, saved.title || "Запускаем Runner"))
+        .then((operation) => {
+          if (operation.status === "failed" || operation.status === "interrupted") throw operationFailure(operation);
+          setMessage("Аккаунт запущен");
+          return loadAll();
+        })
+        .catch((error) => setMessage(error instanceof Error ? error.message : "Не удалось восстановить операцию"));
+    } catch {
+      window.sessionStorage.removeItem(MINIAPP_OPERATION_STORAGE_KEY);
+    }
+  }, [token]);
+
+  async function runAction(id: string, action: () => Promise<unknown>, success: string, asyncTitle?: string) {
     if (!token) return;
     setBusy(id);
     setMessage("");
     haptic("light");
     try {
-      await action();
+      const response = await action();
+      if (asyncTitle && response && typeof response === "object" && "operation" in response) {
+        const completed = await monitorOperation((response as AsyncOperationStart).operation, asyncTitle);
+        if (completed.status === "failed" || completed.status === "interrupted") throw operationFailure(completed);
+      }
       haptic("success");
       setMessage(success);
       await loadAll();
@@ -260,6 +305,7 @@ export default function MiniApp() {
 
   return (
     <MiniAppShell>
+      {activeOperation && <BlockingOperationOverlay operation={activeOperation} title={operationTitle} />}
       <main className="miniapp-content">
         {message && (
           <Section>
@@ -320,7 +366,7 @@ function LoadingView() {
 function PulseView({ loading, pulse, runAction }: {
   loading: boolean;
   pulse: MiniAppPulse | null;
-  runAction: (id: string, action: () => Promise<unknown>, success: string) => Promise<void>;
+  runAction: (id: string, action: () => Promise<unknown>, success: string, asyncTitle?: string) => Promise<void>;
 }) {
   const status = loading ? "loading" : pulse?.status || "loading";
   const statusLabel = status === "ok" ? "OK" : status === "critical" ? "Проблема" : status === "warning" ? "Внимание" : "Загрузка";
@@ -354,7 +400,7 @@ function PulseView({ loading, pulse, runAction }: {
 function AttentionView({ items, busy, runAction }: {
   items: MiniAppAttentionItem[];
   busy: string | null;
-  runAction: (id: string, action: () => Promise<unknown>, success: string) => Promise<void>;
+  runAction: (id: string, action: () => Promise<unknown>, success: string, asyncTitle?: string) => Promise<void>;
 }) {
   if (!items.length) {
     return (
@@ -373,7 +419,7 @@ function AttentionView({ items, busy, runAction }: {
           description={item.message}
           after={
             item.account_id ? (
-              <Button size="s" loading={busy === item.id} onClick={() => runAction(item.id, () => miniAppApi.startRuntime(getToken(), item.account_id!), "Аккаунт запущен")}>
+              <Button size="s" loading={busy === item.id} onClick={() => runAction(item.id, () => miniAppApi.startRuntime(getToken(), item.account_id!), "Аккаунт запущен", "Запускаем Runner")}>
                 {item.action}
               </Button>
             ) : item.proxy_id ? (
@@ -400,7 +446,7 @@ function getToken() {
 function AccountsView({ accounts, busy, runAction }: {
   accounts: MiniAppAccount[];
   busy: string | null;
-  runAction: (id: string, action: () => Promise<unknown>, success: string) => Promise<void>;
+  runAction: (id: string, action: () => Promise<unknown>, success: string, asyncTitle?: string) => Promise<void>;
 }) {
   if (!accounts.length) {
     return (
@@ -424,7 +470,7 @@ function AccountsView({ accounts, busy, runAction }: {
             account.runtime_active ? (
               <Button size="s" mode="gray" loading={busy === `stop:${account.id}`} onClick={() => runAction(`stop:${account.id}`, () => miniAppApi.stopRuntime(getToken(), account.id), "Аккаунт остановлен")}>Стоп</Button>
             ) : (
-              <Button size="s" loading={busy === `start:${account.id}`} onClick={() => runAction(`start:${account.id}`, () => miniAppApi.startRuntime(getToken(), account.id), "Аккаунт запущен")}>Старт</Button>
+              <Button size="s" loading={busy === `start:${account.id}`} onClick={() => runAction(`start:${account.id}`, () => miniAppApi.startRuntime(getToken(), account.id), "Аккаунт запущен", "Запускаем Runner")}>Старт</Button>
             )
           }
         >
@@ -438,7 +484,7 @@ function AccountsView({ accounts, busy, runAction }: {
 function ProxiesView({ proxies, busy, runAction }: {
   proxies: MiniAppProxy[];
   busy: string | null;
-  runAction: (id: string, action: () => Promise<unknown>, success: string) => Promise<void>;
+  runAction: (id: string, action: () => Promise<unknown>, success: string, asyncTitle?: string) => Promise<void>;
 }) {
   if (!proxies.length) {
     return (

@@ -515,6 +515,38 @@ export type AccountOnboarding = {
   account_id?: number;
 };
 
+export type BackgroundOperationStatus =
+  | 'queued'
+  | 'running'
+  | 'retry_wait'
+  | 'succeeded'
+  | 'partially_succeeded'
+  | 'failed'
+  | 'interrupted';
+
+export type BackgroundOperation = {
+  id: string;
+  kind: string;
+  status: BackgroundOperationStatus;
+  attempt: number;
+  max_attempts: number;
+  attempt_started_at?: string | null;
+  attempt_deadline_at?: string | null;
+  next_retry_at?: string | null;
+  error_code?: string;
+  error_message?: string;
+  result?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  finished_at?: string | null;
+};
+
+export type AsyncOperationStart = { operation: BackgroundOperation };
+
+export const operationsApi = {
+  get: (id: string) => apiRequest<BackgroundOperation>(`/api/operations/${encodeURIComponent(id)}`),
+};
+
 export type CreateAccountOnboardingPayload =
   | { mode: 'free' }
   | { mode: 'owned'; proxy_id: number }
@@ -542,12 +574,13 @@ export const accountOnboardingApi = {
       timeoutMs: 15000,
     }),
   complete: (id: string, golden_key: string) =>
-    apiRequest<{ account_id: number; username: string; proxy_id?: number }>(
+    apiRequest<AsyncOperationStart>(
       `/api/account-onboarding/${encodeURIComponent(id)}/complete`,
       {
         method: 'POST',
+        headers: { Prefer: 'respond-async' },
         body: JSON.stringify({ golden_key }),
-        timeoutMs: 45000,
+        timeoutMs: 20000,
       },
     ),
   cancel: (id: string) =>
@@ -591,16 +624,18 @@ export const accountsApi = {
       method: 'POST',
     }),
   startRuntime: (id: number | string) =>
-    apiRequest<{ message?: string }>(`/api/accounts/${id}/runtime/start`, {
+    apiRequest<AsyncOperationStart>(`/api/accounts/${id}/runtime/start`, {
       method: 'POST',
+      headers: { Prefer: 'respond-async' },
     }),
   stopAllRuntime: () =>
     apiRequest<{ affected: number }>('/api/accounts/runtime/stop-all', {
       method: 'POST',
     }),
   startAllRuntime: () =>
-    apiRequest<{ started: number; failed: Record<string, string> }>('/api/accounts/runtime/start-all', {
+    apiRequest<AsyncOperationStart>('/api/accounts/runtime/start-all', {
       method: 'POST',
+      headers: { Prefer: 'respond-async' },
     }),
   connectProxy: (id: number | string, payload: ConnectProxyPayload | 'free' | 'individual') =>
     apiRequest<{
@@ -2200,11 +2235,13 @@ export const adminApi = {
   stopRunner: (accountId: number | string) =>
     adminApiRequest(`/admin-api/runners/${accountId}/stop`, { method: 'POST' }),
   restartRunner: (accountId: number | string) =>
-    adminApiRequest(`/admin-api/runners/${accountId}/restart`, { method: 'POST' }),
+    adminApiRequest<AsyncOperationStart>(`/admin-api/runners/${accountId}/restart`, { method: 'POST', headers: { Prefer: 'respond-async' } }),
   stopAllRunners: () =>
     adminApiRequest<{ stopped: number }>('/admin-api/runners/stop-all', { method: 'POST' }),
   startAllRunners: () =>
-    adminApiRequest<{ started: number; failed: Record<string, string> }>('/admin-api/runners/start-all', { method: 'POST' }),
+    adminApiRequest<AsyncOperationStart>('/admin-api/runners/start-all', { method: 'POST', headers: { Prefer: 'respond-async' } }),
+  runnerOperation: (id: string) =>
+    adminApiRequest<BackgroundOperation>(`/admin-api/runners/operations/${encodeURIComponent(id)}`),
   sharedProxies: () =>
     adminApiRequest<{ items: AdminSharedProxy[]; total: number }>('/admin-api/proxies/shared'),
   addSharedProxy: (payload: {

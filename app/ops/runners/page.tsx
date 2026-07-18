@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Play, Square, SquareStack } from 'lucide-react';
-import { adminApi, AdminRunner } from '@/lib/api';
+import { adminApi, AdminRunner, BackgroundOperation } from '@/lib/api';
+import { operationFailure, waitForBackgroundOperation } from '@/lib/backgroundOperations';
+import BlockingOperationOverlay from '@/platform2/components/BlockingOperationOverlay';
 import { Card, CardContent } from '@/platform2/components/ui/card';
 import Alert from '@/platform2/components/ui/alert/Alert';
 import Badge from '@/platform2/components/ui/badge/Badge';
@@ -17,11 +19,16 @@ function StateBadge({ active }: { active: boolean }) {
   );
 }
 
+const ADMIN_RUNNER_OPERATION_STORAGE_KEY = 'fpcloud:admin-runners:active-operation';
+
 export default function AdminRunnersPage() {
   const [items, setItems] = useState<AdminRunner[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [activeOperation, setActiveOperation] = useState<BackgroundOperation | null>(null);
+  const [operationTitle, setOperationTitle] = useState('');
+  const operationRestoreStarted = useRef(false);
 
   const load = async () => {
     setLoading(true);
@@ -42,6 +49,39 @@ export default function AdminRunnersPage() {
     return () => window.clearInterval(timer);
   }, []);
 
+  const monitorOperation = async (initial: BackgroundOperation, title: string) => {
+    setOperationTitle(title);
+    setActiveOperation(initial);
+    window.sessionStorage.setItem(ADMIN_RUNNER_OPERATION_STORAGE_KEY, JSON.stringify({ id: initial.id, title }));
+    try {
+      return await waitForBackgroundOperation(initial, adminApi.runnerOperation, setActiveOperation);
+    } finally {
+      setActiveOperation(null);
+      setOperationTitle('');
+      window.sessionStorage.removeItem(ADMIN_RUNNER_OPERATION_STORAGE_KEY);
+    }
+  };
+
+  useEffect(() => {
+    if (operationRestoreStarted.current) return;
+    operationRestoreStarted.current = true;
+    const raw = window.sessionStorage.getItem(ADMIN_RUNNER_OPERATION_STORAGE_KEY);
+    if (!raw) return;
+    try {
+      const saved = JSON.parse(raw) as { id?: string; title?: string };
+      if (!saved.id) return;
+      adminApi.runnerOperation(saved.id)
+        .then((operation) => monitorOperation(operation, saved.title || 'Запускаем Runner'))
+        .then(async (operation) => {
+          if (operation.status === 'failed' || operation.status === 'interrupted') throw operationFailure(operation);
+          await load();
+        })
+        .catch((err) => setError(err instanceof Error ? err.message : 'Не удалось восстановить операцию'));
+    } catch {
+      window.sessionStorage.removeItem(ADMIN_RUNNER_OPERATION_STORAGE_KEY);
+    }
+  }, []);
+
   const stopAll = async () => {
     try {
       setBulkActionLoading(true);
@@ -57,7 +97,10 @@ export default function AdminRunnersPage() {
   const startAll = async () => {
     try {
       setBulkActionLoading(true);
-      await adminApi.startAllRunners();
+      const started = await adminApi.startAllRunners();
+      const completed = await monitorOperation(started.operation, 'Запускаем все Runner');
+      if (completed.status === 'failed' || completed.status === 'interrupted') throw operationFailure(completed);
+      if (completed.status === 'partially_succeeded') setError(completed.error_message || 'Часть Runner не запущена');
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка запуска воркеров');
@@ -77,7 +120,9 @@ export default function AdminRunnersPage() {
 
   const start = async (accountID: number) => {
     try {
-      await adminApi.restartRunner(accountID);
+      const started = await adminApi.restartRunner(accountID);
+      const completed = await monitorOperation(started.operation, 'Запускаем Runner');
+      if (completed.status !== 'succeeded') throw operationFailure(completed);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка запуска воркера');
@@ -88,6 +133,7 @@ export default function AdminRunnersPage() {
 
   return (
     <div className="space-y-5">
+      {activeOperation && <BlockingOperationOverlay operation={activeOperation} title={operationTitle} />}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Runtime воркеры</h1>

@@ -1,13 +1,16 @@
+import type { AsyncOperationStart, BackgroundOperation } from "@/lib/api";
+
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "https://api.funpay.cloud").replace(/\/+$/, "");
 
 type Envelope<T> = {
   success: boolean;
   data?: T;
   error?: string;
+  code?: string;
 };
 
 export class MiniAppApiError extends Error {
-  constructor(message: string, public status?: number) {
+  constructor(message: string, public status?: number, public code?: string) {
     super(message);
   }
 }
@@ -42,7 +45,7 @@ async function miniFetch<T>(path: string, token?: string, options: RequestInit =
     // ignore
   }
   if (!response.ok || !envelope.success) {
-    throw new MiniAppApiError(envelope.error || "Ошибка запроса", response.status);
+    throw new MiniAppApiError(envelope.error || "Ошибка запроса", response.status, envelope.code);
   }
   return (envelope.data ?? ({} as T)) as T;
 }
@@ -158,7 +161,12 @@ export const miniAppApi = {
   proxies: (token: string) => miniFetch<{ items: MiniAppProxy[] }>("/api/miniapp/proxies", token),
   bonuses: (token: string) => miniFetch<MiniAppBonuses>("/api/miniapp/bonuses", token),
   startRuntime: (token: string, accountId: number) =>
-    miniFetch<{ message?: string }>(`/api/miniapp/accounts/${accountId}/runtime/start`, token, { method: "POST" }),
+    miniFetch<AsyncOperationStart>(`/api/miniapp/accounts/${accountId}/runtime/start`, token, {
+      method: "POST",
+      headers: { Prefer: "respond-async" },
+    }),
+  operation: (token: string, id: string) =>
+    miniFetch<BackgroundOperation>(`/api/miniapp/operations/${encodeURIComponent(id)}`, token),
   stopRuntime: (token: string, accountId: number) =>
     miniFetch<{ message?: string }>(`/api/miniapp/accounts/${accountId}/runtime/stop`, token, { method: "POST" }),
   confirmFreeProxy: (token: string, proxyId: number) =>

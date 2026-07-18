@@ -16,9 +16,11 @@ async function proxyToAdmin(request: NextRequest, params: { path?: string[] }) {
   const contentType = request.headers.get('content-type');
   const accept = request.headers.get('accept');
   const cookie = request.headers.get('cookie');
+  const prefer = request.headers.get('prefer');
 
   if (contentType) headers.set('Content-Type', contentType);
   if (accept) headers.set('Accept', accept);
+  if (prefer) headers.set('Prefer', prefer);
   if (cookie) {
     const adminCookie = cookie
       .split(';')
