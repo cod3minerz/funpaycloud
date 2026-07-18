@@ -64,6 +64,7 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('token', 'test-token');
     const params = new URLSearchParams(window.location.search);
+    if (params.get('dark') === '1') localStorage.setItem('theme', 'dark');
     const addError = params.get('addError');
     const slowComplete = params.get('slowComplete') === '1';
     const holdCompleteRequest = params.get('holdCompleteRequest') === '1';
@@ -343,8 +344,8 @@ test('onboarding shows a blocking 45 second attempt while FunPay validates', asy
   await expect(page.getByRole('heading', { name: 'Новый аккаунт' })).toBeHidden();
 });
 
-test('onboarding overlay is visible before the complete request returns', async ({ page }) => {
-  await page.goto('/platform/accounts?empty=1&holdCompleteRequest=1');
+test('onboarding overlay is visible above the modal with the active dark theme', async ({ page }) => {
+  await page.goto('/platform/accounts?empty=1&holdCompleteRequest=1&dark=1');
   await openAddAccount(page);
   await chooseFreeProxy(page);
   await page.getByTestId('golden-key-input').fill(TEST_GOLDEN_KEY);
@@ -359,6 +360,9 @@ test('onboarding overlay is visible before the complete request returns', async 
   await expect(overlay).toContainText('Попытка 1 из 3');
   await expect(page.getByTestId('blocking-operation-progress')).toHaveAttribute('data-duration-ms', '45000');
   expect(await overlay.evaluate((element) => element.parentElement === document.body)).toBe(true);
+  await expect(overlay).toHaveClass(/dark/);
+  expect(await page.getByTestId('blocking-operation-panel').evaluate((element) => getComputedStyle(element).backgroundColor))
+    .not.toBe('rgb(255, 255, 255)');
   expect(await page.evaluate(({ x, y }) => {
     const blockingOverlay = document.querySelector('[data-testid="blocking-operation-overlay"]');
     const topElement = document.elementFromPoint(x, y);

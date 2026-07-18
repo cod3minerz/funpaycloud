@@ -10,11 +10,20 @@ type Props = {
   title: string;
 };
 
+function detectDarkMode(): boolean {
+  const scopedThemeRoot = document.querySelector<HTMLElement>('[data-p2], [data-admin]');
+  if (scopedThemeRoot) return scopedThemeRoot.classList.contains('dark');
+  if (document.querySelector('[data-theme="dark"], .miniapp-root')) return true;
+  return document.documentElement.classList.contains('dark') || document.body.classList.contains('dark');
+}
+
 export default function BlockingOperationOverlay({ operation, title }: Props) {
   const [now, setNow] = useState(() => Date.now());
   const [portalHost, setPortalHost] = useState<HTMLElement | null>(null);
+  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
+    setDarkMode(detectDarkMode());
     setPortalHost(document.body);
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -52,28 +61,31 @@ export default function BlockingOperationOverlay({ operation, title }: Props) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-gray-950/80 p-4 backdrop-blur-sm"
+      className={`${darkMode ? 'dark' : ''} fixed inset-0 z-[2147483647] flex items-center justify-center bg-gray-950/80 p-4 backdrop-blur-sm`}
       data-testid="blocking-operation-overlay"
       role="dialog"
       aria-modal="true"
       aria-labelledby="blocking-operation-title"
       onPointerDown={(event) => event.preventDefault()}
     >
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white p-6 text-center shadow-2xl dark:bg-gray-900">
+      <div
+        className={`${darkMode ? 'border-white/10 bg-gray-900' : 'border-gray-200 bg-white'} w-full max-w-md rounded-2xl border p-6 text-center shadow-2xl`}
+        data-testid="blocking-operation-panel"
+      >
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-500/10">
           <span className="h-5 w-5 animate-spin rounded-full border-2 border-brand-200 border-t-brand-500" aria-hidden="true" />
         </div>
-        <h2 id="blocking-operation-title" className="mt-4 text-xl font-bold text-gray-900 dark:text-white">{title}</h2>
-        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+        <h2 id="blocking-operation-title" className={`${darkMode ? 'text-white' : 'text-gray-900'} mt-4 text-xl font-bold`}>{title}</h2>
+        <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} mt-2 text-sm`}>
           {operation.status === 'retry_wait'
             ? `Повтор через ${retrySeconds} сек.`
             : 'Ожидание ответа FunPay'}
         </p>
-        <p className="mt-4 text-sm font-semibold text-brand-600 dark:text-brand-400" data-testid="blocking-operation-attempt">
+        <p className={`${darkMode ? 'text-brand-400' : 'text-brand-600'} mt-4 text-sm font-semibold`} data-testid="blocking-operation-attempt">
           Попытка {attempt} из {operation.max_attempts || 3}
         </p>
         <div
-          className="mt-4 h-2.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"
+          className={`${darkMode ? 'bg-gray-800' : 'bg-gray-100'} mt-4 h-2.5 overflow-hidden rounded-full`}
           role="progressbar"
           aria-label="Ожидание ответа FunPay"
           aria-valuemin={0}
