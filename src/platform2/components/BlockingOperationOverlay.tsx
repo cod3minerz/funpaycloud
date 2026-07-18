@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { BackgroundOperation } from '@/lib/api';
 import { BACKGROUND_OPERATION_ATTEMPT_MS } from '@/lib/backgroundOperations';
 
@@ -11,8 +12,10 @@ type Props = {
 
 export default function BlockingOperationOverlay({ operation, title }: Props) {
   const [now, setNow] = useState(() => Date.now());
+  const [portalHost, setPortalHost] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
+    setPortalHost(document.body);
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const blockBackgroundInteraction = (event: KeyboardEvent) => {
@@ -45,9 +48,11 @@ export default function BlockingOperationOverlay({ operation, title }: Props) {
     : 0;
   const attempt = Math.max(1, operation.attempt || 1);
 
-  return (
+  if (!portalHost) return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-[10000] flex items-center justify-center bg-gray-950/75 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-gray-950/80 p-4 backdrop-blur-sm"
       data-testid="blocking-operation-overlay"
       role="dialog"
       aria-modal="true"
@@ -85,6 +90,7 @@ export default function BlockingOperationOverlay({ operation, title }: Props) {
         </div>
         <p className="mt-4 text-xs text-gray-400">Не закрывайте страницу — действие продолжится в фоне.</p>
       </div>
-    </div>
+    </div>,
+    portalHost,
   );
 }

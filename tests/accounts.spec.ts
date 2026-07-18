@@ -348,13 +348,25 @@ test('onboarding overlay is visible before the complete request returns', async 
   await openAddAccount(page);
   await chooseFreeProxy(page);
   await page.getByTestId('golden-key-input').fill(TEST_GOLDEN_KEY);
-  await page.getByRole('button', { name: 'Добавить аккаунт', exact: true }).last().click();
+  const submitButton = page.getByRole('button', { name: 'Добавить аккаунт', exact: true }).last();
+  const submitButtonBox = await submitButton.boundingBox();
+  expect(submitButtonBox).not.toBeNull();
+  await submitButton.click();
 
   const overlay = page.getByTestId('blocking-operation-overlay');
   await expect(overlay).toBeVisible();
   await expect(overlay).toContainText('Добавляем аккаунт');
   await expect(overlay).toContainText('Попытка 1 из 3');
   await expect(page.getByTestId('blocking-operation-progress')).toHaveAttribute('data-duration-ms', '45000');
+  expect(await overlay.evaluate((element) => element.parentElement === document.body)).toBe(true);
+  expect(await page.evaluate(({ x, y }) => {
+    const blockingOverlay = document.querySelector('[data-testid="blocking-operation-overlay"]');
+    const topElement = document.elementFromPoint(x, y);
+    return Boolean(blockingOverlay && topElement && blockingOverlay.contains(topElement));
+  }, {
+    x: submitButtonBox!.x + submitButtonBox!.width / 2,
+    y: submitButtonBox!.y + submitButtonBox!.height / 2,
+  })).toBe(true);
   expect(await page.evaluate(() => (
     window as typeof window & { __ONBOARDING_COMPLETE_RESOLVED__?: boolean }
   ).__ONBOARDING_COMPLETE_RESOLVED__)).toBe(false);
