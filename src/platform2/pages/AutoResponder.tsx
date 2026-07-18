@@ -1,15 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowDown,
   ArrowUp,
+  AlertTriangle,
   Bot,
   Pencil,
   Plus,
   Save,
   Trash2,
+  UserRound,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -28,6 +30,7 @@ import {
 type DraftCommand = AutoResponderCommandInput & { clientId: number };
 type Draft = {
   id?: number;
+  account_id: number | null;
   name: string;
   menu_text: string;
   commands: DraftCommand[];
@@ -47,13 +50,19 @@ function newCommand(position = 0): DraftCommand {
   };
 }
 
-function newDraft(): Draft {
-  return { name: "", menu_text: "", commands: [newCommand()] };
+function newDraft(accounts: ApiAccount[]): Draft {
+  return {
+    account_id: accounts.length === 1 ? accounts[0].id : null,
+    name: "",
+    menu_text: "",
+    commands: [newCommand()],
+  };
 }
 
 function draftFromResponder(item: AutoResponder): Draft {
   return {
     id: item.id,
+    account_id: item.funpay_account_id,
     name: item.name,
     menu_text: item.menu_text,
     commands: item.commands.map((command, position) => ({
@@ -70,6 +79,11 @@ function draftFromResponder(item: AutoResponder): Draft {
 
 function accountLabel(account: ApiAccount) {
   return account.username?.trim() || `FunPay-аккаунт #${account.id}`;
+}
+
+function accountLabelById(accounts: ApiAccount[], accountId: number) {
+  const account = accounts.find((candidate) => candidate.id === accountId);
+  return account ? accountLabel(account) : `FunPay-аккаунт #${accountId}`;
 }
 
 function commandCountLabel(count: number) {
@@ -120,26 +134,33 @@ export default function AutoResponderPage() {
   const router = useRouter();
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
-  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
   const [items, setItems] = useState<AutoResponder[]>([]);
-  const [plugins, setPlugins] = useState<AutoResponderPlugin[]>([]);
+  const [pluginsByAccount, setPluginsByAccount] = useState<Record<number, AutoResponderPlugin[]>>({});
+  const pluginCacheRef = useRef(new Map<number, AutoResponderPlugin[]>());
   const [draft, setDraft] = useState<Draft | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [switchingId, setSwitchingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [loadError, setLoadError] = useState("");
+  const [assignmentItem, setAssignmentItem] = useState<AutoResponder | null>(null);
+  const [assignmentAccountId, setAssignmentAccountId] = useState<number | null>(null);
+  const [assignmentError, setAssignmentError] = useState("");
+  const [assigning, setAssigning] = useState(false);
 
-  const loadAccounts = useCallback(async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setLoadError("");
     try {
-      const loadedAccounts = await accountsApi.list();
+      const [loadedAccounts, responders] = await Promise.all([
+        accountsApi.list(),
+        autoRespondersApi.listAll(),
+      ]);
       setAccounts(loadedAccounts);
-      setSelectedAccountId((current) => current ?? loadedAccounts[0]?.id ?? null);
-      if (loadedAccounts.length === 0) setLoading(false);
+      setItems(responders);
     } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "Не удалось загрузить аккаунты");
+      setLoadError(error instanceof Error ? error.message : "Не удалось загрузить автоответчики");
+    } finally {
       setLoading(false);
     }
   }, []);
@@ -165,42 +186,45 @@ export default function AutoResponderPage() {
 
   useEffect(() => {
     if (checkingAccess) return;
-    void loadAccounts();
-  }, [checkingAccess, loadAccounts]);
+    void loadData();
+  }, [checkingAccess, loadData]);
 
-  const loadAccountData = useCallback(async () => {
-    if (!selectedAccountId) {
-      setItems([]);
-      setPlugins([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setLoadError("");
-    try {
-      const [responders, commandPlugins] = await Promise.all([
-        autoRespondersApi.list(selectedAccountId),
-        autoRespondersApi.plugins(selectedAccountId),
-      ]);
-      setItems(responders);
-      setPlugins(commandPlugins);
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "Не удалось загрузить автоответчики");
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedAccountId]);
+  const loadPluginsForAccount = useCallback(async (accountId: number) => {
+    const cached = pluginCacheRef.current.get(accountId);
+    if (cached) return cached;
+    const loaded = await autoRespondersApi.plugins(accountId);
+    pluginCacheRef.current.set(accountId, loaded);
+    setPluginsByAccount((current) => ({ ...current, [accountId]: loaded }));
+    return loaded;
+  }, []);
 
   useEffect(() => {
-    if (checkingAccess || !selectedAccountId) return;
-    setDraft(null);
-    void loadAccountData();
-  }, [checkingAccess, selectedAccountId, loadAccountData]);
+    if (!draft?.account_id || pluginCacheRef.current.has(draft.account_id)) return;
+    void loadPluginsForAccount(draft.account_id).catch((error) => {
+      toast.error(error instanceof Error ? error.message : "Не удалось загрузить плагины аккаунта");
+    });
+  }, [draft?.account_id, loadPluginsForAccount]);
 
-  const selectedAccount = useMemo(
-    () => accounts.find((account) => account.id === selectedAccountId) || null,
-    [accounts, selectedAccountId],
-  );
+  const plugins = draft?.account_id ? pluginsByAccount[draft.account_id] || [] : [];
+
+  const changeDraftAccount = async (accountId: number | null) => {
+    setDraft((current) => current ? { ...current, account_id: accountId } : current);
+    if (!accountId) return;
+    try {
+      const available = await loadPluginsForAccount(accountId);
+      const slugs = new Set(available.map((plugin) => plugin.slug));
+      setDraft((current) => current && current.account_id === accountId ? {
+        ...current,
+        commands: current.commands.map((command) =>
+          command.action_type === "run_plugin" && command.plugin_slug && !slugs.has(command.plugin_slug)
+            ? { ...command, plugin_slug: null }
+            : command,
+        ),
+      } : current);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Не удалось загрузить плагины аккаунта");
+    }
+  };
 
   const updateCommand = (clientId: number, patch: Partial<DraftCommand>) => {
     setDraft((current) => current ? {
@@ -291,14 +315,17 @@ export default function AutoResponderPage() {
   };
 
   const saveResponder = async () => {
-    if (!selectedAccountId) return;
+    if (!draft?.account_id) {
+      toast.error("Выберите FunPay-аккаунт");
+      return;
+    }
     const payload = buildPayload();
     if (!payload) return;
     setSaving(true);
     try {
-      const saved = draft?.id
-        ? await autoRespondersApi.update(selectedAccountId, draft.id, payload)
-        : await autoRespondersApi.create(selectedAccountId, payload);
+      const saved = draft.id
+        ? await autoRespondersApi.update(draft.account_id, draft.id, payload)
+        : await autoRespondersApi.create(draft.account_id, payload);
       setItems((current) => {
         const exists = current.some((item) => item.id === saved.id);
         return exists ? current.map((item) => item.id === saved.id ? saved : item) : [saved, ...current];
@@ -313,13 +340,16 @@ export default function AutoResponderPage() {
   };
 
   const toggleResponder = async (item: AutoResponder) => {
-    if (!selectedAccountId) return;
     setSwitchingId(item.id);
     try {
-      const updated = await autoRespondersApi.setEnabled(selectedAccountId, item.id, !item.enabled);
+      const updated = await autoRespondersApi.setEnabled(item.funpay_account_id, item.id, !item.enabled);
       setItems((current) => current.map((candidate) => {
         if (candidate.id === updated.id) return updated;
-        if (updated.enabled && candidate.enabled) return { ...candidate, enabled: false };
+        if (
+          updated.enabled
+          && candidate.enabled
+          && candidate.funpay_account_id === updated.funpay_account_id
+        ) return { ...candidate, enabled: false };
         return candidate;
       }));
       toast.success(updated.enabled ? "Автоответчик включён" : "Автоответчик выключен");
@@ -331,10 +361,10 @@ export default function AutoResponderPage() {
   };
 
   const deleteResponder = async (item: AutoResponder) => {
-    if (!selectedAccountId || !window.confirm(`Удалить автоответчик «${item.name}»?`)) return;
+    if (!window.confirm(`Удалить автоответчик «${item.name}»?`)) return;
     setDeletingId(item.id);
     try {
-      await autoRespondersApi.delete(selectedAccountId, item.id);
+      await autoRespondersApi.delete(item.funpay_account_id, item.id);
       setItems((current) => current.filter((candidate) => candidate.id !== item.id));
       if (draft?.id === item.id) setDraft(null);
       toast.success("Автоответчик удалён");
@@ -345,13 +375,52 @@ export default function AutoResponderPage() {
     }
   };
 
+  const openAssignment = (item: AutoResponder) => {
+    setAssignmentItem(item);
+    setAssignmentAccountId(item.funpay_account_id);
+    setAssignmentError("");
+  };
+
+  const closeAssignment = () => {
+    if (assigning) return;
+    setAssignmentItem(null);
+    setAssignmentAccountId(null);
+    setAssignmentError("");
+  };
+
+  const assignAccount = async () => {
+    if (!assignmentItem || !assignmentAccountId) return;
+    if (assignmentAccountId === assignmentItem.funpay_account_id) {
+      closeAssignment();
+      return;
+    }
+    setAssigning(true);
+    setAssignmentError("");
+    try {
+      const updated = await autoRespondersApi.assignAccount(assignmentItem.id, assignmentAccountId);
+      setItems((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setDraft((current) => current?.id === updated.id
+        ? { ...current, account_id: updated.funpay_account_id }
+        : current);
+      setAssignmentItem(null);
+      setAssignmentAccountId(null);
+      toast.success(assignmentItem.enabled
+        ? "Аккаунт автоответчика изменён. Конфигурация выключена."
+        : "Аккаунт автоответчика изменён.");
+    } catch (error) {
+      setAssignmentError(error instanceof Error ? error.message : "Не удалось изменить аккаунт");
+    } finally {
+      setAssigning(false);
+    }
+  };
+
   if (checkingAccess) {
     return <LoadingState label="Проверяем доступ…" />;
   }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6" data-testid="auto-responder-page">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
         <div>
           <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-brand-500/10 px-3 py-1 text-xs font-semibold text-brand-600 dark:text-brand-400">
             <Bot className="h-4 w-4" />
@@ -362,20 +431,6 @@ export default function AutoResponderPage() {
             Настройте меню и команды для входящих сообщений покупателей на FunPay.
           </p>
         </div>
-        {accounts.length > 0 && (
-          <label className="min-w-0 sm:w-72">
-            <span className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">FunPay-аккаунт</span>
-            <select
-              aria-label="FunPay-аккаунт"
-              data-testid="auto-responder-account"
-              value={selectedAccountId ?? ""}
-              onChange={(event) => setSelectedAccountId(Number(event.target.value))}
-              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            >
-              {accounts.map((account) => <option key={account.id} value={account.id}>{accountLabel(account)}</option>)}
-            </select>
-          </label>
-        )}
       </div>
 
       {loadError ? (
@@ -384,7 +439,7 @@ export default function AutoResponderPage() {
           <p className="mt-1 text-sm text-red-600/80 dark:text-red-300/80">{loadError}</p>
           <button
             type="button"
-            onClick={() => void (selectedAccountId ? loadAccountData() : loadAccounts())}
+            onClick={() => void loadData()}
             className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white"
           >
             Повторить
@@ -398,7 +453,7 @@ export default function AutoResponderPage() {
           onAction={() => router.push("/platform/accounts")}
         />
       ) : loading ? (
-        <LoadingState label={`Загружаем настройки ${selectedAccount ? accountLabel(selectedAccount) : "аккаунта"}…`} />
+        <LoadingState label="Загружаем автоответчики…" />
       ) : (
         <>
           {items.length === 0 && !draft ? (
@@ -406,7 +461,7 @@ export default function AutoResponderPage() {
               title="Добавьте автоответчик"
               text="Создайте меню и добавьте команды, по которым покупатель получит нужный ответ."
               actionLabel="Добавить автоответчик"
-              onAction={() => setDraft(newDraft())}
+              onAction={() => setDraft(newDraft(accounts))}
             />
           ) : (
             <section className="space-y-3" aria-label="Сохранённые автоответчики">
@@ -416,7 +471,7 @@ export default function AutoResponderPage() {
                   <button
                     type="button"
                     data-testid="add-auto-responder"
-                    onClick={() => setDraft(newDraft())}
+                    onClick={() => setDraft(newDraft(accounts))}
                     className="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-600"
                   >
                     <Plus className="h-4 w-4" /> Добавить автоответчик
@@ -451,6 +506,23 @@ export default function AutoResponderPage() {
                         testId={`auto-responder-toggle-${item.id}`}
                         onChange={() => void toggleResponder(item)}
                       />
+                    </div>
+                    <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/70 px-3 py-2.5 dark:border-gray-800 dark:bg-gray-950/60">
+                      <div className="flex min-w-0 items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                        <UserRound className="h-4 w-4 shrink-0 text-brand-500" />
+                        <span className="truncate">
+                          FunPay-аккаунт: <span className="font-medium text-gray-900 dark:text-white">{accountLabelById(accounts, item.funpay_account_id)}</span>
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        data-testid={`auto-responder-assign-${item.id}`}
+                        aria-label={`Выбрать аккаунт для ${item.name}`}
+                        onClick={() => openAssignment(item)}
+                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-brand-500/30 text-brand-600 transition hover:bg-brand-500/10 dark:text-brand-400"
+                      >
+                        <Plus className="h-5 w-5" />
+                      </button>
                     </div>
                     <div className="mt-4 flex gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
                       <button
@@ -491,6 +563,30 @@ export default function AutoResponderPage() {
                 <button type="button" aria-label="Закрыть форму" onClick={() => setDraft(null)} className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200">
                   <X className="h-5 w-5" />
                 </button>
+              </div>
+
+              <div className="mb-5">
+                <span className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">FunPay-аккаунт</span>
+                {draft.id ? (
+                  <div data-testid="auto-responder-draft-account" className="flex h-11 items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300">
+                    <UserRound className="h-4 w-4 text-brand-500" />
+                    {draft.account_id
+                      ? accountLabelById(accounts, draft.account_id)
+                      : "Аккаунт не выбран"}
+                    <span className="ml-auto text-xs text-gray-400">Изменяется через + в карточке</span>
+                  </div>
+                ) : (
+                  <select
+                    aria-label="FunPay-аккаунт для нового автоответчика"
+                    data-testid="auto-responder-draft-account"
+                    value={draft.account_id ?? ""}
+                    onChange={(event) => void changeDraftAccount(Number(event.target.value) || null)}
+                    className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
+                  >
+                    {accounts.length > 1 && <option value="">Выберите аккаунт</option>}
+                    {accounts.map((account) => <option key={account.id} value={account.id}>{accountLabel(account)}</option>)}
+                  </select>
+                )}
               </div>
 
               <div className="grid gap-5 lg:grid-cols-2">
@@ -642,6 +738,88 @@ export default function AutoResponderPage() {
             </section>
           )}
         </>
+      )}
+
+      {assignmentItem && (
+        <div className="fixed inset-0 z-[100000] flex items-end justify-center bg-gray-950/65 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="auto-responder-assignment-title"
+            data-testid="auto-responder-assignment-modal"
+            className="max-h-[90vh] w-full overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl dark:bg-gray-900 sm:max-w-lg sm:rounded-2xl sm:p-6"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="auto-responder-assignment-title" className="text-lg font-semibold text-gray-900 dark:text-white">Выберите FunPay-аккаунт</h2>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Автоответчик «{assignmentItem.name}» будет использоваться для выбранного аккаунта.</p>
+              </div>
+              <button type="button" aria-label="Закрыть выбор аккаунта" disabled={assigning} onClick={closeAssignment} className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50 dark:hover:bg-gray-800 dark:hover:text-gray-200">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div role="radiogroup" aria-label="FunPay-аккаунты" className="mt-5 space-y-2">
+              {accounts.map((account) => {
+                const selected = assignmentAccountId === account.id;
+                return (
+                  <button
+                    key={account.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    data-testid={`auto-responder-account-option-${account.id}`}
+                    disabled={assigning}
+                    onClick={() => {
+                      setAssignmentAccountId(account.id);
+                      setAssignmentError("");
+                    }}
+                    className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition ${
+                      selected
+                        ? "border-brand-500 bg-brand-500/5 ring-1 ring-brand-500/20"
+                        : "border-gray-200 hover:border-brand-500/40 dark:border-gray-700"
+                    }`}
+                  >
+                    <span className={`flex h-9 w-9 items-center justify-center rounded-full ${selected ? "bg-brand-500 text-white" : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-300"}`}>
+                      <UserRound className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-gray-900 dark:text-white">{accountLabel(account)}</span>
+                      <span className="block text-xs text-gray-400">Аккаунт #{account.id}</span>
+                    </span>
+                    <span className={`h-4 w-4 rounded-full border-4 ${selected ? "border-brand-500 bg-white" : "border-gray-300 dark:border-gray-600"}`} />
+                  </button>
+                );
+              })}
+            </div>
+
+            {assignmentItem.enabled && assignmentAccountId !== assignmentItem.funpay_account_id && (
+              <div className="mt-4 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                После смены аккаунта этот автоответчик будет выключен. Активный автоответчик выбранного аккаунта продолжит работать.
+              </div>
+            )}
+
+            {assignmentError && (
+              <div role="alert" data-testid="auto-responder-assignment-error" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
+                {assignmentError}
+              </div>
+            )}
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button type="button" disabled={assigning} onClick={closeAssignment} className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">Отмена</button>
+              <button
+                type="button"
+                data-testid="save-auto-responder-account"
+                disabled={assigning || !assignmentAccountId}
+                onClick={() => void assignAccount()}
+                className="rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {assigning ? "Сохраняем…" : "Назначить"}
+              </button>
+            </div>
+          </section>
+        </div>
       )}
     </div>
   );

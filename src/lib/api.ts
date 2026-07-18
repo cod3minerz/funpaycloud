@@ -558,6 +558,7 @@ export const accountsApi = {
 };
 
 export const autoRespondersApi = {
+  listAll: () => apiRequest<AutoResponder[]>('/api/auto-responders'),
   list: (accountId: number | string) =>
     apiRequest<AutoResponder[]>(`/api/accounts/${accountId}/auto-responders`),
   create: (accountId: number | string, payload: AutoResponderInput) =>
@@ -576,6 +577,11 @@ export const autoRespondersApi = {
     apiRequest<AutoResponder>(`/api/accounts/${accountId}/auto-responders/${responderId}/enabled`, {
       method: 'PATCH',
       body: JSON.stringify({ enabled }),
+    }),
+  assignAccount: (responderId: number | string, funpayAccountId: number) =>
+    apiRequest<AutoResponder>(`/api/auto-responders/${responderId}/account`, {
+      method: 'PATCH',
+      body: JSON.stringify({ funpay_account_id: funpayAccountId }),
     }),
   plugins: (accountId: number | string) =>
     apiRequest<AutoResponderPlugin[]>(`/api/accounts/${accountId}/auto-responder-plugins`),
