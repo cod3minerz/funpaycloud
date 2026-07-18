@@ -69,6 +69,7 @@ test.beforeEach(async ({ page }) => {
     const slowComplete = params.get('slowComplete') === '1';
     const holdCompleteRequest = params.get('holdCompleteRequest') === '1';
     const retryFlow = params.get('retryFlow') === '1';
+    const preserveExisting = params.get('preserveExisting') === '1';
     const startEmpty = params.get('empty') === '1';
     const startStopped = params.get('stopped') === '1';
     const dropTarget = params.get('dropTarget') === '1';
@@ -269,7 +270,7 @@ test.beforeEach(async ({ page }) => {
           return ok(operation(id, 'running', 1));
         }
         if (activeOperationKind === 'add') {
-          accounts = [{
+          const addedAccount = {
             id: 83,
             funpay_user_id: 8301,
             username: 'CurrentTenantNew',
@@ -278,7 +279,8 @@ test.beforeEach(async ({ page }) => {
             raiser_active: false,
             proxy_connected: true,
             proxy_label: 'Бесплатный прокси',
-          }];
+          };
+          accounts = preserveExisting ? [...accounts, addedAccount] : [addedAccount];
           return ok(operation(id, 'succeeded', retryFlow ? 3 : 1, '', '', { account_id: 83, username: 'CurrentTenantNew', proxy_id: 501 }));
         }
         accounts = accounts.map((account) => ({ ...account, runner_active: true, keeper_active: true, raiser_active: true }));
@@ -322,6 +324,37 @@ test('free onboarding succeeds and never calls legacy account add', async ({ pag
   await expect(page.getByText('CurrentTenantNew', { exact: true })).toBeVisible();
   const legacyCalls = await page.evaluate(() => (window as typeof window & { __LEGACY_ACCOUNT_POSTS__?: number }).__LEGACY_ACCOUNT_POSTS__ || 0);
   expect(legacyCalls).toBe(0);
+});
+
+test('successful onboarding clears autofilled login and keeps every account visible', async ({ page }) => {
+  await page.goto('/platform/accounts?preserveExisting=1');
+
+  const searchInput = page.getByTestId('account-search-input');
+  await expect(searchInput).toHaveAttribute('type', 'search');
+  await expect(searchInput).toHaveAttribute('autocomplete', 'off');
+  await expect(searchInput).toHaveAttribute('readonly', '');
+
+  await openAddAccount(page);
+  await chooseFreeProxy(page);
+  await page.getByTestId('golden-key-input').fill(TEST_GOLDEN_KEY);
+
+  // Reproduce a browser/password-manager autofill that writes the platform
+  // login into the account search while the Golden Key password field is open.
+  await searchInput.evaluate((element) => {
+    const input = element as HTMLInputElement;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    setter?.call(input, 'qa@test.local');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect(searchInput).toHaveValue('qa@test.local');
+
+  await page.getByRole('button', { name: 'Добавить аккаунт', exact: true }).last().click();
+
+  await expect(page.getByRole('heading', { name: 'Новый аккаунт' })).toBeHidden();
+  await expect(searchInput).toHaveValue('');
+  await expect(page.getByText('AlphaSeller', { exact: true })).toBeVisible();
+  await expect(page.getByText('BetaSeller', { exact: true })).toBeVisible();
+  await expect(page.getByText('CurrentTenantNew', { exact: true })).toBeVisible();
 });
 
 test('onboarding shows a blocking 45 second attempt while FunPay validates', async ({ page }) => {

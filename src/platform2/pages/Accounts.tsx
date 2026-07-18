@@ -138,6 +138,7 @@ export default function AccountsPage() {
   const [proxyTarget, setProxyTarget] = useState<Account | null>(null);
   const [addingAccount, setAddingAccount] = useState(false);
   const [search, setSearch] = useState("");
+  const [searchInputUnlocked, setSearchInputUnlocked] = useState(false);
   const [filterStatus, setFilterStatus] = useState<"" | "online" | "offline">("");
   const [runningAll, setRunningAll] = useState(false);
   const [stoppingAll, setStoppingAll] = useState(false);
@@ -319,7 +320,13 @@ export default function AccountsPage() {
         .then(async (operation) => {
           const list = await accountsApi.list();
           setAccounts(list.map(mapApiAccount));
-          if (operation.status === "succeeded") toast.success("Операция успешно завершена");
+          if (operation.status === "succeeded") {
+            if (operation.kind === "account_onboarding_complete") {
+              setSearch("");
+              setFilterStatus("");
+            }
+            toast.success("Операция успешно завершена");
+          }
           else if (operation.status === "partially_succeeded") toast.warning(operation.error_message || "Операция завершена частично");
           else toast.error(operation.error_message || "Операция не выполнена");
         })
@@ -538,6 +545,8 @@ export default function AccountsPage() {
       }
       const list = await accountsApi.list();
       setAccounts(list.map(mapApiAccount));
+      setSearch("");
+      setFilterStatus("");
       toast.success("Аккаунт успешно добавлен через выбранный прокси");
       setShowProxyBanner(false);
       resetAddWizard();
@@ -843,10 +852,22 @@ export default function AccountsPage() {
             <CardTitle>Список аккаунтов</CardTitle>
             <div className="flex flex-wrap gap-2">
               <input
-                type="text"
+                type="search"
+                name="funpay-account-search"
                 placeholder="Поиск"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                onPointerDown={() => setSearchInputUnlocked(true)}
+                onFocus={() => setSearchInputUnlocked(true)}
+                onBlur={() => setSearchInputUnlocked(false)}
+                readOnly={!searchInputUnlocked}
+                autoComplete="off"
+                spellCheck={false}
+                aria-label="Поиск аккаунтов"
+                data-testid="account-search-input"
+                data-1p-ignore="true"
+                data-lpignore="true"
+                data-form-type="other"
                 className="h-11 min-w-0 flex-1 sm:flex-none sm:w-48 rounded-lg border border-gray-300 bg-white px-4 text-sm shadow-theme-xs outline-none focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
               />
               <Select
