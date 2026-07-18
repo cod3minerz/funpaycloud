@@ -147,6 +147,7 @@ export default function AutoResponderPage() {
   const [assignmentAccountId, setAssignmentAccountId] = useState<number | null>(null);
   const [assignmentError, setAssignmentError] = useState("");
   const [assigning, setAssigning] = useState(false);
+  const isDraftOpen = draft !== null;
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -188,6 +189,26 @@ export default function AutoResponderPage() {
     if (checkingAccess) return;
     void loadData();
   }, [checkingAccess, loadData]);
+
+  useEffect(() => {
+    if (!isDraftOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isDraftOpen]);
+
+  useEffect(() => {
+    if (!isDraftOpen) return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      if (!saving) setDraft(null);
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isDraftOpen, saving]);
 
   const loadPluginsForAccount = useCallback(async (accountId: number) => {
     const cached = pluginCacheRef.current.get(accountId);
@@ -375,7 +396,28 @@ export default function AutoResponderPage() {
     }
   };
 
+  const openNewDraft = () => {
+    if (assigning) return;
+    setAssignmentItem(null);
+    setAssignmentAccountId(null);
+    setAssignmentError("");
+    setDraft(newDraft(accounts));
+  };
+
+  const openEditDraft = (item: AutoResponder) => {
+    if (assigning) return;
+    setAssignmentItem(null);
+    setAssignmentAccountId(null);
+    setAssignmentError("");
+    setDraft(draftFromResponder(item));
+  };
+
+  const closeDraft = () => {
+    if (!saving) setDraft(null);
+  };
+
   const openAssignment = (item: AutoResponder) => {
+    if (draft) return;
     setAssignmentItem(item);
     setAssignmentAccountId(item.funpay_account_id);
     setAssignmentError("");
@@ -456,27 +498,25 @@ export default function AutoResponderPage() {
         <LoadingState label="Загружаем автоответчики…" />
       ) : (
         <>
-          {items.length === 0 && !draft ? (
+          {items.length === 0 ? (
             <EmptyPanel
               title="Добавьте автоответчик"
               text="Создайте меню и добавьте команды, по которым покупатель получит нужный ответ."
               actionLabel="Добавить автоответчик"
-              onAction={() => setDraft(newDraft(accounts))}
+              onAction={openNewDraft}
             />
           ) : (
             <section className="space-y-3" aria-label="Сохранённые автоответчики">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Автоответчики</h2>
-                {!draft && (
-                  <button
-                    type="button"
-                    data-testid="add-auto-responder"
-                    onClick={() => setDraft(newDraft(accounts))}
-                    className="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-600"
-                  >
-                    <Plus className="h-4 w-4" /> Добавить автоответчик
-                  </button>
-                )}
+                <button
+                  type="button"
+                  data-testid="add-auto-responder"
+                  onClick={openNewDraft}
+                  className="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-600"
+                >
+                  <Plus className="h-4 w-4" /> Добавить автоответчик
+                </button>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 {items.map((item) => (
@@ -528,7 +568,7 @@ export default function AutoResponderPage() {
                       <button
                         type="button"
                         aria-label={`Редактировать ${item.name}`}
-                        onClick={() => setDraft(draftFromResponder(item))}
+                        onClick={() => openEditDraft(item)}
                         className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                       >
                         <Pencil className="h-4 w-4" /> Редактировать
@@ -550,21 +590,33 @@ export default function AutoResponderPage() {
           )}
 
           {draft && (
-            <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:p-6" data-testid="auto-responder-form">
-              <div className="mb-6 flex items-center justify-between gap-3">
+            <div
+              data-testid="auto-responder-modal-backdrop"
+              className="fixed inset-0 z-[100000] flex items-center justify-center bg-gray-950/70 p-0 backdrop-blur-sm sm:p-4"
+            >
+              <section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="auto-responder-modal-title"
+                aria-describedby="auto-responder-modal-description"
+                data-testid="auto-responder-modal"
+                className="flex h-[100dvh] w-full flex-col overflow-hidden bg-white shadow-2xl dark:bg-gray-900 sm:h-[90dvh] sm:max-w-5xl sm:rounded-2xl sm:border sm:border-gray-200 sm:dark:border-gray-800"
+              >
+              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-gray-100 px-4 py-4 dark:border-gray-800 sm:px-6 sm:py-5">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  <h2 id="auto-responder-modal-title" className="text-lg font-semibold text-gray-900 dark:text-white">
                     {draft.id ? "Редактирование автоответчика" : "Новый автоответчик"}
                   </h2>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  <p id="auto-responder-modal-description" className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                     {draft.id ? "Изменения применятся к текущей конфигурации." : "Новая конфигурация сохранится выключенной."}
                   </p>
                 </div>
-                <button type="button" aria-label="Закрыть форму" onClick={() => setDraft(null)} className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200">
+                <button type="button" aria-label="Закрыть форму" disabled={saving} onClick={closeDraft} className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-gray-800 dark:hover:text-gray-200">
                   <X className="h-5 w-5" />
                 </button>
               </div>
 
+              <div data-testid="auto-responder-form" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6 sm:py-6">
               <div className="mb-5">
                 <span className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">FunPay-аккаунт</span>
                 {draft.id ? (
@@ -579,6 +631,7 @@ export default function AutoResponderPage() {
                   <select
                     aria-label="FunPay-аккаунт для нового автоответчика"
                     data-testid="auto-responder-draft-account"
+                    autoFocus={accounts.length > 1}
                     value={draft.account_id ?? ""}
                     onChange={(event) => void changeDraftAccount(Number(event.target.value) || null)}
                     className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
@@ -594,6 +647,7 @@ export default function AutoResponderPage() {
                   <span className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Название автоответчика</span>
                   <input
                     data-testid="auto-responder-name"
+                    autoFocus={Boolean(draft.id) || accounts.length === 1}
                     maxLength={120}
                     value={draft.name}
                     onChange={(event) => setDraft({ ...draft, name: event.target.value })}
@@ -722,9 +776,10 @@ export default function AutoResponderPage() {
                   </div>
                 ))}
               </div>
+              </div>
 
-              <div className="mt-7 flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:justify-end dark:border-gray-800">
-                <button type="button" onClick={() => setDraft(null)} className="rounded-xl border border-gray-200 px-5 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">Отмена</button>
+              <div data-testid="auto-responder-modal-footer" className="flex shrink-0 flex-col-reverse gap-3 border-t border-gray-100 bg-white px-4 py-4 sm:flex-row sm:justify-end sm:px-6 dark:border-gray-800 dark:bg-gray-900">
+                <button type="button" disabled={saving} onClick={closeDraft} className="rounded-xl border border-gray-200 px-5 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">Отмена</button>
                 <button
                   type="button"
                   data-testid="save-auto-responder"
@@ -736,6 +791,7 @@ export default function AutoResponderPage() {
                 </button>
               </div>
             </section>
+            </div>
           )}
         </>
       )}

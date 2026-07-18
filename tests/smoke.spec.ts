@@ -78,6 +78,8 @@ test.beforeEach(async ({ page }) => {
     const multiAccounts = initialParams.get('multiAccounts') === '1';
     const seedAutoResponderCards = initialParams.get('autoResponderCards') === '1';
     const autoResponderAssignmentError = initialParams.get('assignmentError') === '1';
+    const autoResponderSaveError = initialParams.get('saveError') === '1';
+    const autoResponderSlowSave = initialParams.get('slowSave') === '1';
     const secondAccountID = 9;
     const profile = {
       login: 'qa',
@@ -302,6 +304,15 @@ test.beforeEach(async ({ page }) => {
         return envelope(autoResponders.filter((item) => item.funpay_account_id === requestedAccountID));
       }
       if (responderCollectionMatch && method === 'POST') {
+        if (autoResponderSlowSave) {
+          await new Promise((resolve) => window.setTimeout(resolve, 500));
+        }
+        if (autoResponderSaveError) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Не удалось сохранить тестовый автоответчик',
+          }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        }
         const requestedAccountID = Number(responderCollectionMatch[1]);
         const created = storeAutoResponder(JSON.parse(String(init?.body || '{}')), undefined, requestedAccountID);
         autoResponders = [created, ...autoResponders];
@@ -894,12 +905,82 @@ test('account assignment error keeps modal and original account', async ({ page 
   await expect(firstCard).toContainText('FunPay-аккаунт: tonminerz');
 });
 
+test('auto responder create and edit forms use one protected modal', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/platform/auto-responder');
+  await expect(page.getByTestId('auto-responder-modal')).toHaveCount(0);
+  await expect(page.getByTestId('auto-responder-form')).toHaveCount(0);
+
+  await page.getByTestId('add-auto-responder').click();
+  const createModal = page.getByRole('dialog', { name: 'Новый автоответчик' });
+  await expect(createModal).toBeVisible();
+  await expect(createModal).toHaveAttribute('aria-modal', 'true');
+  await expect(page.getByTestId('auto-responder-modal-backdrop')).toHaveCSS('position', 'fixed');
+  await expect(page.getByTestId('auto-responder-modal-footer')).toBeVisible();
+  await expect(page.getByTestId('save-auto-responder')).toBeVisible();
+  await expect(page.getByTestId('auto-responder-name')).toBeFocused();
+  await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('hidden');
+
+  await page.getByTestId('auto-responder-modal-backdrop').click({ position: { x: 5, y: 5 } });
+  await expect(createModal).toBeVisible();
+  await page.getByRole('button', { name: 'Закрыть форму' }).click();
+  await expect(createModal).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => document.body.style.overflow)).not.toBe('hidden');
+
+  await page.goto('/platform/auto-responder?autoResponderCards=1');
+  await page.getByTestId('add-auto-responder').click();
+  await expect(page.getByRole('dialog', { name: 'Новый автоответчик' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('auto-responder-modal')).toHaveCount(0);
+
+  const firstCard = page.getByTestId('auto-responder-card-41');
+  await firstCard.getByRole('button', { name: 'Редактировать Основной автоответчик' }).click();
+  await expect(page.getByRole('dialog', { name: 'Редактирование автоответчика' })).toBeVisible();
+  await page.getByRole('button', { name: 'Отмена' }).click();
+  await expect(page.getByTestId('auto-responder-modal')).toHaveCount(0);
+});
+
+test('auto responder save error keeps configuration modal open', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/platform/auto-responder?saveError=1');
+  await page.getByTestId('add-auto-responder').click();
+  await page.getByTestId('auto-responder-name').fill('Тест ошибки');
+  await page.getByTestId('auto-responder-menu').fill('start — начать');
+  await page.getByTestId('auto-responder-trigger-0').fill('start');
+  await page.getByTestId('auto-responder-message-0').fill('Начинаем');
+  await page.getByTestId('save-auto-responder').click();
+
+  await expect(page.getByText('Не удалось сохранить тестовый автоответчик')).toBeVisible();
+  await expect(page.getByTestId('auto-responder-modal')).toBeVisible();
+  await expect(page.getByTestId('auto-responder-name')).toHaveValue('Тест ошибки');
+});
+
+test('auto responder modal cannot close while save is in progress', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/platform/auto-responder?slowSave=1');
+  await page.getByTestId('add-auto-responder').click();
+  await page.getByTestId('auto-responder-name').fill('Медленное сохранение');
+  await page.getByTestId('auto-responder-menu').fill('start — начать');
+  await page.getByTestId('auto-responder-trigger-0').fill('start');
+  await page.getByTestId('auto-responder-message-0').fill('Начинаем');
+  await page.getByTestId('save-auto-responder').click();
+
+  await expect(page.getByTestId('save-auto-responder')).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Закрыть форму' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Отмена' })).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('auto-responder-modal')).toBeVisible();
+  await expect(page.getByTestId('auto-responder-modal')).toHaveCount(0);
+  await expect(page.getByTestId('auto-responder-card-41')).toContainText('Медленное сохранение');
+});
+
 test('auto responder CRUD, conditional actions and single active toggle', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 1000 });
   await page.goto('/platform/auto-responder');
   await expect(page.getByText('Добавьте автоответчик')).toBeVisible();
 
   await page.getByTestId('add-auto-responder').click();
+  await expect(page.getByTestId('auto-responder-modal')).toBeVisible();
   await page.getByTestId('auto-responder-name').fill('Основной автоответчик');
   await page.getByTestId('auto-responder-menu').fill('1 — инструкция\n2 — продавец');
   await page.getByTestId('auto-responder-trigger-0').fill('1');
@@ -917,6 +998,7 @@ test('auto responder CRUD, conditional actions and single active toggle', async 
   await page.getByTestId('auto-responder-plugin-2').selectOption('telegram_notify');
 
   await page.getByTestId('save-auto-responder').click();
+  await expect(page.getByTestId('auto-responder-modal')).toHaveCount(0);
   const firstCard = page.getByTestId('auto-responder-card-41');
   await expect(firstCard).toContainText('Основной автоответчик');
   await expect(firstCard).toContainText('3 команд');
@@ -926,8 +1008,10 @@ test('auto responder CRUD, conditional actions and single active toggle', async 
   await expect(firstToggle).toHaveAttribute('aria-checked', 'true');
 
   await firstCard.getByRole('button', { name: 'Редактировать Основной автоответчик' }).click();
+  await expect(page.getByRole('dialog', { name: 'Редактирование автоответчика' })).toBeVisible();
   await page.getByTestId('auto-responder-name').fill('Основной обновлённый');
   await page.getByTestId('save-auto-responder').click();
+  await expect(page.getByTestId('auto-responder-modal')).toHaveCount(0);
   await expect(firstCard).toContainText('Основной обновлённый');
 
   await page.getByTestId('add-auto-responder').click();
@@ -952,6 +1036,23 @@ test('auto responder form has no horizontal overflow on phone', async ({ page })
   await page.goto('/platform/auto-responder');
   await page.getByTestId('add-auto-responder').click();
   await expect(page.getByTestId('auto-responder-form')).toBeVisible();
+  for (let index = 0; index < 5; index += 1) {
+    await page.getByTestId('add-auto-responder-command').click();
+  }
+  const modal = page.getByTestId('auto-responder-modal');
+  const footer = page.getByTestId('auto-responder-modal-footer');
+  await expect(modal).toBeVisible();
+  await expect(footer).toBeVisible();
+  await expect(page.getByTestId('save-auto-responder')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('hidden');
+  expect(await page.getByTestId('auto-responder-form').evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+  const modalBox = await modal.boundingBox();
+  const footerBox = await footer.boundingBox();
+  expect(modalBox).not.toBeNull();
+  expect(modalBox!.x).toBeGreaterThanOrEqual(0);
+  expect(modalBox!.x + modalBox!.width).toBeLessThanOrEqual(390);
+  expect(footerBox).not.toBeNull();
+  expect(footerBox!.y + footerBox!.height).toBeLessThanOrEqual(844);
   await assertNoHorizontalOverflow(page);
 });
 
