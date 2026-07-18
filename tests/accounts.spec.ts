@@ -34,11 +34,24 @@ const ADD_FAILURES: AddFailure[] = [
     message: 'FunPay не ответил вовремя. Повторите попытку через несколько секунд.',
     clearsKey: false,
   },
+  {
+    status: 503,
+    code: 'selected_proxy_unavailable',
+    message: 'Выбранный прокси недоступен. Проверьте его или выберите другой.',
+    clearsKey: false,
+  },
 ];
 
 async function openAddAccount(page: Page) {
   await page.getByRole('button', { name: 'Добавить аккаунт', exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Новый аккаунт' })).toBeVisible();
+  await expect(page.getByTestId('onboarding-proxy-picker')).toBeVisible();
+}
+
+async function chooseFreeProxy(page: Page) {
+  await page.getByRole('button', { name: /Бесплатный прокси/ }).click();
+  await expect(page.getByTestId('golden-key-input')).toBeVisible();
+  await expect(page.getByTestId('selected-onboarding-proxy')).toContainText('Бесплатный прокси');
 }
 
 test.beforeEach(async ({ page }) => {
@@ -76,32 +89,42 @@ test.beforeEach(async ({ page }) => {
       },
     ];
     const failures: Record<string, { status: number; message: string }> = {
-      invalid_golden_key: {
-        status: 422,
-        message: 'Golden Key недействителен или сессия FunPay истекла. Получите новый ключ и попробуйте снова.',
-      },
-      funpay_account_already_linked: {
-        status: 409,
-        message: 'Этот Golden Key относится к FunPay-аккаунту, уже привязанному к другому профилю FunPay Cloud. Войдите в нужный аккаунт FunPay и получите его новый Golden Key.',
-      },
-      funpay_unavailable: {
-        status: 503,
-        message: 'FunPay временно недоступен. Повторите попытку через несколько секунд.',
-      },
-      funpay_validation_timeout: {
-        status: 504,
-        message: 'FunPay не ответил вовремя. Повторите попытку через несколько секунд.',
-      },
+      invalid_golden_key: { status: 422, message: 'Golden Key недействителен или сессия FunPay истекла. Получите новый ключ и попробуйте снова.' },
+      funpay_account_already_linked: { status: 409, message: 'Этот Golden Key относится к FunPay-аккаунту, уже привязанному к другому профилю FunPay Cloud. Войдите в нужный аккаунт FunPay и получите его новый Golden Key.' },
+      funpay_unavailable: { status: 503, message: 'FunPay временно недоступен. Повторите попытку через несколько секунд.' },
+      funpay_validation_timeout: { status: 504, message: 'FunPay не ответил вовремя. Повторите попытку через несколько секунд.' },
+      selected_proxy_unavailable: { status: 503, message: 'Выбранный прокси недоступен. Проверьте его или выберите другой.' },
     };
     const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
       status,
       headers: { 'Content-Type': 'application/json' },
     });
-    const ok = (data: unknown) => json({ success: true, data });
+    const ok = (data: unknown, status = 200) => json({ success: true, data }, status);
     const originalFetch = window.fetch.bind(window);
-    const testScope = window as typeof window & { __PROXY_CONNECT_CALLS__?: number; __DROP_PROXY_TARGET_NOW__?: boolean };
+    const testScope = window as typeof window & {
+      __PROXY_CONNECT_CALLS__?: number;
+      __DROP_PROXY_TARGET_NOW__?: boolean;
+      __LEGACY_ACCOUNT_POSTS__?: number;
+      __ONBOARDING_CANCELS__?: number;
+    };
     testScope.__PROXY_CONNECT_CALLS__ = 0;
     testScope.__DROP_PROXY_TARGET_NOW__ = false;
+    testScope.__LEGACY_ACCOUNT_POSTS__ = 0;
+    testScope.__ONBOARDING_CANCELS__ = 0;
+
+    const session = (id: string, type: string, label: string, status = 'ready', product?: string) => ({
+      id,
+      status,
+      expires_at: '2030-07-19T00:00:00Z',
+      proxy: { id: status === 'ready' ? 501 : undefined, type, product, label },
+      next_action: status === 'ready'
+        ? 'enter_golden_key'
+        : status === 'awaiting_payment'
+          ? 'pay'
+          : status === 'failed'
+            ? 'payment_failed'
+            : 'wait',
+    });
 
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const rawURL = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
@@ -121,6 +144,47 @@ test.beforeEach(async ({ page }) => {
         return ok(visibleAccounts);
       }
       if (path === '/api/accounts' && method === 'POST') {
+        testScope.__LEGACY_ACCOUNT_POSTS__ = (testScope.__LEGACY_ACCOUNT_POSTS__ || 0) + 1;
+        return json({ success: false, error: 'legacy endpoint must not be called' }, 500);
+      }
+      if (path === '/api/proxies/my' && method === 'GET') {
+        return ok({ items: [{
+          id: 91,
+          product: 'external_custom',
+          label: 'Inventory Proxy Alpha',
+          display_name: 'Inventory Proxy Alpha',
+          host: 'tenant-proxy.local',
+          port: 9000,
+          protocol: 'HTTP',
+          is_shared_free: false,
+          has_credentials: true,
+          is_active: true,
+          health_status: 'healthy',
+          fail_count: 0,
+          created_at: '2026-07-18T00:00:00Z',
+        }] });
+      }
+      if (path === '/api/account-onboarding' && method === 'POST') {
+        const body = JSON.parse(String(init?.body || '{}')) as { mode?: string; product?: string; proxy_id?: number; external_proxy?: { host?: string; port?: number } };
+        if (body.mode === 'paid') {
+          return ok({
+            ...session('paid-session', 'paid', body.product === 'proxy_pro' ? 'Proxy Pro' : 'Proxy Lite', 'awaiting_payment', body.product),
+            payment_id: 700,
+            checkout_url: `http://localhost:3100/platform/accounts?accountOnboarding=paid-session&proxyPayment=success&paymentId=700`,
+          }, 201);
+        }
+        if (body.mode === 'owned') return ok(session('owned-session', 'owned', 'Inventory Proxy Alpha'), 201);
+        if (body.mode === 'external') return ok(session('external-session', 'external', `${body.external_proxy?.host}:${body.external_proxy?.port}`), 201);
+        return ok(session('free-session', 'free', 'Бесплатный прокси'), 201);
+      }
+      if (path === '/api/account-onboarding/paid-session' && method === 'GET') {
+        return ok(session('paid-session', 'paid', 'Proxy Lite', 'ready', 'proxy_lite'));
+      }
+      if (/^\/api\/account-onboarding\/[^/]+$/.test(path) && method === 'DELETE') {
+        testScope.__ONBOARDING_CANCELS__ = (testScope.__ONBOARDING_CANCELS__ || 0) + 1;
+        return ok({});
+      }
+      if (/^\/api\/account-onboarding\/[^/]+\/complete$/.test(path) && method === 'POST') {
         if (addError && failures[addError]) {
           const failure = failures[addError];
           return json({ success: false, code: addError, error: failure.message }, failure.status);
@@ -129,16 +193,16 @@ test.beforeEach(async ({ page }) => {
           id: 83,
           funpay_user_id: 8301,
           username: 'CurrentTenantNew',
-          runner_active: false,
-          keeper_active: false,
+          runner_active: true,
+          keeper_active: true,
           raiser_active: false,
-          proxy_connected: false,
+          proxy_connected: true,
+          proxy_label: 'Бесплатный прокси',
         }];
-        return ok({ id: 83 });
+        return ok({ account_id: 83, username: 'CurrentTenantNew', proxy_id: 501 });
       }
-      if (path === '/api/accounts/81/proxy' && method === 'POST') {
-        const scope = window as typeof window & { __PROXY_CONNECT_CALLS__?: number };
-        scope.__PROXY_CONNECT_CALLS__ = (scope.__PROXY_CONNECT_CALLS__ || 0) + 1;
+      if (path === '/api/accounts/81/proxy/connect' && method === 'POST') {
+        testScope.__PROXY_CONNECT_CALLS__ = (testScope.__PROXY_CONNECT_CALLS__ || 0) + 1;
         return ok({});
       }
       return ok(method === 'GET' ? [] : {});
@@ -147,15 +211,16 @@ test.beforeEach(async ({ page }) => {
 });
 
 for (const failure of ADD_FAILURES) {
-  test(`add account ${failure.status} ${failure.code} keeps safe form state`, async ({ page }) => {
+  test(`onboarding complete ${failure.status} ${failure.code} keeps safe form state`, async ({ page }) => {
     await page.goto(`/platform/accounts?addError=${failure.code}`);
     await openAddAccount(page);
+    await chooseFreeProxy(page);
 
     const input = page.getByTestId('golden-key-input');
     await expect(input).toHaveAttribute('type', 'password');
     await expect(input).toHaveAttribute('autocomplete', 'off');
     await input.fill(TEST_GOLDEN_KEY);
-    await page.getByRole('button', { name: 'Добавить', exact: true }).click();
+    await page.getByRole('button', { name: 'Добавить аккаунт', exact: true }).last().click();
 
     await expect(page.getByText(failure.message, { exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Новый аккаунт' })).toBeVisible();
@@ -163,43 +228,76 @@ for (const failure of ADD_FAILURES) {
   });
 }
 
-test('successful add refreshes the current tenant account list', async ({ page }) => {
+test('free onboarding succeeds and never calls legacy account add', async ({ page }) => {
   await page.goto('/platform/accounts?empty=1');
   await openAddAccount(page);
+  await chooseFreeProxy(page);
   await page.getByTestId('golden-key-input').fill(TEST_GOLDEN_KEY);
-  await page.getByRole('button', { name: 'Добавить', exact: true }).click();
+  await page.getByRole('button', { name: 'Добавить аккаунт', exact: true }).last().click();
 
   await expect(page.getByRole('heading', { name: 'Новый аккаунт' })).toBeHidden();
   await expect(page.getByText('CurrentTenantNew', { exact: true })).toBeVisible();
-  await expect(page.getByText('AlphaSeller', { exact: true })).toHaveCount(0);
+  const legacyCalls = await page.evaluate(() => (window as typeof window & { __LEGACY_ACCOUNT_POSTS__?: number }).__LEGACY_ACCOUNT_POSTS__ || 0);
+  expect(legacyCalls).toBe(0);
 });
 
-test('proxy target follows the selected tenant account and resets after closing', async ({ page }) => {
+test('paid onboarding restores after checkout and shows server proxy label', async ({ page }) => {
   await page.goto('/platform/accounts');
-  const alphaRow = page.getByRole('row').filter({ hasText: 'AlphaSeller' });
-  await alphaRow.getByRole('button', { name: 'Сменить прокси' }).click();
-  await expect(page.getByText('Аккаунт: AlphaSeller', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Настроить' }).click();
-  await expect(page.getByText('Аккаунт: AlphaSeller', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Отмена' }).click();
+  await openAddAccount(page);
+  await page.getByRole('button', { name: /Proxy Lite/ }).click();
 
-  const betaRow = page.getByRole('row').filter({ hasText: 'BetaSeller' });
-  await betaRow.getByRole('button', { name: 'Сменить прокси' }).click();
-  await expect(page.getByText('Аккаунт: BetaSeller', { exact: true })).toBeVisible();
-  await expect(page.getByText('Аккаунт: AlphaSeller', { exact: true })).toHaveCount(0);
+  await expect(page).toHaveURL('http://localhost:3100/platform/accounts');
+  await expect(page.getByTestId('golden-key-input')).toBeVisible();
+  await expect(page.getByTestId('selected-onboarding-proxy')).toContainText('Proxy Lite');
 });
 
-test('proxy action is blocked when the account disappears from the fresh tenant list', async ({ page }) => {
+test('owned inventory proxy is selected by current tenant response', async ({ page }) => {
+  await page.goto('/platform/accounts');
+  await openAddAccount(page);
+  await page.getByRole('button', { name: /Свой прокси/ }).click();
+  await page.getByRole('button', { name: /Inventory Proxy Alpha/ }).click();
+
+  await expect(page.getByTestId('golden-key-input')).toBeVisible();
+  await expect(page.getByTestId('selected-onboarding-proxy')).toContainText('Inventory Proxy Alpha');
+});
+
+test('new external proxy is validated before Golden Key step', async ({ page }) => {
+  await page.goto('/platform/accounts');
+  await openAddAccount(page);
+  await page.getByRole('button', { name: /Свой прокси/ }).click();
+  await page.getByRole('button', { name: 'Добавить новый' }).click();
+  await page.getByLabel('Хост прокси').fill('proxy.example');
+  await page.getByLabel('Порт прокси').fill('8080');
+  await page.getByRole('button', { name: 'Проверить и выбрать' }).click();
+
+  await expect(page.getByTestId('golden-key-input')).toBeVisible();
+  await expect(page.getByTestId('selected-onboarding-proxy')).toContainText('proxy.example:8080');
+});
+
+test('cancelling wizard discards session before another user target can leak', async ({ page }) => {
+  await page.goto('/platform/accounts');
+  await openAddAccount(page);
+  await chooseFreeProxy(page);
+  await page.getByRole('button', { name: 'Отмена', exact: true }).click();
+  await openAddAccount(page);
+
+  await expect(page.getByTestId('onboarding-proxy-picker')).toBeVisible();
+  await expect(page.getByText('Бесплатный прокси', { exact: true })).toHaveCount(1);
+  const cancels = await page.evaluate(() => (window as typeof window & { __ONBOARDING_CANCELS__?: number }).__ONBOARDING_CANCELS__ || 0);
+  expect(cancels).toBe(1);
+});
+
+test('existing-account proxy target remains tenant scoped', async ({ page }) => {
   await page.goto('/platform/accounts?dropTarget=1');
   const alphaRow = page.getByRole('row').filter({ hasText: 'AlphaSeller' });
   await alphaRow.getByRole('button', { name: 'Сменить прокси' }).click();
+  await expect(page.getByText('Аккаунт: AlphaSeller', { exact: true })).toBeVisible();
   await page.evaluate(() => {
     (window as typeof window & { __DROP_PROXY_TARGET_NOW__?: boolean }).__DROP_PROXY_TARGET_NOW__ = true;
   });
   await page.getByRole('button', { name: 'Подключить' }).click();
 
   await expect(page.getByText('Аккаунт больше недоступен. Обновите список и выберите его снова.', { exact: true })).toBeVisible();
-  await expect(page.getByText('Аккаунт: AlphaSeller', { exact: true })).toHaveCount(0);
   const proxyCalls = await page.evaluate(() => (window as typeof window & { __PROXY_CONNECT_CALLS__?: number }).__PROXY_CONNECT_CALLS__ || 0);
   expect(proxyCalls).toBe(0);
 });

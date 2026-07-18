@@ -13,7 +13,16 @@ import {
   TableRow,
 } from "@/platform2/components/ui/table";
 import Icon from "@/platform2/icons";
-import { accountsApi, billingApi, ApiAccount, ApiError } from "@/lib/api";
+import {
+  accountOnboardingApi,
+  accountsApi,
+  billingApi,
+  proxiesApi,
+  ApiAccount,
+  AccountOnboarding,
+  ApiError,
+  MyProxyItem,
+} from "@/lib/api";
 import { toast } from "sonner";
 
 type Account = {
@@ -81,9 +90,9 @@ const proxyOptions = [
   },
   {
     id: "external",
-    title: "Внешний прокси",
-    description: "Добавьте свой прокси и управляйте им в разделе «Мои прокси».",
-    action: "Настроить",
+    title: "Свой прокси",
+    description: "Выберите свободный прокси из «Моих прокси» или добавьте новый.",
+    action: "Выбрать",
     icon: "plug-in" as const,
     available: true,
   },
@@ -91,6 +100,11 @@ const proxyOptions = [
 
 export default function AccountsPage() {
   const [isAddModal, setIsAddModal] = useState(false);
+  const [addStep, setAddStep] = useState<"proxy" | "owned" | "external" | "payment" | "key">("proxy");
+  const [onboarding, setOnboarding] = useState<AccountOnboarding | null>(null);
+  const [onboardingLoading, setOnboardingLoading] = useState(false);
+  const [ownedProxies, setOwnedProxies] = useState<MyProxyItem[]>([]);
+  const [ownedProxiesLoading, setOwnedProxiesLoading] = useState(false);
   const [isProxyModal, setIsProxyModal] = useState(false);
   const [isExternalProxyModal, setIsExternalProxyModal] = useState(false);
   const [drawerAccount, setDrawerAccount] = useState<Account | null>(null);
@@ -112,10 +126,56 @@ export default function AccountsPage() {
     [accounts, proxyTarget],
   );
 
-  function closeAddModal() {
-    if (addingAccount) return;
+  function resetAddWizard() {
     setIsAddModal(false);
+    setAddStep("proxy");
+    setOnboarding(null);
     setGoldenKey("");
+    setOwnedProxies([]);
+    setExtProxy({ host: "", port: "8080", protocol: "HTTP", login: "", password: "" });
+  }
+
+  function openAddWizard() {
+    setAddStep("proxy");
+    setOnboarding(null);
+    setGoldenKey("");
+    setOwnedProxies([]);
+    setIsAddModal(true);
+  }
+
+  function closeAddModal() {
+    if (addingAccount || onboardingLoading) return;
+    if (onboarding && onboarding.status !== "completed") {
+      void accountOnboardingApi.cancel(onboarding.id).catch(() => {});
+    }
+    resetAddWizard();
+  }
+
+  async function changeOnboardingProxy() {
+    if (onboarding && onboarding.status !== "completed") {
+      await accountOnboardingApi.cancel(onboarding.id).catch(() => {});
+    }
+    setOnboarding(null);
+    setGoldenKey("");
+    setAddStep("proxy");
+  }
+
+  async function loadOwnedProxies() {
+    setOwnedProxiesLoading(true);
+    try {
+      const response = await proxiesApi.listMine();
+      setOwnedProxies((response.items || []).filter((item) => (
+        item.is_active
+        && !item.is_shared_free
+        && !item.assigned_account_id
+        && item.health_status !== "unhealthy"
+        && item.health_status !== "expired"
+      )));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Не удалось загрузить «Мои прокси»");
+    } finally {
+      setOwnedProxiesLoading(false);
+    }
   }
 
   function closeProxyFlow() {
@@ -169,8 +229,70 @@ export default function AccountsPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
+    const onboardingId = params.get("accountOnboarding");
     const proxyPayment = params.get("proxyPayment");
     const paymentId = params.get("paymentId");
+
+    if (onboardingId) {
+      let stopped = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      setIsAddModal(true);
+      setAddStep("payment");
+
+      const pollOnboarding = async (attempt = 0) => {
+        if (stopped) return;
+        if (attempt >= 40) {
+          toast.error("Выдача прокси заняла больше времени. Прокси останется в «Моих прокси».");
+          return;
+        }
+        try {
+          const session = await accountOnboardingApi.get(onboardingId);
+          if (stopped) return;
+          setOnboarding(session);
+          if (session.status === "ready") {
+            setAddStep("key");
+            toast.success("Прокси готов. Введите Golden Key.");
+            window.setTimeout(() => window.history.replaceState(null, "", "/platform/accounts"), 50);
+            return;
+          }
+          if (session.status === "completed") {
+            const list = await accountsApi.list();
+            if (!stopped) {
+              setAccounts(list.map(mapApiAccount));
+              resetAddWizard();
+            }
+            return;
+          }
+          if (session.status === "failed") {
+            setAddStep("payment");
+            toast.error("Оплата или выдача прокси не завершилась.");
+            return;
+          }
+          if (session.status === "expired" || session.status === "cancelled") {
+            toast.error("Сессия добавления аккаунта больше неактивна.");
+            setAddStep("proxy");
+            return;
+          }
+        } catch (error) {
+          if (attempt === 0) {
+            toast.error(error instanceof Error ? error.message : "Не удалось восстановить мастер");
+          }
+        }
+        timer = setTimeout(() => void pollOnboarding(attempt + 1), 3000);
+      };
+
+      if (proxyPayment === "failed") {
+        toast.error("Оплата прокси не прошла");
+      } else {
+        toast.message("Проверяем оплату и выдаём прокси…");
+      }
+      void pollOnboarding();
+      return () => {
+        stopped = true;
+        if (timer) clearTimeout(timer);
+      };
+    }
+
     if (!proxyPayment || !paymentId) return;
 
     window.history.replaceState(null, "", "/platform/accounts");
@@ -224,26 +346,75 @@ export default function AccountsPage() {
       });
   }, []);
 
-  async function handleAddAccount() {
+  async function createOnboarding(payload: Parameters<typeof accountOnboardingApi.create>[0]) {
+    setOnboardingLoading(true);
+    try {
+      const session = await accountOnboardingApi.create(payload);
+      setOnboarding(session);
+      if (session.next_action === "pay" && session.checkout_url) {
+        toast.success("Переходим к оплате T-Bank…");
+        window.location.assign(session.checkout_url);
+        return;
+      }
+      setAddStep(session.status === "ready" ? "key" : "payment");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Не удалось подготовить прокси");
+    } finally {
+      setOnboardingLoading(false);
+    }
+  }
+
+  async function handleOnboardingProxyChoice(id: string) {
+    if (id === "free") {
+      await createOnboarding({ mode: "free" });
+    } else if (id === "proxy_lite" || id === "proxy_pro") {
+      await createOnboarding({ mode: "paid", product: id });
+    } else {
+      setAddStep("owned");
+      await loadOwnedProxies();
+    }
+  }
+
+  async function handleOwnedProxyChoice(proxyId: number) {
+    await createOnboarding({ mode: "owned", proxy_id: proxyId });
+  }
+
+  async function handleCreateExternalOnboarding() {
+    const port = Number(extProxy.port);
+    if (!extProxy.host.trim() || !Number.isInteger(port) || port <= 0 || port > 65535) {
+      toast.error("Укажите корректные хост и порт прокси.");
+      return;
+    }
+    await createOnboarding({
+      mode: "external",
+      external_proxy: {
+        host: extProxy.host.trim(),
+        port,
+        protocol: extProxy.protocol as "HTTP" | "HTTPS" | "SOCKS5",
+        username: extProxy.login.trim() || undefined,
+        password: extProxy.password || undefined,
+      },
+    });
+  }
+
+  async function handleCompleteOnboarding() {
     const normalizedKey = goldenKey.trim();
     if (!GOLDEN_KEY_PATTERN.test(normalizedKey)) {
       toast.error("Golden Key должен содержать от 20 до 64 латинских букв или цифр.");
       return;
     }
+    if (!onboarding || onboarding.status !== "ready") {
+      toast.error("Сначала выберите и дождитесь готовности прокси.");
+      return;
+    }
     setAddingAccount(true);
     try {
-      await accountsApi.add(normalizedKey);
+      await accountOnboardingApi.complete(onboarding.id, normalizedKey);
       const list = await accountsApi.list();
-      const mapped = list.map(mapApiAccount);
-      setAccounts(mapped);
-      toast.success("Аккаунт успешно добавлен");
-      // Показать баннер если у нового аккаунта нет прокси
-      const justAdded = mapped[mapped.length - 1];
-      if (justAdded && !justAdded.proxyConnected) {
-        setShowProxyBanner(true);
-      }
-      setIsAddModal(false);
-      setGoldenKey("");
+      setAccounts(list.map(mapApiAccount));
+      toast.success("Аккаунт успешно добавлен через выбранный прокси");
+      setShowProxyBanner(false);
+      resetAddWizard();
     } catch (error) {
       const apiError = error instanceof ApiError ? error : null;
       toast.error(apiError?.message || "Не удалось добавить аккаунт. Попробуйте ещё раз.");
@@ -437,7 +608,7 @@ export default function AccountsPage() {
             <Icon name="close" className="mr-2 h-4 w-4" />
             {stoppingAll ? "Остановка…" : "Остановить всё"}
           </Button>
-          <Button variant="primary" className="whitespace-nowrap" onClick={() => setIsAddModal(true)}>
+          <Button variant="primary" className="whitespace-nowrap" onClick={openAddWizard}>
             <Icon name="plus" className="mr-2 h-4 w-4" />
             Добавить аккаунт
           </Button>
@@ -673,35 +844,177 @@ export default function AccountsPage() {
         </CardContent>
       </Card>
 
-      {/* ── MODAL: Add account ── */}
-      <Modal isOpen={isAddModal} onClose={closeAddModal} className="max-w-md p-8">
-        <h2 className="text-xl font-bold text-gray-800 dark:text-white">Новый аккаунт</h2>
-        <p className="mt-2 text-sm text-gray-500">
-          Введите Golden Key от аккаунта FunPay для подключения к ферме.
-        </p>
-        <div className="mt-6">
-          <input
-            type="password"
-            data-testid="golden-key-input"
-            name="funpay-golden-key"
-            autoComplete="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            value={goldenKey}
-            onChange={(e) => setGoldenKey(e.target.value)}
-            placeholder="Golden Key (20–64 символа)"
-            className="w-full rounded-xl border border-brand-300 bg-white px-4 py-3 text-sm text-gray-800 outline-none ring-2 ring-brand-500/20 focus:border-brand-400 focus:ring-brand-500/30 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-          />
-          <p className="mt-2 text-xs text-gray-400">Найти в настройках профиля на FunPay</p>
+      {/* ── MODAL: Proxy-first account onboarding ── */}
+      <Modal
+        isOpen={isAddModal}
+        onClose={closeAddModal}
+        showCloseButton={false}
+        className="w-[min(980px,calc(100vw-2rem))] max-h-[calc(100vh-3rem)] overflow-y-auto p-5 sm:p-8"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800 dark:text-white">Новый аккаунт</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              {addStep === "proxy" && "Шаг 1 из 2 · Выберите прокси для проверки Golden Key."}
+              {(addStep === "owned" || addStep === "external") && "Шаг 1 из 2 · Подготовьте свой прокси."}
+              {addStep === "payment" && "Ожидаем оплату и выдачу прокси."}
+              {addStep === "key" && "Шаг 2 из 2 · Введите Golden Key."}
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="Закрыть мастер"
+            disabled={addingAccount || onboardingLoading}
+            onClick={closeAddModal}
+            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 disabled:opacity-50 dark:hover:bg-gray-800"
+          >
+            <Icon name="close" className="h-5 w-5" />
+          </button>
         </div>
-        <div className="mt-8 flex gap-3">
-          <Button variant="outline" className="flex-1" disabled={addingAccount} onClick={closeAddModal}>
-            Отмена
-          </Button>
-          <Button variant="primary" className="flex-1" disabled={!GOLDEN_KEY_PATTERN.test(goldenKey.trim()) || addingAccount} onClick={handleAddAccount}>
-            {addingAccount ? "Проверяем…" : "Добавить"}
-          </Button>
-        </div>
+
+        {addStep === "proxy" && (
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" data-testid="onboarding-proxy-picker">
+            {proxyOptions.map((opt) => (
+              <button
+                type="button"
+                key={opt.id}
+                disabled={onboardingLoading}
+                onClick={() => void handleOnboardingProxyChoice(opt.id)}
+                className="flex min-h-64 flex-col rounded-2xl border border-gray-200 bg-white p-5 text-left transition hover:border-brand-400 hover:shadow-md disabled:cursor-wait disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-500/10">
+                  <Icon name={opt.icon} className="h-6 w-6 text-brand-500" />
+                </div>
+                <p className="mt-5 font-bold text-gray-900 dark:text-white">{opt.title}</p>
+                <p className="mt-2 flex-1 text-sm text-gray-500">{opt.description}</p>
+                <span className="mt-5 text-sm font-semibold text-brand-600">
+                  {onboardingLoading ? "Подготовка…" : opt.action}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {addStep === "owned" && (
+          <div className="mt-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="font-semibold text-gray-900 dark:text-white">Свободные прокси в вашем инвентаре</h3>
+              <Button variant="outline" size="sm" onClick={() => setAddStep("external")}>
+                <Icon name="plus" className="h-4 w-4" /> Добавить новый
+              </Button>
+            </div>
+            <div className="mt-4 space-y-3" data-testid="owned-proxy-list">
+              {ownedProxiesLoading && <p className="py-8 text-center text-sm text-gray-500">Загружаем прокси…</p>}
+              {!ownedProxiesLoading && ownedProxies.length === 0 && (
+                <div className="rounded-xl border border-dashed border-gray-300 p-6 text-center dark:border-gray-700">
+                  <p className="text-sm text-gray-500">Свободных прокси нет.</p>
+                  <Button variant="primary" size="sm" className="mt-4" onClick={() => setAddStep("external")}>
+                    Добавить свой прокси
+                  </Button>
+                </div>
+              )}
+              {ownedProxies.map((proxy) => (
+                <button
+                  type="button"
+                  key={proxy.id}
+                  disabled={onboardingLoading}
+                  onClick={() => void handleOwnedProxyChoice(proxy.id)}
+                  className="flex w-full items-center justify-between gap-4 rounded-xl border border-gray-200 p-4 text-left hover:border-brand-400 disabled:opacity-60 dark:border-gray-700"
+                >
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">{proxy.label}</p>
+                    <p className="mt-1 text-xs text-gray-500">{proxy.protocol} · {proxy.health_status === "healthy" ? "Готов" : "Требует проверки"}</p>
+                  </div>
+                  <span className="text-sm font-semibold text-brand-600">Выбрать</span>
+                </button>
+              ))}
+            </div>
+            <div className="mt-6 flex gap-3">
+              <Button variant="outline" onClick={() => setAddStep("proxy")}>Назад</Button>
+              <Button variant="outline" onClick={closeAddModal}>Отмена</Button>
+            </div>
+          </div>
+        )}
+
+        {addStep === "external" && (
+          <div className="mt-6 max-w-xl">
+            <h3 className="font-semibold text-gray-900 dark:text-white">Новый свой прокси</h3>
+            <p className="mt-1 text-sm text-gray-500">Реквизиты проверяются и хранятся в зашифрованном виде.</p>
+            <div className="mt-5 space-y-3">
+              <select
+                aria-label="Протокол прокси"
+                value={extProxy.protocol}
+                onChange={(e) => setExtProxy((p) => ({ ...p, protocol: e.target.value }))}
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              >
+                <option>HTTP</option><option>HTTPS</option><option>SOCKS5</option>
+              </select>
+              <div className="grid grid-cols-[1fr_120px] gap-3">
+                <input aria-label="Хост прокси" value={extProxy.host} onChange={(e) => setExtProxy((p) => ({ ...p, host: e.target.value }))} placeholder="host.com" autoComplete="off" className="rounded-xl border border-gray-200 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                <input aria-label="Порт прокси" type="number" value={extProxy.port} onChange={(e) => setExtProxy((p) => ({ ...p, port: e.target.value }))} placeholder="8080" className="rounded-xl border border-gray-200 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <input aria-label="Логин прокси" value={extProxy.login} onChange={(e) => setExtProxy((p) => ({ ...p, login: e.target.value }))} placeholder="Логин (необязательно)" autoComplete="off" className="rounded-xl border border-gray-200 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                <input aria-label="Пароль прокси" type="password" value={extProxy.password} onChange={(e) => setExtProxy((p) => ({ ...p, password: e.target.value }))} placeholder="Пароль (необязательно)" autoComplete="new-password" className="rounded-xl border border-gray-200 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+              </div>
+            </div>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button variant="outline" disabled={onboardingLoading} onClick={() => setAddStep("owned")}>Назад</Button>
+              <Button variant="primary" disabled={onboardingLoading || !extProxy.host || !extProxy.port} onClick={() => void handleCreateExternalOnboarding()}>
+                {onboardingLoading ? "Проверяем…" : "Проверить и выбрать"}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {addStep === "payment" && (
+          <div className="mt-8 rounded-2xl border border-gray-200 p-8 text-center dark:border-gray-700">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-500/10">
+              <Icon name={onboarding?.status === "failed" ? "alert" : "bolt"} className="h-7 w-7 text-brand-500" />
+            </div>
+            <h3 className="mt-4 font-bold text-gray-900 dark:text-white">
+              {onboarding?.status === "failed" ? "Прокси не был выдан" : "Готовим прокси"}
+            </h3>
+            <p className="mt-2 text-sm text-gray-500">
+              {onboarding?.status === "failed"
+                ? "Если оплата прошла, напишите в @fpcloud_support. Назначение аккаунту не выполнено."
+                : "После выдачи мастер сам перейдёт к вводу Golden Key."}
+            </p>
+            {onboarding?.status === "failed" && (
+              <Button variant="outline" className="mt-5" onClick={() => void changeOnboardingProxy()}>Выбрать другой прокси</Button>
+            )}
+          </div>
+        )}
+
+        {addStep === "key" && onboarding?.status === "ready" && (
+          <div className="mt-6 max-w-xl">
+            <input
+              type="password"
+              data-testid="golden-key-input"
+              name="funpay-golden-key"
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              value={goldenKey}
+              onChange={(e) => setGoldenKey(e.target.value)}
+              placeholder="Golden Key (20–64 символа)"
+              className="w-full rounded-xl border border-brand-300 bg-white px-4 py-3 text-sm text-gray-800 outline-none ring-2 ring-brand-500/20 focus:border-brand-400 focus:ring-brand-500/30 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+            />
+            <p className="mt-2 text-xs text-gray-400">Найти в настройках профиля на FunPay</p>
+            <div className="mt-5 rounded-xl border border-brand-200 bg-brand-50 p-4 dark:border-brand-800 dark:bg-brand-950/20" data-testid="selected-onboarding-proxy">
+              <p className="text-xs font-medium uppercase tracking-wide text-brand-500">Выбранный прокси</p>
+              <p className="mt-1 font-semibold text-gray-900 dark:text-white">{onboarding.proxy.label}</p>
+              {onboarding.proxy.id && <p className="mt-1 text-xs text-gray-500">ID: {onboarding.proxy.id}</p>}
+            </div>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button variant="outline" disabled={addingAccount} onClick={() => void changeOnboardingProxy()}>Изменить прокси</Button>
+              <Button variant="outline" disabled={addingAccount} onClick={closeAddModal}>Отмена</Button>
+              <Button variant="primary" disabled={!GOLDEN_KEY_PATTERN.test(goldenKey.trim()) || addingAccount} onClick={() => void handleCompleteOnboarding()}>
+                {addingAccount ? "Проверяем…" : "Добавить аккаунт"}
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* ── MODAL: Proxy picker ── */}

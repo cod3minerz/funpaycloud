@@ -497,6 +497,63 @@ export type ConnectProxyPayload =
       password?: string;
     };
 
+export type AccountOnboardingProxy = {
+  id?: number;
+  type: 'free' | 'owned' | 'external' | 'paid';
+  product?: 'proxy_lite' | 'proxy_pro' | 'external_custom' | string;
+  label: string;
+};
+
+export type AccountOnboarding = {
+  id: string;
+  status: 'ready' | 'awaiting_payment' | 'provisioning' | 'completed' | 'failed' | 'cancelled' | 'expired';
+  expires_at: string;
+  proxy: AccountOnboardingProxy;
+  next_action: 'enter_golden_key' | 'pay' | 'wait' | 'done' | 'payment_failed' | 'stop';
+  payment_id?: number;
+  checkout_url?: string;
+  account_id?: number;
+};
+
+export type CreateAccountOnboardingPayload =
+  | { mode: 'free' }
+  | { mode: 'owned'; proxy_id: number }
+  | {
+      mode: 'external';
+      external_proxy: {
+        host: string;
+        port: number;
+        protocol: 'HTTP' | 'HTTPS' | 'SOCKS5';
+        username?: string;
+        password?: string;
+      };
+    }
+  | { mode: 'paid'; product: 'proxy_lite' | 'proxy_pro' };
+
+export const accountOnboardingApi = {
+  create: (payload: CreateAccountOnboardingPayload) =>
+    apiRequest<AccountOnboarding>('/api/account-onboarding', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      timeoutMs: 20000,
+    }),
+  get: (id: string) =>
+    apiRequest<AccountOnboarding>(`/api/account-onboarding/${encodeURIComponent(id)}`, {
+      timeoutMs: 15000,
+    }),
+  complete: (id: string, golden_key: string) =>
+    apiRequest<{ account_id: number; username: string; proxy_id?: number }>(
+      `/api/account-onboarding/${encodeURIComponent(id)}/complete`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ golden_key }),
+        timeoutMs: 20000,
+      },
+    ),
+  cancel: (id: string) =>
+    apiRequest(`/api/account-onboarding/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+};
+
 export const accountsApi = {
   list: () => apiRequest<ApiAccount[]>('/api/accounts'),
   add: (golden_key: string) =>
