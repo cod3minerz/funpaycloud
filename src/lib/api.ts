@@ -381,7 +381,9 @@ export type AutoResponderCommand = {
 
 export type AutoResponder = {
   id: number;
-  funpay_account_id: number;
+  /** @deprecated Transitional single-account field from the backend-first rollout. */
+  funpay_account_id?: number;
+  funpay_account_ids: number[];
   name: string;
   menu_text: string;
   enabled: boolean;
@@ -559,32 +561,30 @@ export const accountsApi = {
 
 export const autoRespondersApi = {
   listAll: () => apiRequest<AutoResponder[]>('/api/auto-responders'),
-  list: (accountId: number | string) =>
-    apiRequest<AutoResponder[]>(`/api/accounts/${accountId}/auto-responders`),
-  create: (accountId: number | string, payload: AutoResponderInput) =>
-    apiRequest<AutoResponder>(`/api/accounts/${accountId}/auto-responders`, {
+
+  create: (payload: AutoResponderInput) =>
+    apiRequest<AutoResponder>('/api/auto-responders', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
-  update: (accountId: number | string, responderId: number | string, payload: AutoResponderInput) =>
-    apiRequest<AutoResponder>(`/api/accounts/${accountId}/auto-responders/${responderId}`, {
+  update: (responderId: number | string, payload: AutoResponderInput) =>
+    apiRequest<AutoResponder>(`/api/auto-responders/${responderId}`, {
       method: 'PUT',
       body: JSON.stringify(payload),
     }),
-  delete: (accountId: number | string, responderId: number | string) =>
-    apiRequest(`/api/accounts/${accountId}/auto-responders/${responderId}`, { method: 'DELETE' }),
-  setEnabled: (accountId: number | string, responderId: number | string, enabled: boolean) =>
-    apiRequest<AutoResponder>(`/api/accounts/${accountId}/auto-responders/${responderId}/enabled`, {
+  delete: (responderId: number | string) =>
+    apiRequest(`/api/auto-responders/${responderId}`, { method: 'DELETE' }),
+  setEnabled: (responderId: number | string, enabled: boolean) =>
+    apiRequest<AutoResponder>(`/api/auto-responders/${responderId}/enabled`, {
       method: 'PATCH',
       body: JSON.stringify({ enabled }),
     }),
-  assignAccount: (responderId: number | string, funpayAccountId: number) =>
-    apiRequest<AutoResponder>(`/api/auto-responders/${responderId}/account`, {
-      method: 'PATCH',
-      body: JSON.stringify({ funpay_account_id: funpayAccountId }),
+  replaceAccounts: (responderId: number | string, funpayAccountIds: number[]) =>
+    apiRequest<AutoResponder>(`/api/auto-responders/${responderId}/accounts`, {
+      method: 'PUT',
+      body: JSON.stringify({ funpay_account_ids: funpayAccountIds }),
     }),
-  plugins: (accountId: number | string) =>
-    apiRequest<AutoResponderPlugin[]>(`/api/accounts/${accountId}/auto-responder-plugins`),
+  plugins: () => apiRequest<AutoResponderPlugin[]>('/api/auto-responder-plugins'),
 };
 
 // ── Lots ──────────────────────────────────────────────────────────────────────

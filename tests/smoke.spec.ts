@@ -78,6 +78,7 @@ test.beforeEach(async ({ page }) => {
     const multiAccounts = initialParams.get('multiAccounts') === '1';
     const seedAutoResponderCards = initialParams.get('autoResponderCards') === '1';
     const autoResponderAssignmentError = initialParams.get('assignmentError') === '1';
+    const autoResponderAssignmentConflict = initialParams.get('assignmentConflict') === '1';
     const autoResponderSaveError = initialParams.get('saveError') === '1';
     const autoResponderSlowSave = initialParams.get('slowSave') === '1';
     const secondAccountID = 9;
@@ -158,9 +159,10 @@ test.beforeEach(async ({ page }) => {
         description: 'Отправляет уведомления в Telegram',
       },
     ];
-    const storeAutoResponder = (body: any, id = nextAutoResponderID++, funpayAccountID = accountID) => ({
+    const storeAutoResponder = (body: any, id = nextAutoResponderID++, funpayAccountIDs: number[] = []) => ({
       id,
-      funpay_account_id: funpayAccountID,
+      funpay_account_id: funpayAccountIDs[0],
+      funpay_account_ids: funpayAccountIDs,
       name: body.name,
       menu_text: body.menu_text,
       enabled: false,
@@ -180,7 +182,7 @@ test.beforeEach(async ({ page }) => {
             name: 'Основной автоответчик',
             menu_text: '1 — инструкция',
             commands: [{ trigger_type: 'keyword', trigger_value: '1', action_type: 'send_message', action_value: 'Ответ', position: 0 }],
-          }, 41, accountID),
+          }, 41, [accountID]),
           enabled: true,
         },
         {
@@ -188,8 +190,8 @@ test.beforeEach(async ({ page }) => {
             name: 'Автоответчик второго аккаунта',
             menu_text: '2 — помощь',
             commands: [{ trigger_type: 'keyword', trigger_value: '2', action_type: 'send_message', action_value: 'Помощь', position: 0 }],
-          }, 42, secondAccountID),
-          enabled: true,
+          }, 42, [secondAccountID]),
+          enabled: autoResponderAssignmentConflict,
         },
       ];
       nextAutoResponderID = 43;
@@ -292,18 +294,13 @@ test.beforeEach(async ({ page }) => {
         }
         return envelope(accountItems);
       }
-      if (/^\/api\/accounts\/\d+\/auto-responder-plugins$/.test(path) && method === 'GET') {
+      if (path === '/api/auto-responder-plugins' && method === 'GET') {
         return envelope(autoResponderPlugins);
       }
       if (path === '/api/auto-responders' && method === 'GET') {
         return envelope(autoResponders);
       }
-      const responderCollectionMatch = path.match(/^\/api\/accounts\/(\d+)\/auto-responders$/);
-      if (responderCollectionMatch && method === 'GET') {
-        const requestedAccountID = Number(responderCollectionMatch[1]);
-        return envelope(autoResponders.filter((item) => item.funpay_account_id === requestedAccountID));
-      }
-      if (responderCollectionMatch && method === 'POST') {
+      if (path === '/api/auto-responders' && method === 'POST') {
         if (autoResponderSlowSave) {
           await new Promise((resolve) => window.setTimeout(resolve, 500));
         }
@@ -313,52 +310,64 @@ test.beforeEach(async ({ page }) => {
             error: 'Не удалось сохранить тестовый автоответчик',
           }), { status: 500, headers: { 'Content-Type': 'application/json' } });
         }
-        const requestedAccountID = Number(responderCollectionMatch[1]);
-        const created = storeAutoResponder(JSON.parse(String(init?.body || '{}')), undefined, requestedAccountID);
+        const created = storeAutoResponder(JSON.parse(String(init?.body || '{}')));
         autoResponders = [created, ...autoResponders];
         return envelope(created);
       }
-      const assignmentMatch = path.match(/^\/api\/auto-responders\/(\d+)\/account$/);
-      if (assignmentMatch && method === 'PATCH') {
+      const assignmentMatch = path.match(/^\/api\/auto-responders\/(\d+)\/accounts$/);
+      if (assignmentMatch && method === 'PUT') {
         const id = Number(assignmentMatch[1]);
-        const targetAccountID = Number(JSON.parse(String(init?.body || '{}')).funpay_account_id);
+        const targetAccountIDs = Array.from(new Set<number>(JSON.parse(String(init?.body || '{}')).funpay_account_ids || []));
         if (autoResponderAssignmentError) {
           return new Response(JSON.stringify({
             success: false,
             error: 'плагин telegram_notify не подключён или не поддерживает команды на выбранном аккаунте',
           }), { status: 400, headers: { 'Content-Type': 'application/json' } });
         }
+        const current = autoResponders.find((item) => item.id === id);
+        const conflict = current?.enabled && autoResponders.find((item) =>
+          item.id !== id
+          && item.enabled
+          && item.funpay_account_ids.some((account: number) => targetAccountIDs.includes(account)),
+        );
+        if (conflict) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: `для FunPay-аккаунта #${targetAccountIDs.find((account: number) => conflict.funpay_account_ids.includes(account))} уже включён автоответчик «${conflict.name}»`,
+          }), { status: 409, headers: { 'Content-Type': 'application/json' } });
+        }
         autoResponders = autoResponders.map((item) => item.id === id
           ? {
               ...item,
-              funpay_account_id: targetAccountID,
-              enabled: targetAccountID === item.funpay_account_id ? item.enabled : false,
+              funpay_account_id: targetAccountIDs[0],
+              funpay_account_ids: targetAccountIDs,
+              enabled: targetAccountIDs.length > 0 ? item.enabled : false,
             }
           : item);
         return envelope(autoResponders.find((item) => item.id === id));
       }
-      const enabledMatch = path.match(/^\/api\/accounts\/\d+\/auto-responders\/(\d+)\/enabled$/);
+      const enabledMatch = path.match(/^\/api\/auto-responders\/(\d+)\/enabled$/);
       if (enabledMatch && method === 'PATCH') {
         const id = Number(enabledMatch[1]);
         const enabled = Boolean(JSON.parse(String(init?.body || '{}')).enabled);
         const current = autoResponders.find((item) => item.id === id);
-        autoResponders = autoResponders.map((item) => ({
-          ...item,
-          enabled: item.id === id
-            ? enabled
-            : enabled && item.funpay_account_id === current?.funpay_account_id
-              ? false
-              : item.enabled,
-        }));
+        if (enabled && (!current || current.funpay_account_ids.length === 0)) {
+          return new Response(JSON.stringify({ success: false, error: 'назначьте хотя бы один FunPay-аккаунт' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+        }
+        const conflict = enabled && autoResponders.find((item) => item.id !== id && item.enabled && item.funpay_account_ids.some((account: number) => current.funpay_account_ids.includes(account)));
+        if (conflict) {
+          return new Response(JSON.stringify({ success: false, error: `уже включён автоответчик «${conflict.name}»` }), { status: 409, headers: { 'Content-Type': 'application/json' } });
+        }
+        autoResponders = autoResponders.map((item) => item.id === id ? { ...item, enabled } : item);
         return envelope(autoResponders.find((item) => item.id === id));
       }
-      const responderMatch = path.match(/^\/api\/accounts\/\d+\/auto-responders\/(\d+)$/);
+      const responderMatch = path.match(/^\/api\/auto-responders\/(\d+)$/);
       if (responderMatch && method === 'PUT') {
         const id = Number(responderMatch[1]);
         const body = JSON.parse(String(init?.body || '{}'));
         const current = autoResponders.find((item) => item.id === id);
         const updated = {
-          ...storeAutoResponder(body, id, current?.funpay_account_id || accountID),
+          ...storeAutoResponder(body, id, current?.funpay_account_ids || []),
           enabled: Boolean(current?.enabled),
         };
         autoResponders = autoResponders.map((item) => item.id === id ? updated : item);
@@ -850,45 +859,64 @@ test('auto responder is visible only to admin and redirects non-admin', async ({
   await expect(page.getByRole('link', { name: 'Отзывы' })).toBeVisible();
 });
 
-test('auto responder cards show accounts and can be reassigned', async ({ page }) => {
+test('auto responder cards support multiple account assignments and chip removal', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 1000 });
   await page.goto('/platform/auto-responder?multiAccounts=1&autoResponderCards=1');
 
   await expect(page.getByTestId('auto-responder-account')).toHaveCount(0);
   const firstCard = page.getByTestId('auto-responder-card-41');
   const secondCard = page.getByTestId('auto-responder-card-42');
-  await expect(firstCard).toContainText('FunPay-аккаунт: tonminerz');
-  await expect(secondCard).toContainText('FunPay-аккаунт: PaidInFull');
+  await expect(firstCard).toContainText('tonminerz');
+  await expect(secondCard).toContainText('PaidInFull');
 
   await page.getByTestId('auto-responder-assign-41').click();
   const modal = page.getByTestId('auto-responder-assignment-modal');
   await expect(modal).toBeVisible();
+  await expect(page.getByTestId('auto-responder-account-option-8').getByRole('checkbox')).toBeChecked();
+  await expect(page.getByTestId('auto-responder-account-option-9').getByRole('checkbox')).not.toBeChecked();
   await page.getByTestId('auto-responder-account-option-9').click();
-  await expect(modal).toContainText('После смены аккаунта этот автоответчик будет выключен');
+  await expect(modal).toContainText('Добавленные аккаунты начнут отвечать сразу');
   await page.getByTestId('save-auto-responder-account').click();
 
   await expect(modal).toHaveCount(0);
-  await expect(firstCard).toContainText('FunPay-аккаунт: PaidInFull');
+  await expect(firstCard).toContainText('tonminerz');
+  await expect(firstCard).toContainText('PaidInFull');
+  await expect(page.getByTestId('auto-responder-toggle-41')).toHaveAttribute('aria-checked', 'true');
+
+  await page.getByTestId('auto-responder-assign-41').click();
+  await page.getByTestId('auto-responder-account-option-8').click();
+  await page.getByTestId('save-auto-responder-account').click();
+  await expect(page.getByTestId('auto-responder-account-chip-41-8')).toHaveCount(0);
+  await expect(firstCard).toContainText('PaidInFull');
+  await page.getByTestId('auto-responder-unassign-41-9').click();
+  await expect(firstCard).toContainText('Назначьте аккаунт');
+  await expect(page.getByTestId('auto-responder-toggle-41')).toBeDisabled();
   await expect(page.getByTestId('auto-responder-toggle-41')).toHaveAttribute('aria-checked', 'false');
-  await expect(page.getByTestId('auto-responder-toggle-42')).toHaveAttribute('aria-checked', 'true');
 });
 
-test('new auto responder requires explicit account when several are available', async ({ page }) => {
+test('new auto responder is saved unassigned and can receive several accounts', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 1000 });
   await page.goto('/platform/auto-responder?multiAccounts=1');
   await page.getByTestId('add-auto-responder').click();
-  await expect(page.getByTestId('auto-responder-draft-account')).toHaveValue('');
+  await expect(page.getByTestId('auto-responder-draft-account')).toHaveCount(0);
 
   await page.getByTestId('auto-responder-name').fill('Для второго аккаунта');
   await page.getByTestId('auto-responder-menu').fill('start — начать');
   await page.getByTestId('auto-responder-trigger-0').fill('start');
   await page.getByTestId('auto-responder-message-0').fill('Начинаем');
   await page.getByTestId('save-auto-responder').click();
-  await expect(page.getByText('Выберите FunPay-аккаунт')).toBeVisible();
+  const card = page.getByTestId('auto-responder-card-41');
+  await expect(card).toContainText('Назначьте аккаунт');
+  await expect(page.getByTestId('auto-responder-toggle-41')).toBeDisabled();
+  await expect(page.getByTestId('auto-responder-toggle-41')).toHaveAttribute('title', 'Сначала назначьте аккаунт');
 
-  await page.getByTestId('auto-responder-draft-account').selectOption('9');
-  await page.getByTestId('save-auto-responder').click();
-  await expect(page.getByTestId('auto-responder-card-41')).toContainText('FunPay-аккаунт: PaidInFull');
+  await page.getByTestId('auto-responder-assign-41').click();
+  await page.getByTestId('auto-responder-account-option-8').click();
+  await page.getByTestId('auto-responder-account-option-9').click();
+  await page.getByTestId('save-auto-responder-account').click();
+  await expect(card).toContainText('tonminerz');
+  await expect(card).toContainText('PaidInFull');
+  await expect(page.getByTestId('auto-responder-toggle-41')).toBeEnabled();
 });
 
 test('account assignment error keeps modal and original account', async ({ page }) => {
@@ -902,7 +930,23 @@ test('account assignment error keeps modal and original account', async ({ page 
 
   await expect(page.getByTestId('auto-responder-assignment-modal')).toBeVisible();
   await expect(page.getByTestId('auto-responder-assignment-error')).toContainText('плагин telegram_notify не подключён');
-  await expect(firstCard).toContainText('FunPay-аккаунт: tonminerz');
+  await expect(firstCard).toContainText('tonminerz');
+  await expect(firstCard).not.toContainText('PaidInFull');
+});
+
+test('active assignment conflict keeps selector open and assignments unchanged', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  await page.goto('/platform/auto-responder?multiAccounts=1&autoResponderCards=1&assignmentConflict=1');
+  const firstCard = page.getByTestId('auto-responder-card-41');
+
+  await page.getByTestId('auto-responder-assign-41').click();
+  await page.getByTestId('auto-responder-account-option-9').click();
+  await page.getByTestId('save-auto-responder-account').click();
+
+  await expect(page.getByTestId('auto-responder-assignment-modal')).toBeVisible();
+  await expect(page.getByTestId('auto-responder-assignment-error')).toContainText('уже включён автоответчик');
+  await expect(firstCard).toContainText('tonminerz');
+  await expect(firstCard).not.toContainText('PaidInFull');
 });
 
 test('auto responder create and edit forms use one protected modal', async ({ page }) => {
@@ -974,9 +1018,9 @@ test('auto responder modal cannot close while save is in progress', async ({ pag
   await expect(page.getByTestId('auto-responder-card-41')).toContainText('Медленное сохранение');
 });
 
-test('auto responder CRUD, conditional actions and single active toggle', async ({ page }) => {
+test('auto responder CRUD, conditional actions and independent account toggles', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 1000 });
-  await page.goto('/platform/auto-responder');
+  await page.goto('/platform/auto-responder?multiAccounts=1');
   await expect(page.getByText('Добавьте автоответчик')).toBeVisible();
 
   await page.getByTestId('add-auto-responder').click();
@@ -1004,6 +1048,11 @@ test('auto responder CRUD, conditional actions and single active toggle', async 
   await expect(firstCard).toContainText('3 команд');
 
   const firstToggle = page.getByTestId('auto-responder-toggle-41');
+  await expect(firstCard).toContainText('Назначьте аккаунт');
+  await expect(firstToggle).toBeDisabled();
+  await page.getByTestId('auto-responder-assign-41').click();
+  await page.getByTestId('auto-responder-account-option-8').click();
+  await page.getByTestId('save-auto-responder-account').click();
   await firstToggle.click();
   await expect(firstToggle).toHaveAttribute('aria-checked', 'true');
 
@@ -1022,9 +1071,13 @@ test('auto responder CRUD, conditional actions and single active toggle', async 
   await page.getByTestId('save-auto-responder').click();
 
   const secondToggle = page.getByTestId('auto-responder-toggle-42');
+  await expect(secondToggle).toBeDisabled();
+  await page.getByTestId('auto-responder-assign-42').click();
+  await page.getByTestId('auto-responder-account-option-9').click();
+  await page.getByTestId('save-auto-responder-account').click();
   await secondToggle.click();
   await expect(secondToggle).toHaveAttribute('aria-checked', 'true');
-  await expect(firstToggle).toHaveAttribute('aria-checked', 'false');
+  await expect(firstToggle).toHaveAttribute('aria-checked', 'true');
 
   page.once('dialog', (dialog) => dialog.accept());
   await firstCard.getByRole('button', { name: 'Удалить Основной обновлённый' }).click();
