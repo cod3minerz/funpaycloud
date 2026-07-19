@@ -1,12 +1,11 @@
 "use client";
-import { useState, useRef, useEffect, useMemo } from "react";
-import { Card, CardContent } from "@/platform2/components/ui/card";
-import Icon from "@/platform2/icons";
-import { aiApi, scenariosApi, accountsApi, ApiScenario, ApiAccount } from "@/lib/api";
+
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import TextArea from "@/platform2/components/form/input/TextArea";
-import Input from "@/platform2/components/form/input/InputField";
-import Select from "@/platform2/components/form/Select";
+import { aiApi, ApiAccount } from "@/lib/api";
+import { Card } from "@/platform2/components/ui/card";
+import Icon from "@/platform2/icons";
 
 type ChatMode = "assistant" | "constructor";
 
@@ -14,12 +13,26 @@ type MessageItem = {
   role: "user" | "ai";
   text: string;
   loading?: boolean;
+  error?: boolean;
 };
 
-type LocalFaqItem = {
-  id: string;
-  question: string;
-  answer: string;
+export type AITestChatProps = {
+  accounts: ApiAccount[];
+  accountId: number | null;
+  accountLoading: boolean;
+  mode: "bot" | "scenarios";
+  scenarioId: string;
+  scenarioName?: string;
+  tone: "formal" | "neutral" | "friendly";
+  delaySeconds: number;
+  systemPrompt: string;
+  showAISignature: boolean;
+  faq: Array<{ question: string; answer: string }>;
+  usedMessages: number;
+  limitMessages: number;
+  onAccountChange: (accountId: number) => void;
+  onUsageChange: (usedMessages: number, limitMessages?: number) => void;
+  onOpenSettings: () => void;
 };
 
 const QUICK_MESSAGES = [
@@ -32,212 +45,122 @@ function modeLabel(mode: ChatMode): string {
   return mode === "constructor" ? "Сценарии" : "ИИ Бот";
 }
 
-export default function TestChatPage() {
-  const [accounts, setAccounts] = useState<ApiAccount[]>([]);
-  const [selectedAccountID, setSelectedAccountID] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [testing, setTesting] = useState(false);
-  const [showSettingsPanel, setShowSettingsPanel] = useState(false);
-
-  const [productionMode, setProductionMode] = useState<ChatMode>("assistant");
-  const [autoMode, setAutoMode] = useState(true);
-  const [overrideMode, setOverrideMode] = useState<ChatMode>("assistant");
-  const [selectedScenarioID, setSelectedScenarioID] = useState("");
-  const [scenarios, setScenarios] = useState<ApiScenario[]>([]);
-  const [localTone, setLocalTone] = useState<"formal" | "neutral" | "friendly">("neutral");
-  const [localDelaySeconds, setLocalDelaySeconds] = useState(3);
-  const [localPrompt, setLocalPrompt] = useState("");
-  const [localSignature, setLocalSignature] = useState(false);
-  const [localFaq, setLocalFaq] = useState<LocalFaqItem[]>([]);
-
+export default function AITestChat({
+  accounts,
+  accountId,
+  accountLoading,
+  mode,
+  scenarioId,
+  scenarioName,
+  tone,
+  delaySeconds,
+  systemPrompt,
+  showAISignature,
+  faq,
+  usedMessages,
+  limitMessages,
+  onAccountChange,
+  onUsageChange,
+  onOpenSettings,
+}: AITestChatProps) {
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [input, setInput] = useState("");
+  const [testing, setTesting] = useState(false);
   const [trace, setTrace] = useState<Array<Record<string, unknown>>>([]);
-  const [lastEffectiveMode, setLastEffectiveMode] = useState<ChatMode>("assistant");
-
-  const messagesRef = useRef<HTMLDivElement>(null);
-
-  const effectiveMode: ChatMode = autoMode ? productionMode : overrideMode;
-  const activeScenarios = useMemo(
-    () => scenarios.filter((s) => s.trigger_type === "chat_message"),
-    [scenarios]
+  const [lastEffectiveMode, setLastEffectiveMode] = useState<ChatMode>(
+    mode === "scenarios" ? "constructor" : "assistant"
   );
+  const messagesRef = useRef<HTMLDivElement>(null);
+  const previousAccountId = useRef<number | null>(accountId);
 
   useEffect(() => {
-    const el = messagesRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    const element = messagesRef.current;
+    if (element) element.scrollTop = element.scrollHeight;
   }, [messages]);
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    accountsApi
-      .list()
-      .then(async (rows) => {
-        if (cancelled) return;
-        setAccounts(rows);
-        if (rows.length === 0) {
-          setSelectedAccountID(null);
-          return;
-        }
-        const firstID = rows[0].id;
-        setSelectedAccountID(firstID);
-        await loadForAccount(firstID, cancelled);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        toast.error(err instanceof Error ? err.message : "Не удалось загрузить тест-чат");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, []);
-
-  async function loadForAccount(accountID: number, cancelled = false) {
-    // Gracefully handle AI config not yet created for account
-    const [configResult, accountScenarios, faqItems] = await Promise.all([
-      aiApi.getConfig(accountID).catch(() => null),
-      scenariosApi.list(accountID).catch(() => []),
-      aiApi.getFaq(accountID).catch(() => []),
-    ]);
-    if (cancelled) return;
-    const config = configResult ?? {
-      account_id: accountID,
-      is_enabled: false,
-      tone: "neutral" as const,
-      system_prompt: "",
-      delay_seconds: 3,
-      show_ai_signature: false,
-      chat_mode: "assistant" as const,
-      constructor_scenario_id: null,
-      used_messages: 0,
-      limit_messages: 0,
-      remaining_messages: 0,
-    };
-
-    const mode: ChatMode = config.chat_mode === "constructor" ? "constructor" : "assistant";
-    setProductionMode(mode);
-    setLastEffectiveMode(mode);
-    setOverrideMode(mode);
-
-    setScenarios(accountScenarios);
-
-    const scenarioFromConfig = (config.constructor_scenario_id || "").trim();
-    if (scenarioFromConfig) {
-      setSelectedScenarioID(scenarioFromConfig);
-    } else {
-      const firstChatScenario = accountScenarios.find((s) => s.trigger_type === "chat_message");
-      setSelectedScenarioID(firstChatScenario?.id || "");
-    }
-
-    const normalizedTone =
-      config.tone === "formal" || config.tone === "friendly" || config.tone === "neutral"
-        ? config.tone
-        : "neutral";
-    setLocalTone(normalizedTone);
-    setLocalDelaySeconds(typeof config.delay_seconds === "number" ? config.delay_seconds : 3);
-    setLocalPrompt(config.system_prompt || "");
-    setLocalSignature(Boolean(config.show_ai_signature));
-    setLocalFaq(
-      faqItems.map((item) => ({
-        id: `${item.id}`,
-        question: item.question || "",
-        answer: item.answer || "",
-      }))
-    );
-
+    if (previousAccountId.current === accountId) return;
+    previousAccountId.current = accountId;
     setMessages([]);
     setTrace([]);
     setInput("");
-  }
-
-  async function handleAccountChange(accountID: number) {
-    setSelectedAccountID(accountID);
-    setLoading(true);
-    try {
-      await loadForAccount(accountID);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Не удалось загрузить данные аккаунта");
-    } finally {
-      setLoading(false);
-    }
-  }
+    setLastEffectiveMode(mode === "scenarios" ? "constructor" : "assistant");
+  }, [accountId, mode]);
 
   async function sendMessage(raw?: string) {
-    if (!selectedAccountID || testing) return;
+    if (!accountId || testing || accountLoading) return;
     const text = (raw ?? input).trim();
     if (!text) return;
-
-    if (!autoMode && overrideMode === "constructor" && !selectedScenarioID) {
-      toast.error("Выберите сценарий для теста режима сценариев");
+    if (mode === "scenarios" && !scenarioId) {
+      toast.error("Выберите сценарий во вкладке «Настройки»");
       return;
     }
 
     const history = messages
-      .filter((m) => !m.loading)
-      .map((m) => ({
-        role: (m.role === "ai" ? "assistant" : "user") as "assistant" | "user",
-        text: m.text,
+      .filter((message) => !message.loading && !message.error)
+      .map((message) => ({
+        role: (message.role === "ai" ? "assistant" : "user") as "assistant" | "user",
+        text: message.text,
       }));
 
-    setMessages((prev) => [...prev, { role: "user", text }, { role: "ai", text: "", loading: true }]);
+    setMessages((previous) => [
+      ...previous,
+      { role: "user", text },
+      { role: "ai", text: "", loading: true },
+    ]);
     setInput("");
     setTesting(true);
     setTrace([]);
 
     try {
-      const localFaqPayload = localFaq
-        .map((item) => ({ question: item.question.trim(), answer: item.answer.trim() }))
-        .filter((item) => item.question.length > 0 && item.answer.length > 0);
-
+      const effectiveMode: ChatMode = mode === "scenarios" ? "constructor" : "assistant";
       const response = await aiApi.testChat({
-        account_id: selectedAccountID,
+        account_id: accountId,
         message: text,
         history,
-        auto_mode: autoMode,
-        override_mode: autoMode ? undefined : (overrideMode === "constructor" ? "constructor" : "assistant"),
-        scenario_id: !autoMode && overrideMode === "constructor" ? selectedScenarioID : undefined,
-        config_override:
-          !autoMode && overrideMode === "assistant"
-            ? {
-                tone: localTone,
-                system_prompt: localPrompt.trim(),
-                delay_seconds: localDelaySeconds,
-                show_ai_signature: localSignature,
-                faq: localFaqPayload,
-              }
-            : undefined,
+        auto_mode: false,
+        override_mode: effectiveMode,
+        scenario_id: effectiveMode === "constructor" ? scenarioId : undefined,
+        config_override: effectiveMode === "assistant"
+          ? {
+              tone,
+              system_prompt: systemPrompt.trim(),
+              delay_seconds: delaySeconds,
+              show_ai_signature: showAISignature,
+              faq: faq
+                .map((item) => ({
+                  question: item.question.trim(),
+                  answer: item.answer.trim(),
+                }))
+                .filter((item) => item.question.length > 0 && item.answer.length > 0),
+            }
+          : undefined,
       });
 
-      setLastEffectiveMode(
-        (response.effective_mode === "constructor" ? "constructor" : "assistant") as ChatMode
-      );
+      const responseMode: ChatMode = response.effective_mode === "constructor" ? "constructor" : "assistant";
+      setLastEffectiveMode(responseMode);
       setTrace(Array.isArray(response.trace) ? response.trace : []);
-
-      setMessages((prev) => {
-        const copy = [...prev];
-        const loadingIndex = copy.findIndex((m) => m.role === "ai" && m.loading);
-        const nextText = response.reply || "Сценарий выполнен без текстового ответа";
-        if (loadingIndex >= 0) {
-          copy[loadingIndex] = { role: "ai", text: nextText, loading: false };
-        } else {
-          copy.push({ role: "ai", text: nextText, loading: false });
-        }
+      if (typeof response.used_messages === "number") {
+        onUsageChange(response.used_messages, response.limit_messages);
+      }
+      setMessages((previous) => {
+        const copy = [...previous];
+        const loadingIndex = copy.findIndex((message) => message.role === "ai" && message.loading);
+        const reply = response.reply?.trim() || "Сценарий выполнен без текстового ответа";
+        if (loadingIndex >= 0) copy[loadingIndex] = { role: "ai", text: reply };
+        else copy.push({ role: "ai", text: reply });
         return copy;
       });
-    } catch (err) {
-      const rawError = err instanceof Error ? err.message : "Ошибка тестового сообщения";
-      const isServiceDown = /внешний сервис|временно недоступен|service unavailable|unavailable/i.test(rawError);
-      const errorText = isServiceDown
+    } catch (error) {
+      const rawError = error instanceof Error ? error.message : "Ошибка тестового сообщения";
+      const serviceUnavailable = /внешний сервис|временно недоступен|service unavailable|unavailable/i.test(rawError);
+      const errorText = serviceUnavailable
         ? "ИИ-провайдер временно недоступен. Подождите 1–2 минуты и попробуйте снова."
         : rawError;
-      setMessages((prev) => {
-        const copy = [...prev];
-        const loadingIndex = copy.findIndex((m) => m.role === "ai" && m.loading);
-        if (loadingIndex >= 0) {
-          copy[loadingIndex] = { role: "ai", text: `⚠️ ${errorText}`, loading: false };
-        }
+      setMessages((previous) => {
+        const copy = [...previous];
+        const loadingIndex = copy.findIndex((message) => message.role === "ai" && message.loading);
+        if (loadingIndex >= 0) copy[loadingIndex] = { role: "ai", text: `⚠️ ${errorText}`, error: true };
         return copy;
       });
       toast.error(errorText);
@@ -246,387 +169,189 @@ export default function TestChatPage() {
     }
   }
 
-  function addLocalFaq() {
-    setLocalFaq((prev) => [
-      ...prev,
-      { id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, question: "", answer: "" },
-    ]);
-  }
-
-  function updateLocalFaq(index: number, key: "question" | "answer", value: string) {
-    setLocalFaq((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, [key]: value } : item))
+  if (accounts.length === 0 && !accountLoading) {
+    return (
+      <div data-testid="ai-test-chat-empty">
+        <Card className="flex min-h-[420px] items-center justify-center p-6">
+          <div className="max-w-md text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-500/10">
+              <Icon name="cpu" className="h-7 w-7 text-brand-500" />
+            </div>
+            <h2 className="mt-4 text-lg font-semibold text-gray-900 dark:text-white">Добавьте FunPay-аккаунт</h2>
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              Тестовый чат использует данные выбранного аккаунта и его лотов.
+            </p>
+            <Link
+              href="/platform/accounts"
+              className="mt-5 inline-flex rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600"
+            >
+              Перейти к аккаунтам
+            </Link>
+          </div>
+        </Card>
+      </div>
     );
   }
 
-  function removeLocalFaq(index: number) {
-    setLocalFaq((prev) => prev.filter((_, i) => i !== index));
-  }
+  const selectedAccount = accounts.find((account) => account.id === accountId);
+  const effectiveDraftMode: ChatMode = mode === "scenarios" ? "constructor" : "assistant";
+  const inputDisabled = !accountId || accountLoading || testing;
 
   return (
-    <div className="flex min-h-[calc(100dvh-4rem)] flex-col gap-4 overflow-visible -mx-4 -my-4 px-4 py-4 md:-mx-6 md:-my-6 md:px-6 md:py-6 lg:h-[calc(100vh-4rem)] lg:flex-row lg:gap-5 lg:overflow-hidden">
-
-      {/* LEFT — settings panel (desktop: always visible, mobile: drawer overlay) */}
-      {/* Mobile overlay backdrop */}
-      {showSettingsPanel && (
-        <div
-          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
-          onClick={() => setShowSettingsPanel(false)}
-        />
-      )}
-      <div className={`
-        ${showSettingsPanel ? "translate-x-0" : "-translate-x-full"}
-        lg:translate-x-0
-        fixed lg:relative left-0 top-0 lg:top-auto z-40 lg:z-auto
-        h-full lg:h-auto
-        w-[320px] lg:w-[340px] shrink-0
-        overflow-y-auto space-y-4 pr-1 pb-4
-        bg-white dark:bg-gray-950 lg:bg-transparent lg:dark:bg-transparent
-        pt-16 lg:pt-0
-        transition-transform duration-300 lg:transition-none
-      `}>
-
-        {/* Account */}
-        <Card>
-          <CardContent className="p-5 space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Аккаунт</p>
-            <Select
-              value={String(selectedAccountID ?? "")}
-              onChange={(val) => void handleAccountChange(Number(val))}
-            >
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>{a.username ?? `#${a.id}`}</option>
-              ))}
-            </Select>
-            <p className="text-xs text-gray-400">
-              Текущий аккаунт: {accounts.find((a) => a.id === selectedAccountID)?.username ?? String(selectedAccountID ?? "")}
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Auto mode */}
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-gray-800 dark:text-white">Авто режим</p>
-                <p className="mt-0.5 text-xs text-gray-400">
-                  {autoMode
-                    ? "Тест использует боевой режим из вкладки AI-Ассистент."
-                    : "Ручной override только для теста. Боевой режим не изменяется."}
-                </p>
-              </div>
-              <button
-                onClick={() => setAutoMode((v) => !v)}
-                className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${autoMode ? "bg-brand-500" : "bg-gray-200 dark:bg-gray-700"}`}
-              >
-                <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${autoMode ? "translate-x-6" : "translate-x-1"}`} />
-              </button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Test mode */}
-        <Card>
-          <CardContent className="p-5 space-y-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Режим теста</p>
-              <p className="mt-1 font-bold text-gray-800 dark:text-white">
-                {modeLabel(effectiveMode)}
-              </p>
-              <p className="text-xs text-gray-400">
-                {autoMode ? `Боевой режим: ${modeLabel(productionMode)}` : "Локальный режим теста"}
-              </p>
-            </div>
-
-            {!autoMode && (
-              <>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setOverrideMode("assistant")}
-                    className={`flex-1 rounded-xl py-2 text-sm font-medium transition-colors ${
-                      overrideMode === "assistant"
-                        ? "bg-brand-500 text-white"
-                        : "border border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400"
-                    }`}
-                  >
-                    ИИ Бот
-                  </button>
-                  <button
-                    onClick={() => setOverrideMode("constructor")}
-                    className={`flex-1 rounded-xl py-2 text-sm font-medium transition-colors ${
-                      overrideMode === "constructor"
-                        ? "bg-brand-500 text-white"
-                        : "border border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400"
-                    }`}
-                  >
-                    Сценарии
-                  </button>
-                </div>
-
-                {overrideMode === "constructor" && (
-                  <div>
-                    <p className="mb-2 text-xs text-gray-500">Сценарий</p>
-                    <Select
-                      value={selectedScenarioID}
-                      onChange={(val) => setSelectedScenarioID(val)}
-                    >
-                      <option value="">Выберите сценарий</option>
-                      {activeScenarios.map((s) => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                    </Select>
-                  </div>
-                )}
-
-                {overrideMode === "assistant" && (
-                  <div className="space-y-3 rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Локальные настройки теста</p>
-                    <p className="text-xs text-gray-400">Эти параметры используются только в тест-чате и не меняют боевые настройки аккаунта.</p>
-
-                    {/* Tone */}
-                    <div>
-                      <p className="mb-1.5 text-xs text-gray-500">Тон общения</p>
-                      <Select
-                        value={localTone}
-                        onChange={(val) => setLocalTone(val as "formal" | "neutral" | "friendly")}
-                      >
-                        <option value="neutral">Нейтральный</option>
-                        <option value="formal">Официальный</option>
-                        <option value="friendly">Дружелюбный</option>
-                      </Select>
-                    </div>
-
-                    {/* Delay */}
-                    <div>
-                      <p className="text-xs text-gray-500">Задержка ответа: {localDelaySeconds}с</p>
-                      <input
-                        type="range" min={0} max={30} step={1} value={localDelaySeconds}
-                        onChange={(e) => setLocalDelaySeconds(Number(e.target.value))}
-                        className="mt-1.5 w-full accent-brand-500"
-                      />
-                    </div>
-
-                    {/* Signature */}
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-gray-500">Подпись ассистента</p>
-                      <button
-                        onClick={() => setLocalSignature((v) => !v)}
-                        className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors ${localSignature ? "bg-brand-500" : "bg-gray-200 dark:bg-gray-700"}`}
-                      >
-                        <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${localSignature ? "translate-x-5" : "translate-x-1"}`} />
-                      </button>
-                    </div>
-
-                    {/* Instruction */}
-                    <div>
-                      <p className="mb-1.5 text-xs text-gray-500">Инструкция для ИИ</p>
-                      <TextArea
-                        value={localPrompt}
-                        onChange={(val) => setLocalPrompt(val)}
-                        rows={4}
-                        placeholder="Например: отвечай коротко, всегда уточняй логин перед выдачей..."
-                      />
-                    </div>
-
-                    {/* KB */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs text-gray-500">База знаний FAQ</p>
-                        <button
-                          onClick={addLocalFaq}
-                          className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600"
-                        >
-                          <Icon name="plus" className="h-3 w-3" />
-                          Добавить
-                        </button>
-                      </div>
-                      {localFaq.length === 0 ? (
-                        <p className="text-xs text-gray-400">FAQ не добавлен. Ответы будут строиться только по инструкции и контексту лотов.</p>
-                      ) : (
-                        <div className="max-h-52 space-y-2 overflow-y-auto pr-1">
-                          {localFaq.map((item, i) => (
-                            <div key={item.id} className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
-                              <div className="flex items-center justify-end px-3 py-1.5 border-b border-gray-100 dark:border-gray-800">
-                                <button
-                                  onClick={() => removeLocalFaq(i)}
-                                  className="flex items-center gap-0.5 text-xs text-error-500 hover:text-error-600"
-                                >
-                                  <Icon name="trash" className="h-3 w-3" />
-                                  Удалить
-                                </button>
-                              </div>
-                              <div className="p-2 space-y-1.5">
-                                <Input
-                                  value={item.question}
-                                  onChange={(e) => updateLocalFaq(i, "question", e.target.value)}
-                                  placeholder="Вопрос"
-                                />
-                                <TextArea
-                                  value={item.answer}
-                                  onChange={(val) => updateLocalFaq(i, "answer", val)}
-                                  placeholder="Ответ"
-                                  rows={2}
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Trace panel — shown after response */}
-        {trace.length > 0 && (
-          <Card>
-            <CardContent className="p-5">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Trace</p>
-              <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
-                {trace.map((item, index) => {
-                  const nodeID = typeof item.node_id === "string" ? item.node_id : `#${index + 1}`;
-                  const nodeType = typeof item.node_type === "string" ? item.node_type : "node";
-                  const result = typeof item.result === "string" ? item.result : "executed";
-                  return (
-                    <div key={`${nodeID}-${index}`} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800">
-                      <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">
-                        {nodeType} · {nodeID}
-                      </p>
-                      <p className="text-xs text-gray-400">result: {result}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      <Card className="lg:hidden">
-        <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+    <div className="min-w-0 space-y-4" data-testid="ai-test-chat">
+      <Card className="p-4 sm:p-5">
+        <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Настройки теста</p>
-            <p className="mt-1 truncate text-sm font-semibold text-gray-800 dark:text-white">
-              {accounts.find((a) => a.id === selectedAccountID)?.username ?? "Аккаунт не выбран"}
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white">Тест текущего черновика</h2>
+              <span className="rounded-full bg-brand-500/10 px-2.5 py-1 text-xs font-semibold text-brand-600">
+                Текущий черновик
+              </span>
+              <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                {modeLabel(effectiveDraftMode)}
+              </span>
+            </div>
+            <p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
+              Сообщения не отправляются в FunPay. AI-вызовы учитываются в месячном лимите.
             </p>
-            <p className="text-xs text-gray-400">
-              {modeLabel(effectiveMode)} · {autoMode ? "боевой режим" : "локальный override"}
-            </p>
+            {effectiveDraftMode === "constructor" && (
+              <p className="mt-1 text-xs text-gray-400">
+                Сценарий: {scenarioName || "не выбран"}
+              </p>
+            )}
           </div>
-          <button
-            onClick={() => setShowSettingsPanel(true)}
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 dark:border-gray-700 dark:text-gray-200"
-          >
-            <Icon name="wrench" className="h-4 w-4" />
-            Настройки
-          </button>
-        </CardContent>
+          <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row lg:w-auto">
+            <label className="min-w-0 flex-1 lg:w-64">
+              <span className="sr-only">FunPay-аккаунт для теста</span>
+              <select
+                value={accountId ?? ""}
+                onChange={(event) => onAccountChange(Number(event.target.value))}
+                disabled={accountLoading || testing}
+                data-testid="ai-test-account"
+                className="w-full min-w-0 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              >
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.username || `Аккаунт #${account.id}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={onOpenSettings}
+              className="shrink-0 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+            >
+              Изменить настройки
+            </button>
+          </div>
+        </div>
       </Card>
 
-      {/* RIGHT — chat */}
-      <Card className="flex min-h-[calc(100dvh-14rem)] min-w-0 flex-1 flex-col overflow-hidden lg:min-h-0">
-        {/* Chat header */}
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800 sm:px-5 sm:py-4">
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Mobile settings toggle */}
-            <button
-              onClick={() => setShowSettingsPanel((v) => !v)}
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 lg:hidden"
-              aria-label="Настройки теста"
-            >
-              <Icon name="more-dot" className="h-5 w-5" />
-            </button>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500/10 sm:h-9 sm:w-9">
-              <Icon name="cpu" className="h-4 w-4 text-brand-500 sm:h-5 sm:w-5" />
+      <Card className="flex min-h-[520px] min-w-0 flex-col overflow-hidden lg:h-[calc(100dvh-17rem)] lg:min-h-[560px]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 dark:border-gray-800 sm:px-5 sm:py-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500/10">
+              <Icon name="cpu" className="h-5 w-5 text-brand-500" />
             </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-800 dark:text-white sm:text-base">Тестовый диалог</p>
-              <p className="hidden text-xs text-gray-400 sm:block">Режим теста не влияет на боевой режим аккаунта</p>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-gray-800 dark:text-white sm:text-base">Тестовый диалог</p>
+              <p className="truncate text-xs text-gray-400">Аккаунт: {selectedAccount?.username || `#${accountId ?? "—"}`}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="hidden text-xs text-gray-400 sm:block">Ответил:</span>
-            <span className="rounded-full bg-brand-500/10 px-2 py-0.5 text-xs font-medium text-brand-600 sm:px-2.5">
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-gray-400">Ответил:</span>
+            <span className="rounded-full bg-brand-500/10 px-2.5 py-1 font-medium text-brand-600">
               {modeLabel(lastEffectiveMode)}
             </span>
+            {limitMessages > 0 && (
+              <span className="hidden text-gray-400 sm:inline" data-testid="ai-test-usage">
+                {usedMessages} / {limitMessages}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Messages */}
-        <div ref={messagesRef} className="flex-1 overflow-y-auto px-5 py-5">
+        <div ref={messagesRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-5" data-testid="ai-test-messages">
           {messages.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center gap-4">
+            <div className="flex h-full min-h-[330px] flex-col items-center justify-center gap-4">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-500/10">
                 <Icon name="bolt" className="h-7 w-7 text-brand-500" />
               </div>
-              <div className="text-center">
-                <p className="font-semibold text-gray-800 dark:text-white">Проверьте качество автоответов</p>
-                <p className="mt-1 text-sm text-gray-400">Вы пишете как покупатель, система отвечает в выбранном тестовом режиме.</p>
+              <div className="max-w-md text-center">
+                <p className="font-semibold text-gray-800 dark:text-white">Проверьте качество ответа</p>
+                <p className="mt-1 text-sm text-gray-400">Напишите сообщение от лица покупателя или выберите готовый пример.</p>
               </div>
-              <div className="mt-2 w-full max-w-sm space-y-2">
-                {QUICK_MESSAGES.map((q) => (
+              <div className="mt-2 grid w-full max-w-xl gap-2 sm:grid-cols-3">
+                {QUICK_MESSAGES.map((quickMessage) => (
                   <button
-                    key={q}
-                    onClick={() => void sendMessage(q)}
-                    className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-left text-sm text-gray-700 hover:border-brand-400 hover:bg-brand-500/5 hover:text-brand-600 transition-colors dark:border-gray-700 dark:text-gray-300"
+                    key={quickMessage}
+                    type="button"
+                    onClick={() => void sendMessage(quickMessage)}
+                    disabled={inputDisabled}
+                    className="min-w-0 rounded-xl border border-gray-200 px-3 py-2.5 text-left text-sm text-gray-700 transition-colors hover:border-brand-400 hover:bg-brand-500/5 hover:text-brand-600 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300"
                   >
-                    {q}
+                    {quickMessage}
                   </button>
                 ))}
               </div>
             </div>
           ) : (
             <div className="space-y-4">
-              {messages.map((msg, index) => (
-                <div key={`${msg.role}-${index}`} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start gap-2.5"}`}>
-                  {msg.role === "ai" && (
+              {messages.map((message, index) => (
+                <div key={`${message.role}-${index}`} className={`flex ${message.role === "user" ? "justify-end" : "justify-start gap-2.5"}`}>
+                  {message.role === "ai" && (
                     <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-500/10">
                       <Icon name="cpu" className="h-4 w-4 text-brand-500" />
                     </div>
                   )}
-                  <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
-                    msg.role === "user"
+                  <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 sm:max-w-[75%] ${
+                    message.role === "user"
                       ? "rounded-br-sm bg-brand-500 text-white"
-                      : "rounded-bl-sm bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-white"
+                      : message.error
+                        ? "rounded-bl-sm bg-error-50 text-error-700 dark:bg-error-500/10 dark:text-error-300"
+                        : "rounded-bl-sm bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-white"
                   }`}>
-                    <p className="whitespace-pre-wrap text-sm">
-                      {msg.loading ? "Печатает…" : msg.text}
+                    <p className="whitespace-pre-wrap break-words text-sm" data-testid={message.loading ? "ai-test-typing" : undefined}>
+                      {message.loading ? "Печатает…" : message.text}
                     </p>
                   </div>
                 </div>
               ))}
-              <div ref={messagesRef} />
             </div>
           )}
         </div>
 
-        {/* Input */}
-        <div className="border-t border-gray-100 px-4 py-3 dark:border-gray-800">
-          <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 dark:border-gray-700 dark:bg-gray-800">
+        <div className="border-t border-gray-100 px-3 py-3 dark:border-gray-800 sm:px-4">
+          <div className="flex min-w-0 items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800 sm:px-4">
             <input
               value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendMessage(); }
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  void sendMessage();
+                }
               }}
               placeholder="Напишите сообщение покупателя..."
-              disabled={testing || loading}
-              className="flex-1 bg-transparent text-sm text-gray-700 outline-none placeholder:text-gray-400 dark:text-gray-200 disabled:opacity-50"
+              disabled={inputDisabled}
+              data-testid="ai-test-input"
+              className="min-w-0 flex-1 bg-transparent text-sm text-gray-700 outline-none placeholder:text-gray-400 disabled:opacity-50 dark:text-gray-200"
             />
             <button
+              type="button"
               onClick={() => void sendMessage()}
-              disabled={!input.trim() || testing || loading}
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+              disabled={!input.trim() || inputDisabled}
+              aria-label="Отправить тестовое сообщение"
+              data-testid="ai-test-send"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-white transition-opacity hover:opacity-90 disabled:opacity-40"
             >
               <Icon name="paper-plane" className="h-4 w-4" />
             </button>
           </div>
           {messages.length > 0 && (
             <button
+              type="button"
               onClick={() => { setMessages([]); setTrace([]); }}
               className="mt-2 flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
             >
@@ -637,6 +362,30 @@ export default function TestChatPage() {
         </div>
       </Card>
 
+      {trace.length > 0 && (
+        <div data-testid="ai-test-trace">
+          <Card className="p-4">
+            <details>
+              <summary className="cursor-pointer text-sm font-semibold text-gray-800 dark:text-white">
+                Trace сценария · {trace.length} шагов
+              </summary>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {trace.map((item, index) => {
+                  const nodeId = typeof item.node_id === "string" ? item.node_id : `#${index + 1}`;
+                  const nodeType = typeof item.node_type === "string" ? item.node_type : "node";
+                  const result = typeof item.result === "string" ? item.result : "executed";
+                  return (
+                    <div key={`${nodeId}-${index}`} className="min-w-0 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800">
+                      <p className="truncate text-xs font-semibold text-gray-700 dark:text-gray-200">{nodeType} · {nodeId}</p>
+                      <p className="truncate text-xs text-gray-400">result: {result}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </details>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

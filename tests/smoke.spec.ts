@@ -9,6 +9,7 @@ const PLATFORM_ROUTES = [
   '/platform/accounts',
   '/platform/analytics',
   '/platform/automation',
+  '/platform/ai-assistant',
   '/platform/reviews',
   '/platform/auto-responder',
   '/platform/plugins',
@@ -81,6 +82,9 @@ test.beforeEach(async ({ page }) => {
     const autoResponderAssignmentConflict = initialParams.get('assignmentConflict') === '1';
     const autoResponderSaveError = initialParams.get('saveError') === '1';
     const autoResponderSlowSave = initialParams.get('slowSave') === '1';
+    const noAccounts = initialParams.get('noAccounts') === '1';
+    const aiChatError = initialParams.get('aiChatError') || '';
+    const aiChatSlow = initialParams.get('aiChatSlow') === '1';
     const secondAccountID = 9;
     const profile = {
       login: 'qa',
@@ -232,6 +236,7 @@ test.beforeEach(async ({ page }) => {
     (window as any).__LAST_NOTIFICATION_UPDATE__ = null;
     (window as any).__MOCK_WEEKLY_REPORT_STATUS__ = weeklyReportStatus;
     (window as any).__REVIEW_STATUS_GETS__ = 0;
+    (window as any).__LAST_AI_TEST_PAYLOAD__ = null;
     const envelope = (data: unknown) =>
       new Response(JSON.stringify({ success: true, data }), {
         headers: { 'Content-Type': 'application/json' },
@@ -272,6 +277,7 @@ test.beforeEach(async ({ page }) => {
         });
       }
       if (path === '/api/accounts' && method === 'GET') {
+        if (noAccounts) return envelope([]);
         const accountItems = [
           {
             id: accountID,
@@ -293,6 +299,62 @@ test.beforeEach(async ({ page }) => {
           });
         }
         return envelope(accountItems);
+      }
+      const aiConfigMatch = path.match(/^\/api\/ai\/config\/(\d+)$/);
+      if (aiConfigMatch && method === 'GET') {
+        return envelope({
+          account_id: Number(aiConfigMatch[1]),
+          is_enabled: false,
+          tone: 'formal',
+          system_prompt: 'Сохранённая инструкция',
+          delay_seconds: 10,
+          show_ai_signature: false,
+          chat_mode: 'assistant',
+          constructor_scenario_id: '',
+          used_messages: 12,
+          limit_messages: 500,
+          remaining_messages: 488,
+          call_seller_reply: 'Сейчас позову продавца',
+          call_seller_keywords: ['позови продавца'],
+          silence_smalltalk: true,
+        });
+      }
+      if (/^\/api\/ai\/faq\/\d+$/.test(path) && method === 'GET') {
+        return envelope([{ id: 71, question: 'Есть гарантия?', answer: 'Да, 24 часа', created_at: '2026-07-01T10:00:00Z' }]);
+      }
+      if (/^\/api\/accounts\/\d+\/scenarios$/.test(path) && method === 'GET') {
+        return envelope([{ id: 'scenario-chat', name: 'Основной сценарий', trigger_type: 'chat_message', flow_data: '{}', is_active: true }]);
+      }
+      if (/^\/api\/ai\/triggers\/\d+$/.test(path) && method === 'GET') return envelope({ data: [] });
+      if (/^\/api\/ai\/lifecycle\/\d+$/.test(path) && method === 'GET') return envelope({ data: [] });
+      if (/^\/api\/ai\/lot-configs\/\d+$/.test(path) && method === 'GET') return envelope({ data: [] });
+      if (path === '/api/ai/test-chat' && method === 'POST') {
+        const payload = JSON.parse(String(init?.body || '{}'));
+        (window as any).__LAST_AI_TEST_PAYLOAD__ = payload;
+        if (aiChatSlow) await new Promise((resolve) => window.setTimeout(resolve, 250));
+        if (aiChatError === 'limit') {
+          return new Response(JSON.stringify({ success: false, error: 'Лимит AI сообщений на этот месяц исчерпан' }), {
+            status: 429,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        if (aiChatError === 'service') {
+          return new Response(JSON.stringify({ success: false, error: 'AI сервис временно недоступен' }), {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        return envelope({
+          reply: payload.override_mode === 'constructor' ? 'Ответ тестового сценария' : 'Черновой ответ AI',
+          effective_mode: payload.override_mode,
+          tokens_used: payload.override_mode === 'constructor' ? 0 : 42,
+          used_messages: payload.override_mode === 'constructor' ? 12 : 13,
+          limit_messages: 500,
+          remaining_limit: payload.override_mode === 'constructor' ? 488 : 487,
+          trace: payload.override_mode === 'constructor'
+            ? [{ node_id: 'reply-1', node_type: 'send_message', result: 'executed' }]
+            : [],
+        });
       }
       if (path === '/api/auto-responder-plugins' && method === 'GET') {
         return envelope(autoResponderPlugins);
@@ -577,6 +639,129 @@ test.beforeEach(async ({ page }) => {
       value: PatchedWebSocket,
     });
   });
+});
+
+test('AI assistant embeds test chat and sends the current unsaved draft', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/platform/ai-assistant?multiAccounts=1&aiChatSlow=1');
+
+  const settingsTab = page.getByRole('tab', { name: 'Настройки' });
+  const chatTab = page.getByRole('tab', { name: 'Тест-чат' });
+  await expect(settingsTab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByTestId('ai-settings-panel')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Тест-чат' })).toHaveCount(0);
+
+  await page.getByTestId('ai-tone-friendly').click();
+  await page.getByTestId('ai-delay').fill('7');
+  await page.getByTestId('ai-signature').click();
+  await page.getByTestId('ai-instruction').fill('Черновая инструкция без сохранения');
+  await chatTab.click();
+
+  await expect(page).toHaveURL(/\/platform\/ai-assistant\?.*tab=test-chat/);
+  await expect(chatTab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByTestId('ai-settings-panel')).toBeHidden();
+  await expect(page.getByTestId('ai-test-chat')).toBeVisible();
+  await expect(page.getByTestId('ai-test-account')).toHaveValue('8');
+
+  await page.getByTestId('ai-test-input').fill('Первый вопрос');
+  await page.getByTestId('ai-test-send').click();
+  await expect(page.getByTestId('ai-test-typing')).toBeVisible();
+  await expect(page.getByText('Черновой ответ AI')).toBeVisible();
+  await expect(page.getByTestId('ai-test-usage')).toContainText('13 / 500');
+  await expect.poll(() => page.evaluate(() => (window as any).__LAST_AI_TEST_PAYLOAD__)).toMatchObject({
+    account_id: 8,
+    message: 'Первый вопрос',
+    history: [],
+    auto_mode: false,
+    override_mode: 'assistant',
+    config_override: {
+      tone: 'friendly',
+      system_prompt: 'Черновая инструкция без сохранения',
+      delay_seconds: 7,
+      show_ai_signature: true,
+      faq: [{ question: 'Есть гарантия?', answer: 'Да, 24 часа' }],
+    },
+  });
+
+  await page.getByTestId('ai-test-input').fill('Второй вопрос');
+  await page.getByTestId('ai-test-send').click();
+  await expect.poll(() => page.evaluate(() => (window as any).__LAST_AI_TEST_PAYLOAD__)).toMatchObject({
+    message: 'Второй вопрос',
+    history: [
+      { role: 'user', text: 'Первый вопрос' },
+      { role: 'assistant', text: 'Черновой ответ AI' },
+    ],
+  });
+
+  await settingsTab.click();
+  await expect(page.getByTestId('ai-instruction')).toHaveValue('Черновая инструкция без сохранения');
+  await chatTab.click();
+  await expect(page.getByText('Первый вопрос')).toBeVisible();
+  await expect(page.getByText('Второй вопрос')).toBeVisible();
+
+  await page.getByTestId('ai-test-account').selectOption('9');
+  await expect(page.getByText('Проверьте качество ответа')).toBeVisible();
+  await settingsTab.click();
+  await expect(page.getByTestId('ai-settings-account')).toHaveValue('9');
+});
+
+test('AI assistant test chat supports scenario draft and trace', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/platform/ai-assistant');
+
+  await page.getByTestId('ai-mode-toggle').click();
+  await page.getByRole('tab', { name: 'Тест-чат' }).click();
+  await expect(page.getByText('Сценарий: Основной сценарий')).toBeVisible();
+  await page.getByTestId('ai-test-input').fill('Запусти сценарий');
+  await page.getByTestId('ai-test-send').click();
+
+  await expect(page.getByText('Ответ тестового сценария')).toBeVisible();
+  await expect(page.getByTestId('ai-test-trace')).toContainText('reply-1');
+  await expect.poll(() => page.evaluate(() => (window as any).__LAST_AI_TEST_PAYLOAD__)).toMatchObject({
+    account_id: 8,
+    auto_mode: false,
+    override_mode: 'constructor',
+    scenario_id: 'scenario-chat',
+  });
+  expect(await page.evaluate(() => Object.prototype.hasOwnProperty.call((window as any).__LAST_AI_TEST_PAYLOAD__, 'config_override'))).toBe(false);
+});
+
+test('AI test chat keeps user messages when limit or provider fails', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/platform/ai-assistant?tab=test-chat&aiChatError=limit');
+  await page.getByTestId('ai-test-input').fill('Сообщение при лимите');
+  await page.getByTestId('ai-test-send').click();
+  await expect(page.getByText('Сообщение при лимите')).toBeVisible();
+  await expect(page.getByTestId('ai-test-messages').getByText(/Лимит AI сообщений/)).toBeVisible();
+
+  await page.goto('/platform/ai-assistant?tab=test-chat&aiChatError=service');
+  await page.getByTestId('ai-test-input').fill('Сообщение при ошибке сервиса');
+  await page.getByTestId('ai-test-send').click();
+  await expect(page.getByText('Сообщение при ошибке сервиса')).toBeVisible();
+  await expect(page.getByTestId('ai-test-messages').getByText(/ИИ-провайдер временно недоступен/)).toBeVisible();
+});
+
+test('legacy test chat route opens the AI assistant internal tab', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/platform/test-chat');
+  await expect(page).toHaveURL(/\/platform\/ai-assistant\?tab=test-chat$/);
+  await expect(page.getByRole('heading', { name: 'AI-Ассистент' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Тест-чат' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByTestId('ai-test-chat')).toBeVisible();
+});
+
+test('AI test chat handles no accounts and mobile width', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/platform/ai-assistant?tab=test-chat&noAccounts=1');
+  await expect(page.getByTestId('ai-test-chat-empty')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Перейти к аккаунтам' })).toBeVisible();
+  await expect(page.getByTestId('ai-test-send')).toHaveCount(0);
+  await assertNoHorizontalOverflow(page);
+
+  await page.goto('/platform/ai-assistant?tab=test-chat');
+  await expect(page.getByTestId('ai-test-chat')).toBeVisible();
+  await expect(page.getByTestId('ai-test-input')).toBeVisible();
+  await assertNoHorizontalOverflow(page);
 });
 
 test('warehouse shows only available local stock items', async ({ page }) => {

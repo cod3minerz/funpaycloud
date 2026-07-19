@@ -1,20 +1,23 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/platform2/components/ui/card";
 import { Button } from "@/platform2/components/ui/button";
 import { Modal } from "@/platform2/components/ui/modal";
 import Icon from "@/platform2/icons";
 import {
   aiApi, scenariosApi, accountsApi, authApi,
-  AIConfig, AIFaqItem, AITrigger, AILifecycleMessage, AILotConfig,
+  AIFaqItem, AITrigger, AILifecycleMessage, AILotConfig,
   ApiScenario, ApiAccount,
 } from "@/lib/api";
 import { toast } from "sonner";
 import TextArea from "@/platform2/components/form/input/TextArea";
 import Input from "@/platform2/components/form/input/InputField";
+import AITestChat from "@/platform2/pages/TestChat";
 
 type Tone = "formal" | "neutral" | "friendly";
+type AIAssistantTab = "settings" | "test-chat";
 
 const toneOptions: { id: Tone; label: string; subtitle: string }[] = [
   { id: "formal", label: "Официальный", subtitle: "Здравствуйте, благодарю" },
@@ -210,9 +213,13 @@ function LotConfigEditor({ lotId, initialInstructions, onSave }: {
   );
 }
 
-export default function AIAssistantPage() {
+export default function AIAssistantPage({ initialTab = "settings" }: { initialTab?: AIAssistantTab }) {
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<AIAssistantTab>(initialTab);
+  const [testChatMounted, setTestChatMounted] = useState(initialTab === "test-chat");
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [account, setAccount] = useState<string>("");
+  const [accountLoading, setAccountLoading] = useState(true);
   const [scenarios, setScenarios] = useState<ApiScenario[]>([]);
   const [scenario, setScenario] = useState<string>("");
 
@@ -259,52 +266,95 @@ export default function AIAssistantPage() {
   const [expandedLot, setExpandedLot] = useState<string | null>(null);
 
   useEffect(() => {
-    accountsApi.list().then((list) => {
-      setAccounts(list);
-      if (list.length > 0) setAccount(String(list[0].id));
-    }).catch(() => {});
+    setActiveTab(initialTab);
+    if (initialTab === "test-chat") setTestChatMounted(true);
+  }, [initialTab]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setAccountLoading(true);
+    accountsApi.list()
+      .then((list) => {
+        if (cancelled) return;
+        setAccounts(list);
+        setAccount(list.length > 0 ? String(list[0].id) : "");
+        if (list.length === 0) setAccountLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAccounts([]);
+          setAccount("");
+          setAccountLoading(false);
+        }
+      });
     authApi.me().then((me) => setIsTrial(me.plan === "trial")).catch(() => {});
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
     if (!account) return;
+    let cancelled = false;
+    setAccountLoading(true);
 
-    aiApi.getConfig(account).then((cfg: AIConfig) => {
-      setAutoReply(cfg.is_enabled);
-      setTone((cfg.tone as Tone) || "formal");
-      setDelay(cfg.delay_seconds ?? 10);
-      setSignature(cfg.show_ai_signature ?? false);
-      setInstruction(cfg.system_prompt ?? "");
-      setUsedMessages(cfg.used_messages ?? 0);
-      setLimitMessages(cfg.limit_messages || 1);
-      if (cfg.chat_mode === "constructor") setMode("scenarios");
-      else setMode("bot");
-      if (cfg.constructor_scenario_id) setScenario(cfg.constructor_scenario_id);
-      if (cfg.call_seller_reply) setCallSellerReply(cfg.call_seller_reply);
-      if (Array.isArray(cfg.call_seller_keywords)) setCallSellerKeywordsText(formatCallSellerKeywords(cfg.call_seller_keywords));
-      else setCallSellerKeywordsText(formatCallSellerKeywords(DEFAULT_CALL_SELLER_KEYWORDS));
-      if (cfg.silence_smalltalk !== undefined) setSilenceSmallTalk(cfg.silence_smalltalk);
-    }).catch(() => {});
+    Promise.all([
+      aiApi.getConfig(account).catch(() => null),
+      aiApi.getFaq(account).catch(() => [] as AIFaqItem[]),
+      scenariosApi.list(account).catch(() => [] as ApiScenario[]),
+      aiApi.getTriggers(account).catch(() => ({ data: [] as AITrigger[] })),
+      aiApi.getLifecycle(account).catch(() => ({ data: [] as AILifecycleMessage[] })),
+      aiApi.getLotConfigs(account).catch(() => ({ data: [] as AILotConfig[] })),
+      aiApi.getLots(account).catch(() => ({ data: [] as { lot_id: string; title: string }[] })),
+    ]).then(([cfg, faqItems, accountScenarios, triggerItems, lifecycleItems, lotConfigItems, accountLots]) => {
+      if (cancelled) return;
 
-    aiApi.getFaq(account).then(setKb).catch(() => {});
+      if (cfg) {
+        setAutoReply(Boolean(cfg.is_enabled));
+        setTone(cfg.tone === "neutral" || cfg.tone === "friendly" ? cfg.tone : "formal");
+        setDelay(cfg.delay_seconds ?? 10);
+        setSignature(Boolean(cfg.show_ai_signature));
+        setInstruction(cfg.system_prompt ?? "");
+        setUsedMessages(cfg.used_messages ?? 0);
+        setLimitMessages(cfg.limit_messages || 1);
+        setMode(cfg.chat_mode === "constructor" ? "scenarios" : "bot");
+        if (cfg.call_seller_reply) setCallSellerReply(cfg.call_seller_reply);
+        setCallSellerKeywordsText(
+          Array.isArray(cfg.call_seller_keywords)
+            ? formatCallSellerKeywords(cfg.call_seller_keywords)
+            : formatCallSellerKeywords(DEFAULT_CALL_SELLER_KEYWORDS)
+        );
+        if (cfg.silence_smalltalk !== undefined) setSilenceSmallTalk(cfg.silence_smalltalk);
+      }
 
-    scenariosApi.list(account).then((list) => {
-      setScenarios(list);
-      if (list.length > 0 && !scenario) setScenario(list[0].id);
-    }).catch(() => {});
+      setKb(faqItems);
+      setScenarios(accountScenarios);
+      const configuredScenario = cfg?.constructor_scenario_id?.trim();
+      setScenario(
+        configuredScenario && accountScenarios.some((item) => item.id === configuredScenario)
+          ? configuredScenario
+          : accountScenarios[0]?.id ?? ""
+      );
+      setTriggers(triggerItems.data ?? []);
+      setLifecycle(lifecycleItems.data ?? []);
+      const nextLotConfigs: Record<string, AILotConfig> = {};
+      for (const item of lotConfigItems.data ?? []) nextLotConfigs[item.lot_id] = item;
+      setLotConfigs(nextLotConfigs);
+      setLots(accountLots.data ?? []);
+    }).finally(() => {
+      if (!cancelled) setAccountLoading(false);
+    });
 
-    aiApi.getTriggers(account).then((r) => setTriggers(r.data ?? [])).catch(() => {});
-    aiApi.getLifecycle(account).then((r) => setLifecycle(r.data ?? [])).catch(() => {});
-    aiApi.getLotConfigs(account).then((r) => {
-      const map: Record<string, AILotConfig> = {};
-      for (const c of r.data ?? []) map[c.lot_id] = c;
-      setLotConfigs(map);
-    }).catch(() => {});
-
-    aiApi.getLots(account).then((r) => {
-      setLots(r.data ?? []);
-    }).catch(() => {});
+    return () => { cancelled = true; };
   }, [account]);
+
+  function selectTab(nextTab: AIAssistantTab) {
+    setActiveTab(nextTab);
+    if (nextTab === "test-chat") setTestChatMounted(true);
+    const params = new URLSearchParams(window.location.search);
+    if (nextTab === "test-chat") params.set("tab", "test-chat");
+    else params.delete("tab");
+    const query = params.toString();
+    router.replace(`/platform/ai-assistant${query ? `?${query}` : ""}`, { scroll: false });
+  }
 
   function addPhrase(phrase: string) {
     const trimmed = instruction.trimEnd();
@@ -429,10 +479,60 @@ export default function AIAssistantPage() {
   }
 
   return (
-    <div className="space-y-5 pb-24">
+    <div className="min-w-0 space-y-5" data-testid="ai-assistant-page">
       <UpgradeAIModal open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
 
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI-Ассистент</h1>
+      <div
+        role="tablist"
+        aria-label="Разделы AI-Ассистента"
+        className="inline-flex w-full rounded-2xl border border-gray-200 bg-gray-50 p-1 dark:border-gray-700 dark:bg-gray-900 sm:w-auto"
+        data-testid="ai-assistant-tabs"
+      >
+        <button
+          type="button"
+          role="tab"
+          id="ai-settings-tab"
+          aria-selected={activeTab === "settings"}
+          aria-controls="ai-settings-panel"
+          onClick={() => selectTab("settings")}
+          className={`flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors sm:min-w-40 ${
+            activeTab === "settings"
+              ? "bg-white text-brand-600 shadow-sm dark:bg-gray-800 dark:text-brand-400"
+              : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          }`}
+          data-testid="ai-settings-tab"
+        >
+          <Icon name="wrench" className="h-4 w-4 shrink-0" />
+          Настройки
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="ai-test-chat-tab"
+          aria-selected={activeTab === "test-chat"}
+          aria-controls="ai-test-chat-panel"
+          onClick={() => selectTab("test-chat")}
+          className={`flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors sm:min-w-40 ${
+            activeTab === "test-chat"
+              ? "bg-white text-brand-600 shadow-sm dark:bg-gray-800 dark:text-brand-400"
+              : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          }`}
+          data-testid="ai-test-chat-tab"
+        >
+          <Icon name="cpu" className="h-4 w-4 shrink-0" />
+          Тест-чат
+        </button>
+      </div>
+
+      <section
+        id="ai-settings-panel"
+        role="tabpanel"
+        aria-labelledby="ai-settings-tab"
+        hidden={activeTab !== "settings"}
+        className="space-y-5 pb-24"
+        data-testid="ai-settings-panel"
+      >
       <AIHowItWorksPanel />
 
       {/* COMBINED: AUTO-REPLY + MODE */}
@@ -478,6 +578,9 @@ export default function AIAssistantPage() {
               <span className={`text-sm font-semibold transition-colors ${mode === "bot" ? "text-gray-900 dark:text-white" : "text-gray-400"}`}>ИИ Бот</span>
               <button
                 onClick={() => setMode((m) => (m === "bot" ? "scenarios" : "bot"))}
+                aria-label="Переключить режим AI-Ассистента"
+                aria-pressed={mode === "scenarios"}
+                data-testid="ai-mode-toggle"
                 className="relative inline-flex h-7 w-12 items-center rounded-full bg-brand-500 transition-colors"
               >
                 <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${mode === "scenarios" ? "translate-x-6" : "translate-x-1"}`} />
@@ -516,6 +619,7 @@ export default function AIAssistantPage() {
               <select
                 value={account}
                 onChange={(e) => setAccount(e.target.value)}
+                data-testid="ai-settings-account"
                 className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-10 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
               >
                 {accounts.map((a) => (
@@ -567,6 +671,7 @@ export default function AIAssistantPage() {
             <button
               key={opt.id}
               onClick={() => setTone(opt.id)}
+              data-testid={`ai-tone-${opt.id}`}
               className={`rounded-2xl border p-4 text-left transition-colors ${
                 tone === opt.id
                   ? "border-brand-500 bg-brand-500/5 dark:bg-brand-500/10"
@@ -590,6 +695,7 @@ export default function AIAssistantPage() {
           <input
             type="range" min={0} max={30} value={delay}
             onChange={(e) => setDelay(Number(e.target.value))}
+            data-testid="ai-delay"
             className="mt-4 w-full accent-brand-500"
           />
           <div className="mt-1 flex justify-between text-xs text-gray-400">
@@ -610,6 +716,9 @@ export default function AIAssistantPage() {
             </div>
             <button
               onClick={() => setSignature((v) => !v)}
+              aria-label="Подпись ассистента"
+              aria-pressed={signature}
+              data-testid="ai-signature"
               className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${signature ? "bg-brand-500" : "bg-gray-200 dark:bg-gray-700"}`}
             >
               <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${signature ? "translate-x-6" : "translate-x-1"}`} />
@@ -638,7 +747,7 @@ export default function AIAssistantPage() {
         <Card>
           <CardContent className="p-5">
             <p className="mb-3 text-sm text-gray-500">Опишите своими словами, как должен вести себя ассистент</p>
-            <TextArea value={instruction} onChange={(val) => setInstruction(val)} maxLength={2000} rows={5} />
+            <TextArea value={instruction} onChange={(val) => setInstruction(val)} maxLength={2000} rows={5} data-testid="ai-instruction" />
             <div className="mt-2 flex items-center justify-between">
               <p className="text-xs text-gray-400">Лоты из вашего аккаунта добавляются автоматически</p>
               <p className="text-xs text-gray-400">{instruction.length} / 2000</p>
@@ -951,6 +1060,39 @@ export default function AIAssistantPage() {
         </button>
       </div>
 
+      </section>
+
+      {testChatMounted && (
+        <section
+          id="ai-test-chat-panel"
+          role="tabpanel"
+          aria-labelledby="ai-test-chat-tab"
+          hidden={activeTab !== "test-chat"}
+          data-testid="ai-test-chat-panel"
+        >
+          <AITestChat
+            accounts={accounts}
+            accountId={account ? Number(account) : null}
+            accountLoading={accountLoading}
+            mode={mode}
+            scenarioId={scenario}
+            scenarioName={scenarios.find((item) => item.id === scenario)?.name}
+            tone={tone}
+            delaySeconds={delay}
+            systemPrompt={instruction}
+            showAISignature={signature}
+            faq={kb}
+            usedMessages={usedMessages}
+            limitMessages={limitMessages}
+            onAccountChange={(accountId) => setAccount(String(accountId))}
+            onUsageChange={(used, limit) => {
+              setUsedMessages(used);
+              if (typeof limit === "number" && limit > 0) setLimitMessages(limit);
+            }}
+            onOpenSettings={() => selectTab("settings")}
+          />
+        </section>
+      )}
     </div>
   );
 }
