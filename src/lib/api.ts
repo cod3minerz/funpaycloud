@@ -1532,6 +1532,20 @@ export const proxiesApi = {
     apiRequest<{ status: string; error?: string }>(`/api/proxies/my/${id}/check`, {
       method: 'POST',
     }),
+  checkAllMine: () =>
+    apiRequest<AsyncOperationStart>('/api/proxies/my/check-all', {
+      method: 'POST',
+    }),
+  deleteMine: (id: number | string) =>
+    apiRequest<{ proxy_id: number; deleted: boolean }>(`/api/proxies/my/${id}`, {
+      method: 'DELETE',
+    }),
+  deleteFailedMine: (payload: { operation_id: string; confirmation: 'DELETE_FAILED_PROXIES' }) =>
+    apiRequest<ProxyDeleteFailedResult>('/api/proxies/my/delete-failed', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      timeoutMs: 15 * 60 * 1000,
+    }),
   confirmFree: (id: number | string) =>
     apiRequest<{ ok?: boolean }>(`/api/proxies/my/${id}/confirm-free`, {
       method: 'POST',
@@ -1654,6 +1668,35 @@ export type MyProxyItem = {
   assigned_username?: string | null;
   confirm_required?: boolean;
   confirm_deadline_at?: string | null;
+  can_delete: boolean;
+  delete_block_reason?: 'platform_owned' | 'proxy_assigned' | 'paid_not_expired' | 'unsupported_product' | string;
+};
+
+export type ProxyBatchFailure = {
+  code: string;
+  message: string;
+  checked_at?: string;
+};
+
+export type ProxyBatchCheckResult = {
+  total: number;
+  processed: number;
+  current_proxy_id?: number | null;
+  current_proxy_name?: string;
+  current_index?: number;
+  healthy_count: number;
+  failed_count: number;
+  failed_proxy_ids: number[];
+  failures: Record<string, ProxyBatchFailure>;
+  delete_eligible_count: number;
+  delete_blocked_count: number;
+};
+
+export type ProxyDeleteFailedResult = {
+  deleted_ids: number[];
+  deleted_count: number;
+  skipped: Array<{ proxy_id: number; deleted: boolean; reason?: string }>;
+  skipped_count: number;
 };
 
 export type FreeProxyTrial = {
