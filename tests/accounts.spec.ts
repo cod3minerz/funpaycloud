@@ -54,6 +54,14 @@ async function chooseFreeProxy(page: Page) {
   await expect(page.getByTestId('selected-onboarding-proxy')).toContainText('Бесплатный прокси');
 }
 
+async function openOwnProxyActions(page: Page) {
+  const alphaRow = page.getByRole('row').filter({ hasText: 'AlphaSeller' });
+  await alphaRow.getByRole('button', { name: 'Сменить прокси' }).click();
+  await expect(page.getByTestId('change-proxy-catalog')).toBeVisible();
+  await page.getByRole('button', { name: 'Выбрать', exact: true }).click();
+  await expect(page.getByTestId('own-proxy-actions')).toBeVisible();
+}
+
 test.beforeEach(async ({ page }) => {
   await page.context().addCookies([{
     name: 'token',
@@ -73,6 +81,11 @@ test.beforeEach(async ({ page }) => {
     const startEmpty = params.get('empty') === '1';
     const startStopped = params.get('stopped') === '1';
     const dropTarget = params.get('dropTarget') === '1';
+    const emptyInventory = params.get('emptyInventory') === '1';
+    const inventoryErrorOnce = params.get('inventoryErrorOnce') === '1';
+    const assignError = params.get('assignError') === '1';
+    const assignWorkerError = params.get('assignWorkerError') === '1';
+    const externalProxyError = params.get('externalProxyError') === '1';
     let accounts = startEmpty ? [] : [
       {
         id: 81,
@@ -114,6 +127,9 @@ test.beforeEach(async ({ page }) => {
     const originalFetch = window.fetch.bind(window);
     const testScope = window as typeof window & {
       __PROXY_CONNECT_CALLS__?: number;
+      __PROXY_CONNECT_BODY__?: Record<string, unknown>;
+      __OWNED_PROXY_ASSIGN_CALLS__?: number;
+      __OWNED_PROXY_ASSIGN_BODY__?: Record<string, unknown>;
       __DROP_PROXY_TARGET_NOW__?: boolean;
       __LEGACY_ACCOUNT_POSTS__?: number;
       __ONBOARDING_CANCELS__?: number;
@@ -122,6 +138,9 @@ test.beforeEach(async ({ page }) => {
       __RELEASE_ONBOARDING_COMPLETE__?: () => void;
     };
     testScope.__PROXY_CONNECT_CALLS__ = 0;
+    testScope.__PROXY_CONNECT_BODY__ = undefined;
+    testScope.__OWNED_PROXY_ASSIGN_CALLS__ = 0;
+    testScope.__OWNED_PROXY_ASSIGN_BODY__ = undefined;
     testScope.__DROP_PROXY_TARGET_NOW__ = false;
     testScope.__LEGACY_ACCOUNT_POSTS__ = 0;
     testScope.__ONBOARDING_CANCELS__ = 0;
@@ -167,6 +186,7 @@ test.beforeEach(async ({ page }) => {
       };
     };
 
+    let inventoryCalls = 0;
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const rawURL = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
       const url = new URL(rawURL, window.location.origin);
@@ -189,21 +209,107 @@ test.beforeEach(async ({ page }) => {
         return json({ success: false, error: 'legacy endpoint must not be called' }, 500);
       }
       if (path === '/api/proxies/my' && method === 'GET') {
-        return ok({ items: [{
-          id: 91,
-          product: 'external_custom',
-          label: 'Inventory Proxy Alpha',
-          display_name: 'Inventory Proxy Alpha',
-          host: 'tenant-proxy.local',
-          port: 9000,
-          protocol: 'HTTP',
-          is_shared_free: false,
-          has_credentials: true,
-          is_active: true,
-          health_status: 'healthy',
-          fail_count: 0,
-          created_at: '2026-07-18T00:00:00Z',
-        }] });
+        inventoryCalls += 1;
+        if (inventoryErrorOnce && inventoryCalls === 1) {
+          return json({ success: false, error: 'Не удалось загрузить инвентарь' }, 503);
+        }
+        if (emptyInventory) return ok({ items: [] });
+        return ok({ items: [
+          {
+            id: 91,
+            product: 'proxy_lite',
+            label: 'Proxy Lite',
+            display_name: 'Купленный Proxy Lite',
+            host: 'paid-proxy.local',
+            port: 9001,
+            protocol: 'HTTP',
+            is_shared_free: false,
+            has_credentials: true,
+            is_active: true,
+            health_status: 'healthy',
+            fail_count: 0,
+            expires_at: '2030-07-18T00:00:00Z',
+            created_at: '2026-07-18T00:00:00Z',
+          },
+          {
+            id: 96,
+            product: 'external_custom',
+            label: 'Inventory Proxy Alpha',
+            display_name: 'Inventory Proxy Alpha',
+            host: 'tenant-proxy.local',
+            port: 9000,
+            protocol: 'HTTP',
+            is_shared_free: false,
+            has_credentials: true,
+            is_active: true,
+            health_status: 'degraded',
+            fail_count: 1,
+            created_at: '2026-07-18T00:00:00Z',
+          },
+          {
+            id: 92,
+            product: 'external_custom',
+            label: 'Занятый прокси',
+            display_name: 'Занятый прокси',
+            host: 'occupied.local',
+            port: 9002,
+            protocol: 'HTTP',
+            is_shared_free: false,
+            has_credentials: true,
+            is_active: true,
+            health_status: 'healthy',
+            fail_count: 0,
+            assigned_account_id: 82,
+            assigned_username: 'BetaSeller',
+            created_at: '2026-07-18T00:00:00Z',
+          },
+          {
+            id: 93,
+            product: 'proxy_pro',
+            label: 'Нерабочий прокси',
+            display_name: 'Нерабочий прокси',
+            host: 'unhealthy.local',
+            port: 9003,
+            protocol: 'HTTP',
+            is_shared_free: false,
+            has_credentials: true,
+            is_active: true,
+            health_status: 'unhealthy',
+            fail_count: 3,
+            created_at: '2026-07-18T00:00:00Z',
+          },
+          {
+            id: 94,
+            product: 'proxy_lite',
+            label: 'Истёкший прокси',
+            display_name: 'Истёкший прокси',
+            host: 'expired.local',
+            port: 9004,
+            protocol: 'HTTP',
+            is_shared_free: false,
+            has_credentials: true,
+            is_active: true,
+            health_status: 'healthy',
+            fail_count: 0,
+            expires_at: '2020-07-18T00:00:00Z',
+            created_at: '2020-06-18T00:00:00Z',
+          },
+          {
+            id: 95,
+            product: 'free_shared',
+            label: 'Бесплатный прокси',
+            display_name: 'Бесплатный прокси #1',
+            host: 'free.local',
+            port: 9005,
+            protocol: 'HTTP',
+            is_shared_free: true,
+            has_credentials: false,
+            is_active: true,
+            health_status: 'healthy',
+            fail_count: 0,
+            created_at: '2026-07-18T00:00:00Z',
+          },
+        ] });
       }
       if (path === '/api/account-onboarding' && method === 'POST') {
         const body = JSON.parse(String(init?.body || '{}')) as { mode?: string; product?: string; proxy_id?: number; external_proxy?: { host?: string; port?: number } };
@@ -288,6 +394,29 @@ test.beforeEach(async ({ page }) => {
       }
       if (path === '/api/accounts/81/proxy/connect' && method === 'POST') {
         testScope.__PROXY_CONNECT_CALLS__ = (testScope.__PROXY_CONNECT_CALLS__ || 0) + 1;
+        const body = JSON.parse(String(init?.body || '{}')) as Record<string, unknown>;
+        testScope.__PROXY_CONNECT_BODY__ = body;
+        if (externalProxyError && body.mode === 'external') {
+          return json({ success: false, error: 'Прокси не отвечает при подключении к FunPay.' }, 400);
+        }
+        if (body.mode === 'external') {
+          accounts = accounts.map((account) => account.id === 81
+            ? { ...account, proxy_connected: true, proxy_label: `${body.host}:${body.port}` }
+            : account);
+        }
+        return ok({});
+      }
+      if (path === '/api/proxies/my/91/assign' && method === 'POST') {
+        testScope.__OWNED_PROXY_ASSIGN_CALLS__ = (testScope.__OWNED_PROXY_ASSIGN_CALLS__ || 0) + 1;
+        const body = JSON.parse(String(init?.body || '{}')) as Record<string, unknown>;
+        testScope.__OWNED_PROXY_ASSIGN_BODY__ = body;
+        if (assignError) return json({ success: false, error: 'Прокси уже назначен другому вашему аккаунту' }, 400);
+        accounts = accounts.map((account) => account.id === 81
+          ? { ...account, proxy_connected: true, proxy_label: 'Proxy Lite' }
+          : account);
+        if (assignWorkerError) {
+          return json({ success: false, error: 'Прокси назначен, но воркеры не запустились' }, 502);
+        }
         return ok({});
       }
       return ok(method === 'GET' ? [] : {});
@@ -514,6 +643,172 @@ test('new external proxy is validated before Golden Key step', async ({ page }) 
 
   await expect(page.getByTestId('golden-key-input')).toBeVisible();
   await expect(page.getByTestId('selected-onboarding-proxy')).toContainText('proxy.example:8080');
+});
+
+test('existing-account own proxy flow offers both actions and resets credentials after close', async ({ page }) => {
+  await page.goto('/platform/accounts');
+  await openOwnProxyActions(page);
+
+  await expect(page.getByRole('button', { name: /Выбрать из существующих/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Добавить свой новый/ }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Назад' }).click();
+  await expect(page.getByTestId('change-proxy-catalog')).toBeVisible();
+  await page.getByRole('button', { name: 'Выбрать', exact: true }).click();
+  await page.getByRole('button', { name: /Добавить свой новый/ }).click();
+
+  await page.getByLabel('Хост нового прокси').fill('private-proxy.example');
+  await page.getByLabel('Логин нового прокси').fill('private-user');
+  await page.getByLabel('Пароль нового прокси').fill('private-secret');
+  await page.getByRole('button', { name: 'Отмена' }).click();
+
+  await openOwnProxyActions(page);
+  await page.getByRole('button', { name: /Добавить свой новый/ }).click();
+  await expect(page.getByLabel('Хост нового прокси')).toHaveValue('');
+  await expect(page.getByLabel('Порт нового прокси')).toHaveValue('8080');
+  await expect(page.getByLabel('Логин нового прокси')).toHaveValue('');
+  await expect(page.getByLabel('Пароль нового прокси')).toHaveValue('');
+});
+
+test('existing-account selects an available purchased proxy and filters unavailable inventory', async ({ page }) => {
+  await page.goto('/platform/accounts');
+  await openOwnProxyActions(page);
+  await page.getByRole('button', { name: /Выбрать из существующих/ }).click();
+
+  const inventory = page.getByTestId('change-proxy-owned-list');
+  await expect(inventory.getByText('Купленный Proxy Lite', { exact: true })).toBeVisible();
+  await expect(inventory.getByText('Inventory Proxy Alpha', { exact: true })).toBeVisible();
+  await expect(inventory.getByText('Занятый прокси', { exact: true })).toHaveCount(0);
+  await expect(inventory.getByText('Нерабочий прокси', { exact: true })).toHaveCount(0);
+  await expect(inventory.getByText('Истёкший прокси', { exact: true })).toHaveCount(0);
+  await expect(inventory.getByText('Бесплатный прокси #1', { exact: true })).toHaveCount(0);
+
+  await inventory.getByRole('button').filter({ hasText: 'Купленный Proxy Lite' }).evaluate((button) => {
+    (button as HTMLButtonElement).click();
+    (button as HTMLButtonElement).click();
+  });
+  await expect(page.getByTestId('change-proxy-owned-list')).toBeHidden();
+  const alphaRow = page.getByRole('row').filter({ hasText: 'AlphaSeller' });
+  await expect(alphaRow).toContainText('Proxy Lite');
+
+  const assignment = await page.evaluate(() => {
+    const scope = window as typeof window & {
+      __OWNED_PROXY_ASSIGN_CALLS__?: number;
+      __OWNED_PROXY_ASSIGN_BODY__?: Record<string, unknown>;
+    };
+    return { calls: scope.__OWNED_PROXY_ASSIGN_CALLS__ || 0, body: scope.__OWNED_PROXY_ASSIGN_BODY__ };
+  });
+  expect(assignment.calls).toBe(1);
+  expect(assignment.body).toEqual({ account_id: 81 });
+});
+
+test('existing-account inventory distinguishes empty and retryable error states', async ({ page }) => {
+  await page.goto('/platform/accounts?inventoryErrorOnce=1');
+  await openOwnProxyActions(page);
+  await page.getByRole('button', { name: /Выбрать из существующих/ }).click();
+  await expect(page.getByText('Не удалось загрузить инвентарь', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Повторить' }).click();
+  await expect(page.getByText('Купленный Proxy Lite', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Отмена' }).click();
+  await page.goto('/platform/accounts?emptyInventory=1');
+  await openOwnProxyActions(page);
+  await page.getByRole('button', { name: /Выбрать из существующих/ }).click();
+  await expect(page.getByText('Свободных прокси нет.', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('change-proxy-owned-list').getByRole('button', { name: 'Добавить свой новый', exact: true }).last()).toBeVisible();
+});
+
+test('existing-account assignment error keeps inventory open and reloads availability', async ({ page }) => {
+  await page.goto('/platform/accounts?assignError=1');
+  await openOwnProxyActions(page);
+  await page.getByRole('button', { name: /Выбрать из существующих/ }).click();
+  await page.getByRole('button').filter({ hasText: 'Купленный Proxy Lite' }).click();
+
+  await expect(page.getByText('Прокси уже назначен другому вашему аккаунту', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('change-proxy-owned-list')).toBeVisible();
+  await expect(page.getByText('Купленный Proxy Lite', { exact: true })).toBeVisible();
+});
+
+test('existing-account external proxy error keeps entered form open', async ({ page }) => {
+  await page.goto('/platform/accounts?externalProxyError=1');
+  await openOwnProxyActions(page);
+  await page.getByRole('button', { name: /Добавить свой новый/ }).click();
+  await page.getByLabel('Хост нового прокси').fill('offline-proxy.example');
+  await page.getByLabel('Порт нового прокси').fill('8181');
+  await page.getByRole('button', { name: 'Подтвердить' }).click();
+
+  await expect(page.getByText('Прокси не отвечает при подключении к FunPay.', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('change-proxy-external-form')).toBeVisible();
+  await expect(page.getByLabel('Хост нового прокси')).toHaveValue('offline-proxy.example');
+});
+
+test('existing-account connects a new external proxy with normalized credentials', async ({ page }) => {
+  await page.goto('/platform/accounts');
+  await openOwnProxyActions(page);
+  await page.getByRole('button', { name: /Добавить свой новый/ }).click();
+  await page.getByLabel('Протокол нового прокси').selectOption('SOCKS5');
+  await page.getByLabel('Хост нового прокси').fill('  new-proxy.example  ');
+  await page.getByLabel('Порт нового прокси').fill('1080');
+  await page.getByLabel('Логин нового прокси').fill('  proxy-user  ');
+  await page.getByLabel('Пароль нового прокси').fill('proxy-secret');
+  await page.getByRole('button', { name: 'Подтвердить' }).click();
+
+  await expect(page.getByTestId('change-proxy-external-form')).toBeHidden();
+  await expect(page.getByRole('row').filter({ hasText: 'AlphaSeller' })).toContainText('new-proxy.example:1080');
+  const request = await page.evaluate(() => {
+    const scope = window as typeof window & {
+      __PROXY_CONNECT_CALLS__?: number;
+      __PROXY_CONNECT_BODY__?: Record<string, unknown>;
+    };
+    return { calls: scope.__PROXY_CONNECT_CALLS__ || 0, body: scope.__PROXY_CONNECT_BODY__ };
+  });
+  expect(request.calls).toBe(1);
+  expect(request.body).toEqual({
+    mode: 'external',
+    protocol: 'SOCKS5',
+    host: 'new-proxy.example',
+    port: 1080,
+    username: 'proxy-user',
+    password: 'proxy-secret',
+  });
+});
+
+test('existing-account own proxy steps fit a phone viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/platform/accounts');
+  await openOwnProxyActions(page);
+  await expect(page.getByRole('button', { name: /Выбрать из существующих/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Добавить свой новый/ })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+  await page.getByRole('button', { name: /Выбрать из существующих/ }).click();
+  await expect(page.getByText('Купленный Proxy Lite', { exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('existing-account owned proxy target remains tenant scoped', async ({ page }) => {
+  await page.goto('/platform/accounts?dropTarget=1');
+  await openOwnProxyActions(page);
+  await page.getByRole('button', { name: /Выбрать из существующих/ }).click();
+  await expect(page.getByText('Купленный Proxy Lite', { exact: true })).toBeVisible();
+  await page.evaluate(() => {
+    (window as typeof window & { __DROP_PROXY_TARGET_NOW__?: boolean }).__DROP_PROXY_TARGET_NOW__ = true;
+  });
+  await page.getByRole('button').filter({ hasText: 'Купленный Proxy Lite' }).click();
+
+  await expect(page.getByText('Аккаунт больше недоступен. Обновите список и выберите его снова.', { exact: true })).toBeVisible();
+  const assignmentCalls = await page.evaluate(() => (window as typeof window & { __OWNED_PROXY_ASSIGN_CALLS__?: number }).__OWNED_PROXY_ASSIGN_CALLS__ || 0);
+  expect(assignmentCalls).toBe(0);
+});
+
+test('existing-account reflects partial success when assigned proxy workers fail', async ({ page }) => {
+  await page.goto('/platform/accounts?assignWorkerError=1');
+  await openOwnProxyActions(page);
+  await page.getByRole('button', { name: /Выбрать из существующих/ }).click();
+  await page.getByRole('button').filter({ hasText: 'Купленный Proxy Lite' }).click();
+
+  await expect(page.getByText('Прокси назначен, но воркеры не запустились', { exact: true })).toBeVisible();
+  await expect(page.getByRole('row').filter({ hasText: 'AlphaSeller' })).toContainText('Proxy Lite');
+  await expect(page.getByTestId('change-proxy-owned-list')).toBeHidden();
 });
 
 test('cancelling wizard discards session before another user target can leak', async ({ page }) => {

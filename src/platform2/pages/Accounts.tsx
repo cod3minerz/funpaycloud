@@ -46,6 +46,8 @@ type Account = {
   sessionUpdated: string;
 };
 
+type ProxyFlowStep = "catalog" | "own-choice" | "owned" | "external";
+
 const GOLDEN_KEY_PATTERN = /^[A-Za-z0-9]{20,64}$/;
 const ACCOUNT_OPERATION_STORAGE_KEY = "fpcloud:accounts:active-operation";
 const OPERATION_OVERLAY_MIN_VISIBLE_MS = 900;
@@ -128,8 +130,11 @@ export default function AccountsPage() {
   const [onboardingLoading, setOnboardingLoading] = useState(false);
   const [ownedProxies, setOwnedProxies] = useState<MyProxyItem[]>([]);
   const [ownedProxiesLoading, setOwnedProxiesLoading] = useState(false);
+  const [ownedProxiesError, setOwnedProxiesError] = useState("");
   const [isProxyModal, setIsProxyModal] = useState(false);
-  const [isExternalProxyModal, setIsExternalProxyModal] = useState(false);
+  const [proxyFlowStep, setProxyFlowStep] = useState<ProxyFlowStep>("catalog");
+  const [assigningProxyId, setAssigningProxyId] = useState<number | null>(null);
+  const [externalProxyLoading, setExternalProxyLoading] = useState(false);
   const [drawerAccount, setDrawerAccount] = useState<Account | null>(null);
   const [goldenKey, setGoldenKey] = useState("");
   const [extProxy, setExtProxy] = useState({ host: "", port: "8080", protocol: "HTTP", login: "", password: "" });
@@ -149,6 +154,8 @@ export default function AccountsPage() {
   const [operationTitle, setOperationTitle] = useState("");
   const operationRestoreStarted = useRef(false);
   const operationOverlayShownAt = useRef(0);
+  const assigningProxyRequest = useRef(false);
+  const externalProxyRequest = useRef(false);
   const currentProxyTarget = useMemo(
     () => proxyTarget ? accounts.find((account) => account.apiId === proxyTarget.apiId) ?? null : null,
     [accounts, proxyTarget],
@@ -160,6 +167,7 @@ export default function AccountsPage() {
     setOnboarding(null);
     setGoldenKey("");
     setOwnedProxies([]);
+    setOwnedProxiesError("");
     setExtProxy({ host: "", port: "8080", protocol: "HTTP", login: "", password: "" });
   }
 
@@ -168,6 +176,7 @@ export default function AccountsPage() {
     setOnboarding(null);
     setGoldenKey("");
     setOwnedProxies([]);
+    setOwnedProxiesError("");
     setIsAddModal(true);
   }
 
@@ -190,26 +199,51 @@ export default function AccountsPage() {
 
   async function loadOwnedProxies() {
     setOwnedProxiesLoading(true);
+    setOwnedProxiesError("");
     try {
       const response = await proxiesApi.listMine();
       setOwnedProxies((response.items || []).filter((item) => (
         item.is_active
         && !item.is_shared_free
         && !item.assigned_account_id
+        && ["proxy_lite", "proxy_pro", "external_custom"].includes(item.product)
         && item.health_status !== "unhealthy"
         && item.health_status !== "expired"
+        && (!item.expires_at || new Date(item.expires_at).getTime() > Date.now())
       )));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Не удалось загрузить «Мои прокси»");
+      setOwnedProxies([]);
+      setOwnedProxiesError(error instanceof Error ? error.message : "Не удалось загрузить «Мои прокси»");
     } finally {
       setOwnedProxiesLoading(false);
     }
   }
 
+  function openProxyFlow(account: Account) {
+    setProxyTarget(account);
+    setProxyFlowStep("catalog");
+    setOwnedProxies([]);
+    setOwnedProxiesError("");
+    setAssigningProxyId(null);
+    setExternalProxyLoading(false);
+    setExtProxy({ host: "", port: "8080", protocol: "HTTP", login: "", password: "" });
+    setIsProxyModal(true);
+  }
+
   function closeProxyFlow() {
     setIsProxyModal(false);
-    setIsExternalProxyModal(false);
+    setProxyFlowStep("catalog");
+    setOwnedProxies([]);
+    setOwnedProxiesError("");
+    setAssigningProxyId(null);
+    setExternalProxyLoading(false);
+    setExtProxy({ host: "", port: "8080", protocol: "HTTP", login: "", password: "" });
     setProxyTarget(null);
+  }
+
+  function requestCloseProxyFlow() {
+    if (assigningProxyRequest.current || externalProxyRequest.current || proxyPaymentLoading) return;
+    closeProxyFlow();
   }
 
   async function showPendingOperation(title: string, kind: string) {
@@ -343,7 +377,12 @@ export default function AccountsPage() {
     if (!proxyTarget) return;
     if (!currentProxyTarget) {
       setIsProxyModal(false);
-      setIsExternalProxyModal(false);
+      setProxyFlowStep("catalog");
+      setOwnedProxies([]);
+      setOwnedProxiesError("");
+      setAssigningProxyId(null);
+      setExternalProxyLoading(false);
+      setExtProxy({ host: "", port: "8080", protocol: "HTTP", login: "", password: "" });
       setProxyTarget(null);
       return;
     }
@@ -657,25 +696,76 @@ export default function AccountsPage() {
   }
 
   async function handleConnectExternalProxy() {
-    if (!extProxy.host || !extProxy.port) return;
-    const target = await refreshProxyTarget();
-    if (!target) return;
+    if (externalProxyRequest.current) return;
+    const host = extProxy.host.trim();
+    const port = Number(extProxy.port);
+    if (!host || !Number.isInteger(port) || port <= 0 || port > 65535) {
+      toast.error("Укажите корректные хост и порт прокси.");
+      return;
+    }
+    externalProxyRequest.current = true;
+    setExternalProxyLoading(true);
     try {
+      const target = await refreshProxyTarget();
+      if (!target) return;
       await accountsApi.connectProxy(target.apiId, {
         mode: "external",
         protocol: extProxy.protocol as "HTTP" | "HTTPS" | "SOCKS5",
-        host: extProxy.host,
-        port: parseInt(extProxy.port),
-        username: extProxy.login || undefined,
+        host,
+        port,
+        username: extProxy.login.trim() || undefined,
         password: extProxy.password || undefined,
       });
       const list = await accountsApi.list();
       setAccounts(list.map(mapApiAccount));
       toast.success("Внешний прокси подключён");
-    } catch {
-      toast.error("Не удалось подключить прокси. Проверьте данные.");
+      closeProxyFlow();
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 502) {
+        try {
+          const list = await accountsApi.list();
+          setAccounts(list.map(mapApiAccount));
+        } catch {
+          // The original proxy error is more useful than a refresh error here.
+        }
+      }
+      toast.error(error instanceof Error ? error.message : "Не удалось подключить прокси. Проверьте данные.");
+    } finally {
+      externalProxyRequest.current = false;
+      setExternalProxyLoading(false);
     }
-    closeProxyFlow();
+  }
+
+  async function handleAssignOwnedProxy(proxyId: number) {
+    if (assigningProxyRequest.current) return;
+    assigningProxyRequest.current = true;
+    setAssigningProxyId(proxyId);
+    try {
+      const target = await refreshProxyTarget();
+      if (!target) return;
+      await proxiesApi.assignMine(proxyId, { account_id: target.apiId });
+      const list = await accountsApi.list();
+      setAccounts(list.map(mapApiAccount));
+      toast.success("Прокси из «Моих прокси» подключён");
+      closeProxyFlow();
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 502) {
+        try {
+          const list = await accountsApi.list();
+          setAccounts(list.map(mapApiAccount));
+        } catch {
+          // Preserve the assignment result reported by the original request.
+        }
+        toast.warning(error.message);
+        closeProxyFlow();
+        return;
+      }
+      toast.error(error instanceof Error ? error.message : "Не удалось назначить прокси");
+      await loadOwnedProxies();
+    } finally {
+      assigningProxyRequest.current = false;
+      setAssigningProxyId(null);
+    }
   }
 
   async function handleStartAll() {
@@ -991,7 +1081,7 @@ export default function AccountsPage() {
                         <Button variant="outline" size="sm" onClick={() => setDrawerAccount(account)}>
                           Открыть
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => { setProxyTarget(account); setIsProxyModal(true); }}>
+                        <Button variant="outline" size="sm" onClick={() => openProxyFlow(account)}>
                           Сменить прокси
                         </Button>
                       </div>
@@ -1066,7 +1156,15 @@ export default function AccountsPage() {
             </div>
             <div className="mt-4 space-y-3" data-testid="owned-proxy-list">
               {ownedProxiesLoading && <p className="py-8 text-center text-sm text-gray-500">Загружаем прокси…</p>}
-              {!ownedProxiesLoading && ownedProxies.length === 0 && (
+              {!ownedProxiesLoading && ownedProxiesError && (
+                <div className="rounded-xl border border-error-200 bg-error-50 p-6 text-center dark:border-error-900/40 dark:bg-error-900/10">
+                  <p className="text-sm text-error-600 dark:text-error-400">{ownedProxiesError}</p>
+                  <Button variant="outline" size="sm" className="mt-4" onClick={() => void loadOwnedProxies()}>
+                    Повторить
+                  </Button>
+                </div>
+              )}
+              {!ownedProxiesLoading && !ownedProxiesError && ownedProxies.length === 0 && (
                 <div className="rounded-xl border border-dashed border-gray-300 p-6 text-center dark:border-gray-700">
                   <p className="text-sm text-gray-500">Свободных прокси нет.</p>
                   <Button variant="primary" size="sm" className="mt-4" onClick={() => setAddStep("external")}>
@@ -1181,17 +1279,23 @@ export default function AccountsPage() {
       {/* ── MODAL: Proxy picker ── */}
       <Modal
         isOpen={isProxyModal}
-        onClose={closeProxyFlow}
-        className="w-[min(1120px,calc(100vw-2rem))] max-h-[calc(100vh-3rem)] overflow-y-auto p-5 sm:p-8"
+        onClose={requestCloseProxyFlow}
+        className={`${proxyFlowStep === "catalog" ? "w-[min(1120px,calc(100vw-2rem))]" : proxyFlowStep === "owned" ? "max-w-3xl" : "max-w-2xl"} max-h-[calc(100vh-3rem)] overflow-y-auto p-5 sm:p-8`}
       >
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Выберите прокси</h2>
+        <h2 className="pr-12 text-2xl font-bold text-gray-900 dark:text-white">
+          {proxyFlowStep === "catalog" && "Выберите прокси"}
+          {proxyFlowStep === "own-choice" && "Свой прокси"}
+          {proxyFlowStep === "owned" && "Выберите существующий прокси"}
+          {proxyFlowStep === "external" && "Настройка внешнего прокси"}
+        </h2>
         <p className="mt-1 text-sm text-gray-500">
           Аккаунт:{" "}
           <span className="font-semibold text-gray-800 dark:text-white">
             {currentProxyTarget?.username ?? "—"}
           </span>
         </p>
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {proxyFlowStep === "catalog" && (
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4" data-testid="change-proxy-catalog">
           {proxyOptions.map((opt) => (
             <div
               key={opt.id}
@@ -1210,12 +1314,11 @@ export default function AccountsPage() {
                 disabled={!opt.available || ((opt.id === "proxy_lite" || opt.id === "proxy_pro") && proxyPaymentLoading)}
                 onClick={() => {
                   if (opt.id === "external") {
-                    setIsProxyModal(false);
-                    setIsExternalProxyModal(true);
+                    setProxyFlowStep("own-choice");
                   } else if (opt.id === "free") {
-                    handleConnectFreeProxy();
+                    void handleConnectFreeProxy();
                   } else if (opt.id === "proxy_lite" || opt.id === "proxy_pro") {
-                    handlePaidProxyPayment(opt.id);
+                    void handlePaidProxyPayment(opt.id);
                   } else {
                     closeProxyFlow();
                   }
@@ -1232,91 +1335,136 @@ export default function AccountsPage() {
             </div>
           ))}
         </div>
-      </Modal>
+        )}
 
-      {/* ── MODAL: External proxy ── */}
-      <Modal isOpen={isExternalProxyModal} onClose={closeProxyFlow} className="max-w-lg p-8">
-        <h2 className="text-xl font-bold text-gray-800 dark:text-white">Настройка внешнего прокси</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          Аккаунт: <span className="font-semibold text-gray-800 dark:text-white">{currentProxyTarget?.username ?? "—"}</span>
-        </p>
-
-        <div className="mt-6 space-y-3">
-          {/* Protocol */}
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-500 dark:text-gray-400">Протокол</label>
-            <select
-              value={extProxy.protocol}
-              onChange={(e) => setExtProxy((p) => ({ ...p, protocol: e.target.value }))}
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            >
-              <option>HTTP</option>
-              <option>HTTPS</option>
-              <option>SOCKS5</option>
-            </select>
-          </div>
-
-          {/* Host + Port */}
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className="mb-1.5 block text-xs font-medium text-gray-500 dark:text-gray-400">Хост / IP</label>
-              <input
-                type="text"
-                value={extProxy.host}
-                onChange={(e) => setExtProxy((p) => ({ ...p, host: e.target.value }))}
-                placeholder="192.168.1.1 или host.com"
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              />
+        {proxyFlowStep === "own-choice" && (
+          <div className="mt-6" data-testid="own-proxy-actions">
+            <p className="text-sm text-gray-500">Используйте свободный прокси из «Моих прокси» или добавьте новые реквизиты.</p>
+            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setProxyFlowStep("owned");
+                  void loadOwnedProxies();
+                }}
+                className="flex min-h-40 flex-col rounded-2xl border border-gray-200 bg-white p-5 text-left transition hover:border-brand-400 hover:shadow-md dark:border-gray-700 dark:bg-gray-900"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-500/10">
+                  <Icon name="plug-in" className="h-5 w-5 text-brand-500" />
+                </span>
+                <span className="mt-4 font-semibold text-gray-900 dark:text-white">Выбрать из существующих</span>
+                <span className="mt-1 text-sm text-gray-500">Подключить купленный или ранее добавленный свободный прокси.</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setProxyFlowStep("external")}
+                className="flex min-h-40 flex-col rounded-2xl border border-gray-200 bg-white p-5 text-left transition hover:border-brand-400 hover:shadow-md dark:border-gray-700 dark:bg-gray-900"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-500/10">
+                  <Icon name="plus" className="h-5 w-5 text-brand-500" />
+                </span>
+                <span className="mt-4 font-semibold text-gray-900 dark:text-white">Добавить свой новый</span>
+                <span className="mt-1 text-sm text-gray-500">Ввести адрес, порт и данные авторизации другого прокси.</span>
+              </button>
             </div>
-            <div className="w-28">
-              <label className="mb-1.5 block text-xs font-medium text-gray-500 dark:text-gray-400">Порт</label>
-              <input
-                type="number"
-                value={extProxy.port}
-                onChange={(e) => setExtProxy((p) => ({ ...p, port: e.target.value }))}
-                placeholder="8080"
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              />
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button variant="outline" onClick={() => setProxyFlowStep("catalog")}>Назад</Button>
+              <Button variant="outline" onClick={closeProxyFlow}>Отмена</Button>
             </div>
           </div>
+        )}
 
-          {/* Login + Password */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-gray-500 dark:text-gray-400">Логин (опц.)</label>
-              <input
-                type="text"
-                value={extProxy.login}
-                onChange={(e) => setExtProxy((p) => ({ ...p, login: e.target.value }))}
-                placeholder="username"
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              />
+        {proxyFlowStep === "owned" && (
+          <div className="mt-6" data-testid="change-proxy-owned-list">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-gray-500">Показываются только свободные и доступные прокси.</p>
+              <Button variant="outline" size="sm" onClick={() => setProxyFlowStep("external")}>
+                <Icon name="plus" className="h-4 w-4" /> Добавить свой новый
+              </Button>
             </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-gray-500 dark:text-gray-400">Пароль (опц.)</label>
-              <input
-                type="password"
-                value={extProxy.password}
-                onChange={(e) => setExtProxy((p) => ({ ...p, password: e.target.value }))}
-                placeholder="••••••••"
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              />
+            <div className="mt-4 space-y-3">
+              {ownedProxiesLoading && <p className="py-10 text-center text-sm text-gray-500">Загружаем прокси…</p>}
+              {!ownedProxiesLoading && ownedProxiesError && (
+                <div className="rounded-xl border border-error-200 bg-error-50 p-6 text-center dark:border-error-700/30 dark:bg-error-900/20">
+                  <p className="text-sm text-error-600 dark:text-error-400">{ownedProxiesError}</p>
+                  <Button variant="outline" size="sm" className="mt-4" onClick={() => void loadOwnedProxies()}>Повторить</Button>
+                </div>
+              )}
+              {!ownedProxiesLoading && !ownedProxiesError && ownedProxies.length === 0 && (
+                <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center dark:border-gray-700">
+                  <p className="text-sm text-gray-500">Свободных прокси нет.</p>
+                  <Button variant="primary" size="sm" className="mt-4" onClick={() => setProxyFlowStep("external")}>
+                    Добавить свой новый
+                  </Button>
+                </div>
+              )}
+              {ownedProxies.map((proxy) => (
+                <button
+                  type="button"
+                  key={proxy.id}
+                  disabled={assigningProxyId !== null}
+                  onClick={() => void handleAssignOwnedProxy(proxy.id)}
+                  className="flex w-full items-center justify-between gap-4 rounded-xl border border-gray-200 p-4 text-left transition hover:border-brand-400 disabled:cursor-wait disabled:opacity-60 dark:border-gray-700"
+                >
+                  <span>
+                    <span className="block font-semibold text-gray-900 dark:text-white">{proxy.display_name || proxy.label}</span>
+                    <span className="mt-1 block text-xs text-gray-500">
+                      {proxy.label} · {proxy.protocol} · {proxy.health_status === "healthy" ? "Готов" : "Требует проверки"} · ID {proxy.id}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-sm font-semibold text-brand-600">
+                    {assigningProxyId === proxy.id ? "Назначаем…" : "Выбрать"}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button variant="outline" disabled={assigningProxyId !== null} onClick={() => setProxyFlowStep("own-choice")}>Назад</Button>
+              <Button variant="outline" disabled={assigningProxyId !== null} onClick={closeProxyFlow}>Отмена</Button>
             </div>
           </div>
-        </div>
+        )}
 
-        <div className="mt-8 flex justify-end gap-3">
-          <Button variant="outline" onClick={closeProxyFlow}>
-            Отмена
-          </Button>
-          <Button
-            variant="primary"
-            disabled={!extProxy.host || !extProxy.port}
-            onClick={handleConnectExternalProxy}
-          >
-            Подтвердить
-          </Button>
-        </div>
+        {proxyFlowStep === "external" && (
+          <div className="mt-6" data-testid="change-proxy-external-form">
+            <p className="text-sm text-gray-500">Реквизиты проверяются сервером и хранятся в зашифрованном виде.</p>
+            <div className="mt-5 space-y-3">
+              <div>
+                <label htmlFor="change-proxy-protocol" className="mb-1.5 block text-xs font-medium text-gray-500 dark:text-gray-400">Протокол</label>
+                <select id="change-proxy-protocol" aria-label="Протокол нового прокси" value={extProxy.protocol} onChange={(e) => setExtProxy((p) => ({ ...p, protocol: e.target.value }))} className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-400 dark:border-gray-700 dark:bg-gray-900 dark:text-white">
+                  <option>HTTP</option><option>HTTPS</option><option>SOCKS5</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-[1fr_120px] gap-3">
+                <div>
+                  <label htmlFor="change-proxy-host" className="mb-1.5 block text-xs font-medium text-gray-500 dark:text-gray-400">Хост / IP</label>
+                  <input id="change-proxy-host" aria-label="Хост нового прокси" type="text" autoComplete="off" value={extProxy.host} onChange={(e) => setExtProxy((p) => ({ ...p, host: e.target.value }))} placeholder="192.168.1.1 или host.com" className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                </div>
+                <div>
+                  <label htmlFor="change-proxy-port" className="mb-1.5 block text-xs font-medium text-gray-500 dark:text-gray-400">Порт</label>
+                  <input id="change-proxy-port" aria-label="Порт нового прокси" type="number" value={extProxy.port} onChange={(e) => setExtProxy((p) => ({ ...p, port: e.target.value }))} placeholder="8080" className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="change-proxy-login" className="mb-1.5 block text-xs font-medium text-gray-500 dark:text-gray-400">Логин (опц.)</label>
+                  <input id="change-proxy-login" aria-label="Логин нового прокси" type="text" autoComplete="off" value={extProxy.login} onChange={(e) => setExtProxy((p) => ({ ...p, login: e.target.value }))} placeholder="username" className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                </div>
+                <div>
+                  <label htmlFor="change-proxy-password" className="mb-1.5 block text-xs font-medium text-gray-500 dark:text-gray-400">Пароль (опц.)</label>
+                  <input id="change-proxy-password" aria-label="Пароль нового прокси" type="password" autoComplete="new-password" value={extProxy.password} onChange={(e) => setExtProxy((p) => ({ ...p, password: e.target.value }))} placeholder="••••••••" className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                </div>
+              </div>
+            </div>
+            <div className="mt-8 flex flex-wrap justify-end gap-3">
+              <Button variant="outline" disabled={externalProxyLoading} onClick={() => setProxyFlowStep("own-choice")}>Назад</Button>
+              <Button variant="outline" disabled={externalProxyLoading} onClick={closeProxyFlow}>Отмена</Button>
+              <Button variant="primary" disabled={externalProxyLoading || !extProxy.host || !extProxy.port} onClick={() => void handleConnectExternalProxy()}>
+                {externalProxyLoading ? "Проверяем…" : "Подтвердить"}
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* ── DRAWER: Account detail ── */}
@@ -1460,7 +1608,7 @@ export default function AccountsPage() {
                       : "Прокси не подключён. Рекомендуем подключить для защиты аккаунта."}
                   </p>
                   <button
-                    onClick={() => { setProxyTarget(drawerAccount); setDrawerAccount(null); setIsProxyModal(true); }}
+                    onClick={() => { openProxyFlow(drawerAccount); setDrawerAccount(null); }}
                     className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                   >
                     <Icon name="plug-in" className="h-4 w-4" />
