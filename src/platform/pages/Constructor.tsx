@@ -118,8 +118,8 @@ const ConditionNode = ({ id, data }: NodeProps<ConstructorNode>) => {
           <span className="text-[var(--pf-success)]">Да</span>
         </div>
       </div>
-      <Handle type="source" id="false" position={Position.Bottom} style={{ left: '25%' }} className="w-3 h-3 bg-[var(--pf-danger)] border-none" />
-      <Handle type="source" id="true" position={Position.Bottom} style={{ left: '75%' }} className="w-3 h-3 bg-[var(--pf-success)] border-none" />
+      <Handle type="source" id="false" position={Position.Bottom} className="!left-1/4 w-3 h-3 bg-[var(--pf-danger)] border-none" />
+      <Handle type="source" id="true" position={Position.Bottom} className="!left-3/4 w-3 h-3 bg-[var(--pf-success)] border-none" />
     </div>
   );
 };
@@ -165,10 +165,10 @@ const AiNode = ({ id, data }: NodeProps<ConstructorNode>) => {
   const readOnly = Boolean(data?.readOnly);
   
   return (
-    <div className="bg-[var(--pf-surface)] border border-[#465fff] rounded-xl min-w-[220px] shadow-md shadow-blue-500/10 overflow-hidden">
-      <Handle type="target" position={Position.Top} className="w-3 h-3 bg-[#465fff] border-none" />
-      <div className="bg-[color-mix(in_srgb,#465fff_15%,transparent)] px-3 py-2 flex items-center gap-2 border-b border-[var(--pf-border)]">
-        <Bot size={14} className="text-[#465fff]" />
+    <div className="bg-[var(--pf-surface)] border border-[var(--pf-accent)] rounded-xl min-w-[220px] shadow-md shadow-blue-500/10 overflow-hidden">
+      <Handle type="target" position={Position.Top} className="w-3 h-3 bg-[var(--pf-accent)] border-none" />
+      <div className="bg-[color-mix(in_srgb,var(--pf-accent)_15%,transparent)] px-3 py-2 flex items-center gap-2 border-b border-[var(--pf-border)]">
+        <Bot size={14} className="text-[var(--pf-accent)]" />
         <span className="text-[12px] font-bold text-[var(--pf-text)] uppercase tracking-wider">AI Узел</span>
       </div>
       <div className="p-3">
@@ -188,7 +188,7 @@ const AiNode = ({ id, data }: NodeProps<ConstructorNode>) => {
           <div className="text-[12px] font-medium text-[var(--pf-text)]">Суммаризация диалога</div>
         )}
       </div>
-      <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-[#465fff] border-none" />
+      <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-[var(--pf-accent)] border-none" />
     </div>
   );
 };
@@ -568,7 +568,6 @@ function ConstructorFlow() {
         <Controls className="bg-[var(--pf-surface)] border border-[var(--pf-border)] shadow-lg rounded-lg overflow-hidden fill-[var(--pf-text)] text-[var(--pf-text)]" />
         <MiniMap 
           className="bg-[var(--pf-surface)] border border-[var(--pf-border)] rounded-lg overflow-hidden shadow-lg" 
-          style={{ backgroundColor: 'var(--pf-surface)' }}
           maskColor="color-mix(in srgb, var(--pf-surface) 80%, transparent)" 
           nodeColor="var(--pf-border-strong)"
         />
@@ -696,11 +695,11 @@ function ConstructorFlow() {
               {activePalette === 'ai' && (
                 <div className="absolute bottom-full mb-3 bg-[var(--pf-surface)] border border-[var(--pf-border)] shadow-2xl rounded-2xl p-2 min-w-[220px] animate-in slide-in-from-bottom-2 fade-in">
                   <div className="text-[10px] font-bold text-[var(--pf-text-dim)] uppercase px-3 py-1 mb-1">AI Функции (Premium)</div>
-                  <button className="w-full flex items-center px-3 py-2 text-[12px] font-medium text-[var(--pf-text)] hover:bg-[color-mix(in_srgb,#465fff_10%,transparent)] rounded-lg transition-colors" onClick={() => handleAddNode('aiNode', 'ai_reply')}>
-                    <Bot size={14} className="mr-2 text-[#465fff]" /> AI-Ответ клиенту
+                  <button className="w-full flex items-center px-3 py-2 text-[12px] font-medium text-[var(--pf-text)] hover:bg-[color-mix(in_srgb,var(--pf-accent)_10%,transparent)] rounded-lg transition-colors" onClick={() => handleAddNode('aiNode', 'ai_reply')}>
+                    <Bot size={14} className="mr-2 text-[var(--pf-accent)]" /> AI-Ответ клиенту
                   </button>
-                  <button className="w-full flex items-center px-3 py-2 text-[12px] font-medium text-[var(--pf-text)] hover:bg-[color-mix(in_srgb,#465fff_10%,transparent)] rounded-lg transition-colors" onClick={() => handleAddNode('aiNode', 'ai_summary')}>
-                    <Bot size={14} className="mr-2 text-[#465fff]" /> Суммаризация диалога
+                  <button className="w-full flex items-center px-3 py-2 text-[12px] font-medium text-[var(--pf-text)] hover:bg-[color-mix(in_srgb,var(--pf-accent)_10%,transparent)] rounded-lg transition-colors" onClick={() => handleAddNode('aiNode', 'ai_summary')}>
+                    <Bot size={14} className="mr-2 text-[var(--pf-accent)]" /> Суммаризация диалога
                   </button>
                 </div>
               )}
@@ -729,7 +728,7 @@ function ConstructorFlow() {
                 </button>
                 <div className="w-[1px] bg-[var(--pf-border)] mx-1 my-2" />
                 <button 
-                  className={`flex items-center h-10 px-4 rounded-xl text-[13px] font-medium transition-colors ${activePalette === 'ai' ? 'bg-[color-mix(in_srgb,#465fff_15%,transparent)] text-[#465fff]' : 'text-[var(--pf-text)] hover:bg-[var(--pf-surface-2)]'}`}
+                  className={`flex items-center h-10 px-4 rounded-xl text-[13px] font-medium transition-colors ${activePalette === 'ai' ? 'bg-[color-mix(in_srgb,var(--pf-accent)_15%,transparent)] text-[var(--pf-accent)]' : 'text-[var(--pf-text)] hover:bg-[var(--pf-surface-2)]'}`}
                   onClick={() => setActivePalette(activePalette === 'ai' ? null : 'ai')}
                 >
                   <Bot size={16} className="mr-2" /> AI Узлы <ChevronUp size={14} className={`ml-1 transition-transform ${activePalette === 'ai' ? 'rotate-180' : ''}`} />

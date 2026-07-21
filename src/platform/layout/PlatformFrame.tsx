@@ -139,7 +139,7 @@ export default function PlatformFrame({ children, basePath, scopeClassName }: Pl
   if (accessChecked && subscriptionLocked && !lockAllowedPath) {
     return (
       <div className="platform-scope flex min-h-[100dvh] items-center justify-center p-4" data-theme={theme}>
-        <section className="w-full max-w-[680px] rounded-2xl border border-red-500/35 bg-[var(--pf-surface)] p-6 shadow-[0_0_0_1px_rgba(239,68,68,0.15),0_28px_80px_rgba(239,68,68,0.12)]">
+        <section className="w-full max-w-[680px] rounded-2xl border border-red-500/35 bg-[var(--pf-surface)] p-6 shadow-2xl">
           <div className="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-red-500/15 text-red-400">
             <AlertTriangle size={22} />
           </div>

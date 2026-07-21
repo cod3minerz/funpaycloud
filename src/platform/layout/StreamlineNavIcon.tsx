@@ -78,7 +78,7 @@ type StreamlineNavIconProps = {
   className?: string;
 };
 
-export function StreamlineNavIcon({ name, active = false, size = 16, className }: StreamlineNavIconProps) {
+export function StreamlineNavIcon({ name, active = false, className }: StreamlineNavIconProps) {
   const svgSet = name === 'aiChipRobot'
     ? aiChipRobotSvg
     : name === 'cubeSolid'
@@ -89,8 +89,7 @@ export function StreamlineNavIcon({ name, active = false, size = 16, className }
   return (
     <span
       aria-hidden="true"
-      className={className}
-      style={{ width: size, height: size }}
+      className={`size-4 ${className ?? ''}`}
       dangerouslySetInnerHTML={{ __html: svg }}
     />
   );
