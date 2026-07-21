@@ -129,8 +129,8 @@ const proxyOptions = [
   {
     id: "free",
     title: "Бесплатный прокси",
-    description: "Делите прокси только с одним продавцом FunPay. Быстрый старт без оплаты, пока есть свободный слот.",
-    action: "Подключить",
+    description: "Получите платформенный прокси на 52 часа. Продление станет доступно через 48 часов.",
+    action: "Получить",
     icon: "lock" as const,
     available: true,
   },
@@ -169,6 +169,8 @@ export default function AccountsPage() {
   const [ownedProxiesLoading, setOwnedProxiesLoading] = useState(false);
   const [ownedProxiesError, setOwnedProxiesError] = useState("");
   const [freeProxyTrial, setFreeProxyTrial] = useState<FreeProxyTrial | null>(null);
+  const [freeProxyClaimLoading, setFreeProxyClaimLoading] = useState(false);
+  const [freeProxyNoticeOpen, setFreeProxyNoticeOpen] = useState(false);
   const [isProxyModal, setIsProxyModal] = useState(false);
   const [proxyFlowStep, setProxyFlowStep] = useState<ProxyFlowStep>("catalog");
   const [assigningProxyId, setAssigningProxyId] = useState<number | null>(null);
@@ -593,13 +595,6 @@ export default function AccountsPage() {
       }
       setAddStep(session.status === "ready" ? "key" : "payment");
     } catch (error) {
-      if (error instanceof ApiError && error.code === "free_proxy_trial_used") {
-        await loadOwnedProxies();
-        setFreeProxyTrial({ status: "expired" });
-        setAddStep("owned");
-        toast.error(error.message);
-        return;
-      }
       toast.error(error instanceof Error ? error.message : "Не удалось подготовить прокси");
     } finally {
       setOnboardingLoading(false);
@@ -613,7 +608,7 @@ export default function AccountsPage() {
         await loadOwnedProxies();
         return;
       }
-      await createOnboarding({ mode: "free" });
+      await handleClaimFreeProxy();
     } else if (id === "proxy_lite" || id === "proxy_pro") {
       await createOnboarding({ mode: "paid", product: id });
     } else {
@@ -744,26 +739,25 @@ export default function AccountsPage() {
     }
   }
 
-  async function handleConnectFreeProxy() {
-    const target = await refreshProxyTarget();
-    if (!target) return;
+  async function handleClaimFreeProxy() {
+    if (freeProxyClaimLoading) return;
+    setFreeProxyClaimLoading(true);
     try {
-      await accountsApi.connectProxy(target.apiId, "free");
-      const list = await accountsApi.list();
-      setAccounts(list.map(mapApiAccount));
-      await refreshFreeProxyTrial();
-      toast.success("Бесплатный прокси подключён");
-      closeProxyFlow();
+      const result = await proxiesApi.claimFree();
+      setFreeProxyTrial(result.free_trial);
+      setFreeProxyNoticeOpen(true);
     } catch (error) {
-      if (error instanceof ApiError && error.code === "free_proxy_trial_used") {
-        await loadOwnedProxies();
-        setFreeProxyTrial({ status: "expired" });
-        setProxyFlowStep("owned");
-        toast.error(error.message);
-        return;
-      }
-      toast.error(error instanceof Error ? error.message : "Не удалось подключить прокси");
+      toast.error(error instanceof Error ? error.message : "Не удалось получить бесплатный прокси");
+    } finally {
+      setFreeProxyClaimLoading(false);
     }
+  }
+
+  async function continueFromFreeProxyNotice() {
+    setFreeProxyNoticeOpen(false);
+    if (isProxyModal) setProxyFlowStep("owned");
+    if (isAddModal) setAddStep("owned");
+    await loadOwnedProxies();
   }
 
   async function handlePaidProxyPayment(product: "proxy_lite" | "proxy_pro") {
@@ -1222,7 +1216,7 @@ export default function AccountsPage() {
                 type="button"
                 key={opt.id}
                 data-testid={`onboarding-proxy-option-${opt.id}`}
-                disabled={onboardingLoading}
+                disabled={onboardingLoading || freeProxyClaimLoading}
                 onClick={() => void handleOnboardingProxyChoice(opt.id)}
                 className="flex min-h-64 flex-col rounded-2xl border border-gray-200 bg-white p-5 text-left transition hover:border-brand-400 hover:shadow-md disabled:cursor-wait disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900"
               >
@@ -1232,7 +1226,7 @@ export default function AccountsPage() {
                 <p className="mt-5 font-bold text-gray-900 dark:text-white">{opt.title}</p>
                 <p className="mt-2 flex-1 text-sm text-gray-500">{opt.description}</p>
                 <span className="mt-5 text-sm font-semibold text-brand-600">
-                  {onboardingLoading ? "Подготовка…" : opt.action}
+                  {onboardingLoading || (opt.id === "free" && freeProxyClaimLoading) ? "Подготовка…" : opt.action}
                 </span>
               </button>
             ))}
@@ -1409,7 +1403,7 @@ export default function AccountsPage() {
                 </div>
               </div>
               <button
-                disabled={!opt.available || ((opt.id === "proxy_lite" || opt.id === "proxy_pro") && proxyPaymentLoading)}
+                disabled={!opt.available || (opt.id === "free" && freeProxyClaimLoading) || ((opt.id === "proxy_lite" || opt.id === "proxy_pro") && proxyPaymentLoading)}
                 onClick={() => {
                   if (opt.id === "external") {
                     setProxyFlowStep("own-choice");
@@ -1418,7 +1412,7 @@ export default function AccountsPage() {
                       setProxyFlowStep("owned");
                       void loadOwnedProxies();
                     } else {
-                      void handleConnectFreeProxy();
+                      void handleClaimFreeProxy();
                     }
                   } else if (opt.id === "proxy_lite" || opt.id === "proxy_pro") {
                     void handlePaidProxyPayment(opt.id);
@@ -1433,7 +1427,11 @@ export default function AccountsPage() {
                 }`}
               >
                 <Icon name="plug-in" className="h-4 w-4" />
-                {(opt.id === "proxy_lite" || opt.id === "proxy_pro") && proxyPaymentLoading ? "Создаем..." : opt.action}
+                {opt.id === "free" && freeProxyClaimLoading
+                  ? "Получаем…"
+                  : (opt.id === "proxy_lite" || opt.id === "proxy_pro") && proxyPaymentLoading
+                    ? "Создаем..."
+                    : opt.action}
               </button>
             </div>
           ))}
@@ -1570,6 +1568,33 @@ export default function AccountsPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      <Modal
+        isOpen={freeProxyNoticeOpen}
+        onClose={() => setFreeProxyNoticeOpen(false)}
+        className="w-[min(560px,calc(100vw-2rem))] p-6 sm:p-8"
+      >
+        <div data-testid="free-proxy-claimed-notice">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-success-500/10 text-success-600">
+            <Icon name="check-circle" className="h-7 w-7" />
+          </div>
+          <h2 className="mt-5 pr-10 text-2xl font-bold text-gray-900 dark:text-white">Бесплатный прокси получен</h2>
+          <p className="mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
+            Прокси выдан на 52 часа и добавлен в «Мои прокси».
+          </p>
+          <div className="mt-4 rounded-2xl border border-warning-500/20 bg-warning-500/10 p-4 text-sm leading-6 text-warning-700 dark:text-warning-300">
+            Через 48 часов появится кнопка продления. Нажмите её в течение четырёх часов, иначе прокси будет отключён и вернётся в общий пул.
+          </div>
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+            <Button variant="outline" className="flex-1" onClick={() => void continueFromFreeProxyNotice()}>
+              Выбрать со склада
+            </Button>
+            <Button className="flex-1" onClick={() => window.location.assign("/platform/proxies")}>
+              Перейти в Мои прокси
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       {/* ── DRAWER: Account detail ── */}

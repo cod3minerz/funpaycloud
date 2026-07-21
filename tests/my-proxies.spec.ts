@@ -4,13 +4,22 @@ test.beforeEach(async ({ page }) => {
   await page.context().addCookies([{ name: 'token', value: 'test-token', url: 'http://localhost:3100' }]);
   await page.addInitScript(() => {
     localStorage.setItem('token', 'test-token');
+	const params = new URLSearchParams(window.location.search);
+	let freeTrialStatus: 'available' | 'active' | 'renewal_due' = params.get('freeTrial') === 'expired'
+	  ? 'available'
+	  : params.get('freeTrial') === 'renewal_due'
+	    ? 'renewal_due'
+	    : 'active';
+	let freeRenewAvailableAt = freeTrialStatus === 'renewal_due' ? '2026-07-22T00:00:00Z' : '2030-07-25T08:30:00Z';
+	let freeExpiresAt = freeTrialStatus === 'renewal_due' ? '2030-07-25T12:30:00Z' : '2030-07-25T12:30:00Z';
 	let assignmentPolls = 0;
 	let assigned = false;
     let batchPolls = 0;
     let batchStartRequests = 0;
     let deleteBatchPolls = 0;
     let deleteBatchStartRequests = 0;
-    const deletedProxyIDs = new Set<number>();
+	    const deletedProxyIDs = new Set<number>();
+	(window as typeof window & { __FREE_RENEW_CALLS__?: number }).__FREE_RENEW_CALLS__ = 0;
     const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
       status,
       headers: { 'Content-Type': 'application/json' },
@@ -35,9 +44,13 @@ test.beforeEach(async ({ page }) => {
 		proxy_type: assigned ? 'free_shared' : 'none',
 		keeper_active: assigned,
       }]);
-      if (path === '/api/proxies/my' && method === 'GET') return ok({
-        free_trial: { status: 'active', proxy_id: 95, expires_at: '2030-07-25T12:30:00Z' },
-        items: [{
+	      if (path === '/api/proxies/my' && method === 'GET') return ok({
+	        free_trial: {
+	          status: freeTrialStatus,
+	          previously_used: true,
+	          ...(freeTrialStatus !== 'available' ? { proxy_id: 95, renew_available_at: freeRenewAvailableAt, expires_at: freeExpiresAt } : {}),
+	        },
+	        items: [...(freeTrialStatus !== 'available' ? [{
           id: 95,
           product: 'free_shared',
           label: 'Бесплатный прокси',
@@ -50,13 +63,13 @@ test.beforeEach(async ({ page }) => {
           is_active: true,
           health_status: 'healthy',
           fail_count: 0,
-          expires_at: '2030-07-25T12:30:00Z',
+	          expires_at: freeExpiresAt,
 		  assigned_account_id: assigned ? 81 : undefined,
           assigned_username: assigned ? 'AlphaSeller' : undefined,
           created_at: '2026-07-21T00:00:00Z',
           can_delete: false,
-          delete_block_reason: 'platform_owned',
-        }, {
+	          delete_block_reason: 'platform_owned',
+	        }] : []), {
           id: 96,
           product: 'external_custom',
           label: 'Внешний прокси',
@@ -123,7 +136,19 @@ test.beforeEach(async ({ page }) => {
           can_delete: false,
           delete_block_reason: 'proxy_assigned',
         }].filter((item) => !deletedProxyIDs.has(item.id)),
-      });
+	      });
+	  if (path === '/api/proxies/my/free/renew' && method === 'POST') {
+	    const scope = window as typeof window & { __FREE_RENEW_CALLS__?: number };
+	    scope.__FREE_RENEW_CALLS__ = (scope.__FREE_RENEW_CALLS__ || 0) + 1;
+	    const action = freeTrialStatus === 'available' ? 'reissued' : 'renewed';
+	    freeTrialStatus = 'active';
+	    freeRenewAvailableAt = '2030-07-27T08:30:00Z';
+	    freeExpiresAt = '2030-07-27T12:30:00Z';
+	    return ok({ action, free_trial: {
+	      status: 'active', previously_used: true, proxy_id: 95,
+	      renew_available_at: freeRenewAvailableAt, expires_at: freeExpiresAt,
+	    } });
+	  }
 	  if (path === '/api/proxies/my/check-all' && method === 'POST') {
 		batchStartRequests += 1;
 		(window as typeof window & { __PROXY_BATCH_START_COUNT__?: number }).__PROXY_BATCH_START_COUNT__ = batchStartRequests;
@@ -285,8 +310,33 @@ test('active platform free lease is shown with its deadline and can be assigned'
   await expect(page.getByText('Пока назначен', { exact: true })).toHaveCount(0);
   await expect(page.getByText(/25 июл\. 2030/).first()).toBeVisible();
   await expect(page.getByText('Свободен до конца аренды', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Продление доступно', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Продлить на 52 часа' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Назначить' }).first()).toBeVisible();
   await expect(page.getByText('Доступы скрыты, это ресурс сервиса.', { exact: true }).first()).toBeVisible();
+});
+
+test('renewal button appears in the four-hour window and starts a new 52-hour cycle', async ({ page }) => {
+  await page.goto('/platform/proxies?freeTrial=renewal_due');
+  const freeRow = page.locator('[data-proxy-id="95"]').first();
+  await expect(freeRow).toContainText('Осталось на продление');
+  const renewButton = freeRow.getByRole('button', { name: 'Продлить на 52 часа' });
+  await expect(renewButton).toBeVisible();
+  await renewButton.click();
+  await expect(freeRow).toContainText('27 июл. 2030');
+  await expect(freeRow.getByRole('button', { name: 'Продлить на 52 часа' })).toHaveCount(0);
+  expect(await page.evaluate(() => (window as typeof window & { __FREE_RENEW_CALLS__?: number }).__FREE_RENEW_CALLS__)).toBe(1);
+});
+
+test('expired Free lease is absent from inventory and can be reissued', async ({ page }) => {
+  await page.goto('/platform/proxies?freeTrial=expired');
+  await expect(page.locator('[data-proxy-id="95"]')).toHaveCount(0);
+  const expiredCard = page.getByTestId('free-proxy-expired-card');
+  await expect(expiredCard).toContainText('Срок бесплатного прокси истёк');
+  await expiredCard.getByRole('button', { name: 'Получить новый' }).click();
+  await expect(page.locator('[data-proxy-id="95"]').first()).toBeVisible();
+  await expect(expiredCard).toHaveCount(0);
+  expect(await page.evaluate(() => (window as typeof window & { __FREE_RENEW_CALLS__?: number }).__FREE_RENEW_CALLS__)).toBe(1);
 });
 
 test('checks every proxy sequentially and shows 1/36 through 36/36 progress', async ({ page }) => {

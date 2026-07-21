@@ -9,6 +9,7 @@ import {
   proxiesApi,
   ApiAccount,
   BackgroundOperation,
+  FreeProxyTrial,
   MyProxyCredentials,
   MyProxyItem,
   ProxyBatchCheckResult,
@@ -33,7 +34,7 @@ const productLabels: Record<string, string> = {
 };
 
 const productDescriptions: Record<string, string> = {
-  free_shared: "Бесплатный ресурс платформы во временной семидневной аренде.",
+  free_shared: "Бесплатный ресурс платформы на 52 часа с подтверждением каждые 48 часов.",
   proxy_lite: "Личный прокси на месяц для стабильной работы одного аккаунта.",
   proxy_pro: "Усиленный личный прокси с отдельным IPv4.",
   external_custom: "Ваш внешний прокси. Храним в инвентаре без ограничения по сроку.",
@@ -65,6 +66,25 @@ function formatDate(value?: string | null) {
     month: "short",
     year: "numeric",
   });
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "—";
+  return new Date(value).toLocaleString("ru-RU", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatCountdown(deadline?: string | null, now = Date.now()) {
+  const remaining = deadline ? Math.max(0, new Date(deadline).getTime() - now) : 0;
+  const hours = Math.floor(remaining / 3_600_000);
+  const minutes = Math.floor((remaining % 3_600_000) / 60_000);
+  const seconds = Math.floor((remaining % 60_000) / 1000);
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 function daysUntil(value?: string | null) {
@@ -128,6 +148,9 @@ function proxyDeleteBatchResult(operation: BackgroundOperation | null): ProxyDel
 
 export default function MyProxiesPage() {
   const [items, setItems] = useState<MyProxyItem[]>([]);
+  const [freeProxyTrial, setFreeProxyTrial] = useState<FreeProxyTrial | null>(null);
+  const [freeProxyBusy, setFreeProxyBusy] = useState(false);
+  const [clock, setClock] = useState(() => Date.now());
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -171,6 +194,7 @@ export default function MyProxiesPage() {
         accountsApi.list(),
       ]);
       setItems(proxyResp.items ?? []);
+      setFreeProxyTrial(proxyResp.free_trial ?? null);
       setAccounts(accountResp);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Не удалось загрузить прокси";
@@ -183,6 +207,12 @@ export default function MyProxiesPage() {
   useEffect(() => {
     void load();
   }, []);
+
+  useEffect(() => {
+    if (freeProxyTrial?.status !== "renewal_due") return;
+    const timer = window.setInterval(() => setClock(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [freeProxyTrial?.status]);
 
   useEffect(() => {
     if (assignmentRestoreStarted.current || typeof window === "undefined") return;
@@ -332,6 +362,22 @@ export default function MyProxiesPage() {
       toast.error(message);
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function renewFreeProxy() {
+    if (freeProxyBusy) return;
+    setFreeProxyBusy(true);
+    try {
+      const result = await proxiesApi.renewFree();
+      setFreeProxyTrial(result.free_trial);
+      await load();
+      toast.success(result.action === "reissued" ? "Новый бесплатный прокси получен на 52 часа" : "Бесплатный прокси продлён на 52 часа");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Не удалось продлить бесплатный прокси");
+      await load();
+    } finally {
+      setFreeProxyBusy(false);
     }
   }
 
@@ -596,6 +642,17 @@ export default function MyProxiesPage() {
       (proxy.product === "external_custom" || proxy.health_status === "expired");
     return (
       <div className="flex min-w-0 flex-wrap justify-start gap-2">
+        {(proxy.is_shared_free || proxy.product === "free_shared") && freeProxyTrial?.status === "renewal_due" && (
+          <Button
+            size="sm"
+            variant="primary"
+            className="min-w-[178px] flex-1 sm:flex-none"
+            onClick={() => void renewFreeProxy()}
+            disabled={freeProxyBusy || Boolean(activeCheckOperation) || Boolean(activeDeleteOperation)}
+          >
+            {freeProxyBusy ? "Продлеваем…" : "Продлить на 52 часа"}
+          </Button>
+        )}
         <Button
           size="sm"
           variant="outline"
@@ -659,7 +716,7 @@ export default function MyProxiesPage() {
       <div className="min-w-0">{renderSecretCell(proxy)}</div>
 
       <div className="flex min-w-0 flex-wrap gap-2">
-        {renderMetaChip("Срок", formatDate(proxy.expires_at), proxy.is_shared_free && daysUntil(proxy.expires_at) <= 1 ? "warning" : "default")}
+        {renderMetaChip("Срок", proxy.is_shared_free ? formatDateTime(proxy.expires_at) : formatDate(proxy.expires_at), proxy.is_shared_free && daysUntil(proxy.expires_at) <= 1 ? "warning" : "default")}
         {proxy.is_shared_free
           ? renderMetaChip(
               "Статус",
@@ -667,6 +724,10 @@ export default function MyProxiesPage() {
               "success",
             )
           : renderMetaChip("Протокол", proxy.protocol)}
+        {proxy.is_shared_free && freeProxyTrial?.status === "active" &&
+          renderMetaChip("Продление доступно", formatDateTime(freeProxyTrial.renew_available_at))}
+        {proxy.is_shared_free && freeProxyTrial?.status === "renewal_due" &&
+          renderMetaChip("Осталось на продление", formatCountdown(freeProxyTrial.expires_at, clock), "warning")}
         {proxy.last_error && (
           <span className="line-clamp-2 text-xs text-error-500">{proxy.last_error}</span>
         )}
@@ -707,7 +768,7 @@ export default function MyProxiesPage() {
         </div>
         {renderSecretCell(proxy)}
         <div className="flex min-w-0 flex-wrap gap-2">
-          {renderMetaChip("Срок", formatDate(proxy.expires_at), proxy.is_shared_free && daysUntil(proxy.expires_at) <= 1 ? "warning" : "default")}
+          {renderMetaChip("Срок", proxy.is_shared_free ? formatDateTime(proxy.expires_at) : formatDate(proxy.expires_at), proxy.is_shared_free && daysUntil(proxy.expires_at) <= 1 ? "warning" : "default")}
           {renderMetaChip("Аккаунт", proxy.assigned_username || "Не назначен")}
           {proxy.is_shared_free &&
             renderMetaChip(
@@ -715,6 +776,10 @@ export default function MyProxiesPage() {
               proxy.assigned_account_id ? "Назначен аккаунту" : "Свободен до конца аренды",
               "success",
             )}
+          {proxy.is_shared_free && freeProxyTrial?.status === "active" &&
+            renderMetaChip("Продление доступно", formatDateTime(freeProxyTrial.renew_available_at))}
+          {proxy.is_shared_free && freeProxyTrial?.status === "renewal_due" &&
+            renderMetaChip("Осталось на продление", formatCountdown(freeProxyTrial.expires_at, clock), "warning")}
         </div>
         {renderActions(proxy)}
         </CardContent>
@@ -780,6 +845,22 @@ export default function MyProxiesPage() {
           </Card>
         ))}
       </div>
+
+      {freeProxyTrial?.status === "available" && freeProxyTrial.previously_used && (
+        <div data-testid="free-proxy-expired-card">
+          <Card className="border-warning-500/30 bg-warning-500/5">
+            <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-semibold text-gray-900 dark:text-white">Срок бесплатного прокси истёк</p>
+                <p className="mt-1 text-sm text-gray-500">Предыдущий прокси возвращён в общий пул. Можно получить новую 52-часовую аренду.</p>
+              </div>
+              <Button onClick={() => void renewFreeProxy()} disabled={freeProxyBusy}>
+                {freeProxyBusy ? "Получаем…" : "Получить новый"}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {lastCheckResult && lastCheckOperation?.status === "succeeded" && (
         <div data-testid="proxy-check-summary">

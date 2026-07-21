@@ -1505,6 +1505,10 @@ export type ProxiesMarketResponse = {
 
 export const proxiesApi = {
   listMine: () => apiRequest<{ items: MyProxyItem[]; free_trial?: FreeProxyTrial }>('/api/proxies/my'),
+  claimFree: () =>
+    apiRequest<FreeProxyLeaseMutation>('/api/proxies/my/free/claim', { method: 'POST' }),
+  renewFree: () =>
+    apiRequest<FreeProxyLeaseMutation>('/api/proxies/my/free/renew', { method: 'POST' }),
   getCredentials: (id: number | string) =>
     apiRequest<MyProxyCredentials>(`/api/proxies/my/${id}/credentials`, {
       method: 'POST',
@@ -1549,7 +1553,7 @@ export const proxiesApi = {
       body: JSON.stringify(payload),
     }),
   confirmFree: (id: number | string) =>
-    apiRequest<{ ok?: boolean }>(`/api/proxies/my/${id}/confirm-free`, {
+    apiRequest<FreeProxyLeaseMutation>(`/api/proxies/my/${id}/confirm-free`, {
       method: 'POST',
     }),
   market: (params: { page?: number; limit?: number }) => {
@@ -1707,9 +1711,16 @@ export type ProxyDeleteFailedResult = {
 };
 
 export type FreeProxyTrial = {
-  status: 'available' | 'active' | 'expired';
+  status: 'available' | 'active' | 'renewal_due';
+  previously_used: boolean;
   proxy_id?: number | null;
+  renew_available_at?: string | null;
   expires_at?: string | null;
+};
+
+export type FreeProxyLeaseMutation = {
+  action: 'claimed' | 'already_active' | 'renewed' | 'reissued';
+  free_trial: FreeProxyTrial;
 };
 
 export type MyProxyCredentials = {
