@@ -10,7 +10,7 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
 } from "@heroicons/react/24/outline";
-import { authApi, billingApi, SubscriptionPaymentHistoryItem } from "@/lib/api";
+import { authApi, billingApi, settingsApi, SubscriptionPaymentHistoryItem } from "@/lib/api";
 import { normalizePlanId, PLAN_LIMITS } from "@/shared/subscriptions";
 
 const plans = [
@@ -149,6 +149,15 @@ export default function SubscriptionPage() {
   const [periodPercent, setPeriodPercent] = useState(90);
   const [purchasing, setPurchasing] = useState<string | null>(null);
 
+  // Автопродление
+  const [autoRenew, setAutoRenew] = useState(false);
+  const [rebillActive, setRebillActive] = useState(false);
+  const [settingAutoRenew, setSettingAutoRenew] = useState(false);
+
+  // Модал подтверждения подписки
+  const [confirmModal, setConfirmModal] = useState<{ planId: string; welcomeOffer: boolean } | null>(null);
+  const [consentChecked, setConsentChecked] = useState(false);
+
   async function refreshProfile() {
     try {
       const me = await authApi.me();
@@ -195,6 +204,10 @@ export default function SubscriptionPage() {
       setAnnual(true);
     }
     refreshProfile();
+    settingsApi.getSubscription().then((sub) => {
+      setAutoRenew(Boolean(sub.auto_renew));
+      setRebillActive(Boolean(sub.rebill_active));
+    }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -249,14 +262,23 @@ export default function SubscriptionPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  async function handleChoosePlan(planId: string, allowCurrent = false, welcomeOffer = false) {
+  function handleChoosePlan(planId: string, allowCurrent = false, welcomeOffer = false) {
     if (planId === currentPlan && !allowCurrent) return;
+    setConsentChecked(false);
+    setConfirmModal({ planId, welcomeOffer });
+  }
+
+  async function handleConfirmPayment() {
+    if (!confirmModal) return;
+    const { planId, welcomeOffer } = confirmModal;
+    setConfirmModal(null);
     setPurchasing(planId);
     try {
       const resp = await billingApi.createSubscriptionPayment({
         plan: planId as "lite" | "pro" | "ultra",
         period_days: welcomeOffer ? 30 : (annual ? 365 : 30),
         welcome_offer: welcomeOffer || undefined,
+        auto_renew: true,
       });
       window.location.assign(resp.checkout_url);
     } catch (err) {
@@ -266,15 +288,98 @@ export default function SubscriptionPage() {
     }
   }
 
+  async function handleToggleAutoRenew() {
+    setSettingAutoRenew(true);
+    try {
+      await billingApi.setAutoRenew(!autoRenew);
+      setAutoRenew((v) => !v);
+      toast.success(!autoRenew ? "Автопродление включено" : "Автопродление отключено");
+    } catch {
+      toast.error("Не удалось изменить настройку");
+    } finally {
+      setSettingAutoRenew(false);
+    }
+  }
+
   const plansWithCurrent = plans.map((p) => ({
     ...p,
     current: p.id === currentPlan,
     cta: p.id === currentPlan ? "Текущий тариф" : p.cta,
   }));
 
+  const confirmPlanData = confirmModal ? plans.find((p) => p.id === confirmModal.planId) : null;
+  const confirmPrice = confirmModal
+    ? confirmModal.welcomeOffer
+      ? ({ lite: 99, pro: 199, ultra: 399 } as Record<string, number>)[confirmModal.planId]
+      : annual
+      ? confirmPlanData?.yearlyPrice
+      : confirmPlanData?.monthlyPrice
+    : null;
+  const confirmPeriodLabel = annual && !confirmModal?.welcomeOffer ? "в год" : "в месяц";
+  const confirmDays = annual && !confirmModal?.welcomeOffer ? 365 : 30;
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Подписка</h1>
+
+      {/* Модал подтверждения подписки */}
+      {confirmModal && confirmPlanData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl dark:bg-gray-900 p-6">
+            <div className="flex items-start justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Оформление подписки</h2>
+              <button
+                onClick={() => setConfirmModal(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 -mt-0.5"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="rounded-xl bg-gray-50 dark:bg-gray-800 p-4 mb-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
+                FunPay Cloud {confirmPlanData.name}
+              </p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {confirmPrice} ₽{" "}
+                <span className="text-base font-normal text-gray-500">/ {confirmPeriodLabel}</span>
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                Следующее списание: через {confirmDays} дней
+              </p>
+            </div>
+
+            <label className="flex items-start gap-3 cursor-pointer mb-5">
+              <input
+                type="checkbox"
+                checked={consentChecked}
+                onChange={(e) => setConsentChecked(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-500 accent-brand-500 cursor-pointer shrink-0"
+              />
+              <span className="text-sm text-gray-600 dark:text-gray-300">
+                Соглашаюсь на автоматическое продление подписки каждые {confirmDays} дней.{" "}
+                <span className="text-gray-400">Отменить можно в любой момент в настройках подписки.</span>
+              </span>
+            </label>
+
+            <button
+              onClick={handleConfirmPayment}
+              disabled={!consentChecked || purchasing === confirmModal.planId}
+              className={`w-full rounded-xl px-4 py-3 text-sm font-semibold transition-colors ${
+                consentChecked
+                  ? "bg-brand-500 text-white hover:bg-brand-600"
+                  : "cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-600"
+              }`}
+            >
+              {purchasing === confirmModal.planId ? "Создаём платёж…" : `Оформить подписку →`}
+            </button>
+
+            <p className="mt-3 text-center text-[11px] text-gray-400">
+              Нажимая кнопку, вы принимаете условия оферты сервиса
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Active plan banner */}
       <Card className={isExpired ? "border-red-200 dark:border-red-900/40" : ""}>
@@ -339,6 +444,29 @@ export default function SubscriptionPage() {
             </div>
           </div>
 
+          {/* Автопродление — только для активных платных подписчиков с rebill */}
+          {!isTrial && !isExpired && rebillActive && (
+            <div className="mt-4 flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-800/50">
+              <div>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Автопродление</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {autoRenew ? "Подписка продлится автоматически" : "Подписка не будет продлена автоматически"}
+                </p>
+              </div>
+              <button
+                onClick={handleToggleAutoRenew}
+                disabled={settingAutoRenew}
+                className={`text-sm font-medium transition-colors ${
+                  autoRenew
+                    ? "text-red-500 hover:text-red-600 dark:text-red-400"
+                    : "text-brand-500 hover:text-brand-600"
+                }`}
+              >
+                {settingAutoRenew ? "…" : autoRenew ? "Отключить" : "Включить"}
+              </button>
+            </div>
+          )}
+
           <div className="mt-5 grid grid-cols-2 gap-3 border-t border-gray-100 pt-5 dark:border-gray-800 sm:grid-cols-4">
             {(() => {
               const limits = PLAN_LIMITS[normalizePlanId(currentPlan)];
@@ -402,6 +530,9 @@ export default function SubscriptionPage() {
                   <span className="mb-1 text-sm text-gray-400">₽/мес</span>
                 </div>
                 <p className="mt-0.5 text-sm text-gray-500">{plan.tagline}</p>
+                <p className="mt-1 text-[11px] text-gray-400">
+                  Списание каждые {annual ? "365" : "30"} дн. · Отмена в любой момент
+                </p>
               </div>
 
               <div className="my-5 h-px bg-gray-100 dark:bg-gray-800" />

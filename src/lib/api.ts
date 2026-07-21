@@ -1174,6 +1174,8 @@ export type SubscriptionData = {
   subscription_expired?: boolean;
   status_code?: 'trial_expired' | 'subscription_expired' | string;
   ai_bonus_count?: number;
+  auto_renew?: boolean;
+  rebill_active?: boolean;
 };
 
 export type NotificationSettings = {
@@ -1742,10 +1744,16 @@ export const billingApi = {
     idempotency_key?: string;
     provider?: string;
     welcome_offer?: boolean;
+    auto_renew?: boolean;
   }) =>
     apiRequest<CreateSubscriptionPaymentResponse>('/api/billing/subscriptions/create-payment', {
       method: 'POST',
       body: JSON.stringify(payload),
+    }),
+  setAutoRenew: (enabled: boolean) =>
+    apiRequest<{ auto_renew: boolean }>('/api/billing/subscriptions/auto-renew', {
+      method: 'POST',
+      body: JSON.stringify({ enabled }),
     }),
   getCheckoutStatus: (paymentId: number | string) =>
     apiRequest<SubscriptionCheckoutStatus>(`/api/billing/subscriptions/checkout-status/${paymentId}`),
