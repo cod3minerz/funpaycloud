@@ -86,6 +86,7 @@ test.beforeEach(async ({ page }) => {
     const assignError = params.get('assignError') === '1';
     const assignWorkerError = params.get('assignWorkerError') === '1';
     const externalProxyError = params.get('externalProxyError') === '1';
+    const freeConnectTrialUsed = params.get('freeConnectTrialUsed') === '1';
     const freeOn = params.get('freeOn');
     const requestedFreeTrial = params.get('freeTrial');
     let freeTrialStatus: 'available' | 'active' | 'expired' = requestedFreeTrial === 'expired'
@@ -438,6 +439,13 @@ test.beforeEach(async ({ page }) => {
             ? { ...account, proxy_connected: true, proxy_label: `${body.host}:${body.port}`, proxy_type: 'external' }
             : account);
         } else if (body.mode === 'free') {
+          if (freeConnectTrialUsed) {
+            return json({
+              success: false,
+              error: 'Семидневная аренда бесплатного прокси уже использована',
+              data: { code: 'free_proxy_trial_used' },
+            }, 409);
+          }
           freeTrialStatus = 'active';
           accounts = accounts.map((account) => account.id === 81
             ? { ...account, proxy_connected: true, proxy_label: 'Бесплатный прокси #1', proxy_type: 'free_shared' }
@@ -684,6 +692,30 @@ test('free proxy remains available and uses the free connect endpoint when the u
     };
   });
   expect(request).toEqual({ connectCalls: 1, connectBody: { mode: 'free' }, inventoryCalls: 2 });
+});
+
+test('stale free card switches to warehouse when backend reports an already used trial', async ({ page }) => {
+  await page.goto('/platform/accounts?freeConnectTrialUsed=1');
+  const alphaRow = page.getByRole('row').filter({ hasText: 'AlphaSeller' });
+  await alphaRow.getByRole('button', { name: 'Сменить прокси' }).click();
+
+  const freeCard = page.getByTestId('change-proxy-option-free');
+  await expect(freeCard).toContainText('Бесплатный прокси');
+  await freeCard.getByRole('button', { name: 'Подключить', exact: true }).click();
+
+  const inventory = page.getByTestId('change-proxy-owned-list');
+  await expect(inventory).toBeVisible();
+  await expect(inventory.getByText('Купленный Proxy Lite', { exact: true })).toBeVisible();
+  await expect(page.getByText('Семидневная аренда бесплатного прокси уже использована', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Назад', exact: true }).click();
+  await page.getByRole('button', { name: 'Назад', exact: true }).click();
+  await expect(page.getByTestId('change-proxy-option-free')).toContainText('Выбрать прокси со склада');
+
+  const calls = await page.evaluate(() => ({
+    connect: (window as typeof window & { __PROXY_CONNECT_CALLS__?: number }).__PROXY_CONNECT_CALLS__ || 0,
+    inventory: (window as typeof window & { __INVENTORY_CALLS__?: number }).__INVENTORY_CALLS__ || 0,
+  }));
+  expect(calls).toEqual({ connect: 1, inventory: 2 });
 });
 
 test('free card opens warehouse when another account already uses the shared proxy', async ({ page }) => {

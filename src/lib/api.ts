@@ -39,6 +39,13 @@ type ApiRequestOptions = RequestInit & {
   _csrfRetryAttempted?: boolean;
 };
 
+function apiEnvelopeCode<T>(envelope: ApiEnvelope<T>): string | undefined {
+  if (envelope.code) return envelope.code;
+  if (!envelope.data || typeof envelope.data !== 'object') return undefined;
+  const nestedCode = (envelope.data as { code?: unknown }).code;
+  return typeof nestedCode === 'string' ? nestedCode : undefined;
+}
+
 function getCookie(name: string): string {
   if (typeof document === 'undefined') return '';
   const row = document.cookie
@@ -164,7 +171,7 @@ export async function apiRequest<T = unknown>(
       // Don't auto-redirect: public pages (landing) may call auth-required endpoints
       // to probe login state. Platform layout handles redirect on its own.
     }
-    throw new ApiError(envelope.error || 'Сессия истекла. Войдите снова.', 401, envelope.code);
+    throw new ApiError(envelope.error || 'Сессия истекла. Войдите снова.', 401, apiEnvelopeCode(envelope));
   }
 
   if (response.status === 403 && !_csrfRetryAttempted && isStateChangingMethod(method)) {
@@ -176,7 +183,7 @@ export async function apiRequest<T = unknown>(
   }
 
   if (!response.ok || !envelope.success) {
-    throw new ApiError(envelope.error || 'Ошибка запроса', response.status, envelope.code);
+    throw new ApiError(envelope.error || 'Ошибка запроса', response.status, apiEnvelopeCode(envelope));
   }
 
   return (envelope.data as T) ?? ({} as T);

@@ -563,6 +563,13 @@ export default function AccountsPage() {
       }
       setAddStep(session.status === "ready" ? "key" : "payment");
     } catch (error) {
+      if (error instanceof ApiError && error.code === "free_proxy_trial_used") {
+        await loadOwnedProxies();
+        setFreeProxyTrial({ status: "expired" });
+        setAddStep("owned");
+        toast.error(error.message);
+        return;
+      }
       toast.error(error instanceof Error ? error.message : "Не удалось подготовить прокси");
     } finally {
       setOnboardingLoading(false);
@@ -716,10 +723,17 @@ export default function AccountsPage() {
       setAccounts(list.map(mapApiAccount));
       await refreshFreeProxyTrial();
       toast.success("Бесплатный прокси подключён");
-    } catch {
-      toast.error("Не удалось подключить прокси");
+      closeProxyFlow();
+    } catch (error) {
+      if (error instanceof ApiError && error.code === "free_proxy_trial_used") {
+        await loadOwnedProxies();
+        setFreeProxyTrial({ status: "expired" });
+        setProxyFlowStep("owned");
+        toast.error(error.message);
+        return;
+      }
+      toast.error(error instanceof Error ? error.message : "Не удалось подключить прокси");
     }
-    closeProxyFlow();
   }
 
   async function handlePaidProxyPayment(product: "proxy_lite" | "proxy_pro") {
