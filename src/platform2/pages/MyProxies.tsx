@@ -1,8 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { accountsApi, billingApi, proxiesApi, ApiAccount, MyProxyCredentials, MyProxyItem } from "@/lib/api";
+import {
+  accountsApi,
+  billingApi,
+  operationsApi,
+  proxiesApi,
+  ApiAccount,
+  BackgroundOperation,
+  MyProxyCredentials,
+  MyProxyItem,
+} from "@/lib/api";
+import { operationFailure, waitForBackgroundOperation } from "@/lib/backgroundOperations";
+import BlockingOperationOverlay from "@/platform2/components/BlockingOperationOverlay";
 import { Badge } from "@/platform2/components/ui/badge";
 import { Button } from "@/platform2/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/platform2/components/ui/card";
@@ -30,6 +41,8 @@ const statusLabels: Record<string, string> = {
   unhealthy: "Проблема",
   expired: "Истёк",
 };
+
+const PROXY_ASSIGNMENT_STORAGE_KEY = "fpcloud:proxy-assignment:active-operation";
 
 function statusVariant(status: string) {
   if (status === "healthy") return "success";
@@ -82,6 +95,8 @@ export default function MyProxiesPage() {
   const [assignProxyTarget, setAssignProxyTarget] = useState<MyProxyItem | null>(null);
   const [externalOpen, setExternalOpen] = useState(false);
   const [externalSaving, setExternalSaving] = useState(false);
+  const [activeOperation, setActiveOperation] = useState<BackgroundOperation | null>(null);
+  const operationRestoreStarted = useRef(false);
   const [externalProxy, setExternalProxy] = useState({
     host: "",
     port: "8080",
@@ -108,7 +123,26 @@ export default function MyProxiesPage() {
   };
 
   useEffect(() => {
-    load();
+    void load();
+  }, []);
+
+  useEffect(() => {
+    if (operationRestoreStarted.current || typeof window === "undefined") return;
+    operationRestoreStarted.current = true;
+    const operationID = window.sessionStorage.getItem(PROXY_ASSIGNMENT_STORAGE_KEY);
+    if (!operationID) return;
+    operationsApi.get(operationID)
+      .then((operation) => monitorAssignment(operation))
+      .then(async (operation) => {
+        await load();
+        if (operation.status === "succeeded") toast.success("Прокси назначен");
+        else if (operation.error_code === "proxy_assigned_runtime_failed") toast.warning(operation.error_message);
+        else toast.error(operation.error_message || "Назначение прокси не выполнено");
+      })
+      .catch((error) => {
+        window.sessionStorage.removeItem(PROXY_ASSIGNMENT_STORAGE_KEY);
+        toast.error(error instanceof Error ? error.message : "Не удалось восстановить назначение прокси");
+      });
   }, []);
 
   const stats = useMemo(() => {
@@ -123,6 +157,17 @@ export default function MyProxiesPage() {
     id: String(account.id),
     label: account.username || `Аккаунт #${account.id}`,
   }));
+
+  async function monitorAssignment(initial: BackgroundOperation) {
+    setActiveOperation(initial);
+    if (typeof window !== "undefined") window.sessionStorage.setItem(PROXY_ASSIGNMENT_STORAGE_KEY, initial.id);
+    try {
+      return await waitForBackgroundOperation(initial, operationsApi.get, setActiveOperation);
+    } finally {
+      setActiveOperation(null);
+      if (typeof window !== "undefined") window.sessionStorage.removeItem(PROXY_ASSIGNMENT_STORAGE_KEY);
+    }
+  }
 
   async function revealCredentials(proxy: MyProxyItem) {
     if (credentials[proxy.id]) return;
@@ -151,10 +196,19 @@ export default function MyProxiesPage() {
     }
     setBusyId(proxy.id);
     try {
-      await proxiesApi.assignMine(proxy.id, { account_id: accountID });
-      toast.success("Прокси назначен");
-      setAssignProxyTarget(null);
+      const started = await proxiesApi.assignMine(proxy.id, { account_id: accountID });
+      const completed = await monitorAssignment(started.operation);
       await load();
+      if (completed.status !== "succeeded") {
+        if (completed.error_code === "proxy_assigned_runtime_failed") {
+          toast.warning(completed.error_message || "Прокси назначен, но воркеры не запустились");
+          setAssignProxyTarget(null);
+          return;
+        }
+        throw operationFailure(completed);
+      }
+      toast.success("Прокси назначен и проверен");
+      setAssignProxyTarget(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Не удалось назначить прокси";
       toast.error(message);
@@ -307,8 +361,14 @@ export default function MyProxiesPage() {
 
   const renderActions = (proxy: MyProxyItem) => (
     <div className="flex min-w-0 flex-wrap justify-start gap-2">
-      <Button size="sm" variant="outline" className="min-w-[108px] flex-1 sm:flex-none" onClick={() => openAssignModal(proxy)} disabled={busyId === proxy.id}>
-        {proxy.is_shared_free && proxy.assigned_account_id ? "Перенести" : "Назначить"}
+      <Button
+        size="sm"
+        variant="outline"
+        className="min-w-[108px] flex-1 sm:flex-none"
+        onClick={() => openAssignModal(proxy)}
+        disabled={busyId === proxy.id || !proxy.is_active || proxy.health_status === "unhealthy" || proxy.health_status === "expired" || Boolean(proxy.assigned_account_id && !proxy.is_shared_free)}
+      >
+        {proxy.is_shared_free && proxy.assigned_account_id ? "Перенести" : proxy.assigned_account_id ? "Назначен" : "Назначить"}
       </Button>
       <Button size="sm" variant="outline" className="min-w-[108px] flex-1 sm:flex-none" onClick={() => checkProxy(proxy)} disabled={busyId === proxy.id}>
         Проверить
@@ -407,6 +467,7 @@ export default function MyProxiesPage() {
 
   return (
     <div className="space-y-6">
+      {activeOperation && <BlockingOperationOverlay operation={activeOperation} title="Назначаем и проверяем прокси" />}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Мои прокси</h1>

@@ -85,6 +85,7 @@ test.beforeEach(async ({ page }) => {
     const inventoryErrorOnce = params.get('inventoryErrorOnce') === '1';
     const assignError = params.get('assignError') === '1';
     const assignWorkerError = params.get('assignWorkerError') === '1';
+    const assignRetryFlow = params.get('assignRetryFlow') === '1';
     const externalProxyError = params.get('externalProxyError') === '1';
     const freeConnectTrialUsed = params.get('freeConnectTrialUsed') === '1';
     const freeOn = params.get('freeOn');
@@ -132,7 +133,7 @@ test.beforeEach(async ({ page }) => {
       accounts = accounts.map((account) => ({ ...account, runner_active: false, keeper_active: false, raiser_active: false }));
     }
     let operationPolls = 0;
-    let activeOperationKind: 'add' | 'runner' | 'batch' | null = null;
+    let activeOperationKind: 'add' | 'runner' | 'batch' | 'proxy' | null = null;
     const failures: Record<string, { status: number; message: string }> = {
       invalid_golden_key: { status: 422, message: 'Golden Key недействителен или сессия FunPay истекла. Получите новый ключ и попробуйте снова.' },
       funpay_account_already_linked: { status: 409, message: 'Этот Golden Key относится к FunPay-аккаунту, уже привязанному к другому профилю FunPay Cloud. Войдите в нужный аккаунт FunPay и получите его новый Golden Key.' },
@@ -196,7 +197,13 @@ test.beforeEach(async ({ page }) => {
       const started = new Date(Date.now() - 250).toISOString();
       return {
         id,
-        kind: activeOperationKind === 'add' ? 'account_onboarding_complete' : activeOperationKind === 'batch' ? 'runtime_start_batch' : 'runtime_start',
+        kind: activeOperationKind === 'add'
+          ? 'account_onboarding_complete'
+          : activeOperationKind === 'batch'
+            ? 'runtime_start_batch'
+            : activeOperationKind === 'proxy'
+              ? 'proxy_assign_and_restart'
+              : 'runtime_start',
         status,
         attempt,
         max_attempts: 3,
@@ -257,6 +264,40 @@ test.beforeEach(async ({ page }) => {
             fail_count: 0,
             expires_at: '2030-07-18T00:00:00Z',
             created_at: '2026-07-18T00:00:00Z',
+          },
+          {
+            id: 97,
+            product: 'proxy_lite',
+            label: 'Proxy Lite',
+            display_name: 'Текущий Proxy Lite',
+            host: 'current-paid-proxy.local',
+            port: 9007,
+            protocol: 'HTTP',
+            is_shared_free: false,
+            has_credentials: true,
+            is_active: true,
+            health_status: 'healthy',
+            fail_count: 0,
+            expires_at: '2030-07-18T00:00:00Z',
+            assigned_account_id: 81,
+            assigned_username: 'AlphaSeller',
+            created_at: '2026-07-17T00:00:00Z',
+          },
+          {
+            id: 98,
+            product: 'proxy_pro',
+            label: 'Proxy Pro',
+            display_name: 'Свободный Proxy Pro',
+            host: 'available-proxy-pro.local',
+            port: 9008,
+            protocol: 'HTTP',
+            is_shared_free: false,
+            has_credentials: true,
+            is_active: true,
+            health_status: 'healthy',
+            fail_count: 0,
+            expires_at: '2030-07-18T00:00:00Z',
+            created_at: '2026-07-16T00:00:00Z',
           },
           {
             id: 96,
@@ -395,11 +436,30 @@ test.beforeEach(async ({ page }) => {
         if (id === 'add-operation') activeOperationKind = 'add';
         if (id === 'runner-operation') activeOperationKind = 'runner';
         if (id === 'batch-operation') activeOperationKind = 'batch';
+        if (id === 'proxy-assignment-operation') activeOperationKind = 'proxy';
         if (activeOperationKind === 'add' && addError && failures[addError]) {
           const failure = failures[addError];
           return ok(operation(id, 'failed', 1, addError, failure.message));
         }
         if (activeOperationKind === 'add' && retryFlow) {
+          if (operationPolls === 1) return ok(operation(id, 'running', 1));
+          if (operationPolls === 2) return ok(operation(id, 'retry_wait', 1, 'funpay_validation_timeout', 'Повторяем попытку'));
+          if (operationPolls === 3) return ok(operation(id, 'running', 2));
+          if (operationPolls === 4) return ok(operation(id, 'retry_wait', 2, 'funpay_unavailable', 'Повторяем попытку'));
+          if (operationPolls === 5) return ok(operation(id, 'running', 3));
+        }
+        if (activeOperationKind === 'proxy' && assignError) {
+          return ok(operation(id, 'failed', 1, 'proxy_occupied', 'Прокси уже назначен другому вашему аккаунту'));
+        }
+        if (activeOperationKind === 'proxy' && assignWorkerError) {
+          return ok(operation(id, 'failed', 3, 'proxy_assigned_runtime_failed', 'Прокси назначен, но воркеры не запустились', {
+            account_id: 81,
+            proxy_id: 91,
+            assignment_applied: true,
+            workers_started: false,
+          }));
+        }
+        if (activeOperationKind === 'proxy' && assignRetryFlow) {
           if (operationPolls === 1) return ok(operation(id, 'running', 1));
           if (operationPolls === 2) return ok(operation(id, 'retry_wait', 1, 'funpay_validation_timeout', 'Повторяем попытку'));
           if (operationPolls === 3) return ok(operation(id, 'running', 2));
@@ -423,6 +483,14 @@ test.beforeEach(async ({ page }) => {
           };
           accounts = preserveExisting ? [...accounts, addedAccount] : [addedAccount];
           return ok(operation(id, 'succeeded', retryFlow ? 3 : 1, '', '', { account_id: 83, username: 'CurrentTenantNew', proxy_id: 501 }));
+        }
+        if (activeOperationKind === 'proxy') {
+          return ok(operation(id, 'succeeded', assignRetryFlow ? 3 : 1, '', '', {
+            account_id: 81,
+            proxy_id: 91,
+            assignment_applied: true,
+            workers_started: true,
+          }));
         }
         accounts = accounts.map((account) => ({ ...account, runner_active: true, keeper_active: true, raiser_active: true }));
         return ok(operation(id, 'succeeded', 1, '', '', activeOperationKind === 'batch' ? { started: accounts.length, failed: {} } : { account_id: 81 }));
@@ -453,25 +521,26 @@ test.beforeEach(async ({ page }) => {
         }
         return ok({});
       }
-      if (/^\/api\/proxies\/my\/(91|95)\/assign$/.test(path) && method === 'POST') {
+      if (/^\/api\/proxies\/my\/(91|95|98)\/assign$/.test(path) && method === 'POST') {
         testScope.__OWNED_PROXY_ASSIGN_CALLS__ = (testScope.__OWNED_PROXY_ASSIGN_CALLS__ || 0) + 1;
+        if (new Headers(init?.headers).get('Prefer') === 'respond-async') testScope.__ASYNC_PREFER_CALLS__! += 1;
         const body = JSON.parse(String(init?.body || '{}')) as Record<string, unknown>;
         testScope.__OWNED_PROXY_ASSIGN_BODY__ = body;
-        if (assignError) return json({ success: false, error: 'Прокси уже назначен другому вашему аккаунту' }, 400);
         const assignedProxyID = Number(path.split('/')[4]);
-        accounts = accounts.map((account) => {
-          if (assignedProxyID === 95 && account.id !== 81 && account.proxy_type === 'free_shared') {
-            return { ...account, proxy_connected: false, proxy_label: undefined, proxy_type: 'none' };
-          }
-          if (account.id !== 81) return account;
-          return assignedProxyID === 95
-            ? { ...account, proxy_connected: true, proxy_label: 'Бесплатный прокси #1', proxy_type: 'free_shared' }
-            : { ...account, proxy_connected: true, proxy_label: 'Proxy Lite', proxy_type: 'individual' };
-        });
-        if (assignWorkerError) {
-          return json({ success: false, error: 'Прокси назначен, но воркеры не запустились' }, 502);
+        if (!assignError) {
+          accounts = accounts.map((account) => {
+            if (assignedProxyID === 95 && account.id !== 81 && account.proxy_type === 'free_shared') {
+              return { ...account, proxy_connected: false, proxy_label: undefined, proxy_type: 'none' };
+            }
+            if (account.id !== 81) return account;
+            return assignedProxyID === 95
+              ? { ...account, proxy_connected: true, proxy_label: 'Бесплатный прокси #1', proxy_type: 'free_shared' }
+              : { ...account, proxy_connected: true, proxy_label: assignedProxyID === 98 ? 'Proxy Pro' : 'Proxy Lite', proxy_type: 'individual' };
+          });
         }
-        return ok({});
+        activeOperationKind = 'proxy';
+        operationPolls = 0;
+        return ok({ operation: operation('proxy-assignment-operation', 'queued', 0) }, 202);
       }
       return ok(method === 'GET' ? [] : {});
     };
@@ -747,7 +816,7 @@ test('onboarding free card opens warehouse and selects an owned proxy without re
   await warehouseCard.click();
   const inventory = page.getByTestId('owned-proxy-list');
   await expect(inventory).toBeVisible();
-  await inventory.getByRole('button').filter({ hasText: 'Proxy Lite' }).click();
+  await inventory.getByRole('button').filter({ hasText: 'Купленный Proxy Lite' }).click();
   await expect(page.getByTestId('golden-key-input')).toBeVisible();
 
   const requests = await page.evaluate(() => {
@@ -838,6 +907,12 @@ test('owned inventory proxy is selected by current tenant response', async ({ pa
   await page.goto('/platform/accounts');
   await openAddAccount(page);
   await page.getByRole('button', { name: /Свой прокси/ }).click();
+  const inventory = page.getByTestId('owned-proxy-list');
+  await expect(inventory.getByText('Текущий Proxy Lite', { exact: true })).toBeVisible();
+  await expect(inventory.getByText('Свободный Proxy Pro', { exact: true })).toBeVisible();
+  await expect(inventory.getByRole('button').filter({ hasText: 'Текущий Proxy Lite' })).toBeDisabled();
+  await expect(inventory.getByRole('button').filter({ hasText: 'Занятый прокси' })).toBeDisabled();
+  await expect(inventory.getByRole('button').filter({ hasText: 'Нерабочий прокси' })).toBeDisabled();
   await page.getByRole('button', { name: /Inventory Proxy Alpha/ }).click();
 
   await expect(page.getByTestId('golden-key-input')).toBeVisible();
@@ -887,12 +962,17 @@ test('existing-account selects an available purchased proxy and filters unavaila
   await page.getByRole('button', { name: /Выбрать из существующих/ }).click();
 
   const inventory = page.getByTestId('change-proxy-owned-list');
+  await expect(inventory.getByText('Текущий Proxy Lite', { exact: true })).toBeVisible();
   await expect(inventory.getByText('Купленный Proxy Lite', { exact: true })).toBeVisible();
+  await expect(inventory.getByText('Свободный Proxy Pro', { exact: true })).toBeVisible();
   await expect(inventory.getByText('Inventory Proxy Alpha', { exact: true })).toBeVisible();
-  await expect(inventory.getByText('Занятый прокси', { exact: true })).toHaveCount(0);
-  await expect(inventory.getByText('Нерабочий прокси', { exact: true })).toHaveCount(0);
+  await expect(inventory.getByText('Занятый прокси', { exact: true })).toBeVisible();
+  await expect(inventory.getByText('Нерабочий прокси', { exact: true })).toBeVisible();
   await expect(inventory.getByText('Истёкший прокси', { exact: true })).toHaveCount(0);
   await expect(inventory.getByText('Бесплатный прокси #1', { exact: true })).toHaveCount(0);
+  await expect(inventory.getByRole('button').filter({ hasText: 'Текущий Proxy Lite' })).toBeDisabled();
+  await expect(inventory.getByRole('button').filter({ hasText: 'Занятый прокси' })).toBeDisabled();
+  await expect(inventory.getByRole('button').filter({ hasText: 'Нерабочий прокси' })).toBeDisabled();
 
   await inventory.getByRole('button').filter({ hasText: 'Купленный Proxy Lite' }).evaluate((button) => {
     (button as HTMLButtonElement).click();
@@ -913,6 +993,25 @@ test('existing-account selects an available purchased proxy and filters unavaila
   expect(assignment.body).toEqual({ account_id: 81 });
 });
 
+test('existing-account proxy assignment shows three real 45 second attempts', async ({ page }) => {
+  await page.goto('/platform/accounts?assignRetryFlow=1');
+  await openOwnProxyActions(page);
+  await page.getByRole('button', { name: /Выбрать из существующих/ }).click();
+  await page.getByRole('button').filter({ hasText: 'Купленный Proxy Lite' }).click();
+
+  const overlay = page.getByTestId('blocking-operation-overlay');
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toContainText('Назначаем и проверяем прокси');
+  await expect(overlay).toContainText('Попытка 1 из 3');
+  await expect(page.getByTestId('blocking-operation-progress')).toHaveAttribute('data-duration-ms', '45000');
+  await expect(overlay).toContainText('Попытка 2 из 3', { timeout: 5000 });
+  await expect(overlay).toContainText('Попытка 3 из 3', { timeout: 5000 });
+  await expect(overlay).toBeHidden();
+
+  const calls = await page.evaluate(() => (window as typeof window & { __OWNED_PROXY_ASSIGN_CALLS__?: number }).__OWNED_PROXY_ASSIGN_CALLS__ || 0);
+  expect(calls).toBe(1);
+});
+
 test('existing-account inventory distinguishes empty and retryable error states', async ({ page }) => {
   await page.goto('/platform/accounts?inventoryErrorOnce=1');
   await openOwnProxyActions(page);
@@ -925,7 +1024,7 @@ test('existing-account inventory distinguishes empty and retryable error states'
   await page.goto('/platform/accounts?emptyInventory=1');
   await openOwnProxyActions(page);
   await page.getByRole('button', { name: /Выбрать из существующих/ }).click();
-  await expect(page.getByText('Свободных прокси нет.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Доступных прокси нет.', { exact: true })).toBeVisible();
   await expect(page.getByTestId('change-proxy-owned-list').getByRole('button', { name: 'Добавить свой новый', exact: true }).last()).toBeVisible();
 });
 

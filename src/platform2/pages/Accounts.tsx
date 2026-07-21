@@ -59,6 +59,35 @@ function formatProxyExpiry(value?: string | null) {
   return new Date(value).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+const ASSIGNABLE_PROXY_PRODUCTS = ["free_shared", "proxy_lite", "proxy_pro", "external_custom"];
+
+function isProxyUnavailable(proxy: MyProxyItem) {
+  return !proxy.is_active || proxy.health_status === "unhealthy" || proxy.health_status === "expired";
+}
+
+function canSelectOwnedProxy(proxy: MyProxyItem, targetAccountId?: number) {
+  if (isProxyUnavailable(proxy)) return false;
+  if (!proxy.assigned_account_id) return true;
+  if (targetAccountId && proxy.assigned_account_id === targetAccountId) return false;
+  return proxy.is_shared_free || proxy.product === "free_shared";
+}
+
+function ownedProxyAction(proxy: MyProxyItem, targetAccountId?: number) {
+  if (targetAccountId && proxy.assigned_account_id === targetAccountId) return "Подключён";
+  if (isProxyUnavailable(proxy)) return "Недоступен";
+  if (proxy.assigned_account_id && !(proxy.is_shared_free || proxy.product === "free_shared")) return "Используется";
+  if (proxy.assigned_account_id) return "Перенести";
+  return "Выбрать";
+}
+
+function ownedProxyRank(proxy: MyProxyItem, targetAccountId?: number) {
+  if (targetAccountId && proxy.assigned_account_id === targetAccountId) return 0;
+  if (!isProxyUnavailable(proxy) && !proxy.assigned_account_id) return 1;
+  if (!isProxyUnavailable(proxy) && (proxy.is_shared_free || proxy.product === "free_shared")) return 2;
+  if (!isProxyUnavailable(proxy)) return 3;
+  return 4;
+}
+
 function pendingOperation(kind: string): BackgroundOperation {
   const startedAt = new Date();
   return {
@@ -185,6 +214,9 @@ export default function AccountsPage() {
       icon: "plug-in" as const,
     };
   }), [freeProxyTrialStatus]);
+  const displayedOwnedProxies = useMemo(() => [...ownedProxies].sort((left, right) => (
+    ownedProxyRank(left, currentProxyTarget?.apiId) - ownedProxyRank(right, currentProxyTarget?.apiId)
+  )), [ownedProxies, currentProxyTarget?.apiId]);
 
   function resetAddWizard() {
     setIsAddModal(false);
@@ -230,10 +262,7 @@ export default function AccountsPage() {
       if (response.free_trial) setFreeProxyTrial(response.free_trial);
       setOwnedProxies((response.items || []).filter((item) => (
         item.is_active
-        && (item.is_shared_free || !item.assigned_account_id)
-        && ["free_shared", "proxy_lite", "proxy_pro", "external_custom"].includes(item.product)
-        && item.health_status !== "unhealthy"
-        && item.health_status !== "expired"
+        && ASSIGNABLE_PROXY_PRODUCTS.includes(item.product)
         && (!item.expires_at || new Date(item.expires_at).getTime() > Date.now())
       )));
     } catch (error) {
@@ -401,6 +430,7 @@ export default function AccountsPage() {
             }
             toast.success("Операция успешно завершена");
           }
+          else if (operation.error_code === "proxy_assigned_runtime_failed") toast.warning(operation.error_message || "Прокси назначен, но воркеры не запустились");
           else if (operation.status === "partially_succeeded") toast.warning(operation.error_message || "Операция завершена частично");
           else toast.error(operation.error_message || "Операция не выполнена");
         })
@@ -804,23 +834,24 @@ export default function AccountsPage() {
     try {
       const target = await refreshProxyTarget();
       if (!target) return;
-      await proxiesApi.assignMine(proxyId, { account_id: target.apiId });
+      const completed = await startAndMonitorOperation(
+        "Назначаем и проверяем прокси",
+        "proxy_assign_and_restart",
+        () => proxiesApi.assignMine(proxyId, { account_id: target.apiId }),
+      );
       const list = await accountsApi.list();
       setAccounts(list.map(mapApiAccount));
+      if (completed.status !== "succeeded") {
+        if (completed.error_code === "proxy_assigned_runtime_failed") {
+          toast.warning(completed.error_message || "Прокси назначен, но воркеры не запустились");
+          closeProxyFlow();
+          return;
+        }
+        throw operationFailure(completed);
+      }
       toast.success("Прокси из «Моих прокси» подключён");
       closeProxyFlow();
     } catch (error) {
-      if (error instanceof ApiError && error.status === 502) {
-        try {
-          const list = await accountsApi.list();
-          setAccounts(list.map(mapApiAccount));
-        } catch {
-          // Preserve the assignment result reported by the original request.
-        }
-        toast.warning(error.message);
-        closeProxyFlow();
-        return;
-      }
       toast.error(error instanceof Error ? error.message : "Не удалось назначить прокси");
       await loadOwnedProxies();
     } finally {
@@ -1211,7 +1242,7 @@ export default function AccountsPage() {
         {addStep === "owned" && (
           <div className="mt-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="font-semibold text-gray-900 dark:text-white">Свободные прокси в вашем инвентаре</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-white">Прокси в вашем инвентаре</h3>
               <Button variant="outline" size="sm" onClick={() => setAddStep("external")}>
                 <Icon name="plus" className="h-4 w-4" /> Добавить новый
               </Button>
@@ -1228,28 +1259,29 @@ export default function AccountsPage() {
               )}
               {!ownedProxiesLoading && !ownedProxiesError && ownedProxies.length === 0 && (
                 <div className="rounded-xl border border-dashed border-gray-300 p-6 text-center dark:border-gray-700">
-                  <p className="text-sm text-gray-500">Свободных прокси нет.</p>
+                  <p className="text-sm text-gray-500">Доступных прокси нет.</p>
                   <Button variant="primary" size="sm" className="mt-4" onClick={() => setAddStep("external")}>
                     Добавить свой прокси
                   </Button>
                 </div>
               )}
-              {ownedProxies.map((proxy) => (
+              {displayedOwnedProxies.map((proxy) => (
                 <button
                   type="button"
                   key={proxy.id}
-                  disabled={onboardingLoading}
+                  disabled={onboardingLoading || !canSelectOwnedProxy(proxy)}
                   onClick={() => void handleOwnedProxyChoice(proxy.id)}
                   className="flex w-full items-center justify-between gap-4 rounded-xl border border-gray-200 p-4 text-left hover:border-brand-400 disabled:opacity-60 dark:border-gray-700"
                 >
                   <div>
-                    <p className="font-semibold text-gray-900 dark:text-white">{proxy.label}</p>
+                    <p className="font-semibold text-gray-900 dark:text-white">{proxy.display_name || proxy.label}</p>
                     <p className="mt-1 text-xs text-gray-500">
-                      {proxy.protocol} · {proxy.health_status === "healthy" ? "Готов" : "Требует проверки"}
-                      {proxy.is_shared_free ? ` · до ${formatProxyExpiry(proxy.expires_at)}${proxy.assigned_username ? ` · ${proxy.assigned_username}` : ""}` : ""}
+                      {proxy.label} · {proxy.protocol} · {proxy.health_status === "healthy" ? "Готов" : proxy.health_status === "degraded" ? "Требует проверки" : "Не работает"}
+                      {proxy.expires_at ? ` · до ${formatProxyExpiry(proxy.expires_at)}` : ""}
+                      {proxy.assigned_username ? ` · аккаунт ${proxy.assigned_username}` : ""}
                     </p>
                   </div>
-                  <span className="text-sm font-semibold text-brand-600">{proxy.is_shared_free && proxy.assigned_account_id ? "Перенести" : "Выбрать"}</span>
+                  <span className="text-sm font-semibold text-brand-600">{ownedProxyAction(proxy)}</span>
                 </button>
               ))}
             </div>
@@ -1448,7 +1480,7 @@ export default function AccountsPage() {
         {proxyFlowStep === "owned" && (
           <div className="mt-6" data-testid="change-proxy-owned-list">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm text-gray-500">Показываются только свободные и доступные прокси.</p>
+              <p className="text-sm text-gray-500">Показываются все действующие прокси из «Моих прокси».</p>
               <Button variant="outline" size="sm" onClick={() => setProxyFlowStep("external")}>
                 <Icon name="plus" className="h-4 w-4" /> Добавить свой новый
               </Button>
@@ -1463,33 +1495,30 @@ export default function AccountsPage() {
               )}
               {!ownedProxiesLoading && !ownedProxiesError && ownedProxies.length === 0 && (
                 <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center dark:border-gray-700">
-                  <p className="text-sm text-gray-500">Свободных прокси нет.</p>
+                  <p className="text-sm text-gray-500">Доступных прокси нет.</p>
                   <Button variant="primary" size="sm" className="mt-4" onClick={() => setProxyFlowStep("external")}>
                     Добавить свой новый
                   </Button>
                 </div>
               )}
-              {ownedProxies.map((proxy) => (
+              {displayedOwnedProxies.map((proxy) => (
                 <button
                   type="button"
                   key={proxy.id}
-                  disabled={assigningProxyId !== null || (proxy.is_shared_free && proxy.assigned_account_id === currentProxyTarget?.apiId)}
+                  disabled={assigningProxyId !== null || !canSelectOwnedProxy(proxy, currentProxyTarget?.apiId)}
                   onClick={() => void handleAssignOwnedProxy(proxy.id)}
                   className="flex w-full items-center justify-between gap-4 rounded-xl border border-gray-200 p-4 text-left transition hover:border-brand-400 disabled:cursor-wait disabled:opacity-60 dark:border-gray-700"
                 >
                   <span>
                     <span className="block font-semibold text-gray-900 dark:text-white">{proxy.display_name || proxy.label}</span>
                     <span className="mt-1 block text-xs text-gray-500">
-                      {proxy.label} · {proxy.protocol} · {proxy.health_status === "healthy" ? "Готов" : "Требует проверки"} · ID {proxy.id}
-                      {proxy.is_shared_free ? ` · до ${formatProxyExpiry(proxy.expires_at)}${proxy.assigned_username ? ` · ${proxy.assigned_username}` : ""}` : ""}
+                      {proxy.label} · {proxy.protocol} · {proxy.health_status === "healthy" ? "Готов" : proxy.health_status === "degraded" ? "Требует проверки" : "Не работает"} · ID {proxy.id}
+                      {proxy.expires_at ? ` · до ${formatProxyExpiry(proxy.expires_at)}` : ""}
+                      {proxy.assigned_username ? ` · аккаунт ${proxy.assigned_username}` : ""}
                     </span>
                   </span>
                   <span className="shrink-0 text-sm font-semibold text-brand-600">
-                    {proxy.is_shared_free && proxy.assigned_account_id === currentProxyTarget?.apiId
-                      ? "Подключён"
-                      : assigningProxyId === proxy.id
-                        ? "Назначаем…"
-                        : proxy.is_shared_free && proxy.assigned_account_id ? "Перенести" : "Выбрать"}
+                    {assigningProxyId === proxy.id ? "Назначаем…" : ownedProxyAction(proxy, currentProxyTarget?.apiId)}
                   </span>
                 </button>
               ))}

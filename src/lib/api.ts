@@ -1508,8 +1508,9 @@ export const proxiesApi = {
       method: 'POST',
     }),
   assignMine: (id: number | string, payload: { account_id: number }) =>
-    apiRequest<{ ok?: boolean }>(`/api/proxies/my/${id}/assign`, {
+    apiRequest<AsyncOperationStart>(`/api/proxies/my/${id}/assign`, {
       method: 'POST',
+      headers: { Prefer: 'respond-async' },
       body: JSON.stringify(payload),
     }),
   releaseMine: (id: number | string) =>

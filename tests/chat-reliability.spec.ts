@@ -319,9 +319,13 @@ test('send flow: pending -> delivered, without loadMessages call after send', as
 
   const firstChat = page.getByTestId('chat-row').first();
   await expect(firstChat).toBeVisible();
+  const beforeChatSelectionLoads = (await readState(page)).messagesRequests;
   await firstChat.click();
 
-  await expect.poll(async () => (await readState(page)).messagesRequests).toBeGreaterThan(0);
+  await expect
+    .poll(async () => (await readState(page)).messagesRequests)
+    .toBeGreaterThan(beforeChatSelectionLoads);
+  await page.waitForTimeout(100);
   const beforeSendMessageLoads = (await readState(page)).messagesRequests;
 
   const composer = page.getByPlaceholder('Введите сообщение...');
