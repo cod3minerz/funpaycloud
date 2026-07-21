@@ -8,6 +8,8 @@ test.beforeEach(async ({ page }) => {
 	let assigned = false;
     let batchPolls = 0;
     let batchStartRequests = 0;
+    let deleteBatchPolls = 0;
+    let deleteBatchStartRequests = 0;
     const deletedProxyIDs = new Set<number>();
     const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
       status,
@@ -173,6 +175,7 @@ test.beforeEach(async ({ page }) => {
 	  }
 	  if (path.startsWith('/api/proxies/my/') && method === 'DELETE') {
 		const proxyID = Number(path.split('/').pop());
+		await new Promise((resolve) => window.setTimeout(resolve, 150));
 		deletedProxyIDs.add(proxyID);
 		(window as typeof window & { __DELETED_PROXY_ID__?: number }).__DELETED_PROXY_ID__ = proxyID;
 		return ok({ proxy_id: proxyID, deleted: true });
@@ -180,10 +183,47 @@ test.beforeEach(async ({ page }) => {
 	  if (path === '/api/proxies/my/delete-failed' && method === 'POST') {
 		const payload = JSON.parse(String(init?.body || '{}')) as { operation_id?: string; confirmation?: string };
 		(window as typeof window & { __DELETE_FAILED_PAYLOAD__?: unknown }).__DELETE_FAILED_PAYLOAD__ = payload;
-		deletedProxyIDs.add(97);
+		(window as typeof window & { __DELETE_FAILED_PREFER__?: string | null }).__DELETE_FAILED_PREFER__ = new Headers(init?.headers).get('Prefer');
+		deleteBatchStartRequests += 1;
+		(window as typeof window & { __DELETE_BATCH_START_COUNT__?: number }).__DELETE_BATCH_START_COUNT__ = deleteBatchStartRequests;
+		deleteBatchPolls = 0;
+		const started = new Date().toISOString();
+		return ok({ operation: {
+		  id: 'proxy-delete-batch',
+		  kind: 'proxy_delete_failed_batch',
+		  status: 'queued',
+		  attempt: 0,
+		  max_attempts: 1,
+		  result: { total: 2, processed: 0, deleted_ids: [], deleted_count: 0, skipped: [], skipped_count: 0 },
+		  created_at: started,
+		  updated_at: started,
+		} });
+	  }
+	  if (path === '/api/operations/proxy-delete-batch' && method === 'GET') {
+		deleteBatchPolls += 1;
+		const completed = deleteBatchPolls >= 3;
+		const processed = completed ? 2 : deleteBatchPolls === 1 ? 0 : 1;
+		if (processed >= 1) deletedProxyIDs.add(97);
 		return ok({
-		  deleted_ids: [97], deleted_count: 1,
-		  skipped: [{ proxy_id: 98, deleted: false, reason: 'paid_not_expired' }], skipped_count: 1,
+		  id: 'proxy-delete-batch',
+		  kind: 'proxy_delete_failed_batch',
+		  status: completed ? 'succeeded' : 'running',
+		  attempt: 1,
+		  max_attempts: 1,
+		  result: {
+			total: 2,
+			processed,
+			current_proxy_id: completed ? null : deleteBatchPolls === 1 ? 97 : 98,
+			current_proxy_name: completed ? '' : deleteBatchPolls === 1 ? 'Expired Proxy Lite' : 'Active Proxy Pro',
+			current_index: completed ? 0 : deleteBatchPolls,
+			deleted_ids: processed >= 1 ? [97] : [],
+			deleted_count: processed >= 1 ? 1 : 0,
+			skipped: completed ? [{ proxy_id: 98, deleted: false, reason: 'paid_not_expired' }] : [],
+			skipped_count: completed ? 1 : 0,
+		  },
+		  created_at: new Date(Date.now() - 500).toISOString(),
+		  updated_at: new Date().toISOString(),
+		  finished_at: completed ? new Date().toISOString() : undefined,
 		});
 	  }
 	  if (path === '/api/proxies/my/95/assign' && method === 'POST') {
@@ -301,7 +341,10 @@ test('shows delete only for eligible proxies and confirms a single deletion', as
   const confirmation = page.getByRole('heading', { name: 'Удалить прокси?' }).locator('..');
   await expect(confirmation).toContainText('203.0.113.96:8080 · ID 96');
   await confirmation.getByRole('button', { name: 'Удалить', exact: true }).click();
+  await expect(page.getByTestId('proxy-delete-overlay')).toBeVisible();
+  await expect(page.getByTestId('proxy-delete-overlay')).toContainText('Удаляем прокси');
   await expect(page.locator('[data-proxy-id="96"]').first()).toHaveCount(0);
+  await expect(page.getByTestId('proxy-delete-overlay')).toBeHidden();
   expect(await page.evaluate(() => (window as typeof window & { __DELETED_PROXY_ID__?: number }).__DELETED_PROXY_ID__)).toBe(96);
 });
 
@@ -324,11 +367,35 @@ test('bulk deletion requires two confirmations and sends only the operation id',
   await expect(deleteButton).toBeEnabled();
   await deleteButton.click();
 
+  const deleteOverlay = page.getByTestId('proxy-delete-overlay');
+  await expect(deleteOverlay).toBeVisible();
+  await expect(deleteOverlay).toContainText('Удаляем неработающие прокси');
+  await expect(page.getByTestId('proxy-delete-batch-counter')).toHaveText('Прокси 1 из 2');
+  await expect(page.getByTestId('proxy-delete-batch-counter')).toHaveText('Прокси 2 из 2', { timeout: 5_000 });
+  await expect(deleteOverlay).toBeHidden({ timeout: 5_000 });
+
   expect(await page.evaluate(() => (window as typeof window & { __DELETE_FAILED_PAYLOAD__?: unknown }).__DELETE_FAILED_PAYLOAD__)).toEqual({
     operation_id: 'proxy-check-batch',
     confirmation: 'DELETE_FAILED_PROXIES',
   });
+  expect(await page.evaluate(() => (window as typeof window & { __DELETE_FAILED_PREFER__?: string | null }).__DELETE_FAILED_PREFER__)).toBe('respond-async');
+  expect(await page.evaluate(() => (window as typeof window & { __DELETE_BATCH_START_COUNT__?: number }).__DELETE_BATCH_START_COUNT__)).toBe(1);
   await expect(page.locator('[data-proxy-id="97"]').first()).toHaveCount(0);
+});
+
+test('restores batch deletion after reload and refreshes inventory on completion', async ({ page }) => {
+  await page.addInitScript(() => {
+    sessionStorage.setItem('fpcloud:proxy-delete:active-operation', 'proxy-delete-batch');
+    sessionStorage.setItem('fpcloud:proxy-check:last-operation', 'proxy-check-batch');
+  });
+  await page.goto('/platform/proxies');
+
+  await expect(page.getByTestId('proxy-delete-overlay')).toBeVisible();
+  await expect(page.getByTestId('proxy-delete-batch-counter')).toContainText('из 2');
+  await expect(page.getByTestId('proxy-delete-overlay')).toBeHidden({ timeout: 5_000 });
+  await expect(page.locator('[data-proxy-id="97"]').first()).toHaveCount(0);
+  expect(await page.evaluate(() => sessionStorage.getItem('fpcloud:proxy-delete:active-operation'))).toBeNull();
+  expect(await page.evaluate(() => sessionStorage.getItem('fpcloud:proxy-check:last-operation'))).toBeNull();
 });
 
 test('batch and deletion actions remain usable on a mobile viewport', async ({ page }) => {

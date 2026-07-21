@@ -1541,10 +1541,10 @@ export const proxiesApi = {
       method: 'DELETE',
     }),
   deleteFailedMine: (payload: { operation_id: string; confirmation: 'DELETE_FAILED_PROXIES' }) =>
-    apiRequest<ProxyDeleteFailedResult>('/api/proxies/my/delete-failed', {
+    apiRequest<AsyncOperationStart>('/api/proxies/my/delete-failed', {
       method: 'POST',
+      headers: { Prefer: 'respond-async' },
       body: JSON.stringify(payload),
-      timeoutMs: 15 * 60 * 1000,
     }),
   confirmFree: (id: number | string) =>
     apiRequest<{ ok?: boolean }>(`/api/proxies/my/${id}/confirm-free`, {
@@ -1693,6 +1693,11 @@ export type ProxyBatchCheckResult = {
 };
 
 export type ProxyDeleteFailedResult = {
+  total?: number;
+  processed?: number;
+  current_proxy_id?: number | null;
+  current_proxy_name?: string;
+  current_index?: number;
   deleted_ids: number[];
   deleted_count: number;
   skipped: Array<{ proxy_id: number; deleted: boolean; reason?: string }>;
