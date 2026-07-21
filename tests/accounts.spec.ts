@@ -87,6 +87,12 @@ test.beforeEach(async ({ page }) => {
     const assignWorkerError = params.get('assignWorkerError') === '1';
     const externalProxyError = params.get('externalProxyError') === '1';
     const freeOn = params.get('freeOn');
+    const requestedFreeTrial = params.get('freeTrial');
+    let freeTrialStatus: 'available' | 'active' | 'expired' = requestedFreeTrial === 'expired'
+      ? 'expired'
+      : freeOn === 'alpha' || freeOn === 'beta' || requestedFreeTrial === 'active'
+        ? 'active'
+        : 'available';
     let accounts = startEmpty ? [] : [
       {
         id: 81,
@@ -229,10 +235,11 @@ test.beforeEach(async ({ page }) => {
       if (path === '/api/proxies/my' && method === 'GET') {
         inventoryCalls += 1;
         testScope.__INVENTORY_CALLS__ = inventoryCalls;
-        if (inventoryErrorOnce && inventoryCalls === 1) {
+        if (inventoryErrorOnce && inventoryCalls === 2) {
           return json({ success: false, error: 'Не удалось загрузить инвентарь' }, 503);
         }
-        if (emptyInventory) return ok({ items: [] });
+        if (emptyInventory) return ok({ items: [], free_trial: { status: freeTrialStatus } });
+        const freeAccount = accounts.find((account) => account.proxy_type === 'free_shared');
         return ok({ items: [
           {
             id: 91,
@@ -313,7 +320,7 @@ test.beforeEach(async ({ page }) => {
             expires_at: '2020-07-18T00:00:00Z',
             created_at: '2020-06-18T00:00:00Z',
           },
-          {
+          ...(freeTrialStatus === 'active' ? [{
             id: 95,
             product: 'free_shared',
             label: 'Бесплатный прокси',
@@ -326,9 +333,15 @@ test.beforeEach(async ({ page }) => {
             is_active: true,
             health_status: 'healthy',
             fail_count: 0,
+            expires_at: '2030-07-25T00:00:00Z',
+            assigned_account_id: freeAccount?.id,
+            assigned_username: freeAccount?.username,
             created_at: '2026-07-18T00:00:00Z',
-          },
-        ] });
+          }] : []),
+        ], free_trial: {
+          status: freeTrialStatus,
+          ...(freeTrialStatus === 'active' ? { proxy_id: 95, expires_at: '2030-07-25T00:00:00Z' } : {}),
+        } });
       }
       if (path === '/api/account-onboarding' && method === 'POST') {
         const body = JSON.parse(String(init?.body || '{}')) as { mode?: string; product?: string; proxy_id?: number; external_proxy?: { host?: string; port?: number } };
@@ -425,20 +438,28 @@ test.beforeEach(async ({ page }) => {
             ? { ...account, proxy_connected: true, proxy_label: `${body.host}:${body.port}`, proxy_type: 'external' }
             : account);
         } else if (body.mode === 'free') {
+          freeTrialStatus = 'active';
           accounts = accounts.map((account) => account.id === 81
             ? { ...account, proxy_connected: true, proxy_label: 'Бесплатный прокси #1', proxy_type: 'free_shared' }
             : account);
         }
         return ok({});
       }
-      if (path === '/api/proxies/my/91/assign' && method === 'POST') {
+      if (/^\/api\/proxies\/my\/(91|95)\/assign$/.test(path) && method === 'POST') {
         testScope.__OWNED_PROXY_ASSIGN_CALLS__ = (testScope.__OWNED_PROXY_ASSIGN_CALLS__ || 0) + 1;
         const body = JSON.parse(String(init?.body || '{}')) as Record<string, unknown>;
         testScope.__OWNED_PROXY_ASSIGN_BODY__ = body;
         if (assignError) return json({ success: false, error: 'Прокси уже назначен другому вашему аккаунту' }, 400);
-        accounts = accounts.map((account) => account.id === 81
-          ? { ...account, proxy_connected: true, proxy_label: 'Proxy Lite', proxy_type: 'individual' }
-          : account);
+        const assignedProxyID = Number(path.split('/')[4]);
+        accounts = accounts.map((account) => {
+          if (assignedProxyID === 95 && account.id !== 81 && account.proxy_type === 'free_shared') {
+            return { ...account, proxy_connected: false, proxy_label: undefined, proxy_type: 'none' };
+          }
+          if (account.id !== 81) return account;
+          return assignedProxyID === 95
+            ? { ...account, proxy_connected: true, proxy_label: 'Бесплатный прокси #1', proxy_type: 'free_shared' }
+            : { ...account, proxy_connected: true, proxy_label: 'Proxy Lite', proxy_type: 'individual' };
+        });
         if (assignWorkerError) {
           return json({ success: false, error: 'Прокси назначен, но воркеры не запустились' }, 502);
         }
@@ -662,7 +683,7 @@ test('free proxy remains available and uses the free connect endpoint when the u
       inventoryCalls: scope.__INVENTORY_CALLS__ || 0,
     };
   });
-  expect(request).toEqual({ connectCalls: 1, connectBody: { mode: 'free' }, inventoryCalls: 0 });
+  expect(request).toEqual({ connectCalls: 1, connectBody: { mode: 'free' }, inventoryCalls: 2 });
 });
 
 test('free card opens warehouse when another account already uses the shared proxy', async ({ page }) => {
@@ -682,7 +703,7 @@ test('free card opens warehouse when another account already uses the shared pro
     const scope = window as typeof window & { __PROXY_CONNECT_CALLS__?: number; __INVENTORY_CALLS__?: number };
     return { connect: scope.__PROXY_CONNECT_CALLS__ || 0, inventory: scope.__INVENTORY_CALLS__ || 0 };
   });
-  expect(calls).toEqual({ connect: 0, inventory: 1 });
+  expect(calls).toEqual({ connect: 0, inventory: 2 });
 });
 
 test('onboarding free card opens warehouse and selects an owned proxy without requesting free mode', async ({ page }) => {
@@ -704,12 +725,12 @@ test('onboarding free card opens warehouse and selects an owned proxy without re
     };
     return { onboarding: scope.__ONBOARDING_REQUESTS__ || [], inventory: scope.__INVENTORY_CALLS__ || 0 };
   });
-  expect(requests.inventory).toBe(1);
+  expect(requests.inventory).toBe(2);
   expect(requests.onboarding).toEqual([{ mode: 'owned', proxy_id: 91 }]);
   expect(requests.onboarding).not.toContainEqual({ mode: 'free' });
 });
 
-test('free card returns after the current shared proxy is replaced from warehouse', async ({ page }) => {
+test('free trial stays in warehouse after the current shared proxy is replaced', async ({ page }) => {
   await page.goto('/platform/accounts?freeOn=alpha');
   const alphaRow = page.getByRole('row').filter({ hasText: 'AlphaSeller' });
   await alphaRow.getByRole('button', { name: 'Сменить прокси' }).click();
@@ -721,10 +742,44 @@ test('free card returns after the current shared proxy is replaced from warehous
   await expect(alphaRow).toContainText('Proxy Lite');
 
   await alphaRow.getByRole('button', { name: 'Сменить прокси' }).click();
-  const restoredFreeCard = page.getByTestId('change-proxy-option-free');
-  await expect(restoredFreeCard).toContainText('Бесплатный прокси');
-  await expect(restoredFreeCard).not.toContainText('Выбрать прокси со склада');
-  await expect(restoredFreeCard.getByRole('button', { name: 'Подключить', exact: true })).toBeVisible();
+  const warehouseCardAfterReplacement = page.getByTestId('change-proxy-option-free');
+  await expect(warehouseCardAfterReplacement).toContainText('Выбрать прокси со склада');
+  await expect(warehouseCardAfterReplacement).not.toContainText('Бесплатный прокси');
+  await warehouseCardAfterReplacement.getByRole('button', { name: 'Выбрать', exact: true }).click();
+  const inventory = page.getByTestId('change-proxy-owned-list');
+  await expect(inventory.getByText('Бесплатный прокси #1', { exact: true })).toBeVisible();
+  await expect(inventory.getByText(/до 25\.07/)).toBeVisible();
+});
+
+test('expired free trial never restores the free grant action', async ({ page }) => {
+  await page.goto('/platform/accounts?freeTrial=expired');
+  const alphaRow = page.getByRole('row').filter({ hasText: 'AlphaSeller' });
+  await alphaRow.getByRole('button', { name: 'Сменить прокси' }).click();
+  const warehouseCard = page.getByTestId('change-proxy-option-free');
+  await expect(warehouseCard).toContainText('Выбрать прокси со склада');
+  await expect(warehouseCard.getByRole('button', { name: 'Выбрать', exact: true })).toBeVisible();
+  await warehouseCard.getByRole('button', { name: 'Выбрать', exact: true }).click();
+  await expect(page.getByTestId('change-proxy-owned-list').getByText('Бесплатный прокси #1', { exact: true })).toHaveCount(0);
+});
+
+test('active free trial can be moved between own accounts with one assignment request', async ({ page }) => {
+  await page.goto('/platform/accounts?freeOn=beta');
+  const alphaRow = page.getByRole('row').filter({ hasText: 'AlphaSeller' });
+  await alphaRow.getByRole('button', { name: 'Сменить прокси' }).click();
+  await page.getByTestId('change-proxy-option-free').getByRole('button', { name: 'Выбрать', exact: true }).click();
+  const freeItem = page.getByTestId('change-proxy-owned-list').getByRole('button').filter({ hasText: 'Бесплатный прокси #1' });
+  await expect(freeItem).toContainText('BetaSeller');
+  await expect(freeItem).toContainText('Перенести');
+  await freeItem.evaluate((button) => {
+    (button as HTMLButtonElement).click();
+    (button as HTMLButtonElement).click();
+  });
+  await expect(alphaRow).toContainText('Бесплатный прокси #1');
+  const assignment = await page.evaluate(() => ({
+    calls: (window as typeof window & { __OWNED_PROXY_ASSIGN_CALLS__?: number }).__OWNED_PROXY_ASSIGN_CALLS__ || 0,
+    body: (window as typeof window & { __OWNED_PROXY_ASSIGN_BODY__?: Record<string, unknown> }).__OWNED_PROXY_ASSIGN_BODY__,
+  }));
+  expect(assignment).toEqual({ calls: 1, body: { account_id: 81 } });
 });
 
 test('warehouse replacement card fits a phone viewport', async ({ page }) => {

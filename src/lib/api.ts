@@ -1495,7 +1495,7 @@ export type ProxiesMarketResponse = {
 };
 
 export const proxiesApi = {
-  listMine: () => apiRequest<{ items: MyProxyItem[] }>('/api/proxies/my'),
+  listMine: () => apiRequest<{ items: MyProxyItem[]; free_trial?: FreeProxyTrial }>('/api/proxies/my'),
   getCredentials: (id: number | string) =>
     apiRequest<MyProxyCredentials>(`/api/proxies/my/${id}/credentials`, {
       method: 'POST',
@@ -1646,6 +1646,12 @@ export type MyProxyItem = {
   assigned_username?: string | null;
   confirm_required?: boolean;
   confirm_deadline_at?: string | null;
+};
+
+export type FreeProxyTrial = {
+  status: 'available' | 'active' | 'expired';
+  proxy_id?: number | null;
+  expires_at?: string | null;
 };
 
 export type MyProxyCredentials = {

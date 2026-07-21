@@ -18,7 +18,7 @@ const productLabels: Record<string, string> = {
 };
 
 const productDescriptions: Record<string, string> = {
-  free_shared: "Бесплатный ресурс платформы, виден только пока назначен аккаунту.",
+  free_shared: "Бесплатный ресурс платформы во временной семидневной аренде.",
   proxy_lite: "Личный прокси на месяц для стабильной работы одного аккаунта.",
   proxy_pro: "Усиленный личный прокси с отдельным IPv4.",
   external_custom: "Ваш внешний прокси. Храним в инвентаре без ограничения по сроку.",
@@ -167,7 +167,7 @@ export default function MyProxiesPage() {
     setBusyId(proxy.id);
     try {
       await proxiesApi.releaseMine(proxy.id);
-      toast.success(proxy.is_shared_free ? "Бесплатный прокси освобождён" : "Прокси освобождён");
+      toast.success(proxy.is_shared_free ? "Бесплатный прокси отключён от аккаунта и сохранён до конца аренды" : "Прокси освобождён");
       await load();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Не удалось освободить прокси";
@@ -189,20 +189,6 @@ export default function MyProxiesPage() {
       await load();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Не удалось проверить прокси";
-      toast.error(message);
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  async function confirmFreeProxy(proxy: MyProxyItem) {
-    setBusyId(proxy.id);
-    try {
-      await proxiesApi.confirmFree(proxy.id);
-      toast.success("Бесплатный прокси оставлен за аккаунтом");
-      await load();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Не удалось подтвердить прокси";
       toast.error(message);
     } finally {
       setBusyId(null);
@@ -321,22 +307,15 @@ export default function MyProxiesPage() {
 
   const renderActions = (proxy: MyProxyItem) => (
     <div className="flex min-w-0 flex-wrap justify-start gap-2">
-      {!proxy.is_shared_free && (
-        <Button size="sm" variant="outline" className="min-w-[108px] flex-1 sm:flex-none" onClick={() => openAssignModal(proxy)} disabled={busyId === proxy.id}>
-          Назначить
-        </Button>
-      )}
-      {proxy.is_shared_free && proxy.confirm_required && (
-        <Button size="sm" variant="primary" className="min-w-[132px] flex-1 sm:flex-none" onClick={() => confirmFreeProxy(proxy)} disabled={busyId === proxy.id}>
-          Оставить прокси
-        </Button>
-      )}
+      <Button size="sm" variant="outline" className="min-w-[108px] flex-1 sm:flex-none" onClick={() => openAssignModal(proxy)} disabled={busyId === proxy.id}>
+        {proxy.is_shared_free && proxy.assigned_account_id ? "Перенести" : "Назначить"}
+      </Button>
       <Button size="sm" variant="outline" className="min-w-[108px] flex-1 sm:flex-none" onClick={() => checkProxy(proxy)} disabled={busyId === proxy.id}>
         Проверить
       </Button>
       {proxy.assigned_account_id && (
         <Button size="sm" variant="secondary" className="min-w-[118px] flex-1 sm:flex-none" onClick={() => releaseProxy(proxy)} disabled={busyId === proxy.id}>
-          Освободить
+          {proxy.is_shared_free ? "Отключить" : "Освободить"}
         </Button>
       )}
     </div>
@@ -355,9 +334,6 @@ export default function MyProxiesPage() {
           <Badge variant={statusVariant(proxy.health_status)}>
             {statusLabels[proxy.health_status] ?? proxy.health_status}
           </Badge>
-          {proxy.is_shared_free && proxy.confirm_required && (
-            <Badge variant="warning">Нужно подтвердить</Badge>
-          )}
         </div>
         <p className="mt-3 truncate font-mono text-base font-semibold text-gray-900 dark:text-white" title={proxyDisplayName(proxy)}>
           {proxyDisplayName(proxy)}
@@ -368,14 +344,12 @@ export default function MyProxiesPage() {
       <div className="min-w-0">{renderSecretCell(proxy)}</div>
 
       <div className="flex min-w-0 flex-wrap gap-2">
-        {renderMetaChip("Срок", proxy.is_shared_free ? "Пока назначен" : formatDate(proxy.expires_at))}
+        {renderMetaChip("Срок", formatDate(proxy.expires_at), proxy.is_shared_free && daysUntil(proxy.expires_at) <= 1 ? "warning" : "default")}
         {proxy.is_shared_free
           ? renderMetaChip(
               "Статус",
-              proxy.confirm_required
-                ? `Подтвердить до ${formatDate(proxy.confirm_deadline_at)}`
-                : "Используется аккаунтом",
-              proxy.confirm_required ? "warning" : "success",
+              proxy.assigned_account_id ? "Назначен аккаунту" : "Свободен до конца аренды",
+              "success",
             )
           : renderMetaChip("Протокол", proxy.protocol)}
         {proxy.last_error && (
@@ -408,9 +382,6 @@ export default function MyProxiesPage() {
               <Badge variant={statusVariant(proxy.health_status)}>
                 {statusLabels[proxy.health_status] ?? proxy.health_status}
               </Badge>
-              {proxy.is_shared_free && proxy.confirm_required && (
-                <Badge variant="warning">Нужно подтвердить</Badge>
-              )}
             </div>
             <p className="mt-3 truncate font-semibold text-gray-900 dark:text-white" title={proxyDisplayName(proxy)}>
               {proxyDisplayName(proxy)}
@@ -420,15 +391,13 @@ export default function MyProxiesPage() {
         </div>
         {renderSecretCell(proxy)}
         <div className="flex min-w-0 flex-wrap gap-2">
-          {renderMetaChip("Срок", proxy.is_shared_free ? "Пока назначен" : formatDate(proxy.expires_at))}
+          {renderMetaChip("Срок", formatDate(proxy.expires_at), proxy.is_shared_free && daysUntil(proxy.expires_at) <= 1 ? "warning" : "default")}
           {renderMetaChip("Аккаунт", proxy.assigned_username || "Не назначен")}
           {proxy.is_shared_free &&
             renderMetaChip(
               "Статус",
-              proxy.confirm_required
-                ? `Подтвердить до ${formatDate(proxy.confirm_deadline_at)}`
-                : "Активен",
-              proxy.confirm_required ? "warning" : "success",
+              proxy.assigned_account_id ? "Назначен аккаунту" : "Свободен до конца аренды",
+              "success",
             )}
         </div>
         {renderActions(proxy)}
@@ -442,7 +411,7 @@ export default function MyProxiesPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Мои прокси</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Управляйте платными, внешними и назначенными бесплатными прокси.
+            Управляйте платными, внешними и временно арендованными бесплатными прокси.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
