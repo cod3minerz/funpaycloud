@@ -345,7 +345,7 @@ export default function SubscriptionPage() {
                 <span className="text-base font-normal text-gray-500">/ {confirmPeriodLabel}</span>
               </p>
               <p className="text-xs text-gray-400 mt-1">
-                Следующее списание: через {confirmDays} дней
+                Продлевается {annual && !confirmModal?.welcomeOffer ? "ежегодно" : "ежемесячно"} · Отменить можно в любой момент
               </p>
             </div>
 
@@ -357,7 +357,7 @@ export default function SubscriptionPage() {
                 className="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-500 accent-brand-500 cursor-pointer shrink-0"
               />
               <span className="text-sm text-gray-600 dark:text-gray-300">
-                Соглашаюсь на автоматическое продление подписки каждые {confirmDays} дней.{" "}
+                Соглашаюсь на автоматическое {annual && !confirmModal?.welcomeOffer ? "ежегодное" : "ежемесячное"} продление подписки.{" "}
                 <span className="text-gray-400">Отменить можно в любой момент в настройках подписки.</span>
               </span>
             </label>
@@ -531,7 +531,7 @@ export default function SubscriptionPage() {
                 </div>
                 <p className="mt-0.5 text-sm text-gray-500">{plan.tagline}</p>
                 <p className="mt-1 text-[11px] text-gray-400">
-                  Списание каждые {annual ? "365" : "30"} дн. · Отмена в любой момент
+                  {annual ? "Ежегодная" : "Ежемесячная"} подписка · Отмена в любой момент
                 </p>
               </div>
 
