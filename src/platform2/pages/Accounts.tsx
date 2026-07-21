@@ -40,6 +40,7 @@ type Account = {
   keeper: boolean;
   raiser: boolean;
   proxy: string;
+  proxyType: ApiAccount["proxy_type"];
   proxyConnected: boolean;
   eventsToday: number;
   lastEvent: string;
@@ -79,6 +80,7 @@ function mapApiAccount(a: ApiAccount): Account {
     keeper: a.keeper_active,
     raiser: a.raiser_active,
     proxy: a.proxy_label ?? (a.proxy_connected ? "Прокси подключён" : "Нет прокси"),
+    proxyType: a.proxy_type ?? "none",
     proxyConnected: a.proxy_connected ?? false,
     eventsToday: a.runner_events_today ?? 0,
     lastEvent: a.runner_last_event_at
@@ -160,6 +162,20 @@ export default function AccountsPage() {
     () => proxyTarget ? accounts.find((account) => account.apiId === proxyTarget.apiId) ?? null : null,
     [accounts, proxyTarget],
   );
+  const hasAssignedFreeProxy = useMemo(
+    () => accounts.some((account) => account.proxyType === "free_shared"),
+    [accounts],
+  );
+  const visibleProxyOptions = useMemo(() => proxyOptions.map((option) => {
+    if (option.id !== "free" || !hasAssignedFreeProxy) return option;
+    return {
+      ...option,
+      title: "Выбрать прокси со склада",
+      description: "Выберите свободный прокси из «Моих прокси».",
+      action: "Выбрать",
+      icon: "plug-in" as const,
+    };
+  }), [hasAssignedFreeProxy]);
 
   function resetAddWizard() {
     setIsAddModal(false);
@@ -531,6 +547,11 @@ export default function AccountsPage() {
 
   async function handleOnboardingProxyChoice(id: string) {
     if (id === "free") {
+      if (hasAssignedFreeProxy) {
+        setAddStep("owned");
+        await loadOwnedProxies();
+        return;
+      }
       await createOnboarding({ mode: "free" });
     } else if (id === "proxy_lite" || id === "proxy_pro") {
       await createOnboarding({ mode: "paid", product: id });
@@ -1125,10 +1146,11 @@ export default function AccountsPage() {
 
         {addStep === "proxy" && (
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" data-testid="onboarding-proxy-picker">
-            {proxyOptions.map((opt) => (
+            {visibleProxyOptions.map((opt) => (
               <button
                 type="button"
                 key={opt.id}
+                data-testid={`onboarding-proxy-option-${opt.id}`}
                 disabled={onboardingLoading}
                 onClick={() => void handleOnboardingProxyChoice(opt.id)}
                 className="flex min-h-64 flex-col rounded-2xl border border-gray-200 bg-white p-5 text-left transition hover:border-brand-400 hover:shadow-md disabled:cursor-wait disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900"
@@ -1296,9 +1318,10 @@ export default function AccountsPage() {
         </p>
         {proxyFlowStep === "catalog" && (
         <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4" data-testid="change-proxy-catalog">
-          {proxyOptions.map((opt) => (
+          {visibleProxyOptions.map((opt) => (
             <div
               key={opt.id}
+              data-testid={`change-proxy-option-${opt.id}`}
               className="relative flex min-h-[340px] min-w-0 flex-col justify-between overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900"
             >
               <div>
@@ -1316,7 +1339,12 @@ export default function AccountsPage() {
                   if (opt.id === "external") {
                     setProxyFlowStep("own-choice");
                   } else if (opt.id === "free") {
-                    void handleConnectFreeProxy();
+                    if (hasAssignedFreeProxy) {
+                      setProxyFlowStep("owned");
+                      void loadOwnedProxies();
+                    } else {
+                      void handleConnectFreeProxy();
+                    }
                   } else if (opt.id === "proxy_lite" || opt.id === "proxy_pro") {
                     void handlePaidProxyPayment(opt.id);
                   } else {
