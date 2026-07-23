@@ -345,6 +345,11 @@ export default function SubscriptionPage() {
               <p className="text-xs text-gray-400 mt-1">
                 Продлевается {annual && !confirmModal?.welcomeOffer ? "ежегодно" : "ежемесячно"} · Отменить можно в любой момент
               </p>
+              {confirmModal?.welcomeOffer && (
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Специальная цена действует только для первого платежа. Далее — {confirmPlanData.monthlyPrice} ₽/мес.
+                </p>
+              )}
             </div>
 
             <label className="flex items-start gap-3 cursor-pointer mb-5">
