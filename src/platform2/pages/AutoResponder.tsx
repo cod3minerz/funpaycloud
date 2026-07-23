@@ -46,7 +46,6 @@ function newCommand(position = 0): DraftCommand {
     action_value: "",
     plugin_slug: null,
     include_telegram_username: false,
-    telegram_username: "",
     position,
   };
 }
@@ -68,7 +67,6 @@ function draftFromResponder(item: AutoResponder): Draft {
       action_value: command.action_value || "",
       plugin_slug: command.plugin_slug || null,
       include_telegram_username: Boolean(command.include_telegram_username),
-      telegram_username: command.telegram_username || "",
       position,
     })),
   };
@@ -290,13 +288,6 @@ export default function AutoResponderPage() {
         toast.error(`Выберите плагин для команды ${index + 1}`);
         return null;
       }
-      if (command.action_type === "call_seller" && command.include_telegram_username && command.telegram_username?.trim()) {
-        const username = command.telegram_username.trim().replace(/^@/, "");
-        if (!/^[A-Za-z0-9_]{1,32}$/.test(username)) {
-          toast.error(`Проверьте Telegram username в команде ${index + 1}`);
-          return null;
-        }
-      }
     }
     return {
       name,
@@ -312,9 +303,6 @@ export default function AutoResponderPage() {
         include_telegram_username: command.action_type === "call_seller"
           ? Boolean(command.include_telegram_username)
           : false,
-        telegram_username: command.action_type === "call_seller" && command.include_telegram_username
-          ? command.telegram_username?.trim() || ""
-          : "",
         position,
       })),
     };
@@ -633,7 +621,7 @@ export default function AutoResponderPage() {
                       </label>
                       <label className="md:col-span-2">
                         <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">Действие при выполнении команды</span>
-                        <select data-testid={`auto-responder-action-${index}`} value={command.action_type} onChange={(event) => updateCommand(command.clientId, { action_type: event.target.value as AutoResponderActionType, action_value: "", plugin_slug: null, include_telegram_username: false, telegram_username: "" })} className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white">
+                        <select data-testid={`auto-responder-action-${index}`} value={command.action_type} onChange={(event) => updateCommand(command.clientId, { action_type: event.target.value as AutoResponderActionType, action_value: "", plugin_slug: null, include_telegram_username: false })} className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white">
                           <option value="send_message">Отправить сообщение</option>
                           <option value="call_seller">Вызов продавца</option>
                           <option value="run_plugin">Выполнить плагин</option>
@@ -686,7 +674,6 @@ export default function AutoResponderPage() {
                                   checked={Boolean(command.include_telegram_username) === option.value}
                                   onChange={() => updateCommand(command.clientId, {
                                     include_telegram_username: option.value,
-                                    ...(option.value ? {} : { telegram_username: "" }),
                                   })}
                                   className="sr-only"
                                 />
@@ -694,24 +681,12 @@ export default function AutoResponderPage() {
                               </label>
                             ))}
                           </div>
+                          {command.include_telegram_username && (
+                            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                              Бот упомянет привязанный Telegram-аккаунт по его Telegram ID.
+                            </p>
+                          )}
                         </fieldset>
-
-                        {command.include_telegram_username && (
-                          <label className="block">
-                            <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">Какой @username указать <span className="normal-case">(необязательно)</span></span>
-                            <input
-                              data-testid={`auto-responder-call-seller-username-${index}`}
-                              maxLength={33}
-                              autoComplete="off"
-                              spellCheck={false}
-                              value={command.telegram_username || ""}
-                              onChange={(event) => updateCommand(command.clientId, { telegram_username: event.target.value })}
-                              placeholder="@username"
-                              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-                            />
-                            <span className="mt-1.5 block text-xs text-gray-500 dark:text-gray-400">Можно ввести с символом @ или без него.</span>
-                          </label>
-                        )}
 
                         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">Продавец получит Telegram-уведомление. Для включения автоответчика Telegram должен быть привязан.</div>
                       </div>
