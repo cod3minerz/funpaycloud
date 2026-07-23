@@ -160,9 +160,26 @@ const AppSidebar: React.FC = () => {
         .then(r => { if (alive) setUnreadCount(r.count); })
         .catch(() => {});
     };
+    const applySharedCount = (event: Event) => {
+      const custom = event as CustomEvent<{ unread?: number }>;
+      const value = Number(custom.detail?.unread);
+      if (alive && Number.isFinite(value) && value >= 0) setUnreadCount(value);
+    };
+    const refreshVisible = () => {
+      if (document.visibilityState === "visible") loadUnread();
+    };
     loadUnread();
-    const t = setInterval(loadUnread, 30_000);
-    return () => { alive = false; clearInterval(t); };
+    const t = setInterval(loadUnread, 10_000);
+    window.addEventListener("funpay:notifications-updated", applySharedCount);
+    window.addEventListener("focus", refreshVisible);
+    document.addEventListener("visibilitychange", refreshVisible);
+    return () => {
+      alive = false;
+      clearInterval(t);
+      window.removeEventListener("funpay:notifications-updated", applySharedCount);
+      window.removeEventListener("focus", refreshVisible);
+      document.removeEventListener("visibilitychange", refreshVisible);
+    };
   }, []);
 
   const pinnedPluginSubItems = [

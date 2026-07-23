@@ -2568,10 +2568,11 @@ export interface UserNotification {
 }
 
 export const notificationsApi = {
-  getNotifications: (params?: { page?: number; unreadOnly?: boolean }) => {
+  getNotifications: (params?: { page?: number; unreadOnly?: boolean; type?: UserNotification['type'] | '' }) => {
     const qs = new URLSearchParams();
     if (params?.page) qs.set('page', String(params.page));
     if (params?.unreadOnly) qs.set('unread_only', 'true');
+    if (params?.type) qs.set('type', params.type);
     return apiRequest<{ items: UserNotification[]; total: number; page: number; unread: number }>(
       `/api/notifications?${qs}`
     );

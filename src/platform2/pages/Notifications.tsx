@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/platform2/components/ui/card";
 import { Button } from "@/platform2/components/ui/button";
 import { notificationsApi, UserNotification } from "@/lib/api";
@@ -44,6 +45,7 @@ function formatMSK(dateStr: string) {
 const PAGE_SIZE = 20;
 
 export default function Notifications() {
+  const router = useRouter();
   const [items, setItems] = useState<UserNotification[]>([]);
   const [total, setTotal] = useState(0);
   const [unread, setUnread] = useState(0);
@@ -52,32 +54,63 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
 
-  const load = useCallback(async (p: number) => {
-    setLoading(true);
+  const load = useCallback(async (p: number, silent = false) => {
+    if (!silent) setLoading(true);
     try {
-      const res = await notificationsApi.getNotifications({ page: p });
+      const res = await notificationsApi.getNotifications({
+        page: p,
+        type: filter as UserNotification["type"] | "",
+      });
       setItems(res.items ?? []);
       setTotal(res.total ?? 0);
       setUnread(res.unread ?? 0);
+      window.dispatchEvent(new CustomEvent("funpay:notifications-updated", {
+        detail: { unread: res.unread ?? 0 },
+      }));
     } catch {
-      toast.error("Не удалось загрузить уведомления");
+      if (!silent) toast.error("Не удалось загрузить уведомления");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  }, []);
+  }, [filter]);
 
   useEffect(() => {
     load(page);
   }, [page, load]);
 
-  const handleMarkRead = async (n: UserNotification) => {
-    if (n.is_read) return;
-    try {
-      await notificationsApi.markRead(n.id);
-      setItems(prev => prev.map(x => x.id === n.id ? { ...x, is_read: true } : x));
-      setUnread(prev => Math.max(0, prev - 1));
-    } catch {
-      toast.error("Не удалось отметить уведомление");
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") void load(page, true);
+    };
+    const timer = window.setInterval(refresh, 10_000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [load, page]);
+
+  const handleNotificationClick = async (n: UserNotification) => {
+    if (!n.is_read) {
+      try {
+        await notificationsApi.markRead(n.id);
+        setItems(prev => prev.map(x => x.id === n.id ? { ...x, is_read: true } : x));
+        const nextUnread = Math.max(0, unread - 1);
+        setUnread(nextUnread);
+        window.dispatchEvent(new CustomEvent("funpay:notifications-updated", { detail: { unread: nextUnread } }));
+      } catch {
+        toast.error("Не удалось отметить уведомление");
+        return;
+      }
+    }
+    if (n.type === "new_message") {
+      const accountID = Number(n.meta?.account_id ?? n.funpay_account_id);
+      const chatID = Number(n.meta?.chat_id);
+      if (accountID > 0 && chatID > 0) {
+        router.push(`/platform/chats?account_id=${accountID}&chat_id=${chatID}`);
+      }
     }
   };
 
@@ -87,6 +120,7 @@ export default function Notifications() {
       await notificationsApi.markAllRead();
       setItems(prev => prev.map(x => ({ ...x, is_read: true })));
       setUnread(0);
+      window.dispatchEvent(new CustomEvent("funpay:notifications-updated", { detail: { unread: 0 } }));
       toast.success("Все уведомления прочитаны");
     } catch {
       toast.error("Не удалось обновить уведомления");
@@ -94,10 +128,6 @@ export default function Notifications() {
       setMarkingAll(false);
     }
   };
-
-  const visibleItems = filter
-    ? items.filter(n => n.type === filter)
-    : items;
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
@@ -136,7 +166,10 @@ export default function Notifications() {
         {TYPE_FILTERS.map(f => (
           <button
             key={f.value}
-            onClick={() => setFilter(f.value)}
+            onClick={() => {
+              setPage(1);
+              setFilter(f.value);
+            }}
             className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
               filter === f.value
                 ? "bg-blue-500 text-white"
@@ -164,7 +197,7 @@ export default function Notifications() {
                 </li>
               ))}
             </ul>
-          ) : visibleItems.length === 0 ? (
+          ) : items.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-gray-500 dark:text-gray-400">
               <BellIcon className="h-12 w-12 mb-3 opacity-30" />
               <p className="font-medium">Уведомлений нет</p>
@@ -172,10 +205,10 @@ export default function Notifications() {
             </div>
           ) : (
             <ul className="divide-y divide-gray-100 dark:divide-gray-800">
-              {visibleItems.map(n => (
+              {items.map(n => (
                 <li
                   key={n.id}
-                  onClick={() => handleMarkRead(n)}
+                  onClick={() => void handleNotificationClick(n)}
                   className={`flex gap-3 p-4 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50 ${
                     !n.is_read ? "bg-blue-50/40 dark:bg-blue-950/20" : ""
                   }`}
