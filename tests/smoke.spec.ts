@@ -1219,6 +1219,12 @@ test('auto responder CRUD, conditional actions and independent account toggles',
   await page.getByTestId('auto-responder-trigger-1').fill('2');
   await page.getByTestId('auto-responder-action-1').selectOption('call_seller');
   await expect(page.getByText(/Продавец получит Telegram-уведомление/)).toBeVisible();
+  await expect(page.getByTestId('auto-responder-call-seller-reply-1')).toBeVisible();
+  await expect(page.getByTestId('auto-responder-call-seller-mention-1-no').getByRole('radio')).toBeChecked();
+  await expect(page.getByTestId('auto-responder-call-seller-username-1')).toHaveCount(0);
+  await page.getByTestId('auto-responder-call-seller-reply-1').fill('Уже зову продавца');
+  await page.getByTestId('auto-responder-call-seller-mention-1-yes').click();
+  await page.getByTestId('auto-responder-call-seller-username-1').fill('@seller_support');
 
   await page.getByTestId('add-auto-responder-command').click();
   await page.getByTestId('auto-responder-trigger-2').fill('telegram');
@@ -1243,6 +1249,9 @@ test('auto responder CRUD, conditional actions and independent account toggles',
 
   await firstCard.getByRole('button', { name: 'Редактировать Основной автоответчик' }).click();
   await expect(page.getByRole('dialog', { name: 'Редактирование автоответчика' })).toBeVisible();
+  await expect(page.getByTestId('auto-responder-call-seller-reply-1')).toHaveValue('Уже зову продавца');
+  await expect(page.getByTestId('auto-responder-call-seller-mention-1-yes').getByRole('radio')).toBeChecked();
+  await expect(page.getByTestId('auto-responder-call-seller-username-1')).toHaveValue('@seller_support');
   await page.getByTestId('auto-responder-name').fill('Основной обновлённый');
   await page.getByTestId('save-auto-responder').click();
   await expect(page.getByTestId('auto-responder-modal')).toHaveCount(0);

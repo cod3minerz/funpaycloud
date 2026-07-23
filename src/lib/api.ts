@@ -386,6 +386,8 @@ export type AutoResponderCommand = {
   action_type: AutoResponderActionType;
   action_value?: string;
   plugin_slug?: string | null;
+  include_telegram_username?: boolean;
+  telegram_username?: string;
   position: number;
 };
 
@@ -408,6 +410,8 @@ export type AutoResponderCommandInput = {
   action_type: AutoResponderActionType;
   action_value?: string;
   plugin_slug?: string | null;
+  include_telegram_username?: boolean;
+  telegram_username?: string;
   position: number;
 };
 
