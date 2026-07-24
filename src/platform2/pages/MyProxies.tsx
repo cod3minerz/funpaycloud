@@ -48,6 +48,7 @@ const statusLabels: Record<string, string> = {
 };
 
 const PROXY_ASSIGNMENT_STORAGE_KEY = "fpcloud:proxy-assignment:active-operation";
+const PROXY_SINGLE_CHECK_STORAGE_KEY = "fpcloud:proxy-check-single:active-operation";
 const PROXY_CHECK_STORAGE_KEY = "fpcloud:proxy-check:active-operation";
 const PROXY_CHECK_RESULT_STORAGE_KEY = "fpcloud:proxy-check:last-operation";
 const PROXY_DELETE_STORAGE_KEY = "fpcloud:proxy-delete:active-operation";
@@ -163,6 +164,7 @@ export default function MyProxiesPage() {
   const [externalOpen, setExternalOpen] = useState(false);
   const [externalSaving, setExternalSaving] = useState(false);
   const [activeOperation, setActiveOperation] = useState<BackgroundOperation | null>(null);
+  const [activeSingleCheckOperation, setActiveSingleCheckOperation] = useState<BackgroundOperation | null>(null);
   const [activeCheckOperation, setActiveCheckOperation] = useState<BackgroundOperation | null>(null);
   const [activeDeleteOperation, setActiveDeleteOperation] = useState<BackgroundOperation | null>(null);
   const [lastCheckOperation, setLastCheckOperation] = useState<BackgroundOperation | null>(null);
@@ -173,9 +175,11 @@ export default function MyProxiesPage() {
   const [bulkDeleteConfirmation, setBulkDeleteConfirmation] = useState("");
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
   const assignmentRestoreStarted = useRef(false);
+  const singleCheckRestoreStarted = useRef(false);
   const checkRestoreStarted = useRef(false);
   const deleteRestoreStarted = useRef(false);
   const checkStartingRef = useRef(false);
+  const singleCheckStartingRef = useRef(false);
   const deleteLoadingRef = useRef(false);
   const bulkDeleteLoadingRef = useRef(false);
   const [externalProxy, setExternalProxy] = useState({
@@ -230,6 +234,23 @@ export default function MyProxiesPage() {
       .catch((error) => {
         window.sessionStorage.removeItem(PROXY_ASSIGNMENT_STORAGE_KEY);
         toast.error(error instanceof Error ? error.message : "Не удалось восстановить назначение прокси");
+      });
+  }, []);
+
+  useEffect(() => {
+    if (singleCheckRestoreStarted.current || typeof window === "undefined") return;
+    singleCheckRestoreStarted.current = true;
+    const operationID = window.sessionStorage.getItem(PROXY_SINGLE_CHECK_STORAGE_KEY);
+    if (!operationID) return;
+    operationsApi.get(operationID)
+      .then((operation) => monitorSingleProxyCheck(operation))
+      .then(async (operation) => {
+        await load();
+        showSingleProxyCheckResult(operation);
+      })
+      .catch((error) => {
+        window.sessionStorage.removeItem(PROXY_SINGLE_CHECK_STORAGE_KEY);
+        toast.error(error instanceof Error ? error.message : "Не удалось восстановить проверку прокси");
       });
   }, []);
 
@@ -313,6 +334,30 @@ export default function MyProxiesPage() {
     } finally {
       setActiveCheckOperation(null);
       if (typeof window !== "undefined") window.sessionStorage.removeItem(PROXY_CHECK_STORAGE_KEY);
+    }
+  }
+
+  async function monitorSingleProxyCheck(initial: BackgroundOperation) {
+    setActiveSingleCheckOperation(initial);
+    if (typeof window !== "undefined") window.sessionStorage.setItem(PROXY_SINGLE_CHECK_STORAGE_KEY, initial.id);
+    try {
+      return await waitForBackgroundOperation(initial, operationsApi.get, setActiveSingleCheckOperation);
+    } finally {
+      setActiveSingleCheckOperation(null);
+      if (typeof window !== "undefined") window.sessionStorage.removeItem(PROXY_SINGLE_CHECK_STORAGE_KEY);
+    }
+  }
+
+  function showSingleProxyCheckResult(operation: BackgroundOperation) {
+    if (operation.status !== "succeeded") {
+      toast.error(operation.error_message || "Не удалось проверить прокси");
+      return;
+    }
+    const status = typeof operation.result?.status === "string" ? operation.result.status : "";
+    if (status === "healthy") {
+      toast.success("Прокси отвечает");
+    } else {
+      toast.warning("Прокси не прошёл проверку. Попробуйте ещё раз.");
     }
   }
 
@@ -430,19 +475,19 @@ export default function MyProxiesPage() {
   }
 
   async function checkProxy(proxy: MyProxyItem) {
+    if (singleCheckStartingRef.current || activeSingleCheckOperation) return;
+    singleCheckStartingRef.current = true;
     setBusyId(proxy.id);
     try {
-      const result = await proxiesApi.checkMine(proxy.id);
-      if (result.status === "healthy") {
-        toast.success("Прокси отвечает");
-      } else {
-        toast.warning(result.error || "Прокси требует внимания");
-      }
+      const started = await proxiesApi.checkMine(proxy.id);
+      const completed = await monitorSingleProxyCheck(started.operation);
       await load();
+      showSingleProxyCheckResult(completed);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Не удалось проверить прокси";
       toast.error(message);
     } finally {
+      singleCheckStartingRef.current = false;
       setBusyId(null);
     }
   }
@@ -476,9 +521,15 @@ export default function MyProxiesPage() {
     deleteLoadingRef.current = true;
     setDeleteLoading(true);
     try {
-      await proxiesApi.deleteMine(deleteTarget.id);
+      const result = await proxiesApi.deleteMine(deleteTarget.id);
       if (lastCheckResult?.failed_proxy_ids.includes(deleteTarget.id)) clearStoredCheckResult();
-      toast.success("Прокси удалён");
+      if (deleteTarget.is_shared_free || deleteTarget.product === "free_shared") {
+        toast.success(result.removed_from_pool
+          ? "Истёкший бесплатный прокси удалён из общего пула"
+          : "Бесплатный прокси освобождён и удалён из вашего инвентаря");
+      } else {
+        toast.success("Прокси удалён");
+      }
       setDeleteTarget(null);
       setCredentials((previous) => {
         const next = { ...previous };
@@ -648,7 +699,7 @@ export default function MyProxiesPage() {
             variant="primary"
             className="min-w-[178px] flex-1 sm:flex-none"
             onClick={() => void renewFreeProxy()}
-            disabled={freeProxyBusy || Boolean(activeCheckOperation) || Boolean(activeDeleteOperation)}
+            disabled={freeProxyBusy || Boolean(activeSingleCheckOperation) || Boolean(activeCheckOperation) || Boolean(activeDeleteOperation)}
           >
             {freeProxyBusy ? "Продлеваем…" : "Продлить на 52 часа"}
           </Button>
@@ -658,25 +709,25 @@ export default function MyProxiesPage() {
           variant="outline"
           className="min-w-[108px] flex-1 sm:flex-none"
           onClick={() => openAssignModal(proxy)}
-          disabled={Boolean(activeCheckOperation) || Boolean(activeDeleteOperation) || deleteLoading || busyId === proxy.id || !proxy.is_active || proxy.health_status === "unhealthy" || proxy.health_status === "expired" || Boolean(proxy.assigned_account_id && !proxy.is_shared_free)}
+          disabled={Boolean(activeSingleCheckOperation) || Boolean(activeCheckOperation) || Boolean(activeDeleteOperation) || deleteLoading || busyId === proxy.id || !proxy.is_active || proxy.health_status === "unhealthy" || proxy.health_status === "expired" || Boolean(proxy.assigned_account_id && !proxy.is_shared_free)}
         >
           {proxy.is_shared_free && proxy.assigned_account_id ? "Перенести" : proxy.assigned_account_id ? "Назначен" : "Назначить"}
         </Button>
-        <Button size="sm" variant="outline" className="min-w-[108px] flex-1 sm:flex-none" onClick={() => checkProxy(proxy)} disabled={Boolean(activeCheckOperation) || Boolean(activeDeleteOperation) || deleteLoading || busyId === proxy.id || proxy.health_status === "expired"}>
+        <Button size="sm" variant="outline" className="min-w-[108px] flex-1 sm:flex-none" onClick={() => checkProxy(proxy)} disabled={Boolean(activeSingleCheckOperation) || Boolean(activeCheckOperation) || Boolean(activeDeleteOperation) || deleteLoading || busyId === proxy.id || proxy.health_status === "expired"}>
           Проверить
         </Button>
         {proxy.assigned_account_id && (
-          <Button size="sm" variant="secondary" className="min-w-[118px] flex-1 sm:flex-none" onClick={() => releaseProxy(proxy)} disabled={Boolean(activeCheckOperation) || Boolean(activeDeleteOperation) || deleteLoading || busyId === proxy.id}>
+          <Button size="sm" variant="secondary" className="min-w-[118px] flex-1 sm:flex-none" onClick={() => releaseProxy(proxy)} disabled={Boolean(activeSingleCheckOperation) || Boolean(activeCheckOperation) || Boolean(activeDeleteOperation) || deleteLoading || busyId === proxy.id}>
             {proxy.is_shared_free ? "Отключить" : "Освободить"}
           </Button>
         )}
-        {proxy.can_delete && !proxy.is_shared_free && proxy.product !== "free_shared" && (
+        {proxy.can_delete && (
           <Button
             size="sm"
             variant="danger"
             className="min-w-[108px] flex-1 sm:flex-none"
             onClick={() => setDeleteTarget(proxy)}
-            disabled={Boolean(activeCheckOperation) || Boolean(activeDeleteOperation) || deleteLoading || busyId === proxy.id}
+            disabled={Boolean(activeSingleCheckOperation) || Boolean(activeCheckOperation) || Boolean(activeDeleteOperation) || deleteLoading || busyId === proxy.id}
           >
             Удалить
           </Button>
@@ -729,7 +780,7 @@ export default function MyProxiesPage() {
         {proxy.is_shared_free && freeProxyTrial?.status === "renewal_due" &&
           renderMetaChip("Осталось на продление", formatCountdown(freeProxyTrial.expires_at, clock), "warning")}
         {proxy.last_error && (
-          <span className="line-clamp-2 text-xs text-error-500">{proxy.last_error}</span>
+          <span className="line-clamp-2 text-xs text-error-500">Прокси временно недоступен. Выполните повторную проверку.</span>
         )}
       </div>
 
@@ -790,6 +841,7 @@ export default function MyProxiesPage() {
   return (
     <div className="space-y-6">
       {activeOperation && <BlockingOperationOverlay operation={activeOperation} title="Назначаем и проверяем прокси" />}
+      {activeSingleCheckOperation && <BlockingOperationOverlay operation={activeSingleCheckOperation} title="Проверяем прокси" />}
       {activeCheckOperation && <ProxyBatchCheckOverlay operation={activeCheckOperation} />}
       {activeDeleteOperation && <ProxyDeleteOverlay operation={activeDeleteOperation} />}
       {deleteLoading && deleteTarget && !activeDeleteOperation && <ProxyDeleteOverlay proxyName={proxyDisplayName(deleteTarget)} />}
@@ -804,7 +856,7 @@ export default function MyProxiesPage() {
           <Button
             variant="outline"
             onClick={checkAllProxies}
-            disabled={checkStarting || Boolean(activeCheckOperation) || Boolean(activeDeleteOperation) || deleteLoading || loading || items.length === 0}
+            disabled={checkStarting || Boolean(activeSingleCheckOperation) || Boolean(activeCheckOperation) || Boolean(activeDeleteOperation) || deleteLoading || loading || items.length === 0}
             startIcon={<Icon name="check-circle" className="h-4 w-4" />}
           >
             {checkStarting ? "Запускаем..." : "Проверить все прокси"}
@@ -813,7 +865,7 @@ export default function MyProxiesPage() {
             <Button
               variant="danger"
               onClick={openBulkDelete}
-              disabled={Boolean(activeCheckOperation) || Boolean(activeDeleteOperation) || deleteLoading || lastCheckResult.failed_count === 0}
+              disabled={Boolean(activeSingleCheckOperation) || Boolean(activeCheckOperation) || Boolean(activeDeleteOperation) || deleteLoading || lastCheckResult.failed_count === 0}
             >
               Удалить не прошедшие
             </Button>
@@ -922,17 +974,27 @@ export default function MyProxiesPage() {
       </div>
 
       <Modal isOpen={deleteTarget !== null} onClose={() => { if (!deleteLoading) setDeleteTarget(null); }} className="max-w-lg p-6">
-        <h2 className="pr-10 text-xl font-bold text-gray-900 dark:text-white">Удалить прокси?</h2>
+        <h2 className="pr-10 text-xl font-bold text-gray-900 dark:text-white">
+          {deleteTarget?.is_shared_free || deleteTarget?.product === "free_shared"
+            ? "Освободить бесплатный прокси?"
+            : "Удалить прокси?"}
+        </h2>
         <p className="mt-3 text-sm text-gray-500">
           {deleteTarget ? `${proxyDisplayName(deleteTarget)} · ID ${deleteTarget.id}` : ""}
         </p>
         <p className="mt-3 rounded-xl bg-error-500/10 p-4 text-sm text-error-600 dark:text-error-400">
-          Прокси исчезнет из инвентаря, а сохранённые доступы будут удалены. Это действие нельзя отменить.
+          {deleteTarget?.is_shared_free || deleteTarget?.product === "free_shared"
+            ? "Прокси будет отключён от аккаунта и исчезнет из вашего инвентаря. Если срок платформенного прокси истёк, он также будет удалён из общего пула."
+            : "Прокси исчезнет из инвентаря, а сохранённые доступы будут удалены. Это действие нельзя отменить."}
         </p>
         <div className="mt-8 flex gap-3">
           <Button variant="outline" className="flex-1" onClick={() => setDeleteTarget(null)} disabled={deleteLoading}>Отмена</Button>
           <Button variant="danger" className="flex-1" onClick={deleteProxy} disabled={deleteLoading}>
-            {deleteLoading ? "Удаляем..." : "Удалить"}
+            {deleteLoading
+              ? "Удаляем..."
+              : (deleteTarget?.is_shared_free || deleteTarget?.product === "free_shared")
+                ? "Освободить"
+                : "Удалить"}
           </Button>
         </div>
       </Modal>

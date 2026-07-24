@@ -1557,15 +1557,16 @@ export const proxiesApi = {
       body: JSON.stringify(payload),
     }),
   checkMine: (id: number | string) =>
-    apiRequest<{ status: string; error?: string }>(`/api/proxies/my/${id}/check`, {
+    apiRequest<AsyncOperationStart>(`/api/proxies/my/${id}/check`, {
       method: 'POST',
+      headers: { Prefer: 'respond-async' },
     }),
   checkAllMine: () =>
     apiRequest<AsyncOperationStart>('/api/proxies/my/check-all', {
       method: 'POST',
     }),
   deleteMine: (id: number | string) =>
-    apiRequest<{ proxy_id: number; deleted: boolean }>(`/api/proxies/my/${id}`, {
+    apiRequest<{ proxy_id: number; deleted: boolean; released?: boolean; removed_from_pool?: boolean }>(`/api/proxies/my/${id}`, {
       method: 'DELETE',
     }),
   deleteFailedMine: (payload: { operation_id: string; confirmation: 'DELETE_FAILED_PROXIES' }) =>

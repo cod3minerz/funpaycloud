@@ -14,11 +14,15 @@ test.beforeEach(async ({ page }) => {
 	let freeExpiresAt = freeTrialStatus === 'renewal_due' ? '2030-07-25T12:30:00Z' : '2030-07-25T12:30:00Z';
 	let assignmentPolls = 0;
 	let assigned = false;
+    let singleCheckPolls = 0;
+    let singleCheckStartRequests = 0;
+    let singleCheckProxyID = 0;
     let batchPolls = 0;
     let batchStartRequests = 0;
     let deleteBatchPolls = 0;
     let deleteBatchStartRequests = 0;
 	    const deletedProxyIDs = new Set<number>();
+	const freeHasError = params.get('freeError') === '1';
 	(window as typeof window & { __FREE_RENEW_CALLS__?: number }).__FREE_RENEW_CALLS__ = 0;
     const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
       status,
@@ -61,14 +65,17 @@ test.beforeEach(async ({ page }) => {
           is_shared_free: true,
           has_credentials: false,
           is_active: true,
-          health_status: 'healthy',
-          fail_count: 0,
+          health_status: freeHasError ? 'degraded' : 'healthy',
+          fail_count: freeHasError ? 1 : 0,
+          ...(freeHasError ? {
+            last_error: 'Get "https://funpay.com/": proxyconnect tcp: dial tcp 46.161.47.147:9802: connect: connection refused',
+          } : {}),
 	          expires_at: freeExpiresAt,
 		  assigned_account_id: assigned ? 81 : undefined,
           assigned_username: assigned ? 'AlphaSeller' : undefined,
           created_at: '2026-07-21T00:00:00Z',
-          can_delete: false,
-	          delete_block_reason: 'platform_owned',
+          can_delete: freeHasError,
+	          delete_block_reason: freeHasError ? '' : 'free_proxy_healthy',
 	        }] : []), {
           id: 96,
           product: 'external_custom',
@@ -165,6 +172,53 @@ test.beforeEach(async ({ page }) => {
 		  updated_at: started,
 		} });
 	  }
+	  const singleCheckMatch = path.match(/^\/api\/proxies\/my\/(\d+)\/check$/);
+	  if (singleCheckMatch && method === 'POST') {
+		singleCheckStartRequests += 1;
+		singleCheckPolls = 0;
+		singleCheckProxyID = Number(singleCheckMatch[1]);
+		(window as typeof window & {
+		  __PROXY_SINGLE_CHECK_START_COUNT__?: number;
+		  __PROXY_SINGLE_CHECK_PREFER__?: string | null;
+		}).__PROXY_SINGLE_CHECK_START_COUNT__ = singleCheckStartRequests;
+		(window as typeof window & {
+		  __PROXY_SINGLE_CHECK_PREFER__?: string | null;
+		}).__PROXY_SINGLE_CHECK_PREFER__ = new Headers(init?.headers).get('Prefer');
+		const started = new Date().toISOString();
+		return ok({ operation: {
+		  id: 'proxy-check-single',
+		  kind: 'proxy_check_single',
+		  status: 'queued',
+		  attempt: 0,
+		  max_attempts: 3,
+		  result: { proxy_id: singleCheckProxyID },
+		  created_at: started,
+		  updated_at: started,
+		} });
+	  }
+	  if (path === '/api/operations/proxy-check-single' && method === 'GET') {
+		singleCheckPolls += 1;
+		const attempt = singleCheckPolls <= 2 ? 1 : singleCheckPolls === 3 ? 2 : 3;
+		const completed = singleCheckPolls >= 5;
+		const retryWait = singleCheckPolls === 2 || singleCheckPolls === 4;
+		const started = new Date(Date.now() - 250).toISOString();
+		return ok({
+		  id: 'proxy-check-single',
+		  kind: 'proxy_check_single',
+		  status: completed ? 'succeeded' : retryWait ? 'retry_wait' : 'running',
+		  attempt,
+		  max_attempts: 3,
+		  attempt_started_at: started,
+		  attempt_deadline_at: new Date(new Date(started).getTime() + 45_000).toISOString(),
+		  next_retry_at: retryWait ? new Date(Date.now() + 500).toISOString() : undefined,
+		  result: completed
+		    ? { proxy_id: singleCheckProxyID, status: 'healthy', checked_at: new Date().toISOString() }
+		    : { proxy_id: singleCheckProxyID },
+		  created_at: started,
+		  updated_at: new Date().toISOString(),
+		  finished_at: completed ? new Date().toISOString() : undefined,
+		});
+	  }
 	  if (path === '/api/operations/proxy-check-batch' && method === 'GET') {
 		batchPolls += 1;
 		const started = new Date(Date.now() - 500).toISOString();
@@ -202,8 +256,9 @@ test.beforeEach(async ({ page }) => {
 		const proxyID = Number(path.split('/').pop());
 		await new Promise((resolve) => window.setTimeout(resolve, 150));
 		deletedProxyIDs.add(proxyID);
+		if (proxyID === 95) freeTrialStatus = 'available';
 		(window as typeof window & { __DELETED_PROXY_ID__?: number }).__DELETED_PROXY_ID__ = proxyID;
-		return ok({ proxy_id: proxyID, deleted: true });
+		return ok({ proxy_id: proxyID, deleted: true, released: proxyID === 95 });
 	  }
 	  if (path === '/api/proxies/my/delete-failed' && method === 'POST') {
 		const payload = JSON.parse(String(init?.body || '{}')) as { operation_id?: string; confirmation?: string };
@@ -301,6 +356,45 @@ test('inventory assignment uses the blocking asynchronous operation', async ({ p
   await expect(overlay).toBeHidden();
   await expect(page.getByText('Назначен аккаунту', { exact: true }).first()).toBeVisible();
   expect(await page.evaluate(() => (window as typeof window & { __PROXY_ASSIGN_PREFER__?: string | null }).__PROXY_ASSIGN_PREFER__)).toBe('respond-async');
+});
+
+test('single proxy check shows three animated attempts and sends one async request', async ({ page }) => {
+  await page.goto('/platform/proxies');
+  const externalRow = page.locator('[data-proxy-id="96"]').first();
+  await externalRow.getByRole('button', { name: 'Проверить' }).evaluate((button) => {
+    (button as HTMLButtonElement).click();
+    (button as HTMLButtonElement).click();
+  });
+
+  const overlay = page.getByTestId('blocking-operation-overlay');
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toContainText('Проверяем прокси');
+  await expect(page.getByTestId('blocking-operation-attempt')).toHaveText('Попытка 1 из 3');
+  await expect(page.getByTestId('blocking-operation-progress')).toHaveAttribute('data-duration-ms', '45000');
+  await expect(page.getByTestId('blocking-operation-attempt')).toHaveText('Попытка 3 из 3', { timeout: 6_000 });
+  await expect(overlay).toBeHidden({ timeout: 6_000 });
+
+  const state = await page.evaluate(() => ({
+    starts: (window as typeof window & { __PROXY_SINGLE_CHECK_START_COUNT__?: number }).__PROXY_SINGLE_CHECK_START_COUNT__,
+    prefer: (window as typeof window & { __PROXY_SINGLE_CHECK_PREFER__?: string | null }).__PROXY_SINGLE_CHECK_PREFER__,
+  }));
+  expect(state).toEqual({ starts: 1, prefer: 'respond-async' });
+});
+
+test('masks technical proxy errors and releases an errored Free proxy after confirmation', async ({ page }) => {
+  await page.goto('/platform/proxies?freeError=1');
+  const freeRow = page.locator('[data-proxy-id="95"]').first();
+  await expect(freeRow).toContainText('Прокси временно недоступен. Выполните повторную проверку.');
+  await expect(page.getByText(/funpay\.com|46\.161\.47\.147|connection refused/i)).toHaveCount(0);
+
+  await freeRow.getByRole('button', { name: 'Удалить' }).click();
+  const confirmation = page.getByRole('heading', { name: 'Освободить бесплатный прокси?' }).locator('..');
+  await expect(confirmation).toContainText('Если срок платформенного прокси истёк');
+  await confirmation.getByRole('button', { name: 'Освободить', exact: true }).click();
+  await expect(page.getByTestId('proxy-delete-overlay')).toBeVisible();
+  await expect(page.locator('[data-proxy-id="95"]').first()).toHaveCount(0);
+  await expect(page.getByTestId('proxy-delete-overlay')).toBeHidden();
+  expect(await page.evaluate(() => (window as typeof window & { __DELETED_PROXY_ID__?: number }).__DELETED_PROXY_ID__)).toBe(95);
 });
 
 test('active platform free lease is shown with its deadline and can be assigned', async ({ page }) => {
