@@ -375,17 +375,32 @@ export type ApiAccount = {
   proxy_max_accounts?: number;
 };
 
-export type AutoResponderTriggerType = 'keyword';
+export type AutoResponderTriggerType = 'keyword' | 'order_paid' | 'order_confirmed' | 'order_refunded';
 export type AutoResponderActionType = 'send_message' | 'call_seller' | 'run_plugin';
+
+export type AutoResponderAction = {
+  id: number;
+  auto_responder_command_id: number;
+  action_type: AutoResponderActionType;
+  action_value?: string;
+  plugin_slug?: string | null;
+  include_telegram_username?: boolean;
+  position: number;
+};
 
 export type AutoResponderCommand = {
   id: number;
   auto_responder_id: number;
   trigger_type: AutoResponderTriggerType;
   trigger_value: string;
+  actions: AutoResponderAction[];
+  /** @deprecated Transitional single-action field from the backend-first rollout. */
   action_type: AutoResponderActionType;
+  /** @deprecated Transitional single-action field from the backend-first rollout. */
   action_value?: string;
+  /** @deprecated Transitional single-action field from the backend-first rollout. */
   plugin_slug?: string | null;
+  /** @deprecated Transitional single-action field from the backend-first rollout. */
   include_telegram_username?: boolean;
   position: number;
 };
@@ -403,13 +418,18 @@ export type AutoResponder = {
   updated_at: string;
 };
 
-export type AutoResponderCommandInput = {
-  trigger_type: AutoResponderTriggerType;
-  trigger_value: string;
+export type AutoResponderActionInput = {
   action_type: AutoResponderActionType;
   action_value?: string;
   plugin_slug?: string | null;
   include_telegram_username?: boolean;
+  position: number;
+};
+
+export type AutoResponderCommandInput = {
+  trigger_type: AutoResponderTriggerType;
+  trigger_value: string;
+  actions: AutoResponderActionInput[];
   position: number;
 };
 

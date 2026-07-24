@@ -7,6 +7,7 @@ import {
   ArrowDown,
   ArrowUp,
   Bot,
+  CircleHelp,
   Pencil,
   Plus,
   Save,
@@ -21,13 +22,19 @@ import {
   settingsApi,
   type ApiAccount,
   type AutoResponder,
+  type AutoResponderActionInput,
   type AutoResponderActionType,
   type AutoResponderCommandInput,
   type AutoResponderInput,
   type AutoResponderPlugin,
+  type AutoResponderTriggerType,
 } from "@/lib/api";
 
-type DraftCommand = AutoResponderCommandInput & { clientId: number };
+type DraftAction = AutoResponderActionInput & { clientId: number };
+type DraftCommand = Omit<AutoResponderCommandInput, "actions"> & {
+  clientId: number;
+  actions: DraftAction[];
+};
 type Draft = {
   id?: number;
   name: string;
@@ -36,16 +43,54 @@ type Draft = {
 };
 
 let nextCommandId = 1;
+let nextActionId = 1;
+
+const triggerOptions: Array<{ value: AutoResponderTriggerType; label: string }> = [
+  { value: "keyword", label: "Триггер-слово" },
+  { value: "order_confirmed", label: "Подтверждение заказа" },
+  { value: "order_paid", label: "Оплата заказа" },
+  { value: "order_refunded", label: "Возврат / отмена" },
+];
+
+const triggerDescriptions: Record<AutoResponderTriggerType, { title: string; text: string; variables?: string }> = {
+  keyword: {
+    title: "Триггер-слово",
+    text: "Срабатывает, когда входящее сообщение покупателя содержит указанное слово или фразу без учёта регистра.",
+  },
+  order_confirmed: {
+    title: "Подтверждение заказа",
+    text: "Срабатывает, когда покупатель нажал «Подтвердить выполнение». Команда активного автоответчика имеет приоритет над одноимённым сообщением AI-Ассистента.",
+    variables: "{buyer} — покупатель, {order_id} — номер заказа, {lot} — название лота, {price} — цена.",
+  },
+  order_paid: {
+    title: "Оплата заказа",
+    text: "Срабатывает сразу после оплаты заказа. Команда активного автоответчика имеет приоритет над одноимённым сообщением AI-Ассистента.",
+    variables: "{buyer} — покупатель, {order_id} — номер заказа, {lot} — название лота, {price} — цена.",
+  },
+  order_refunded: {
+    title: "Возврат / отмена",
+    text: "Срабатывает, когда заказ был отменён или возвращён. Команда активного автоответчика имеет приоритет над одноимённым сообщением AI-Ассистента.",
+    variables: "{buyer} — покупатель, {order_id} — номер заказа, {lot} — название лота, {price} — цена.",
+  },
+};
+
+function newAction(position = 0): DraftAction {
+  return {
+    clientId: nextActionId++,
+    action_type: "send_message",
+    action_value: "",
+    plugin_slug: null,
+    include_telegram_username: false,
+    position,
+  };
+}
 
 function newCommand(position = 0): DraftCommand {
   return {
     clientId: nextCommandId++,
     trigger_type: "keyword",
     trigger_value: "",
-    action_type: "send_message",
-    action_value: "",
-    plugin_slug: null,
-    include_telegram_username: false,
+    actions: [newAction()],
     position,
   };
 }
@@ -63,10 +108,22 @@ function draftFromResponder(item: AutoResponder): Draft {
       clientId: nextCommandId++,
       trigger_type: command.trigger_type,
       trigger_value: command.trigger_value,
-      action_type: command.action_type,
-      action_value: command.action_value || "",
-      plugin_slug: command.plugin_slug || null,
-      include_telegram_username: Boolean(command.include_telegram_username),
+      actions: (command.actions?.length ? command.actions : [{
+        id: 0,
+        auto_responder_command_id: command.id,
+        action_type: command.action_type,
+        action_value: command.action_value,
+        plugin_slug: command.plugin_slug,
+        include_telegram_username: command.include_telegram_username,
+        position: 0,
+      }]).map((action, actionPosition) => ({
+        clientId: nextActionId++,
+        action_type: action.action_type,
+        action_value: action.action_value || "",
+        plugin_slug: action.plugin_slug || null,
+        include_telegram_username: Boolean(action.include_telegram_username),
+        position: actionPosition,
+      })),
       position,
     })),
   };
@@ -136,6 +193,174 @@ function Toggle({
   );
 }
 
+function CommandEditor({
+  command,
+  index,
+  total,
+  plugins,
+  descriptionOpen,
+  onToggleDescription,
+  onUpdateCommand,
+  onMoveCommand,
+  onRemoveCommand,
+  onAddAction,
+  onUpdateAction,
+  onMoveAction,
+  onRemoveAction,
+}: {
+  command: DraftCommand;
+  index: number;
+  total: number;
+  plugins: AutoResponderPlugin[];
+  descriptionOpen: boolean;
+  onToggleDescription: () => void;
+  onUpdateCommand: (patch: Partial<DraftCommand>) => void;
+  onMoveCommand: (direction: -1 | 1) => void;
+  onRemoveCommand: () => void;
+  onAddAction: () => void;
+  onUpdateAction: (actionId: number, patch: Partial<DraftAction>) => void;
+  onMoveAction: (actionIndex: number, direction: -1 | 1) => void;
+  onRemoveAction: (actionId: number) => void;
+}) {
+  const description = triggerDescriptions[command.trigger_type];
+  return (
+    <div data-testid={`auto-responder-command-${index}`} className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-950/60">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Команда {index + 1}</span>
+          <button
+            type="button"
+            data-testid={`auto-responder-description-toggle-${index}`}
+            aria-label={`Описание команды ${index + 1}`}
+            aria-expanded={descriptionOpen}
+            onClick={onToggleDescription}
+            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-white hover:text-brand-600 dark:hover:bg-gray-800 dark:hover:text-brand-400"
+          >
+            <CircleHelp className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="flex items-center gap-1">
+          <button type="button" aria-label={`Переместить команду ${index + 1} вверх`} disabled={index === 0} onClick={() => onMoveCommand(-1)} className="rounded-lg p-2 text-gray-500 hover:bg-white disabled:opacity-30 dark:hover:bg-gray-800"><ArrowUp className="h-4 w-4" /></button>
+          <button type="button" aria-label={`Переместить команду ${index + 1} вниз`} disabled={index === total - 1} onClick={() => onMoveCommand(1)} className="rounded-lg p-2 text-gray-500 hover:bg-white disabled:opacity-30 dark:hover:bg-gray-800"><ArrowDown className="h-4 w-4" /></button>
+          <button type="button" aria-label={`Удалить команду ${index + 1}`} onClick={onRemoveCommand} className="rounded-lg p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"><Trash2 className="h-4 w-4" /></button>
+        </div>
+      </div>
+
+      {descriptionOpen && (
+        <div data-testid={`auto-responder-description-${index}`} className="mb-4 rounded-xl border border-brand-500/20 bg-brand-500/5 p-3 text-sm text-gray-600 dark:text-gray-300">
+          <p className="font-semibold text-gray-800 dark:text-white">{description.title}</p>
+          <p className="mt-1 leading-5">{description.text}</p>
+          {description.variables && (
+            <p className="mt-2 rounded-lg bg-white/70 px-2.5 py-2 font-mono text-xs leading-5 text-brand-700 dark:bg-gray-900/70 dark:text-brand-300">
+              {description.variables}
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className={`grid gap-4 ${command.trigger_type === "keyword" ? "md:grid-cols-2" : ""}`}>
+        <label>
+          <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">Команда</span>
+          <select
+            data-testid={`auto-responder-trigger-type-${index}`}
+            value={command.trigger_type}
+            onChange={(event) => onUpdateCommand({
+              trigger_type: event.target.value as AutoResponderTriggerType,
+              trigger_value: "",
+            })}
+            className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+          >
+            {triggerOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </label>
+        {command.trigger_type === "keyword" && (
+          <label>
+            <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">Триггер</span>
+            <input data-testid={`auto-responder-trigger-${index}`} maxLength={100} value={command.trigger_value} onChange={(event) => onUpdateCommand({ trigger_value: event.target.value })} placeholder="Например, 1 или помощь" className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+          </label>
+        )}
+      </div>
+
+      <div className="mt-5 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Действия при выполнении команды</p>
+            <p className="mt-1 text-xs text-gray-400">Выполняются последовательно сверху вниз.</p>
+          </div>
+          <button type="button" data-testid={`add-auto-responder-action-${index}`} disabled={command.actions.length >= 10} onClick={onAddAction} className="inline-flex items-center gap-1.5 rounded-lg border border-brand-500/30 px-3 py-2 text-xs font-semibold text-brand-600 transition hover:bg-brand-500/5 disabled:opacity-50 dark:text-brand-400">
+            <Plus className="h-3.5 w-3.5" /> Добавить действие
+          </button>
+        </div>
+
+        {command.actions.map((action, actionIndex) => {
+          const suffix = actionIndex === 0 ? `${index}` : `${index}-${actionIndex}`;
+          return (
+            <div key={action.clientId} data-testid={`auto-responder-action-card-${index}-${actionIndex}`} className="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Действие {actionIndex + 1}</span>
+                <div className="flex items-center gap-1">
+                  <button type="button" aria-label={`Переместить действие ${actionIndex + 1} команды ${index + 1} вверх`} disabled={actionIndex === 0} onClick={() => onMoveAction(actionIndex, -1)} className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-gray-800"><ArrowUp className="h-3.5 w-3.5" /></button>
+                  <button type="button" aria-label={`Переместить действие ${actionIndex + 1} команды ${index + 1} вниз`} disabled={actionIndex === command.actions.length - 1} onClick={() => onMoveAction(actionIndex, 1)} className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-gray-800"><ArrowDown className="h-3.5 w-3.5" /></button>
+                  <button type="button" aria-label={`Удалить действие ${actionIndex + 1} команды ${index + 1}`} title={command.actions.length === 1 ? "У команды должно остаться хотя бы одно действие" : undefined} disabled={command.actions.length === 1} onClick={() => onRemoveAction(action.clientId)} className="rounded-lg p-1.5 text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-red-500/10"><Trash2 className="h-3.5 w-3.5" /></button>
+                </div>
+              </div>
+
+              <label className="block">
+                <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">Действие</span>
+                <select data-testid={`auto-responder-action-${suffix}`} value={action.action_type} onChange={(event) => onUpdateAction(action.clientId, { action_type: event.target.value as AutoResponderActionType, action_value: "", plugin_slug: null, include_telegram_username: false })} className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-white">
+                  <option value="send_message">Отправить сообщение</option>
+                  <option value="call_seller">Вызов продавца</option>
+                  <option value="run_plugin">Выполнить плагин</option>
+                </select>
+              </label>
+
+              {action.action_type === "send_message" && (
+                <label className="mt-3 block">
+                  <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">Сообщение покупателю</span>
+                  <textarea data-testid={`auto-responder-message-${suffix}`} maxLength={2000} rows={3} value={action.action_value || ""} onChange={(event) => onUpdateAction(action.clientId, { action_value: event.target.value })} placeholder="Введите ответ, который будет отправлен в чат" className="w-full resize-y rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-900 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-white" />
+                </label>
+              )}
+
+              {action.action_type === "call_seller" && (
+                <div className="mt-3 space-y-4">
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">Ответ покупателю <span className="normal-case">(необязательно)</span></span>
+                    <textarea data-testid={`auto-responder-call-seller-reply-${suffix}`} maxLength={2000} rows={3} value={action.action_value || ""} onChange={(event) => onUpdateAction(action.clientId, { action_value: event.target.value })} placeholder="Например, Сейчас позову продавца…" className="w-full resize-y rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-900 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-white" />
+                    <span className="mt-1.5 block text-xs text-gray-500 dark:text-gray-400">Если оставить поле пустым, сообщение покупателю не отправится.</span>
+                  </label>
+                  <fieldset>
+                    <legend className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">Указывать ваш @username в Telegram-уведомлении?</legend>
+                    <div className="grid grid-cols-2 gap-2 sm:max-w-xs">
+                      {[{ label: "Нет", value: false }, { label: "Да", value: true }].map((option) => (
+                        <label key={option.label} data-testid={`auto-responder-call-seller-mention-${suffix}-${option.value ? "yes" : "no"}`} className={`flex cursor-pointer items-center justify-center rounded-xl border px-4 py-2.5 text-sm font-medium transition ${Boolean(action.include_telegram_username) === option.value ? "border-brand-500 bg-brand-500/10 text-brand-700 ring-1 ring-brand-500/20 dark:text-brand-300" : "border-gray-200 bg-white text-gray-600 hover:border-brand-500/40 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300"}`}>
+                          <input type="radio" name={`auto-responder-telegram-username-${command.clientId}-${action.clientId}`} value={option.value ? "yes" : "no"} checked={Boolean(action.include_telegram_username) === option.value} onChange={() => onUpdateAction(action.clientId, { include_telegram_username: option.value })} className="sr-only" />
+                          {option.label}
+                        </label>
+                      ))}
+                    </div>
+                    {action.include_telegram_username && <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Бот упомянет привязанный Telegram-аккаунт по его Telegram ID.</p>}
+                  </fieldset>
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">Продавец получит Telegram-уведомление. Для включения автоответчика Telegram должен быть привязан.</div>
+                </div>
+              )}
+
+              {action.action_type === "run_plugin" && (
+                <label className="mt-3 block">
+                  <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">Плагин с поддержкой команд</span>
+                  <select data-testid={`auto-responder-plugin-${suffix}`} value={action.plugin_slug || ""} onChange={(event) => onUpdateAction(action.clientId, { plugin_slug: event.target.value || null })} disabled={plugins.length === 0} className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-brand-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-950 dark:text-white">
+                    <option value="">{plugins.length ? "Выберите плагин" : "Нет поддерживаемых плагинов"}</option>
+                    {plugins.map((plugin) => <option key={plugin.slug} value={plugin.slug}>{plugin.name}</option>)}
+                  </select>
+                </label>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function AutoResponderPage() {
   const router = useRouter();
   const [checkingAccess, setCheckingAccess] = useState(true);
@@ -153,6 +378,7 @@ export default function AutoResponderPage() {
   const [assignmentError, setAssignmentError] = useState("");
   const [assigning, setAssigning] = useState(false);
   const [quickUnassignKey, setQuickUnassignKey] = useState("");
+  const [describedCommandId, setDescribedCommandId] = useState<number | null>(null);
   const modalOpen = Boolean(draft || assignmentItem);
 
   const loadData = useCallback(async () => {
@@ -224,6 +450,55 @@ export default function AutoResponderPage() {
     } : current);
   };
 
+  const updateAction = (commandId: number, actionId: number, patch: Partial<DraftAction>) => {
+    setDraft((current) => current ? {
+      ...current,
+      commands: current.commands.map((command) => command.clientId === commandId ? {
+        ...command,
+        actions: command.actions.map((action) => action.clientId === actionId ? { ...action, ...patch } : action),
+      } : command),
+    } : current);
+  };
+
+  const addAction = (commandId: number) => {
+    setDraft((current) => current ? {
+      ...current,
+      commands: current.commands.map((command) => command.clientId === commandId ? {
+        ...command,
+        actions: [...command.actions, newAction(command.actions.length)],
+      } : command),
+    } : current);
+  };
+
+  const removeAction = (commandId: number, actionId: number) => {
+    setDraft((current) => current ? {
+      ...current,
+      commands: current.commands.map((command) => command.clientId === commandId && command.actions.length > 1 ? {
+        ...command,
+        actions: command.actions
+          .filter((action) => action.clientId !== actionId)
+          .map((action, position) => ({ ...action, position })),
+      } : command),
+    } : current);
+  };
+
+  const moveAction = (commandId: number, index: number, direction: -1 | 1) => {
+    setDraft((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        commands: current.commands.map((command) => {
+          if (command.clientId !== commandId) return command;
+          const target = index + direction;
+          if (target < 0 || target >= command.actions.length) return command;
+          const actions = [...command.actions];
+          [actions[index], actions[target]] = [actions[target], actions[index]];
+          return { ...command, actions: actions.map((action, position) => ({ ...action, position })) };
+        }),
+      };
+    });
+  };
+
   const addCommand = () => {
     setDraft((current) => current ? {
       ...current,
@@ -270,39 +545,52 @@ export default function AutoResponderPage() {
     const seen = new Set<string>();
     for (const [index, command] of draft.commands.entries()) {
       const trigger = command.trigger_value.trim();
-      if (!trigger) {
+      if (command.trigger_type === "keyword" && !trigger) {
         toast.error(`Введите триггер команды ${index + 1}`);
         return null;
       }
-      const normalized = trigger.toLocaleLowerCase("ru-RU");
+      const normalized = command.trigger_type === "keyword"
+        ? `keyword:${trigger.toLocaleLowerCase("ru-RU")}`
+        : command.trigger_type;
       if (seen.has(normalized)) {
-        toast.error(`Триггер «${trigger}» указан несколько раз`);
+        toast.error(command.trigger_type === "keyword"
+          ? `Триггер «${trigger}» указан несколько раз`
+          : "Этот тип события уже добавлен");
         return null;
       }
       seen.add(normalized);
-      if (command.action_type === "send_message" && !command.action_value?.trim()) {
-        toast.error(`Введите сообщение для команды ${index + 1}`);
+      if (command.actions.length === 0) {
+        toast.error(`Добавьте действие для команды ${index + 1}`);
         return null;
       }
-      if (command.action_type === "run_plugin" && !command.plugin_slug) {
-        toast.error(`Выберите плагин для команды ${index + 1}`);
-        return null;
+      for (const [actionIndex, action] of command.actions.entries()) {
+        if (action.action_type === "send_message" && !action.action_value?.trim()) {
+          toast.error(`Введите сообщение для действия ${actionIndex + 1} команды ${index + 1}`);
+          return null;
+        }
+        if (action.action_type === "run_plugin" && !action.plugin_slug) {
+          toast.error(`Выберите плагин для действия ${actionIndex + 1} команды ${index + 1}`);
+          return null;
+        }
       }
     }
     return {
       name,
       menu_text: menuText,
       commands: draft.commands.map((command, position) => ({
-        trigger_type: "keyword",
-        trigger_value: command.trigger_value.trim(),
-        action_type: command.action_type,
-        action_value: command.action_type === "send_message" || command.action_type === "call_seller"
-          ? command.action_value?.trim() || ""
-          : "",
-        plugin_slug: command.action_type === "run_plugin" ? command.plugin_slug || null : null,
-        include_telegram_username: command.action_type === "call_seller"
-          ? Boolean(command.include_telegram_username)
-          : false,
+        trigger_type: command.trigger_type,
+        trigger_value: command.trigger_type === "keyword" ? command.trigger_value.trim() : "",
+        actions: command.actions.map((action, actionPosition) => ({
+          action_type: action.action_type,
+          action_value: action.action_type === "send_message" || action.action_type === "call_seller"
+            ? action.action_value?.trim() || ""
+            : "",
+          plugin_slug: action.action_type === "run_plugin" ? action.plugin_slug || null : null,
+          include_telegram_username: action.action_type === "call_seller"
+            ? Boolean(action.include_telegram_username)
+            : false,
+          position: actionPosition,
+        })),
         position,
       })),
     };
@@ -362,6 +650,7 @@ export default function AutoResponderPage() {
     if (assigning) return;
     setAssignmentItem(null);
     setAssignmentError("");
+    setDescribedCommandId(null);
     setDraft(newDraft());
   };
 
@@ -369,11 +658,15 @@ export default function AutoResponderPage() {
     if (assigning) return;
     setAssignmentItem(null);
     setAssignmentError("");
+    setDescribedCommandId(null);
     setDraft(draftFromResponder(item));
   };
 
   const closeDraft = () => {
-    if (!saving) setDraft(null);
+    if (!saving) {
+      setDraft(null);
+      setDescribedCommandId(null);
+    }
   };
 
   const openAssignment = (item: AutoResponder) => {
@@ -586,6 +879,7 @@ export default function AutoResponderPage() {
                 <label>
                   <span className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Меню для пользователя</span>
                   <textarea data-testid="auto-responder-menu" maxLength={2000} rows={4} value={draft.menu_text} onChange={(event) => setDraft({ ...draft, menu_text: event.target.value })} placeholder={"1 — получить инструкцию\n2 — вызвать продавца"} className="w-full resize-y rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-950 dark:text-white" />
+                  <span className="mt-1.5 block text-xs text-gray-500 dark:text-gray-400">Отправляется при неизвестном сообщении, только если в конфиге есть команда «Триггер-слово».</span>
                 </label>
               </div>
 
@@ -593,7 +887,7 @@ export default function AutoResponderPage() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h3 className="font-semibold text-gray-900 dark:text-white">Команды</h3>
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Срабатывает первое совпадение сверху вниз.</p>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Триггер-слова проверяются сверху вниз; события заказа срабатывают при изменении его статуса.</p>
                   </div>
                   <button type="button" data-testid="add-auto-responder-command" disabled={draft.commands.length >= 50} onClick={addCommand} className="inline-flex items-center gap-2 rounded-lg border border-brand-500/30 px-3 py-2 text-sm font-medium text-brand-600 transition hover:bg-brand-500/5 disabled:opacity-50 dark:text-brand-400"><Plus className="h-4 w-4" /> Добавить команду</button>
                 </div>
@@ -601,106 +895,22 @@ export default function AutoResponderPage() {
                 {draft.commands.length === 0 && <div className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">Добавьте хотя бы одну команду.</div>}
 
                 {draft.commands.map((command, index) => (
-                  <div key={command.clientId} data-testid={`auto-responder-command-${index}`} className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-950/60">
-                    <div className="mb-4 flex items-center justify-between gap-3">
-                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Команда {index + 1}</span>
-                      <div className="flex items-center gap-1">
-                        <button type="button" aria-label={`Переместить команду ${index + 1} вверх`} disabled={index === 0} onClick={() => moveCommand(index, -1)} className="rounded-lg p-2 text-gray-500 hover:bg-white disabled:opacity-30 dark:hover:bg-gray-800"><ArrowUp className="h-4 w-4" /></button>
-                        <button type="button" aria-label={`Переместить команду ${index + 1} вниз`} disabled={index === draft.commands.length - 1} onClick={() => moveCommand(index, 1)} className="rounded-lg p-2 text-gray-500 hover:bg-white disabled:opacity-30 dark:hover:bg-gray-800"><ArrowDown className="h-4 w-4" /></button>
-                        <button type="button" aria-label={`Удалить команду ${index + 1}`} onClick={() => removeCommand(command.clientId)} className="rounded-lg p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"><Trash2 className="h-4 w-4" /></button>
-                      </div>
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <label>
-                        <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">Команда</span>
-                        <select value={command.trigger_type} onChange={() => undefined} className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"><option value="keyword">Триггер-слово</option></select>
-                      </label>
-                      <label>
-                        <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">Триггер</span>
-                        <input data-testid={`auto-responder-trigger-${index}`} maxLength={100} value={command.trigger_value} onChange={(event) => updateCommand(command.clientId, { trigger_value: event.target.value })} placeholder="Например, 1 или помощь" className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
-                      </label>
-                      <label className="md:col-span-2">
-                        <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">Действие при выполнении команды</span>
-                        <select data-testid={`auto-responder-action-${index}`} value={command.action_type} onChange={(event) => updateCommand(command.clientId, { action_type: event.target.value as AutoResponderActionType, action_value: "", plugin_slug: null, include_telegram_username: false })} className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white">
-                          <option value="send_message">Отправить сообщение</option>
-                          <option value="call_seller">Вызов продавца</option>
-                          <option value="run_plugin">Выполнить плагин</option>
-                        </select>
-                      </label>
-                    </div>
-
-                    {command.action_type === "send_message" && (
-                      <label className="mt-4 block">
-                        <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">Сообщение покупателю</span>
-                        <textarea data-testid={`auto-responder-message-${index}`} maxLength={2000} rows={3} value={command.action_value || ""} onChange={(event) => updateCommand(command.clientId, { action_value: event.target.value })} placeholder="Введите ответ, который будет отправлен в чат" className="w-full resize-y rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-900 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
-                      </label>
-                    )}
-                    {command.action_type === "call_seller" && (
-                      <div className="mt-4 space-y-4">
-                        <label className="block">
-                          <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">Ответ покупателю <span className="normal-case">(необязательно)</span></span>
-                          <textarea
-                            data-testid={`auto-responder-call-seller-reply-${index}`}
-                            maxLength={2000}
-                            rows={3}
-                            value={command.action_value || ""}
-                            onChange={(event) => updateCommand(command.clientId, { action_value: event.target.value })}
-                            placeholder="Например, Сейчас позову продавца…"
-                            className="w-full resize-y rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-900 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-                          />
-                          <span className="mt-1.5 block text-xs text-gray-500 dark:text-gray-400">Если оставить поле пустым, сообщение покупателю не отправится.</span>
-                        </label>
-
-                        <fieldset>
-                          <legend className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">Указывать ваш @username в Telegram-уведомлении?</legend>
-                          <div className="grid grid-cols-2 gap-2 sm:max-w-xs">
-                            {[
-                              { label: "Нет", value: false },
-                              { label: "Да", value: true },
-                            ].map((option) => (
-                              <label
-                                key={option.label}
-                                data-testid={`auto-responder-call-seller-mention-${index}-${option.value ? "yes" : "no"}`}
-                                className={`flex cursor-pointer items-center justify-center rounded-xl border px-4 py-2.5 text-sm font-medium transition ${
-                                  Boolean(command.include_telegram_username) === option.value
-                                    ? "border-brand-500 bg-brand-500/10 text-brand-700 ring-1 ring-brand-500/20 dark:text-brand-300"
-                                    : "border-gray-200 bg-white text-gray-600 hover:border-brand-500/40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
-                                }`}
-                              >
-                                <input
-                                  type="radio"
-                                  name={`auto-responder-telegram-username-${command.clientId}`}
-                                  value={option.value ? "yes" : "no"}
-                                  checked={Boolean(command.include_telegram_username) === option.value}
-                                  onChange={() => updateCommand(command.clientId, {
-                                    include_telegram_username: option.value,
-                                  })}
-                                  className="sr-only"
-                                />
-                                {option.label}
-                              </label>
-                            ))}
-                          </div>
-                          {command.include_telegram_username && (
-                            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                              Бот упомянет привязанный Telegram-аккаунт по его Telegram ID.
-                            </p>
-                          )}
-                        </fieldset>
-
-                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">Продавец получит Telegram-уведомление. Для включения автоответчика Telegram должен быть привязан.</div>
-                      </div>
-                    )}
-                    {command.action_type === "run_plugin" && (
-                      <label className="mt-4 block">
-                        <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">Плагин с поддержкой команд</span>
-                        <select data-testid={`auto-responder-plugin-${index}`} value={command.plugin_slug || ""} onChange={(event) => updateCommand(command.clientId, { plugin_slug: event.target.value || null })} disabled={plugins.length === 0} className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-brand-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-white">
-                          <option value="">{plugins.length ? "Выберите плагин" : "Нет поддерживаемых плагинов"}</option>
-                          {plugins.map((plugin) => <option key={plugin.slug} value={plugin.slug}>{plugin.name}</option>)}
-                        </select>
-                      </label>
-                    )}
-                  </div>
+                  <CommandEditor
+                    key={command.clientId}
+                    command={command}
+                    index={index}
+                    total={draft.commands.length}
+                    plugins={plugins}
+                    descriptionOpen={describedCommandId === command.clientId}
+                    onToggleDescription={() => setDescribedCommandId((current) => current === command.clientId ? null : command.clientId)}
+                    onUpdateCommand={(patch) => updateCommand(command.clientId, patch)}
+                    onMoveCommand={(direction) => moveCommand(index, direction)}
+                    onRemoveCommand={() => removeCommand(command.clientId)}
+                    onAddAction={() => addAction(command.clientId)}
+                    onUpdateAction={(actionId, patch) => updateAction(command.clientId, actionId, patch)}
+                    onMoveAction={(actionIndex, direction) => moveAction(command.clientId, actionIndex, direction)}
+                    onRemoveAction={(actionId) => removeAction(command.clientId, actionId)}
+                  />
                 ))}
               </div>
             </div>

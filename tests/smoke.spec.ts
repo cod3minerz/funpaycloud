@@ -372,7 +372,9 @@ test.beforeEach(async ({ page }) => {
             error: 'Не удалось сохранить тестовый автоответчик',
           }), { status: 500, headers: { 'Content-Type': 'application/json' } });
         }
-        const created = storeAutoResponder(JSON.parse(String(init?.body || '{}')));
+        const body = JSON.parse(String(init?.body || '{}'));
+        (window as any).__LAST_AUTO_RESPONDER_BODY__ = body;
+        const created = storeAutoResponder(body);
         autoResponders = [created, ...autoResponders];
         return envelope(created);
       }
@@ -427,6 +429,7 @@ test.beforeEach(async ({ page }) => {
       if (responderMatch && method === 'PUT') {
         const id = Number(responderMatch[1]);
         const body = JSON.parse(String(init?.body || '{}'));
+        (window as any).__LAST_AUTO_RESPONDER_BODY__ = body;
         const current = autoResponders.find((item) => item.id === id);
         const updated = {
           ...storeAutoResponder(body, id, current?.funpay_account_ids || []),
@@ -1276,6 +1279,75 @@ test('auto responder CRUD, conditional actions and independent account toggles',
   page.once('dialog', (dialog) => dialog.accept());
   await firstCard.getByRole('button', { name: 'Удалить Основной обновлённый' }).click();
   await expect(firstCard).toHaveCount(0);
+});
+
+test('auto responder order events support descriptions and ordered multiple actions', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  await page.goto('/platform/auto-responder');
+  await page.getByTestId('add-auto-responder').click();
+  await page.getByTestId('auto-responder-name').fill('События заказов');
+  await page.getByTestId('auto-responder-menu').fill('Меню');
+
+  const triggerType = page.getByTestId('auto-responder-trigger-type-0');
+  await expect(triggerType.locator('option')).toHaveCount(4);
+  await page.getByTestId('auto-responder-description-toggle-0').click();
+  await expect(page.getByTestId('auto-responder-description-0')).toContainText('Триггер-слово');
+
+  await triggerType.selectOption('order_confirmed');
+  await expect(page.getByTestId('auto-responder-description-0')).toContainText('Подтвердить выполнение');
+  await triggerType.selectOption('order_refunded');
+  await expect(page.getByTestId('auto-responder-description-0')).toContainText('отменён или возвращён');
+  await triggerType.selectOption('order_paid');
+  const description = page.getByTestId('auto-responder-description-0');
+  await expect(description).toContainText('сразу после оплаты');
+  await expect(description).toContainText('{buyer}');
+  await expect(description).toContainText('{order_id}');
+  await expect(description).toContainText('приоритет над одноимённым сообщением AI-Ассистента');
+  await expect(page.getByTestId('auto-responder-trigger-0')).toHaveCount(0);
+
+  await expect(page.getByRole('button', { name: 'Удалить действие 1 команды 1' })).toBeDisabled();
+  await page.getByTestId('auto-responder-message-0').fill('Спасибо, {buyer}! Заказ {order_id} оплачен.');
+
+  await page.getByTestId('add-auto-responder-action-0').click();
+  await page.getByTestId('auto-responder-action-0-1').selectOption('call_seller');
+  await page.getByTestId('auto-responder-call-seller-reply-0-1').fill('Заказ {order_id} передан продавцу');
+  await page.getByTestId('auto-responder-call-seller-mention-0-1-yes').click();
+
+  await page.getByTestId('add-auto-responder-action-0').click();
+  await page.getByTestId('auto-responder-action-0-2').selectOption('run_plugin');
+  await page.getByTestId('auto-responder-plugin-0-2').selectOption('telegram_notify');
+  await page.getByRole('button', { name: 'Переместить действие 3 команды 1 вверх' }).click();
+  await expect(page.getByTestId('auto-responder-action-0-1')).toHaveValue('run_plugin');
+  await expect(page.getByTestId('auto-responder-action-0-2')).toHaveValue('call_seller');
+
+  await page.getByTestId('save-auto-responder').click();
+  await expect(page.getByTestId('auto-responder-modal')).toHaveCount(0);
+  const createdPayload = await page.evaluate(() => (window as any).__LAST_AUTO_RESPONDER_BODY__);
+  expect(createdPayload.commands[0].trigger_type).toBe('order_paid');
+  expect(createdPayload.commands[0].trigger_value).toBe('');
+  expect(createdPayload.commands[0].actions.map((action: any) => action.action_type)).toEqual([
+    'send_message',
+    'run_plugin',
+    'call_seller',
+  ]);
+  expect(createdPayload.commands[0].actions[2].include_telegram_username).toBe(true);
+
+  const card = page.getByTestId('auto-responder-card-41');
+  await card.getByRole('button', { name: 'Редактировать События заказов' }).click();
+  await expect(page.getByTestId('auto-responder-trigger-type-0')).toHaveValue('order_paid');
+  await expect(page.getByTestId('auto-responder-action-card-0-0')).toBeVisible();
+  await expect(page.getByTestId('auto-responder-action-card-0-1')).toBeVisible();
+  await expect(page.getByTestId('auto-responder-action-card-0-2')).toBeVisible();
+  await page.getByRole('button', { name: 'Удалить действие 2 команды 1' }).click();
+  await expect(page.getByTestId('auto-responder-action-card-0-2')).toHaveCount(0);
+  await expect(page.getByTestId('auto-responder-action-0-1')).toHaveValue('call_seller');
+  await page.getByTestId('save-auto-responder').click();
+  await expect(page.getByTestId('auto-responder-modal')).toHaveCount(0);
+  const updatedPayload = await page.evaluate(() => (window as any).__LAST_AUTO_RESPONDER_BODY__);
+  expect(updatedPayload.commands[0].actions.map((action: any) => action.action_type)).toEqual([
+    'send_message',
+    'call_seller',
+  ]);
 });
 
 test('auto responder form has no horizontal overflow on phone', async ({ page }) => {
