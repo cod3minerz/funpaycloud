@@ -81,7 +81,7 @@ async function bootstrapNotifications(page: Page) {
 test('notifications refresh, filter on server and open the referenced chat', async ({ page }) => {
   await bootstrapNotifications(page);
   await page.goto('/platform/notifications');
-  await expect(page.getByText('Система', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Система', exact: true })).toBeVisible();
 
   await page.evaluate(() => {
     (window as any).__notificationTest.addIncoming();
