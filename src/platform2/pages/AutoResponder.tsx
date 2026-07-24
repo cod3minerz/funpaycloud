@@ -59,17 +59,17 @@ const triggerDescriptions: Record<AutoResponderTriggerType, { title: string; tex
   },
   order_confirmed: {
     title: "Подтверждение заказа",
-    text: "Срабатывает, когда покупатель нажал «Подтвердить выполнение». Команда активного автоответчика имеет приоритет над одноимённым сообщением AI-Ассистента.",
+    text: "Отправляется покупателю, когда он нажал «Подтвердить выполнение». Команда активного автоответчика имеет приоритет над одноимённым сообщением AI-Ассистента.",
     variables: "{buyer} — покупатель, {order_id} — номер заказа, {lot} — название лота, {price} — цена.",
   },
   order_paid: {
     title: "Оплата заказа",
-    text: "Срабатывает сразу после оплаты заказа. Команда активного автоответчика имеет приоритет над одноимённым сообщением AI-Ассистента.",
+    text: "Отправляется покупателю сразу после оплаты. Команда активного автоответчика имеет приоритет над одноимённым сообщением AI-Ассистента.",
     variables: "{buyer} — покупатель, {order_id} — номер заказа, {lot} — название лота, {price} — цена.",
   },
   order_refunded: {
     title: "Возврат / отмена",
-    text: "Срабатывает, когда заказ был отменён или возвращён. Команда активного автоответчика имеет приоритет над одноимённым сообщением AI-Ассистента.",
+    text: "Отправляется покупателю, если заказ был отменён или возвращён. Команда активного автоответчика имеет приоритет над одноимённым сообщением AI-Ассистента.",
     variables: "{buyer} — покупатель, {order_id} — номер заказа, {lot} — название лота, {price} — цена.",
   },
 };
@@ -226,19 +226,7 @@ function CommandEditor({
   return (
     <div data-testid={`auto-responder-command-${index}`} className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-950/60">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Команда {index + 1}</span>
-          <button
-            type="button"
-            data-testid={`auto-responder-description-toggle-${index}`}
-            aria-label={`Описание команды ${index + 1}`}
-            aria-expanded={descriptionOpen}
-            onClick={onToggleDescription}
-            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-white hover:text-brand-600 dark:hover:bg-gray-800 dark:hover:text-brand-400"
-          >
-            <CircleHelp className="h-4 w-4" />
-          </button>
-        </div>
+        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Команда {index + 1}</span>
         <div className="flex items-center gap-1">
           <button type="button" aria-label={`Переместить команду ${index + 1} вверх`} disabled={index === 0} onClick={() => onMoveCommand(-1)} className="rounded-lg p-2 text-gray-500 hover:bg-white disabled:opacity-30 dark:hover:bg-gray-800"><ArrowUp className="h-4 w-4" /></button>
           <button type="button" aria-label={`Переместить команду ${index + 1} вниз`} disabled={index === total - 1} onClick={() => onMoveCommand(1)} className="rounded-lg p-2 text-gray-500 hover:bg-white disabled:opacity-30 dark:hover:bg-gray-800"><ArrowDown className="h-4 w-4" /></button>
@@ -246,33 +234,35 @@ function CommandEditor({
         </div>
       </div>
 
-      {descriptionOpen && (
-        <div data-testid={`auto-responder-description-${index}`} className="mb-4 rounded-xl border border-brand-500/20 bg-brand-500/5 p-3 text-sm text-gray-600 dark:text-gray-300">
-          <p className="font-semibold text-gray-800 dark:text-white">{description.title}</p>
-          <p className="mt-1 leading-5">{description.text}</p>
-          {description.variables && (
-            <p className="mt-2 rounded-lg bg-white/70 px-2.5 py-2 font-mono text-xs leading-5 text-brand-700 dark:bg-gray-900/70 dark:text-brand-300">
-              {description.variables}
-            </p>
-          )}
-        </div>
-      )}
-
       <div className={`grid gap-4 ${command.trigger_type === "keyword" ? "md:grid-cols-2" : ""}`}>
-        <label>
-          <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">Команда</span>
-          <select
-            data-testid={`auto-responder-trigger-type-${index}`}
-            value={command.trigger_type}
-            onChange={(event) => onUpdateCommand({
-              trigger_type: event.target.value as AutoResponderTriggerType,
-              trigger_value: "",
-            })}
-            className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-          >
-            {triggerOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
-        </label>
+        <div>
+          <label htmlFor={`auto-responder-trigger-type-${index}`} className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">Команда</label>
+          <div data-testid={`auto-responder-trigger-control-${index}`} className="flex items-center gap-2">
+            <select
+              id={`auto-responder-trigger-type-${index}`}
+              data-testid={`auto-responder-trigger-type-${index}`}
+              value={command.trigger_type}
+              onChange={(event) => onUpdateCommand({
+                trigger_type: event.target.value as AutoResponderTriggerType,
+                trigger_value: "",
+              })}
+              className="h-11 min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+            >
+              {triggerOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+            <button
+              type="button"
+              data-testid={`auto-responder-description-toggle-${index}`}
+              aria-label={`Как работает команда «${description.title}»`}
+              aria-expanded={descriptionOpen}
+              title={`Как работает команда «${description.title}»`}
+              onClick={onToggleDescription}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-400 transition hover:border-brand-500/50 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-900 dark:hover:text-brand-400"
+            >
+              <CircleHelp className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
         {command.trigger_type === "keyword" && (
           <label>
             <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">Триггер</span>
@@ -280,6 +270,19 @@ function CommandEditor({
           </label>
         )}
       </div>
+
+      {descriptionOpen && (
+        <div data-testid={`auto-responder-description-${index}`} className="mt-4 rounded-xl border border-brand-500/20 bg-brand-500/5 p-3 text-sm text-gray-600 dark:text-gray-300">
+          <p className="font-semibold text-gray-800 dark:text-white">{description.title}</p>
+          <p className="mt-1 leading-5">{description.text}</p>
+          {description.variables && (
+            <div className="mt-2 rounded-lg bg-white/70 px-2.5 py-2 text-xs leading-5 text-brand-700 dark:bg-gray-900/70 dark:text-brand-300">
+              <p className="font-semibold">Доступные переменные:</p>
+              <p className="mt-1 font-mono">{description.variables}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="mt-5 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">

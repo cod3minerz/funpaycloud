@@ -1290,6 +1290,9 @@ test('auto responder order events support descriptions and ordered multiple acti
 
   const triggerType = page.getByTestId('auto-responder-trigger-type-0');
   await expect(triggerType.locator('option')).toHaveCount(4);
+  const triggerControl = page.getByTestId('auto-responder-trigger-control-0');
+  await expect(triggerControl.getByTestId('auto-responder-description-toggle-0')).toBeVisible();
+  await expect(page.getByTestId('auto-responder-description-toggle-0')).toHaveAccessibleName('Как работает команда «Триггер-слово»');
   await page.getByTestId('auto-responder-description-toggle-0').click();
   await expect(page.getByTestId('auto-responder-description-0')).toContainText('Триггер-слово');
 
@@ -1298,10 +1301,14 @@ test('auto responder order events support descriptions and ordered multiple acti
   await triggerType.selectOption('order_refunded');
   await expect(page.getByTestId('auto-responder-description-0')).toContainText('отменён или возвращён');
   await triggerType.selectOption('order_paid');
+  await expect(page.getByTestId('auto-responder-description-toggle-0')).toHaveAccessibleName('Как работает команда «Оплата заказа»');
   const description = page.getByTestId('auto-responder-description-0');
-  await expect(description).toContainText('сразу после оплаты');
+  await expect(description).toContainText('Отправляется покупателю сразу после оплаты');
+  await expect(description).toContainText('Доступные переменные');
   await expect(description).toContainText('{buyer}');
   await expect(description).toContainText('{order_id}');
+  await expect(description).toContainText('{lot}');
+  await expect(description).toContainText('{price}');
   await expect(description).toContainText('приоритет над одноимённым сообщением AI-Ассистента');
   await expect(page.getByTestId('auto-responder-trigger-0')).toHaveCount(0);
 
