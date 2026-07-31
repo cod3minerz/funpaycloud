@@ -1526,7 +1526,12 @@ export type ProxiesMarketResponse = {
 };
 
 export const proxiesApi = {
-  listMine: () => apiRequest<{ items: MyProxyItem[]; free_trial?: FreeProxyTrial }>('/api/proxies/my'),
+  listMine: () => apiRequest<{ items: MyProxyItem[]; free_trial?: FreeProxyTrial; free_proxy_channel_url?: string }>('/api/proxies/my'),
+  checkSubscriptionAndClaimFree: () =>
+    apiRequest<AsyncOperationStart>('/api/proxies/my/free/check-and-claim', {
+      method: 'POST',
+      headers: { Prefer: 'respond-async' },
+    }),
   claimFree: () =>
     apiRequest<FreeProxyLeaseMutation>('/api/proxies/my/free/claim', { method: 'POST' }),
   renewFree: () =>

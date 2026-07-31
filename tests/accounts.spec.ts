@@ -50,6 +50,9 @@ async function openAddAccount(page: Page) {
 
 async function chooseFreeProxy(page: Page) {
   await page.getByRole('button', { name: /Бесплатный прокси/ }).click();
+  await expect(page.getByTestId('free-proxy-subscription-modal')).toBeVisible();
+  await page.getByRole('button', { name: 'Проверить подписку' }).click();
+  await expect(page.getByTestId('blocking-operation-overlay')).toBeVisible();
   await expect(page.getByTestId('free-proxy-claimed-notice')).toBeVisible();
   await page.getByRole('button', { name: 'Выбрать со склада' }).click();
   await page.getByTestId('owned-proxy-list').getByRole('button').filter({ hasText: 'Бесплатный прокси #1' }).click();
@@ -90,6 +93,7 @@ test.beforeEach(async ({ page }) => {
     const assignWorkerError = params.get('assignWorkerError') === '1';
     const assignRetryFlow = params.get('assignRetryFlow') === '1';
     const externalProxyError = params.get('externalProxyError') === '1';
+    const telegramClaimState = params.get('telegramClaim') || 'subscribed';
     const freeOn = params.get('freeOn');
     const requestedFreeTrial = params.get('freeTrial');
     const previouslyUsedFree = requestedFreeTrial === 'expired';
@@ -136,7 +140,7 @@ test.beforeEach(async ({ page }) => {
       accounts = accounts.map((account) => ({ ...account, runner_active: false, keeper_active: false, raiser_active: false }));
     }
     let operationPolls = 0;
-    let activeOperationKind: 'add' | 'runner' | 'batch' | 'proxy' | null = null;
+    let activeOperationKind: 'add' | 'runner' | 'batch' | 'proxy' | 'free-claim' | null = null;
     const failures: Record<string, { status: number; message: string }> = {
       invalid_golden_key: { status: 422, message: 'Golden Key недействителен или сессия FunPay истекла. Получите новый ключ и попробуйте снова.' },
       funpay_account_already_linked: { status: 409, message: 'Этот Golden Key относится к FunPay-аккаунту, уже привязанному к другому профилю FunPay Cloud. Войдите в нужный аккаунт FunPay и получите его новый Golden Key.' },
@@ -208,7 +212,9 @@ test.beforeEach(async ({ page }) => {
             ? 'runtime_start_batch'
             : activeOperationKind === 'proxy'
               ? 'proxy_assign_and_restart'
-              : 'runtime_start',
+              : activeOperationKind === 'free-claim'
+                ? 'free_proxy_telegram_claim'
+                : 'runtime_start',
         status,
         attempt,
         max_attempts: 3,
@@ -389,7 +395,14 @@ test.beforeEach(async ({ page }) => {
           status: freeTrialStatus,
           previously_used: previouslyUsedFree || freeTrialStatus !== 'available',
           ...(freeTrialStatus !== 'available' ? { proxy_id: 95, renew_available_at: '2030-07-25T20:00:00Z', expires_at: '2030-07-26T00:00:00Z' } : {}),
-        } });
+        }, free_proxy_channel_url: 'https://t.me/funpay_cloud' });
+      }
+      if (path === '/api/proxies/my/free/check-and-claim' && method === 'POST') {
+        testScope.__FREE_CLAIM_CALLS__ = (testScope.__FREE_CLAIM_CALLS__ || 0) + 1;
+        if (new Headers(init?.headers).get('Prefer') === 'respond-async') testScope.__ASYNC_PREFER_CALLS__! += 1;
+        activeOperationKind = 'free-claim';
+        operationPolls = 0;
+        return ok({ operation: operation('free-claim-operation', 'queued', 0) }, 202);
       }
       if (path === '/api/proxies/my/free/claim' && method === 'POST') {
         testScope.__FREE_CLAIM_CALLS__ = (testScope.__FREE_CLAIM_CALLS__ || 0) + 1;
@@ -457,6 +470,7 @@ test.beforeEach(async ({ page }) => {
         if (id === 'runner-operation') activeOperationKind = 'runner';
         if (id === 'batch-operation') activeOperationKind = 'batch';
         if (id === 'proxy-assignment-operation') activeOperationKind = 'proxy';
+        if (id === 'free-claim-operation') activeOperationKind = 'free-claim';
         if (activeOperationKind === 'add' && addError && failures[addError]) {
           const failure = failures[addError];
           return ok(operation(id, 'failed', 1, addError, failure.message));
@@ -485,6 +499,36 @@ test.beforeEach(async ({ page }) => {
           if (operationPolls === 3) return ok(operation(id, 'running', 2));
           if (operationPolls === 4) return ok(operation(id, 'retry_wait', 2, 'funpay_unavailable', 'Повторяем попытку'));
           if (operationPolls === 5) return ok(operation(id, 'running', 3));
+        }
+        if (activeOperationKind === 'free-claim') {
+          if (telegramClaimState === 'not-linked') {
+            return ok(operation(id, 'failed', 1, 'telegram_not_linked', 'Сначала привяжите Telegram-аккаунт в разделе «Интеграции».'));
+          }
+          if (telegramClaimState === 'unsubscribed') {
+            return ok(operation(id, 'failed', 1, 'telegram_subscription_required', 'Подписка на Telegram-канал не найдена. Подпишитесь и повторите проверку.'));
+          }
+          if (telegramClaimState === 'retry') {
+            if (operationPolls === 1) return ok(operation(id, 'running', 1));
+            if (operationPolls === 2) return ok(operation(id, 'retry_wait', 1, 'telegram_check_unavailable', 'Повторяем проверку'));
+            if (operationPolls === 3) return ok(operation(id, 'running', 2));
+            if (operationPolls === 4) return ok(operation(id, 'retry_wait', 2, 'telegram_check_unavailable', 'Повторяем проверку'));
+            if (operationPolls === 5) return ok(operation(id, 'running', 3));
+          } else if (operationPolls === 1) {
+            return ok(operation(id, 'running', 1));
+          }
+          freeTrialStatus = 'active';
+          return ok(operation(id, 'succeeded', telegramClaimState === 'retry' ? 3 : 1, '', '', {
+            action: 'claimed',
+            telegram_subscription_verified: true,
+            channel_url: 'https://t.me/funpay_cloud',
+            free_trial: {
+              status: 'active',
+              previously_used: true,
+              proxy_id: 95,
+              renew_available_at: '2030-07-25T20:00:00Z',
+              expires_at: '2030-07-26T00:00:00Z',
+            },
+          }));
         }
         if ((slowComplete || activeOperationKind !== 'add') && operationPolls < 2) {
           return ok(operation(id, 'running', 1));
@@ -757,6 +801,17 @@ test('free proxy claim adds it to inventory without assigning the account and sh
   await expect(freeCard).toContainText('Бесплатный прокси');
   await expect(freeCard).not.toContainText('Выбрать прокси со склада');
   await freeCard.getByRole('button', { name: 'Получить', exact: true }).click();
+  const subscription = page.getByTestId('free-proxy-subscription-modal');
+  await expect(subscription).toContainText('Подпишитесь на Telegram-канал');
+  await expect(subscription.getByRole('link', { name: 'Подписаться на канал' })).toHaveAttribute('href', 'https://t.me/funpay_cloud');
+  await expect(page.getByTestId('free-proxy-claimed-notice')).toBeHidden();
+  expect(await page.evaluate(() => (window as typeof window & { __FREE_CLAIM_CALLS__?: number }).__FREE_CLAIM_CALLS__ || 0)).toBe(0);
+
+  await subscription.getByRole('button', { name: 'Проверить подписку' }).click();
+  const overlay = page.getByTestId('blocking-operation-overlay');
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toContainText('Проверяем подписку на Telegram');
+  await expect(overlay).toContainText('Ожидание ответа Telegram');
   const notice = page.getByTestId('free-proxy-claimed-notice');
   await expect(notice).toContainText('Бесплатный прокси получен');
   await expect(notice).toContainText('52 часа');
@@ -780,10 +835,51 @@ test('free proxy claim adds it to inventory without assigning the account and sh
   await expect(page.getByTestId('change-proxy-owned-list').getByText('Бесплатный прокси #1', { exact: true })).toBeVisible();
 });
 
+test('free proxy remains unavailable when Telegram subscription is not found', async ({ page }) => {
+  await page.goto('/platform/accounts?telegramClaim=unsubscribed');
+  const alphaRow = page.getByRole('row').filter({ hasText: 'AlphaSeller' });
+  await alphaRow.getByRole('button', { name: 'Сменить прокси' }).click();
+  await page.getByTestId('change-proxy-option-free').getByRole('button', { name: 'Получить', exact: true }).click();
+
+  const subscription = page.getByTestId('free-proxy-subscription-modal');
+  await subscription.getByRole('button', { name: 'Проверить подписку' }).click();
+  await expect(page.getByTestId('blocking-operation-overlay')).toBeHidden();
+  await expect(subscription).toBeVisible();
+  await expect(subscription.getByTestId('free-proxy-subscription-error')).toContainText('Подписка на Telegram-канал не найдена');
+  await expect(page.getByTestId('free-proxy-claimed-notice')).toBeHidden();
+});
+
+test('Telegram subscription check shows attempts 1 to 3 and claims after recovery', async ({ page }) => {
+  await page.goto('/platform/accounts?telegramClaim=retry');
+  const alphaRow = page.getByRole('row').filter({ hasText: 'AlphaSeller' });
+  await alphaRow.getByRole('button', { name: 'Сменить прокси' }).click();
+  await page.getByTestId('change-proxy-option-free').getByRole('button', { name: 'Получить', exact: true }).click();
+  await page.getByRole('button', { name: 'Проверить подписку' }).click();
+
+  const attempt = page.getByTestId('blocking-operation-attempt');
+  await expect(attempt).toContainText('Попытка 1 из 3');
+  await expect(attempt).toContainText('Попытка 2 из 3', { timeout: 10_000 });
+  await expect(attempt).toContainText('Попытка 3 из 3', { timeout: 10_000 });
+  await expect(page.getByTestId('free-proxy-claimed-notice')).toBeVisible();
+});
+
+test('Telegram subscription dialog directs an unlinked user to integrations', async ({ page }) => {
+  await page.goto('/platform/accounts?telegramClaim=not-linked');
+  const alphaRow = page.getByRole('row').filter({ hasText: 'AlphaSeller' });
+  await alphaRow.getByRole('button', { name: 'Сменить прокси' }).click();
+  await page.getByTestId('change-proxy-option-free').getByRole('button', { name: 'Получить', exact: true }).click();
+  await page.getByRole('button', { name: 'Проверить подписку' }).click();
+
+  const subscription = page.getByTestId('free-proxy-subscription-modal');
+  await expect(subscription.getByTestId('free-proxy-subscription-error')).toContainText('Сначала привяжите Telegram-аккаунт');
+  await expect(subscription.getByRole('link', { name: 'Перейти к привязке Telegram' })).toHaveAttribute('href', '/platform/integrations#telegram');
+});
+
 test('onboarding claims Free first and then selects it as owned inventory', async ({ page }) => {
   await page.goto('/platform/accounts');
   await openAddAccount(page);
   await page.getByTestId('onboarding-proxy-option-free').click();
+  await page.getByTestId('free-proxy-subscription-modal').getByRole('button', { name: 'Проверить подписку' }).click();
   await expect(page.getByTestId('free-proxy-claimed-notice')).toBeVisible();
   await page.getByRole('button', { name: 'Выбрать со склада' }).click();
   await page.getByTestId('owned-proxy-list').getByRole('button').filter({ hasText: 'Бесплатный прокси #1' }).click();
@@ -1150,6 +1246,7 @@ test('free claim remains inventory-only if the account disappears', async ({ pag
     (window as typeof window & { __DROP_PROXY_TARGET_NOW__?: boolean }).__DROP_PROXY_TARGET_NOW__ = true;
   });
   await page.getByTestId('change-proxy-option-free').getByRole('button', { name: 'Получить' }).click();
+  await page.getByTestId('free-proxy-subscription-modal').getByRole('button', { name: 'Проверить подписку' }).click();
 
   await expect(page.getByTestId('free-proxy-claimed-notice')).toBeVisible();
   const request = await page.evaluate(() => {

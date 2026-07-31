@@ -56,6 +56,7 @@ export default function BlockingOperationOverlay({ operation, title }: Props) {
     ? Math.max(0, Math.ceil((new Date(operation.next_retry_at).getTime() - now) / 1000))
     : 0;
   const attempt = Math.max(1, operation.attempt || 1);
+  const upstreamName = operation.kind === 'free_proxy_telegram_claim' ? 'Telegram' : 'FunPay';
 
   if (!portalHost) return null;
 
@@ -79,7 +80,7 @@ export default function BlockingOperationOverlay({ operation, title }: Props) {
         <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} mt-2 text-sm`}>
           {operation.status === 'retry_wait'
             ? `Повтор через ${retrySeconds} сек.`
-            : 'Ожидание ответа FunPay'}
+            : `Ожидание ответа ${upstreamName}`}
         </p>
         <p className={`${darkMode ? 'text-brand-400' : 'text-brand-600'} mt-4 text-sm font-semibold`} data-testid="blocking-operation-attempt">
           Попытка {attempt} из {operation.max_attempts || 3}
@@ -87,7 +88,7 @@ export default function BlockingOperationOverlay({ operation, title }: Props) {
         <div
           className={`${darkMode ? 'bg-gray-800' : 'bg-gray-100'} mt-4 h-2.5 overflow-hidden rounded-full`}
           role="progressbar"
-          aria-label="Ожидание ответа FunPay"
+          aria-label={`Ожидание ответа ${upstreamName}`}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round(operation.status === 'retry_wait' ? 100 : progress)}

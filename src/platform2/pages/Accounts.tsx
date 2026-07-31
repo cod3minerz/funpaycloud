@@ -53,6 +53,7 @@ type ProxyFlowStep = "catalog" | "own-choice" | "owned" | "external";
 const GOLDEN_KEY_PATTERN = /^[A-Za-z0-9]{20,64}$/;
 const ACCOUNT_OPERATION_STORAGE_KEY = "fpcloud:accounts:active-operation";
 const OPERATION_OVERLAY_MIN_VISIBLE_MS = 900;
+const DEFAULT_FREE_PROXY_CHANNEL_URL = "https://t.me/funpay_cloud";
 
 function formatProxyExpiry(value?: string | null) {
   if (!value) return "Без срока";
@@ -169,7 +170,11 @@ export default function AccountsPage() {
   const [ownedProxiesLoading, setOwnedProxiesLoading] = useState(false);
   const [ownedProxiesError, setOwnedProxiesError] = useState("");
   const [freeProxyTrial, setFreeProxyTrial] = useState<FreeProxyTrial | null>(null);
+  const [freeProxyChannelURL, setFreeProxyChannelURL] = useState(DEFAULT_FREE_PROXY_CHANNEL_URL);
   const [freeProxyClaimLoading, setFreeProxyClaimLoading] = useState(false);
+  const [freeProxySubscriptionOpen, setFreeProxySubscriptionOpen] = useState(false);
+  const [freeProxySubscriptionError, setFreeProxySubscriptionError] = useState("");
+  const [freeProxySubscriptionErrorCode, setFreeProxySubscriptionErrorCode] = useState("");
   const [freeProxyNoticeOpen, setFreeProxyNoticeOpen] = useState(false);
   const [isProxyModal, setIsProxyModal] = useState(false);
   const [proxyFlowStep, setProxyFlowStep] = useState<ProxyFlowStep>("catalog");
@@ -262,6 +267,7 @@ export default function AccountsPage() {
     try {
       const response = await proxiesApi.listMine();
       if (response.free_trial) setFreeProxyTrial(response.free_trial);
+      if (response.free_proxy_channel_url) setFreeProxyChannelURL(response.free_proxy_channel_url);
       setOwnedProxies((response.items || []).filter((item) => (
         item.is_active
         && ASSIGNABLE_PROXY_PRODUCTS.includes(item.product)
@@ -279,6 +285,7 @@ export default function AccountsPage() {
     try {
       const response = await proxiesApi.listMine();
       if (response.free_trial) setFreeProxyTrial(response.free_trial);
+      if (response.free_proxy_channel_url) setFreeProxyChannelURL(response.free_proxy_channel_url);
     } catch {
       // Состояние аккаунтов остаётся совместимым fallback для старого backend.
     }
@@ -425,6 +432,19 @@ export default function AccountsPage() {
         .then(async (operation) => {
           const list = await accountsApi.list();
           setAccounts(list.map(mapApiAccount));
+          if (operation.kind === "free_proxy_telegram_claim") {
+            if (operation.status === "succeeded") {
+              const result = operation.result as Partial<{ free_trial: FreeProxyTrial }> | undefined;
+              if (result?.free_trial) setFreeProxyTrial(result.free_trial);
+              setFreeProxySubscriptionOpen(false);
+              setFreeProxyNoticeOpen(true);
+            } else {
+              setFreeProxySubscriptionOpen(true);
+              setFreeProxySubscriptionErrorCode(operation.error_code || "");
+              setFreeProxySubscriptionError(operation.error_message || "Не удалось проверить подписку. Попробуйте ещё раз.");
+            }
+            return;
+          }
           if (operation.status === "succeeded") {
             if (operation.kind === "account_onboarding_complete") {
               setSearch("");
@@ -608,7 +628,7 @@ export default function AccountsPage() {
         await loadOwnedProxies();
         return;
       }
-      await handleClaimFreeProxy();
+      openFreeProxySubscription();
     } else if (id === "proxy_lite" || id === "proxy_pro") {
       await createOnboarding({ mode: "paid", product: id });
     } else {
@@ -739,15 +759,40 @@ export default function AccountsPage() {
     }
   }
 
+  function openFreeProxySubscription() {
+    setFreeProxySubscriptionError("");
+    setFreeProxySubscriptionErrorCode("");
+    setFreeProxySubscriptionOpen(true);
+  }
+
+  function closeFreeProxySubscription() {
+    if (freeProxyClaimLoading) return;
+    setFreeProxySubscriptionOpen(false);
+    setFreeProxySubscriptionError("");
+    setFreeProxySubscriptionErrorCode("");
+  }
+
   async function handleClaimFreeProxy() {
     if (freeProxyClaimLoading) return;
     setFreeProxyClaimLoading(true);
+    setFreeProxySubscriptionError("");
+    setFreeProxySubscriptionErrorCode("");
     try {
-      const result = await proxiesApi.claimFree();
+      const completed = await startAndMonitorOperation(
+        "Проверяем подписку на Telegram",
+        "free_proxy_telegram_claim",
+        proxiesApi.checkSubscriptionAndClaimFree,
+      );
+      if (completed.status !== "succeeded") throw operationFailure(completed);
+      const result = completed.result as Partial<{ action: string; free_trial: FreeProxyTrial }> | undefined;
+      if (!result?.free_trial) throw new ApiError("Проверка завершилась без результата. Попробуйте ещё раз.");
       setFreeProxyTrial(result.free_trial);
+      setFreeProxySubscriptionOpen(false);
       setFreeProxyNoticeOpen(true);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Не удалось получить бесплатный прокси");
+      const apiError = error instanceof ApiError ? error : null;
+      setFreeProxySubscriptionErrorCode(apiError?.code || "");
+      setFreeProxySubscriptionError(apiError?.message || "Не удалось проверить подписку. Попробуйте ещё раз.");
     } finally {
       setFreeProxyClaimLoading(false);
     }
@@ -1412,7 +1457,7 @@ export default function AccountsPage() {
                       setProxyFlowStep("owned");
                       void loadOwnedProxies();
                     } else {
-                      void handleClaimFreeProxy();
+                      openFreeProxySubscription();
                     }
                   } else if (opt.id === "proxy_lite" || opt.id === "proxy_pro") {
                     void handlePaidProxyPayment(opt.id);
@@ -1568,6 +1613,50 @@ export default function AccountsPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      <Modal
+        isOpen={freeProxySubscriptionOpen}
+        onClose={closeFreeProxySubscription}
+        showCloseButton={!freeProxyClaimLoading}
+        className="w-[min(560px,calc(100vw-2rem))] p-6 sm:p-8"
+      >
+        <div data-testid="free-proxy-subscription-modal">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-500/10 text-brand-500">
+            <Icon name="paper-plane" className="h-7 w-7" />
+          </div>
+          <h2 className="mt-5 pr-10 text-2xl font-bold text-gray-900 dark:text-white">Подпишитесь на Telegram-канал</h2>
+          <p className="mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
+            Чтобы получить бесплатный прокси, Telegram-аккаунт, привязанный к FP Cloud, должен быть подписан на наш канал.
+          </p>
+          <div className="mt-4 rounded-2xl border border-brand-500/20 bg-brand-500/10 p-4 text-sm leading-6 text-gray-700 dark:text-gray-200">
+            Сначала откройте канал и подпишитесь. Затем вернитесь сюда и нажмите «Проверить подписку».
+          </div>
+          {freeProxySubscriptionError && (
+            <div className="mt-4 rounded-2xl border border-error-500/20 bg-error-500/10 p-4 text-sm text-error-600 dark:text-error-300" role="alert" data-testid="free-proxy-subscription-error">
+              {freeProxySubscriptionError}
+              {freeProxySubscriptionErrorCode === "telegram_not_linked" && (
+                <a href="/platform/integrations#telegram" className="mt-2 block font-semibold text-brand-600 hover:underline">
+                  Перейти к привязке Telegram
+                </a>
+              )}
+            </div>
+          )}
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+            <a
+              href={freeProxyChannelURL}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+            >
+              <Icon name="paper-plane" className="h-4 w-4" />
+              Подписаться на канал
+            </a>
+            <Button className="flex-1" disabled={freeProxyClaimLoading} onClick={() => void handleClaimFreeProxy()}>
+              {freeProxyClaimLoading ? "Проверяем…" : "Проверить подписку"}
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       <Modal
