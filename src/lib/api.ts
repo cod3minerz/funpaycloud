@@ -412,6 +412,7 @@ export type AutoResponder = {
   funpay_account_ids: number[];
   name: string;
   menu_text: string;
+  delay_seconds: number;
   enabled: boolean;
   commands: AutoResponderCommand[];
   created_at: string;
@@ -436,6 +437,7 @@ export type AutoResponderCommandInput = {
 export type AutoResponderInput = {
   name: string;
   menu_text: string;
+  delay_seconds: number;
   commands: AutoResponderCommandInput[];
 };
 

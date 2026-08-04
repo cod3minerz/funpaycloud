@@ -169,6 +169,7 @@ test.beforeEach(async ({ page }) => {
       funpay_account_ids: funpayAccountIDs,
       name: body.name,
       menu_text: body.menu_text,
+      delay_seconds: body.delay_seconds ?? 0,
       enabled: false,
       commands: (body.commands || []).map((command: any, position: number) => ({
         id: nextAutoResponderCommandID++,
@@ -1215,6 +1216,7 @@ test('auto responder CRUD, conditional actions and independent account toggles',
   await expect(page.getByTestId('auto-responder-modal')).toBeVisible();
   await page.getByTestId('auto-responder-name').fill('Основной автоответчик');
   await page.getByTestId('auto-responder-menu').fill('1 — инструкция\n2 — продавец');
+  await page.getByTestId('auto-responder-delay').fill('4');
   await page.getByTestId('auto-responder-trigger-0').fill('1');
   await page.getByTestId('auto-responder-message-0').fill('Инструкция для покупателя');
 
@@ -1237,7 +1239,10 @@ test('auto responder CRUD, conditional actions and independent account toggles',
 
   await page.getByTestId('save-auto-responder').click();
   await expect(page.getByTestId('auto-responder-modal')).toHaveCount(0);
+  const createdResponderPayload = await page.evaluate(() => (window as any).__LAST_AUTO_RESPONDER_BODY__);
+  expect(createdResponderPayload.delay_seconds).toBe(4);
   const firstCard = page.getByTestId('auto-responder-card-41');
+  await expect(firstCard).toContainText('задержка 4 сек.');
   await expect(firstCard).toContainText('Основной автоответчик');
   await expect(firstCard).toContainText('3 команд');
 
@@ -1255,9 +1260,14 @@ test('auto responder CRUD, conditional actions and independent account toggles',
   await expect(page.getByTestId('auto-responder-call-seller-reply-1')).toHaveValue('Уже зову продавца');
   await expect(page.getByTestId('auto-responder-call-seller-mention-1-yes').getByRole('radio')).toBeChecked();
   await expect(page.getByTestId('auto-responder-call-seller-username-1')).toHaveCount(0);
+  await expect(page.getByTestId('auto-responder-delay')).toHaveValue('4');
+  await page.getByTestId('auto-responder-delay').fill('2');
   await page.getByTestId('auto-responder-name').fill('Основной обновлённый');
   await page.getByTestId('save-auto-responder').click();
   await expect(page.getByTestId('auto-responder-modal')).toHaveCount(0);
+  const updatedResponderPayload = await page.evaluate(() => (window as any).__LAST_AUTO_RESPONDER_BODY__);
+  expect(updatedResponderPayload.delay_seconds).toBe(2);
+  await expect(firstCard).toContainText('задержка 2 сек.');
   await expect(firstCard).toContainText('Основной обновлённый');
 
   await page.getByTestId('add-auto-responder').click();

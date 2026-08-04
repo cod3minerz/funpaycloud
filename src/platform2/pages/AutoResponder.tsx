@@ -39,6 +39,7 @@ type Draft = {
   id?: number;
   name: string;
   menu_text: string;
+  delay_seconds: number;
   commands: DraftCommand[];
 };
 
@@ -96,7 +97,7 @@ function newCommand(position = 0): DraftCommand {
 }
 
 function newDraft(): Draft {
-  return { name: "", menu_text: "", commands: [newCommand()] };
+  return { name: "", menu_text: "", delay_seconds: 0, commands: [newCommand()] };
 }
 
 function draftFromResponder(item: AutoResponder): Draft {
@@ -104,6 +105,7 @@ function draftFromResponder(item: AutoResponder): Draft {
     id: item.id,
     name: item.name,
     menu_text: item.menu_text,
+    delay_seconds: item.delay_seconds ?? 0,
     commands: item.commands.map((command, position) => ({
       clientId: nextCommandId++,
       trigger_type: command.trigger_type,
@@ -580,6 +582,7 @@ export default function AutoResponderPage() {
     return {
       name,
       menu_text: menuText,
+      delay_seconds: draft.delay_seconds,
       commands: draft.commands.map((command, position) => ({
         trigger_type: command.trigger_type,
         trigger_value: command.trigger_type === "keyword" ? command.trigger_value.trim() : "",
@@ -790,7 +793,9 @@ export default function AutoResponderPage() {
                           {item.enabled ? "Включён" : "Выключен"}
                         </span>
                       </div>
-                      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{commandCountLabel(item.commands.length)}</p>
+                      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        {commandCountLabel(item.commands.length)} · {item.delay_seconds > 0 ? `задержка ${item.delay_seconds} сек.` : "без задержки"}
+                      </p>
                     </div>
                     <Toggle
                       checked={item.enabled}
@@ -875,10 +880,34 @@ export default function AutoResponderPage() {
 
             <div data-testid="auto-responder-form" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6 sm:py-6">
               <div className="grid gap-5 lg:grid-cols-2">
-                <label>
-                  <span className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Название автоответчика</span>
-                  <input data-testid="auto-responder-name" autoFocus maxLength={120} value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="Например, Основной автоответчик" className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-950 dark:text-white" />
-                </label>
+                <div className="space-y-4">
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Название автоответчика</span>
+                    <input data-testid="auto-responder-name" autoFocus maxLength={120} value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="Например, Основной автоответчик" className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-950 dark:text-white" />
+                  </label>
+                  <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-950/60">
+                    <label htmlFor="auto-responder-delay" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Задержка ответа</label>
+                    <div className="mt-2 flex items-center gap-3">
+                      <input
+                        id="auto-responder-delay"
+                        data-testid="auto-responder-delay"
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        max={30}
+                        step={1}
+                        value={draft.delay_seconds}
+                        onChange={(event) => {
+                          const value = Number.parseInt(event.target.value || "0", 10);
+                          setDraft({ ...draft, delay_seconds: Math.min(30, Math.max(0, Number.isFinite(value) ? value : 0)) });
+                        }}
+                        className="h-11 w-24 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                      />
+                      <span className="text-sm text-gray-500 dark:text-gray-400">секунд</span>
+                    </div>
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">0 — отвечать сразу. Допустимый диапазон: 0–30 секунд.</p>
+                  </div>
+                </div>
                 <label>
                   <span className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Меню для пользователя</span>
                   <textarea data-testid="auto-responder-menu" maxLength={2000} rows={4} value={draft.menu_text} onChange={(event) => setDraft({ ...draft, menu_text: event.target.value })} placeholder={"1 — получить инструкцию\n2 — вызвать продавца"} className="w-full resize-y rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-950 dark:text-white" />
