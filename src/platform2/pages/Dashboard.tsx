@@ -242,10 +242,10 @@ export default function DashboardPage() {
                 БЛОГ
               </div>
               <h2 className="text-xl md:text-2xl font-bold">
-                Как автоматически поднимать лоты на FunPay
+                Как настроить работу с заказами на FunPay
               </h2>
               <p className="text-white/90">
-                Пошаговый разбор настроек автоподнятия и ошибок, которых важно избегать.
+                Полезные материалы по работе с заказами, чатами и настройками аккаунта.
               </p>
               <div className="mt-4 inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 py-2.5 text-sm font-medium text-white hover:bg-white/20 transition-colors">
                 Читать в блоге
@@ -402,10 +402,10 @@ export default function DashboardPage() {
               </div>
               <div>
                 <h4 className="font-semibold text-dark dark:text-white">
-                  Автоподнятие лотов
+                  Управление заказами
                 </h4>
                 <p className="mt-1 text-sm text-body">
-                  По расписанию или круглую
+                  Контроль заказов и статусов в одном месте
                 </p>
               </div>
             </div>

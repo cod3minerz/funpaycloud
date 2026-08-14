@@ -47,20 +47,6 @@ type CommunityCard = {
 
 const BANNERS: Banner[] = [
   {
-    tag: 'БЛОГ',
-    title: 'Как автоматически поднимать лоты на FunPay',
-    description: 'Пошаговый разбор настроек автоподнятия и ошибок, которые режут выдачу.',
-    href: '/blog/avtopodnyatie-lotov-funpay',
-    cta: 'Читать статью',
-    gradientClass: 'bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700',
-    tagClass: 'text-blue-200',
-    textClass: 'text-white',
-    mutedClass: 'text-blue-100/80',
-    ctaClass: 'bg-white/10 hover:bg-white/20 text-white backdrop-blur-md shadow-sm border border-white/10',
-    decorationClass: 'bg-blue-400/20 blur-[2px]',
-    decorationSecondaryClass: 'bg-blue-300/20 blur-[2px]',
-  },
-  {
     tag: 'ОБНОВЛЕНИЕ',
     title: 'Стабильный realtime чатов в проде',
     description: 'Ускорили подтверждение исходящих и усилили обработку reconnect в веб-сокетах.',
@@ -91,7 +77,6 @@ const BANNERS: Banner[] = [
 ];
 
 const FEATURES: Feature[] = [
-  { title: 'Автоподнятие лотов', desc: 'По расписанию или вручную' },
   { title: 'AI автоответы', desc: 'Нейронка отвечает 24/7' },
   { title: 'Автовыдача товаров', desc: 'Мгновенно после оплаты' },
 ];
@@ -279,10 +264,6 @@ export default function Dashboard() {
         active: Boolean(dashData?.keeper_active),
         count: Number(dashData?.keeper_active_count ?? 0),
       },
-      raiser: {
-        active: Boolean(dashData?.raiser_active),
-        count: Number(dashData?.raiser_active_count ?? 0),
-      },
       lastEvent: getLatestEventDate(dashData?.recent_chats ?? [], dashData?.recent_orders ?? []),
     };
   }, [dashData]);
@@ -323,16 +304,6 @@ export default function Dashboard() {
                 <span className="text-xs text-[var(--pf-text-dim)]">Keeper</span>
                 <span className="text-xs font-semibold text-blue-700">
                   {status.keeper.active ? `онлайн (${status.keeper.count}/${status.total})` : 'оффлайн'}
-                </span>
-              </div>
-
-              <div className="hidden h-3 w-px bg-[var(--pf-border)] sm:block" />
-
-              <div className="inline-flex items-center gap-2">
-                <WorkerDot active={status.raiser.active} color="amber" />
-                <span className="text-xs text-[var(--pf-text-dim)]">Raiser</span>
-                <span className="text-xs font-semibold text-amber-700">
-                  {status.raiser.active ? `запущен (${status.raiser.count}/${status.total})` : 'пауза'}
                 </span>
               </div>
 

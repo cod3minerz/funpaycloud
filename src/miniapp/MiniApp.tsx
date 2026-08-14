@@ -465,7 +465,7 @@ function AccountsView({ accounts, busy, runAction }: {
           multiline
           subhead={account.runtime_active ? "Работает" : "Остановлен"}
           subtitle={account.proxy_label}
-          description={`Runner ${account.runner_active ? "on" : "off"} · Keeper ${account.keeper_active ? "on" : "off"} · Raiser ${account.raiser_active ? "on" : "off"}`}
+          description={`Runner ${account.runner_active ? "on" : "off"} · Keeper ${account.keeper_active ? "on" : "off"}`}
           after={
             account.runtime_active ? (
               <Button size="s" mode="gray" loading={busy === `stop:${account.id}`} onClick={() => runAction(`stop:${account.id}`, () => miniAppApi.stopRuntime(getToken(), account.id), "Аккаунт остановлен")}>Стоп</Button>

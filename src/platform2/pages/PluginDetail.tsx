@@ -23,6 +23,8 @@ function Field({ label, required, children }: { label: string; required?: boolea
 const inputCls =
   "w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white";
 
+const lotRaiserPluginEnabled = false;
+
 function Toggle({ on, onChange, label }: { on: boolean; onChange: () => void; label: string }) {
   return (
     <div className="flex items-center justify-between py-3">
@@ -58,12 +60,16 @@ const PLUGINS: Record<string, { name: string; icon: string; color: string; setti
     color: "bg-purple-500/10 text-purple-500",
     settingsTab: AutoreplySettings,
   },
-  "smart-raiser": {
-    name: "Умный Райзер",
-    icon: "arrow-up",
-    color: "bg-green-500/10 text-green-500",
-    settingsTab: SmartRaiserSettings,
-  },
+  ...(lotRaiserPluginEnabled
+    ? {
+        "smart-raiser": {
+          name: "Умный Райзер",
+          icon: "arrow-up",
+          color: "bg-green-500/10 text-green-500",
+          settingsTab: SmartRaiserSettings,
+        },
+      }
+    : {}),
 };
 
 // ── Telegram ─────────────────────────────────────────────────────────────────
@@ -253,13 +259,12 @@ function AutoreplySettings() {
   );
 }
 
-// ── Smart Raiser ──────────────────────────────────────────────────────────────
-
+// Сохранено для последующего включения продукта; в текущем релизе плагин скрыт.
 function SmartRaiserSettings() {
   const [interval, setInterval] = useState(60);
   const [mode, setMode] = useState<"schedule" | "smart">("smart");
   const [events, setEvents] = useState({ onNewOrder: true, onCompetitorRaise: true, onLowViews: false, onPriceDrop: false });
-  const toggle = (k: keyof typeof events) => setEvents((p) => ({ ...p, [k]: !p[k] }));
+  const toggle = (key: keyof typeof events) => setEvents((previous) => ({ ...previous, [key]: !previous[key] }));
   const [scheduleHour, setScheduleHour] = useState("09:00");
 
   return (
@@ -268,17 +273,17 @@ function SmartRaiserSettings() {
         <CardContent className="p-6">
           <p className="mb-3 text-sm font-semibold text-gray-800 dark:text-white">Режим поднятия</p>
           <div className="grid grid-cols-2 gap-3">
-            {(["smart", "schedule"] as const).map((m) => (
+            {(["smart", "schedule"] as const).map((currentMode) => (
               <button
-                key={m}
-                onClick={() => setMode(m)}
-                className={`rounded-xl border p-4 text-left transition-colors ${mode === m ? "border-brand-500 bg-brand-500/5 dark:bg-brand-500/10" : "border-gray-200 hover:border-gray-300 dark:border-gray-700"}`}
+                key={currentMode}
+                onClick={() => setMode(currentMode)}
+                className={`rounded-xl border p-4 text-left transition-colors ${mode === currentMode ? "border-brand-500 bg-brand-500/5 dark:bg-brand-500/10" : "border-gray-200 hover:border-gray-300 dark:border-gray-700"}`}
               >
-                <p className={`font-semibold ${mode === m ? "text-brand-600" : "text-gray-800 dark:text-white"}`}>
-                  {m === "smart" ? "Умный" : "По расписанию"}
+                <p className={`font-semibold ${mode === currentMode ? "text-brand-600" : "text-gray-800 dark:text-white"}`}>
+                  {currentMode === "smart" ? "Умный" : "По расписанию"}
                 </p>
                 <p className="mt-0.5 text-xs text-gray-400">
-                  {m === "smart" ? "Реагирует на события и конкурентов" : "Фиксированный интервал и время"}
+                  {currentMode === "smart" ? "Реагирует на события и конкурентов" : "Фиксированный интервал и время"}
                 </p>
               </button>
             ))}
@@ -293,10 +298,10 @@ function SmartRaiserSettings() {
               <p className="text-sm font-semibold text-gray-800 dark:text-white">Интервал поднятия</p>
               <span className="text-sm font-bold text-brand-500">{interval} мин</span>
             </div>
-            <input type="range" min={5} max={360} step={5} value={interval} onChange={(e) => setInterval(+e.target.value)} className="w-full accent-brand-500" />
+            <input type="range" min={5} max={360} step={5} value={interval} onChange={(event) => setInterval(+event.target.value)} className="w-full accent-brand-500" />
             <div className="mt-1 flex justify-between text-xs text-gray-400"><span>5 мин</span><span>6 ч</span></div>
             <Field label="Первое поднятие в">
-              <input type="time" value={scheduleHour} onChange={(e) => setScheduleHour(e.target.value)} className={inputCls} />
+              <input type="time" value={scheduleHour} onChange={(event) => setScheduleHour(event.target.value)} className={inputCls} />
             </Field>
           </CardContent>
         </Card>

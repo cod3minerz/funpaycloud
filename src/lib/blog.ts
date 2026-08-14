@@ -10,6 +10,11 @@ import { slugifyCategory, slugifyHeading } from './blog-types';
 export * from './blog-types';
 
 const BLOG_DIR = path.join(process.cwd(), 'content', 'blog');
+const lotRaiserBlogEnabled = false;
+
+function isVisiblePost(post: BlogPost): boolean {
+  return lotRaiserBlogEnabled || post.category.trim().toLocaleLowerCase('ru-RU') !== 'автоподнятие';
+}
 
 function toDateOrToday(value: unknown): string {
   if (typeof value === 'string' && value.trim().length > 0) {
@@ -65,6 +70,7 @@ export function getAllPosts(): BlogPost[] {
 
   return files
     .map(readPostFile)
+    .filter(isVisiblePost)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
@@ -81,7 +87,8 @@ export function getPostBySlug(slug: string): BlogPost | null {
 
   const raw = fs.readFileSync(filePath, 'utf-8');
   const { data, content } = matter(raw);
-  return normalizePost(slug, data as Record<string, unknown>, content);
+  const post = normalizePost(slug, data as Record<string, unknown>, content);
+  return isVisiblePost(post) ? post : null;
 }
 
 export function getCategories(): string[] {

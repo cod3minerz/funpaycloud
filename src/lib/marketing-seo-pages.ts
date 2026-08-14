@@ -31,14 +31,17 @@ export type SeoPageConfig = {
   relatedLinks: SeoLink[];
 };
 
+const lotRaiserMarketingEnabled = false;
+const lotRaiserMarketingPath = '/auto-raise-lots-funpay';
+
 export const SEO_PAGE_CONFIGS: SeoPageConfig[] = [
   {
     slug: 'funpay-bot',
-    title: 'Бот FunPay в облаке — автоподнятие, автовыдача, автоответы | FunPay Cloud',
+    title: 'Бот FunPay в облаке — автовыдача и автоответы | FunPay Cloud',
     description:
-      'Облачный бот FunPay для продавцов: автоподнятие лотов, автовыдача товаров и автоответы 24/7 без VPS и сложной настройки.',
+      'Облачный бот FunPay для продавцов: автовыдача товаров и автоответы 24/7 без VPS и сложной настройки.',
     h1: 'Облачный бот FunPay для продавцов, которые хотят работать без рутины',
-    lead: 'FunPay Cloud автоматизирует повторяющиеся действия в магазине: поднимает лоты, отвечает покупателям и выдает товары после оплаты.',
+    lead: 'FunPay Cloud автоматизирует повторяющиеся действия в магазине: отвечает покупателям и выдает товары после оплаты.',
     cluster: 'A: High-intent commercial',
     primaryQuery: 'бот funpay',
     secondaryQueries: ['funpay бот', 'облачный бот funpay', 'бот для продавцов funpay', 'бот funpay без vps'],
@@ -52,7 +55,7 @@ export const SEO_PAGE_CONFIGS: SeoPageConfig[] = [
       {
         title: 'Что именно автоматизирует FunPay Cloud',
         text: 'Платформа закрывает операционные сценарии, которые съедают больше всего времени у продавцов FunPay.',
-        bullets: ['Автоподнятие лотов по расписанию', 'Автовыдача цифровых товаров', 'AI-автоответы на частые вопросы', 'Контроль заказов и переписок в одной панели'],
+        bullets: ['Автовыдача цифровых товаров', 'AI-автоответы на частые вопросы', 'Контроль заказов и переписок в одной панели'],
       },
       {
         title: 'Для кого подходит сервис',
@@ -87,7 +90,7 @@ export const SEO_PAGE_CONFIGS: SeoPageConfig[] = [
     slug: 'funpay-automation',
     title: 'Автоматизация FunPay для продавцов — сервис 24/7 | FunPay Cloud',
     description:
-      'Сервис автоматизации FunPay: подъем лотов, выдача товаров, ответы в чате и контроль заказов без ручной рутины.',
+      'Сервис автоматизации FunPay: выдача товаров, ответы в чате и контроль заказов без ручной рутины.',
     h1: 'Автоматизация FunPay: как убрать ручные процессы и ускорить продажи',
     lead: 'FunPay Cloud помогает продавцам перейти от хаотичной ручной работы к системной автоматизации магазина.',
     cluster: 'A: High-intent commercial',
@@ -97,12 +100,12 @@ export const SEO_PAGE_CONFIGS: SeoPageConfig[] = [
     sections: [
       {
         title: 'Какие задачи чаще всего автоматизируют продавцы',
-        text: 'Главные точки потерь времени — это постоянное поднятие лотов, ручная выдача и одинаковые ответы в чатах. Эти процессы первыми переводят в автоматический режим.',
+        text: 'Главные точки потерь времени — это ручная выдача и одинаковые ответы в чатах. Эти процессы первыми переводят в автоматический режим.',
       },
       {
         title: 'Как выглядит внедрение по шагам',
         text: 'Подключение аккаунта, настройка сценариев, тестирование и запуск. На каждом шаге видно, как именно сервис влияет на скорость обработки заказов.',
-        bullets: ['Подключить аккаунт FunPay', 'Настроить автоподнятие и склад', 'Проверить автоответы', 'Включить постоянный режим'],
+        bullets: ['Подключить аккаунт FunPay', 'Настроить склад и автовыдачу', 'Проверить автоответы', 'Включить постоянный режим'],
       },
       {
         title: 'Экономика автоматизации',
@@ -116,7 +119,7 @@ export const SEO_PAGE_CONFIGS: SeoPageConfig[] = [
       },
       {
         question: 'Можно ли автоматизировать только часть процессов?',
-        answer: 'Да, можно начать с автоподнятия или автовыдачи и постепенно расширять сценарии.',
+        answer: 'Да, можно начать с автовыдачи или автоответов и постепенно расширять сценарии.',
       },
       {
         question: 'Нужен ли отдельный сервер для работы?',
@@ -423,7 +426,7 @@ export const SEO_PAGE_CONFIGS: SeoPageConfig[] = [
     quickPoints: ['Шаг 1: подключение аккаунта', 'Шаг 2: настройка сценариев', 'Шаг 3: тестирование', 'Шаг 4: запуск и контроль'],
     sections: [
       { title: 'Шаг 1. Подключение аккаунта', text: 'Добавьте аккаунт и проверьте, что сервис получает необходимые данные для работы.' },
-      { title: 'Шаг 2. Настройка сценариев', text: 'Выберите автоподнятие, автовыдачу и AI-ответы в зависимости от текущих задач магазина.' },
+      { title: 'Шаг 2. Настройка сценариев', text: 'Выберите автовыдачу и AI-ответы в зависимости от текущих задач магазина.' },
       { title: 'Шаг 3. Запуск и мониторинг', text: 'После запуска используйте дашборд и логи для контроля стабильности и результата.' },
     ],
     faq: [],
@@ -446,7 +449,7 @@ export const SEO_PAGE_CONFIGS: SeoPageConfig[] = [
     quickPoints: ['Lite для старта', 'Pro для стабильного роста', 'Ultra для масштабирования'],
     sections: [
       { title: 'Как выбрать тариф', text: 'Оценивайте план по количеству аккаунтов, лимитам AI и объему автоматизаций.' },
-      { title: 'Что входит в подписку', text: 'Автоподнятие, автовыдача, AI-инструменты и аналитика — в зависимости от выбранного тарифа.' },
+      { title: 'Что входит в подписку', text: 'Автовыдача, AI-инструменты и аналитика — в зависимости от выбранного тарифа.' },
     ],
     faq: [],
     ctaPrimary: { href: '/platform/subscription', label: 'Открыть страницу подписки' },
@@ -509,7 +512,7 @@ export const SEO_PAGE_CONFIGS: SeoPageConfig[] = [
     cluster: 'C: Informational',
     primaryQuery: 'интеграции funpay автоматизация',
     secondaryQueries: ['funpay cloud integrations', 'telegram funpay automation'],
-    quickPoints: ['Связка чаты + AI', 'Связка заказы + склад', 'Связка лоты + автоподнятие', 'Оповещения в Telegram'],
+    quickPoints: ['Связка чаты + AI', 'Связка заказы + склад', 'Связка склад + автовыдача', 'Оповещения в Telegram'],
     sections: [
       { title: 'Интеграционный подход', text: 'Мы строим не отдельные функции, а сквозные цепочки операций, которые снижают ручной труд.' },
       { title: 'Типовые связки', text: 'Самые результативные комбинации — это автоответы с базой знаний и автовыдача со складом.' },
@@ -539,7 +542,7 @@ export const SEO_PAGE_CONFIGS: SeoPageConfig[] = [
       },
       {
         title: 'Ключевые инструкции',
-        text: 'Мы рекомендуем начать с автоподнятия, затем добавить автовыдачу и только после этого запускать AI-ответы.',
+        text: 'Мы рекомендуем начать с автовыдачи, затем добавить AI-ответы и контроль заказов.',
       },
     ],
     faq: [],
@@ -603,10 +606,17 @@ export const SEO_PAGE_CONFIGS: SeoPageConfig[] = [
 
 const SEO_PAGE_MAP = new Map(SEO_PAGE_CONFIGS.map(config => [config.slug, config]));
 
+export function isMarketingPathVisible(href: string): boolean {
+  return lotRaiserMarketingEnabled || href !== lotRaiserMarketingPath;
+}
+
 export function getSeoPageConfig(slug: string): SeoPageConfig | null {
+  if (!lotRaiserMarketingEnabled && slug === lotRaiserMarketingPath.slice(1)) return null;
   return SEO_PAGE_MAP.get(slug) ?? null;
 }
 
 export function getSeoSlugs(): string[] {
-  return SEO_PAGE_CONFIGS.map(config => config.slug);
+  return SEO_PAGE_CONFIGS
+    .map(config => config.slug)
+    .filter(slug => isMarketingPathVisible(`/${slug}`));
 }

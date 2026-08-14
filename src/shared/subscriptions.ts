@@ -109,7 +109,6 @@ export const subscriptionPlans: SubscriptionPlan[] = [
     ctaStyle: 'border',
     features: [
       { text: '1 аккаунт FunPay', available: true },
-      { text: 'Автоподнятие лотов', available: true },
       { text: 'Автовыдача товаров', available: true },
       { text: 'Аналитика 7 дней', available: true },
       { text: 'Конструктор сценариев (1 сцен.)', available: true },
@@ -133,7 +132,6 @@ export const subscriptionPlans: SubscriptionPlan[] = [
     ctaStyle: 'gradient',
     features: [
       { text: '5 аккаунтов FunPay', available: true },
-      { text: 'Автоподнятие лотов', available: true },
       { text: 'Автовыдача товаров', available: true },
       { text: 'Аналитика 30 дней + CSV', available: true },
       { text: 'Конструктор (5 сценариев)', available: true },

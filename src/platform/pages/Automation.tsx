@@ -70,12 +70,14 @@ const TRIGGERS = [
   { value: 'high_order', label: 'Заказ на сумму > N' },
 ];
 
+const lotRaiserAutomationActionEnabled = false;
+
 const ACTIONS = [
   { value: 'send_message', label: 'Отправить сообщение' },
   { value: 'deliver_item', label: 'Выдать товар' },
   { value: 'disable_lot', label: 'Отключить лот' },
   { value: 'notify_telegram', label: 'Уведомить в Telegram' },
-  { value: 'raise_lots', label: 'Поднять лоты' },
+  ...(lotRaiserAutomationActionEnabled ? [{ value: 'raise_lots', label: 'Поднять лоты' }] : []),
 ];
 
 function getTriggerLabel(type: string) {

@@ -1,5 +1,7 @@
 import type { BlogPostSummary } from './blog-types';
 
+const lotRaiserMarketingEnabled = false;
+
 export type BlogCtaTopic = 'raise' | 'delivery' | 'ai' | 'comparison' | 'automation';
 
 export interface BlogCtaConfig {
@@ -65,10 +67,9 @@ const TOPIC_RULES: Array<{ topic: BlogCtaTopic; keywords: string[] }> = [
     topic: 'delivery',
     keywords: ['автовыда', 'склад', 'выдач', 'ключ', 'товар'],
   },
-  {
-    topic: 'raise',
-    keywords: ['автоподня', 'подняти', 'лот'],
-  },
+  ...(lotRaiserMarketingEnabled
+    ? [{ topic: 'raise' as const, keywords: ['автоподня', 'подняти', 'лот'] }]
+    : []),
   {
     topic: 'ai',
     keywords: ['ai', 'автоответ', 'чат', 'сообщени'],

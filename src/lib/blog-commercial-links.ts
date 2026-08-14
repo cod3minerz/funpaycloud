@@ -1,5 +1,7 @@
 import type { BlogPostSummary } from './blog-types';
 
+const lotRaiserMarketingEnabled = false;
+
 export type CommercialLink = {
   href: string;
   label: string;
@@ -9,9 +11,11 @@ export type CommercialLink = {
 const LINK_CATALOG: Array<{
   keywords: string[];
   link: CommercialLink;
+  enabled?: boolean;
 }> = [
   {
     keywords: ['автоподнятие', 'поднятие', 'лоты', 'видимость'],
+    enabled: lotRaiserMarketingEnabled,
     link: {
       href: '/auto-raise-lots-funpay',
       label: 'Автоподнятие лотов',
@@ -77,6 +81,7 @@ export function getCommercialLinksForPost(post: BlogPostSummary, limit = 3): Com
   const scored: Array<{ link: CommercialLink; score: number }> = [];
 
   for (const item of LINK_CATALOG) {
+    if (item.enabled === false) continue;
     const score = item.keywords.reduce((acc, keyword) => (haystack.includes(keyword) ? acc + 1 : acc), 0);
     if (score > 0) {
       scored.push({ link: item.link, score });
@@ -103,4 +108,3 @@ export function getCommercialLinksForPost(post: BlogPostSummary, limit = 3): Com
 
   return [...unique.values()].slice(0, limit);
 }
-

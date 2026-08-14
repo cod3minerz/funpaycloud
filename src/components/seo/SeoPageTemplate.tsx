@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { SeoPageConfig } from '@/lib/marketing-seo-pages';
+import { isMarketingPathVisible, type SeoPageConfig } from '@/lib/marketing-seo-pages';
 import LandingFooter from '@/components/landing/LandingFooter';
 import LandingNav from '@/components/landing/LandingNav';
 
@@ -132,7 +132,7 @@ export default function SeoPageTemplate({ page, canonicalUrl, supportingArticles
           <section className="seo-related">
             <h2>Связанные материалы</h2>
             <div className="seo-related-grid">
-              {page.relatedLinks.map(link => (
+              {page.relatedLinks.filter(link => isMarketingPathVisible(link.href)).map(link => (
                 <Link key={link.href} href={link.href} className="seo-related-link">
                   {link.label}
                 </Link>

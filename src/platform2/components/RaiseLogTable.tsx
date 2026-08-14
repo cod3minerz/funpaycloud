@@ -4,13 +4,7 @@ import { useState, useEffect } from "react";
 import { accountsApi, LotRaiseLogEntry } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/platform2/components/ui/card";
 import { Badge } from "@/platform2/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from "@/platform2/components/ui/table";
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/platform2/components/ui/table";
 
 interface Props {
   accountId: number | string;
@@ -30,6 +24,7 @@ function formatTime(iso: string) {
   }
 }
 
+// Компонент сохранён для будущего включения; в текущем интерфейсе он не рендерится.
 export function RaiseLogTable({ accountId }: Props) {
   const [logs, setLogs] = useState<LotRaiseLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,56 +38,29 @@ export function RaiseLogTable({ accountId }: Props) {
         setLogs(data.logs ?? []);
         setLoading(false);
       })
-      .catch((e) => {
-        setError(e?.message ?? "Ошибка загрузки");
+      .catch((cause) => {
+        setError(cause?.message ?? "Ошибка загрузки");
         setLoading(false);
       });
   }, [accountId]);
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>История подъёма лотов</CardTitle>
-      </CardHeader>
+      <CardHeader><CardTitle>История подъёма лотов</CardTitle></CardHeader>
       <CardContent>
-        {loading && (
-          <p className="text-sm text-[var(--pf-text-dim)]">Загрузка...</p>
-        )}
+        {loading && <p className="text-sm text-[var(--pf-text-dim)]">Загрузка...</p>}
         {error && <p className="text-sm text-red-400">{error}</p>}
-        {!loading && !error && logs.length === 0 && (
-          <p className="text-sm text-[var(--pf-text-dim)]">
-            Пока нет записей — они появятся после первого подъёма.
-          </p>
-        )}
+        {!loading && !error && logs.length === 0 && <p className="text-sm text-[var(--pf-text-dim)]">Пока нет записей.</p>}
         {!loading && logs.length > 0 && (
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableCell isHeader>Время</TableCell>
-                <TableCell isHeader>Найдено</TableCell>
-                <TableCell isHeader>Поднято</TableCell>
-                <TableCell isHeader>Ошибки</TableCell>
-              </TableRow>
-            </TableHeader>
+            <TableHeader><TableRow><TableCell isHeader>Время</TableCell><TableCell isHeader>Найдено</TableCell><TableCell isHeader>Поднято</TableCell><TableCell isHeader>Ошибки</TableCell></TableRow></TableHeader>
             <TableBody>
               {logs.map((log) => (
                 <TableRow key={log.id}>
                   <TableCell>{formatTime(log.raised_at)}</TableCell>
                   <TableCell>{log.found}</TableCell>
-                  <TableCell>
-                    {log.raised > 0 ? (
-                      <Badge variant="success">{log.raised}</Badge>
-                    ) : (
-                      <span className="text-[var(--pf-text-dim)]">0</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {log.errors_count > 0 ? (
-                      <Badge variant="error">{log.errors_count}</Badge>
-                    ) : (
-                      <span className="text-[var(--pf-text-dim)]">—</span>
-                    )}
-                  </TableCell>
+                  <TableCell>{log.raised > 0 ? <Badge variant="success">{log.raised}</Badge> : <span className="text-[var(--pf-text-dim)]">0</span>}</TableCell>
+                  <TableCell>{log.errors_count > 0 ? <Badge variant="error">{log.errors_count}</Badge> : <span className="text-[var(--pf-text-dim)]">—</span>}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

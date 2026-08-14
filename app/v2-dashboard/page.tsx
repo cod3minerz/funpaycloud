@@ -155,22 +155,10 @@ export default function DashboardV2() {
           <CardTitle>ВОЗМОЖНОСТИ ПЛАТФОРМЫ</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2">
             <div className="flex gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold text-xl shrink-0">
                 01
-              </div>
-              <div>
-                <h4 className="font-semibold">Автоподнятие лотов</h4>
-                <p className="text-sm text-muted-foreground mt-1">
-                  По расписанию или круглую
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold text-xl shrink-0">
-                02
               </div>
               <div>
                 <h4 className="font-semibold">AI автоответы</h4>
@@ -182,7 +170,7 @@ export default function DashboardV2() {
 
             <div className="flex gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold text-xl shrink-0">
-                03
+                02
               </div>
               <div>
                 <h4 className="font-semibold">Автовыдача товаров</h4>

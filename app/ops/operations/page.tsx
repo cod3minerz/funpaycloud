@@ -226,7 +226,6 @@ export default function OperationsPage() {
                       <span className={`text-xl font-bold ${scoreColor(account.score)}`}>{account.score}</span>
                       <Badge color={account.runner_active ? 'success' : 'light'} size="sm">runner</Badge>
                       <Badge color={account.keeper_active ? 'success' : 'light'} size="sm">keeper</Badge>
-                      <Badge color={account.raiser_active ? 'success' : 'light'} size="sm">raiser</Badge>
                     </div>
                   </div>
                   {(account.issues.length > 0 || account.recommendation) && (

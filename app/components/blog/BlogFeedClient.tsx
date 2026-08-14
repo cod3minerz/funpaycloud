@@ -16,7 +16,6 @@ interface BlogFeedClientProps {
 const commercialQuickLinks = [
   { href: '/funpay-bot', label: 'Облачный бот FunPay' },
   { href: '/funpay-automation', label: 'Автоматизация FunPay' },
-  { href: '/auto-raise-lots-funpay', label: 'Автоподнятие' },
   { href: '/auto-delivery-funpay', label: 'Автовыдача' },
   { href: '/funpay-auto-reply', label: 'AI-автоответы' },
   { href: '/funpay-cardinal-alternative', label: 'Альтернатива Cardinal' },
@@ -63,7 +62,7 @@ export function BlogFeedClient({ posts, categories }: BlogFeedClientProps) {
             Практические материалы для продавцов FunPay
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-[var(--text-secondary)] sm:text-base">
-            Разбираем рабочие сценарии: от автоподнятия и выдачи до роста конверсии и стабильной операционки магазина.
+            Разбираем рабочие сценарии: от выдачи до роста конверсии и стабильной операционки магазина.
           </p>
 
           <label className="mt-7 flex min-h-12 items-center gap-3 rounded-2xl border border-[var(--line-2)] bg-[var(--bg-card)] px-4 shadow-[var(--blog-shadow-soft)]">

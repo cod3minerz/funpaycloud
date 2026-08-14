@@ -81,7 +81,6 @@ export type MiniAppAccount = {
   username: string;
   runner_active: boolean;
   keeper_active: boolean;
-  raiser_active: boolean;
   runtime_active: boolean;
   last_event_at?: string | null;
   proxy_label: string;

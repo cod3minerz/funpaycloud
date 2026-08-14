@@ -26,7 +26,7 @@ export default function DashboardV2() {
                 Как автоматически поднимать лоты на FunPay
               </h2>
               <p className="text-sm opacity-90">
-                Пошаговый разбор настроек автоподнятия и ошибок, которых важно избегать.
+                Пошаговый разбор настройки автоматизации и ошибок, которых важно избегать.
               </p>
               <Button variant="secondary" className="mt-4">
                 Читать статью
@@ -161,9 +161,9 @@ export default function DashboardV2() {
                 01
               </div>
               <div>
-                <h4 className="font-semibold">Автоподнятие лотов</h4>
+                <h4 className="font-semibold">Автовыдача товаров</h4>
                 <p className="text-sm text-muted-foreground mt-1">
-                  По расписанию или круглую
+                  Сразу после оплаты
                 </p>
               </div>
             </div>

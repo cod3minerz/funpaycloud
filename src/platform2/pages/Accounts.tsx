@@ -39,7 +39,6 @@ type Account = {
   status: "online" | "offline";
   runner: boolean;
   keeper: boolean;
-  raiser: boolean;
   proxy: string;
   proxyType: ApiAccount["proxy_type"];
   proxyConnected: boolean;
@@ -114,7 +113,6 @@ function mapApiAccount(a: ApiAccount): Account {
     status: a.keeper_active ? "online" : "offline",
     runner: a.runner_active ?? false,
     keeper: a.keeper_active,
-    raiser: a.raiser_active,
     proxy: a.proxy_label ?? (a.proxy_connected ? "Прокси подключён" : "Нет прокси"),
     proxyType: a.proxy_type ?? "none",
     proxyConnected: a.proxy_connected ?? false,
@@ -192,7 +190,6 @@ export default function AccountsPage() {
   const [filterStatus, setFilterStatus] = useState<"" | "online" | "offline">("");
   const [runningAll, setRunningAll] = useState(false);
   const [stoppingAll, setStoppingAll] = useState(false);
-  const [raiserTogglingIds, setRaiserTogglingIds] = useState<Set<string>>(new Set());
   const [proxyPaymentLoading, setProxyPaymentLoading] = useState(false);
   const [showProxyBanner, setShowProxyBanner] = useState(false);
   const [activeOperation, setActiveOperation] = useState<BackgroundOperation | null>(null);
@@ -736,29 +733,6 @@ export default function AccountsPage() {
     }
   }
 
-  async function handleToggleRaiser(acc: Account) {
-    setRaiserTogglingIds((prev) => new Set(prev).add(acc.id));
-    try {
-      if (acc.raiser) {
-        await accountsApi.stopRaiser(acc.apiId);
-      } else {
-        await accountsApi.startRaiser(acc.apiId);
-      }
-      const updated = { ...acc, raiser: !acc.raiser };
-      setAccounts((prev) => prev.map((a) => a.id === acc.id ? updated : a));
-      if (drawerAccount?.id === acc.id) setDrawerAccount(updated);
-      toast.success(acc.raiser ? "Raiser остановлен" : "Raiser запущен");
-    } catch {
-      toast.error("Не удалось переключить Raiser");
-    } finally {
-      setRaiserTogglingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(acc.id);
-        return next;
-      });
-    }
-  }
-
   function openFreeProxySubscription() {
     setFreeProxySubscriptionError("");
     setFreeProxySubscriptionErrorCode("");
@@ -945,7 +919,6 @@ export default function AccountsPage() {
     total: accounts.length,
     runnerActive: accounts.filter((a) => a.runner).length,
     keeperOnline: accounts.filter((a) => a.keeper).length,
-    raiserRunning: accounts.filter((a) => a.raiser).length,
   };
 
   return (
@@ -1007,7 +980,7 @@ export default function AccountsPage() {
       )}
 
       {/* STAT CARDS */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -1046,20 +1019,6 @@ export default function AccountsPage() {
               </div>
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-warning-500/10">
                 <Icon name="bolt" className="h-6 w-6 text-warning-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Raiser запущен</p>
-                <h3 className="mt-2 text-2xl font-bold text-gray-800 dark:text-white">{stats.raiserRunning}</h3>
-                <p className="mt-1 text-xs text-gray-400">Автоподнятие включено</p>
-              </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-error-500/10">
-                <Icon name="arrow-up" className="h-6 w-6 text-error-500" />
               </div>
             </div>
           </CardContent>
@@ -1184,9 +1143,6 @@ export default function AccountsPage() {
                         </span>
                         <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium ${account.keeper ? "bg-success-500/10 text-success-600" : "bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500"}`}>
                           Keeper
-                        </span>
-                        <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium ${account.raiser ? "bg-success-500/10 text-success-600" : "bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500"}`}>
-                          Raiser
                         </span>
                       </div>
                     </TableCell>
@@ -1778,27 +1734,6 @@ export default function AccountsPage() {
                       </span>
                     </div>
                     <p className="mt-1 text-sm text-gray-500">Сессия обновлена: {drawerAccount.sessionUpdated}</p>
-                  </div>
-
-                  {/* Raiser */}
-                  <div className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
-                    <div className="flex items-center justify-between">
-                      <p className="font-semibold text-gray-800 dark:text-white">Raiser</p>
-                      <span className={`text-sm font-medium ${drawerAccount.raiser ? "text-success-500" : "text-gray-400"}`}>
-                        {drawerAccount.raiser ? "Активен" : "Остановлен"}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Автоподнятие: {drawerAccount.raiser ? "включено" : "выключено"}
-                    </p>
-                    <button
-                      onClick={() => handleToggleRaiser(drawerAccount)}
-                      disabled={raiserTogglingIds.has(drawerAccount.id)}
-                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-                    >
-                      <Icon name="arrow-right" className="h-4 w-4" />
-                      {drawerAccount.raiser ? "Остановить Raiser" : "Запуск Raiser"}
-                    </button>
                   </div>
 
                 </div>

@@ -24,7 +24,6 @@ const stats = {
   total: 1,
   runnerActive: 1,
   keeperOnline: 1,
-  raiserRunning: 0,
 };
 
 const accounts = [
@@ -34,7 +33,6 @@ const accounts = [
     status: 'Онлайн',
     runner: true,
     keeper: true,
-    raiser: false,
     proxy: 'Бесплатный прокси #2',
   },
 ];
@@ -63,8 +61,7 @@ export default function AccountsPageV2() {
         </div>
       </div>
 
-      {/* ✅ 4 карточки статистики - Tailwind Admin стиль */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         
         <Card>
           <CardContent className="p-6">
@@ -129,27 +126,6 @@ export default function AccountsPageV2() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Raiser запущен
-                </p>
-                <h3 className="mt-2 text-2xl font-bold">
-                  {stats.raiserRunning}
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Автоподнятие включено
-                </p>
-              </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-error/10">
-                <Icon icon="solar:arrow-up-line-duotone" className="h-6 w-6 text-error" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
       </div>
 
       {/* ✅ Таблица - Tailwind Admin стиль */}
@@ -201,7 +177,6 @@ export default function AccountsPageV2() {
                     <div className="flex gap-2">
                       <div className={`h-2 w-2 rounded-full ${account.runner ? 'bg-success' : 'bg-muted'}`} />
                       <div className={`h-2 w-2 rounded-full ${account.keeper ? 'bg-success' : 'bg-muted'}`} />
-                      <div className={`h-2 w-2 rounded-full ${account.raiser ? 'bg-success' : 'bg-muted'}`} />
                     </div>
                   </TableCell>
                   <TableCell>

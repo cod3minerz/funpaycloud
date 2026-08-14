@@ -129,7 +129,7 @@ export default function AdminRunnersPage() {
     }
   };
 
-  const hasAnyActive = items.some(i => i.runner_active || i.keeper_active || i.raiser_active);
+  const hasAnyActive = items.some(i => i.runner_active || i.keeper_active);
 
   return (
     <div className="space-y-5">
@@ -159,7 +159,7 @@ export default function AdminRunnersPage() {
             <Table>
               <TableHeader className="bg-gray-50 dark:bg-gray-900">
                 <TableRow>
-                  {['Аккаунт', 'Пользователь', 'Runner', 'Keeper', 'Raiser', 'Запущен', 'Последнее событие', 'Действия'].map(h => (
+                  {['Аккаунт', 'Пользователь', 'Runner', 'Keeper', 'Запущен', 'Последнее событие', 'Действия'].map(h => (
                     <TableCell key={h} isHeader className="px-4 py-3 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{h}</TableCell>
                   ))}
                 </TableRow>
@@ -167,20 +167,19 @@ export default function AdminRunnersPage() {
               <TableBody>
                 {!loading && items.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="px-4 py-8 text-center text-gray-400 dark:text-gray-500">
+                    <TableCell colSpan={7} className="px-4 py-8 text-center text-gray-400 dark:text-gray-500">
                       Нет активных runtime-аккаунтов
                     </TableCell>
                   </TableRow>
                 )}
                 {items.map(item => {
-                  const isActive = item.runner_active || item.keeper_active || item.raiser_active;
+                  const isActive = item.runner_active || item.keeper_active;
                   return (
                     <TableRow key={item.account_id}>
                       <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">#{item.account_id} · {item.username || '—'}</TableCell>
                       <TableCell className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{item.user_id}</TableCell>
                       <TableCell className="px-4 py-3"><StateBadge active={item.runner_active} /></TableCell>
                       <TableCell className="px-4 py-3"><StateBadge active={item.keeper_active} /></TableCell>
-                      <TableCell className="px-4 py-3"><StateBadge active={item.raiser_active} /></TableCell>
                       <TableCell className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{item.started_at ? new Date(item.started_at).toLocaleString('ru-RU') : '—'}</TableCell>
                       <TableCell className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{item.last_event_at ? new Date(item.last_event_at).toLocaleString('ru-RU') : '—'}</TableCell>
                       <TableCell className="px-4 py-3">
