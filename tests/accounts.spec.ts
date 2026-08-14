@@ -168,6 +168,8 @@ test.beforeEach(async ({ page }) => {
       __INVENTORY_CALLS__?: number;
       __ONBOARDING_REQUESTS__?: Record<string, unknown>[];
       __FREE_CLAIM_CALLS__?: number;
+      __RAISER_START_CALLS__?: number;
+      __RAISER_STOP_CALLS__?: number;
     };
     testScope.__PROXY_CONNECT_CALLS__ = 0;
     testScope.__PROXY_CONNECT_BODY__ = undefined;
@@ -456,6 +458,20 @@ test.beforeEach(async ({ page }) => {
         activeOperationKind = 'runner';
         operationPolls = 0;
         return ok({ operation: operation('runner-operation', 'queued', 0) }, 202);
+      }
+      const raiserMatch = path.match(/^\/api\/accounts\/(\d+)\/raiser\/(start|stop)$/);
+      if (raiserMatch && method === 'POST') {
+        const accountID = Number(raiserMatch[1]);
+        const enabled = raiserMatch[2] === 'start';
+        if (enabled) {
+          testScope.__RAISER_START_CALLS__ = (testScope.__RAISER_START_CALLS__ || 0) + 1;
+        } else {
+          testScope.__RAISER_STOP_CALLS__ = (testScope.__RAISER_STOP_CALLS__ || 0) + 1;
+        }
+        accounts = accounts.map((account) => account.id === accountID
+          ? { ...account, raiser_active: enabled }
+          : account);
+        return ok({});
       }
       if (path === '/api/accounts/runtime/start-all' && method === 'POST') {
         if (new Headers(init?.headers).get('Prefer') === 'respond-async') testScope.__ASYNC_PREFER_CALLS__! += 1;
@@ -769,6 +785,31 @@ test('individual Runner start uses one async request and the blocking overlay', 
   await expect(overlay).toBeHidden();
   const preferCalls = await page.evaluate(() => (window as typeof window & { __ASYNC_PREFER_CALLS__?: number }).__ASYNC_PREFER_CALLS__ || 0);
   expect(preferCalls).toBe(1);
+});
+
+test('Raiser can be enabled and disabled from the account drawer', async ({ page }) => {
+  await page.goto('/platform/accounts');
+  const row = page.getByRole('row').filter({ hasText: 'BetaSeller' });
+  await row.getByRole('button', { name: 'Открыть' }).click();
+
+  await expect(page.getByText('Автоподнятие: выключено', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Запустить Raiser' }).click();
+  await expect(page.getByText('Автоподнятие: включено', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Остановить Raiser' }).click();
+  await expect(page.getByText('Автоподнятие: выключено', { exact: true })).toBeVisible();
+
+  const calls = await page.evaluate(() => {
+    const scope = window as typeof window & {
+      __RAISER_START_CALLS__?: number;
+      __RAISER_STOP_CALLS__?: number;
+    };
+    return {
+      start: scope.__RAISER_START_CALLS__ || 0,
+      stop: scope.__RAISER_STOP_CALLS__ || 0,
+    };
+  });
+  expect(calls).toEqual({ start: 1, stop: 1 });
 });
 
 test('active operation overlay is restored after page reload without storing Golden Key', async ({ page }) => {

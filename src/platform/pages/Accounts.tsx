@@ -96,7 +96,7 @@ function getProxyDotClass(acc: ApiAccount): string {
 }
 
 function isAccountRuntimeActive(acc: ApiAccount): boolean {
-  return Boolean(acc.runner_active || acc.keeper_active);
+  return Boolean(acc.runner_active || acc.keeper_active || acc.raiser_active);
 }
 
 export default function Accounts() {
@@ -112,6 +112,7 @@ export default function Accounts() {
   const [bulkRuntimeLoading, setBulkRuntimeLoading] = useState(false);
   const [activeOperation, setActiveOperation] = useState<BackgroundOperation | null>(null);
   const [operationTitle, setOperationTitle] = useState('');
+  const [raisingIds, setRaisingIds] = useState<Set<string | number>>(new Set());
   const [runtimeLoadingIds, setRuntimeLoadingIds] = useState<Set<string | number>>(new Set());
   const [selectedAccountID, setSelectedAccountID] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -247,12 +248,35 @@ export default function Accounts() {
     }
   }
 
+  async function toggleRaiser(acc: ApiAccount) {
+    setRaisingIds(prev => new Set(prev).add(acc.id));
+    try {
+      if (acc.raiser_active) {
+        await accountsApi.stopRaiser(acc.id);
+        setList(prev => prev.map(a => (a.id === acc.id ? { ...a, raiser_active: false } : a)));
+        toast.success(`Автоподнятие остановлено (${displayName(acc)})`);
+      } else {
+        await accountsApi.startRaiser(acc.id);
+        setList(prev => prev.map(a => (a.id === acc.id ? { ...a, raiser_active: true } : a)));
+        toast.success(`Автоподнятие запущено (${displayName(acc)})`);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка управления автоподнятием');
+    } finally {
+      setRaisingIds(prev => {
+        const next = new Set(prev);
+        next.delete(acc.id);
+        return next;
+      });
+    }
+  }
+
   async function toggleAccountRuntime(acc: ApiAccount) {
     setRuntimeLoadingIds(prev => new Set(prev).add(acc.id));
     try {
       if (isAccountRuntimeActive(acc)) {
         await accountsApi.stopRuntime(acc.id);
-        setList(prev => prev.map(a => (a.id === acc.id ? { ...a, runner_active: false, keeper_active: false } : a)));
+        setList(prev => prev.map(a => (a.id === acc.id ? { ...a, runner_active: false, keeper_active: false, raiser_active: false } : a)));
         toast.success(`Аккаунт выключен (${displayName(acc)})`);
       } else {
         const started = await accountsApi.startRuntime(acc.id);
@@ -281,7 +305,7 @@ export default function Accounts() {
     try {
       if (hasAnyActive) {
         await accountsApi.stopAllRuntime();
-        setList(prev => prev.map(a => ({ ...a, runner_active: false, keeper_active: false })));
+        setList(prev => prev.map(a => ({ ...a, runner_active: false, keeper_active: false, raiser_active: false })));
         toast.success('Все аккаунты выключены');
       } else {
         const started = await accountsApi.startAllRuntime();
@@ -306,6 +330,7 @@ export default function Accounts() {
 
   const runnerActiveCount = list.filter(a => a.runner_active).length;
   const onlineCount = list.filter(a => a.keeper_active).length;
+  const raisingCount = list.filter(a => a.raiser_active).length;
   const hasAnyRuntimeActive = list.some(isAccountRuntimeActive);
 
   const openAccountSheet = (accountId: number) => {
@@ -516,6 +541,14 @@ export default function Accounts() {
             <strong className="text-[26px]">{onlineCount}</strong>
             <span className="platform-kpi-meta">Сессии поддерживаются</span>
           </KpiCard>
+          <KpiCard>
+            <div className="inline-flex items-center gap-2 text-[13px] font-semibold">
+              <Play size={15} color="var(--pf-accent)" />
+              Raiser запущен
+            </div>
+            <strong className="text-[26px]">{raisingCount}</strong>
+            <span className="platform-kpi-meta">Автоподнятие включено</span>
+          </KpiCard>
         </KpiGrid>
 
         <SectionCard>
@@ -565,7 +598,7 @@ export default function Accounts() {
                     <tbody>
                       {filtered.map(acc => {
                         const name = displayName(acc);
-                        const isOnline = acc.runner_active || acc.keeper_active;
+                        const isOnline = acc.runner_active || acc.keeper_active || acc.raiser_active;
                         return (
                           <tr
                             key={acc.id}
@@ -595,6 +628,10 @@ export default function Accounts() {
                                 <span
                                   title={`Keeper: ${acc.keeper_active ? 'Онлайн' : 'Оффлайн'}`}
                                   className={`h-2.5 w-2.5 rounded-full ${acc.keeper_active ? 'platform-status-dot-success' : 'platform-status-dot-soft'}`}
+                                />
+                                <span
+                                  title={`Raiser: ${acc.raiser_active ? 'Запущен' : 'Остановлен'}`}
+                                  className={`h-2.5 w-2.5 rounded-full ${acc.raiser_active ? 'platform-status-dot-warning' : 'platform-status-dot-soft'}`}
                                 />
                               </div>
                             </td>
@@ -641,7 +678,7 @@ export default function Accounts() {
               <div className="platform-mobile-cards">
                 {filtered.map(acc => {
                   const name = displayName(acc);
-                  const isOnline = acc.runner_active || acc.keeper_active;
+                  const isOnline = acc.runner_active || acc.keeper_active || acc.raiser_active;
                   return (
                     <article
                       key={acc.id}
@@ -669,6 +706,10 @@ export default function Accounts() {
                           <span
                             title={`Keeper: ${acc.keeper_active ? 'Онлайн' : 'Оффлайн'}`}
                             className={`h-2.5 w-2.5 rounded-full ${acc.keeper_active ? 'platform-status-dot-success' : 'platform-status-dot-soft'}`}
+                          />
+                          <span
+                            title={`Raiser: ${acc.raiser_active ? 'Запущен' : 'Остановлен'}`}
+                            className={`h-2.5 w-2.5 rounded-full ${acc.raiser_active ? 'platform-status-dot-warning' : 'platform-status-dot-soft'}`}
                           />
                         </div>
                         <span className="inline-flex items-center gap-1 text-xs text-[var(--pf-text-dim)]">
@@ -735,11 +776,11 @@ export default function Accounts() {
                       </p>
                       <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-[var(--pf-text-muted)]">
                         <span className={`h-2 w-2 rounded-full ${
-                          selectedAccount.runner_active || selectedAccount.keeper_active
+                          selectedAccount.runner_active || selectedAccount.keeper_active || selectedAccount.raiser_active
                             ? 'platform-status-dot-success'
                             : 'platform-status-dot-soft'
                         }`} />
-                        {selectedAccount.runner_active || selectedAccount.keeper_active ? 'Онлайн' : 'Оффлайн'}
+                        {selectedAccount.runner_active || selectedAccount.keeper_active || selectedAccount.raiser_active ? 'Онлайн' : 'Оффлайн'}
                       </p>
                     </div>
                   </div>
@@ -778,6 +819,39 @@ export default function Accounts() {
                     </p>
                   </div>
 
+                  <div className="platform-account-sheet-block rounded-xl p-3">
+                    <div className="flex items-center justify-between text-sm font-medium">
+                      <span>Raiser</span>
+                      <span className={selectedAccount.raiser_active ? 'text-[var(--pf-success)]' : 'text-[var(--pf-text-soft)]'}>
+                        {selectedAccount.raiser_active ? 'Активен' : 'Остановлен'}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs text-[var(--pf-text-dim)]">
+                      Автоподнятие: {selectedAccount.raiser_active ? 'включено' : 'выключено'}
+                    </p>
+                    <button
+                      type="button"
+                      className="platform-account-inline-btn mt-3 inline-flex h-10 w-full items-center justify-center gap-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={() => toggleRaiser(selectedAccount)}
+                      disabled={raisingIds.has(selectedAccount.id) || (!selectedAccount.proxy_connected && !selectedAccount.raiser_active)}
+                      title={!selectedAccount.proxy_connected && !selectedAccount.raiser_active ? 'Сначала подключите прокси' : undefined}
+                    >
+                      {raisingIds.has(selectedAccount.id) ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : selectedAccount.raiser_active ? (
+                        <>
+                          <Square size={14} />
+                          Остановить Raiser
+                        </>
+                      ) : (
+                        <>
+                          <Play size={14} />
+                          Запустить Raiser
+                        </>
+                      )}
+                    </button>
+                  </div>
+
                 </section>
 
                 <section className="space-y-3">
@@ -790,7 +864,7 @@ export default function Accounts() {
                     <p className="mt-2 text-xs text-[var(--pf-text-dim)]">
                       {selectedAccount.proxy_connected
                         ? 'Все запросы аккаунта идут через прокси.'
-                        : 'Без прокси воркеры Runner и Keeper не запускаются.'}
+                        : 'Без прокси воркеры Runner, Keeper и Raiser не запускаются.'}
                     </p>
                     <button
                       type="button"
