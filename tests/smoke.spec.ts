@@ -1299,7 +1299,8 @@ test('auto responder order events support descriptions and ordered multiple acti
   await page.getByTestId('auto-responder-menu').fill('Меню');
 
   const triggerType = page.getByTestId('auto-responder-trigger-type-0');
-  await expect(triggerType.locator('option')).toHaveCount(4);
+  await expect(triggerType.locator('option')).toHaveCount(3);
+  await expect(triggerType.locator('option[value="order_refunded"]')).toHaveCount(0);
   const triggerControl = page.getByTestId('auto-responder-trigger-control-0');
   await expect(triggerControl.getByTestId('auto-responder-description-toggle-0')).toBeVisible();
   await expect(page.getByTestId('auto-responder-description-toggle-0')).toHaveAccessibleName('Как работает команда «Триггер-слово»');
@@ -1308,8 +1309,6 @@ test('auto responder order events support descriptions and ordered multiple acti
 
   await triggerType.selectOption('order_confirmed');
   await expect(page.getByTestId('auto-responder-description-0')).toContainText('Подтвердить выполнение');
-  await triggerType.selectOption('order_refunded');
-  await expect(page.getByTestId('auto-responder-description-0')).toContainText('отменён или возвращён');
   await triggerType.selectOption('order_paid');
   await expect(page.getByTestId('auto-responder-description-toggle-0')).toHaveAccessibleName('Как работает команда «Оплата заказа»');
   const description = page.getByTestId('auto-responder-description-0');

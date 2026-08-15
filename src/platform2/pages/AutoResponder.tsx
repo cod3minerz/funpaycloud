@@ -50,7 +50,6 @@ const triggerOptions: Array<{ value: AutoResponderTriggerType; label: string }> 
   { value: "keyword", label: "Триггер-слово" },
   { value: "order_confirmed", label: "Подтверждение заказа" },
   { value: "order_paid", label: "Оплата заказа" },
-  { value: "order_refunded", label: "Возврат / отмена" },
 ];
 
 const triggerDescriptions: Record<AutoResponderTriggerType, { title: string; text: string; variables?: string }> = {
@@ -66,11 +65,6 @@ const triggerDescriptions: Record<AutoResponderTriggerType, { title: string; tex
   order_paid: {
     title: "Оплата заказа",
     text: "Отправляется покупателю сразу после оплаты. Команда активного автоответчика имеет приоритет над одноимённым сообщением AI-Ассистента.",
-    variables: "{buyer} — покупатель, {order_id} — номер заказа, {lot} — название лота, {price} — цена.",
-  },
-  order_refunded: {
-    title: "Возврат / отмена",
-    text: "Отправляется покупателю, если заказ был отменён или возвращён. Команда активного автоответчика имеет приоритет над одноимённым сообщением AI-Ассистента.",
     variables: "{buyer} — покупатель, {order_id} — номер заказа, {lot} — название лота, {price} — цена.",
   },
 };

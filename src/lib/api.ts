@@ -375,7 +375,7 @@ export type ApiAccount = {
   proxy_max_accounts?: number;
 };
 
-export type AutoResponderTriggerType = 'keyword' | 'order_paid' | 'order_confirmed' | 'order_refunded';
+export type AutoResponderTriggerType = 'keyword' | 'order_paid' | 'order_confirmed';
 export type AutoResponderActionType = 'send_message' | 'call_seller' | 'run_plugin';
 
 export type AutoResponderAction = {
