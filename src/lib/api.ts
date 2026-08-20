@@ -1182,6 +1182,7 @@ export type SteamRentalAccount = {
   email_masked: string;
   email_provider: 'gmail' | 'yandex' | 'mailru' | 'rambler' | string;
   status: 'available' | 'rented' | 'quarantine' | 'disabled';
+  password_rotation_required: boolean;
   notes: string;
   has_steam_password: boolean;
   has_email_credential: boolean;

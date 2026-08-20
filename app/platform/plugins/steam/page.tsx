@@ -51,8 +51,10 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
-function StatusPill({ status, lease = false }: { status: string; lease?: boolean }) {
-  const meta = (lease ? LEASE_STATUS : ACCOUNT_STATUS)[status] || { label: status, className: "bg-gray-100 text-gray-600" };
+function StatusPill({ status, lease = false, rotationRequired = false }: { status: string; lease?: boolean; rotationRequired?: boolean }) {
+  const meta = rotationRequired && !lease
+    ? { label: "Нужно сменить пароль", className: "bg-error-50 text-error-700 dark:bg-error-500/10 dark:text-error-400" }
+    : (lease ? LEASE_STATUS : ACCOUNT_STATUS)[status] || { label: status, className: "bg-gray-100 text-gray-600" };
   return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${meta.className}`}>{meta.label}</span>;
 }
 
@@ -229,7 +231,7 @@ function AccountsTab({ funpayAccountId, items, reload }: { funpayAccountId: numb
             <CardContent className="space-y-4 p-5">
               <div className="flex items-start justify-between gap-3">
                 <div><div className="font-medium text-gray-900 dark:text-white">{item.label}</div><div className="mt-1 text-sm text-gray-500">{item.steam_login_masked}</div></div>
-                <StatusPill status={item.status} />
+                <StatusPill status={item.status} rotationRequired={item.password_rotation_required} />
               </div>
               <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
                 <div>Почта: <span className="text-gray-900 dark:text-gray-200">{item.email_masked}</span></div>
@@ -237,10 +239,12 @@ function AccountsTab({ funpayAccountId, items, reload }: { funpayAccountId: numb
                 <div>Последняя IMAP-проверка: {formatDate(item.last_checked_at)}</div>
               </div>
               {item.notes && <p className="rounded-lg bg-gray-50 p-3 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400">{item.notes}</p>}
+              {item.password_rotation_required && <Alert variant="warning" title="Смените пароль Steam" message="Аккаунт останется вне пула, пока вы не измените пароль в Steam и не сохраните новый пароль здесь." />}
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" disabled={busyId === item.id} onClick={() => run(item.id, () => steamRentalApi.testEmail(funpayAccountId, item.id), "Почта подключена")}>Проверить почту</Button>
                 <Button size="sm" variant="secondary" onClick={() => { setEditing(item); setShowForm(true); }}>Изменить</Button>
-                {(item.status === "quarantine" || item.status === "disabled") && <Button size="sm" onClick={() => run(item.id, () => steamRentalApi.releaseAccount(funpayAccountId, item.id), "Аккаунт возвращён в пул")}>Вернуть в пул</Button>}
+                {item.password_rotation_required && <Button size="sm" onClick={() => { setEditing(item); setShowForm(true); }}>Сохранить новый пароль</Button>}
+                {(item.status === "quarantine" || item.status === "disabled") && !item.password_rotation_required && <Button size="sm" onClick={() => run(item.id, () => steamRentalApi.releaseAccount(funpayAccountId, item.id), "Аккаунт возвращён в пул")}>Вернуть в пул</Button>}
                 {item.status === "available" && <Button size="sm" variant="outline" onClick={() => run(item.id, () => steamRentalApi.updateAccount(funpayAccountId, item.id, accountUpdatePayload(item, "disabled")), "Аккаунт отключён")}>Отключить</Button>}
                 {item.status !== "rented" && <Button size="sm" variant="danger" onClick={() => {
                   if (window.confirm(`Удалить «${item.label}»?`)) run(item.id, () => steamRentalApi.deleteAccount(funpayAccountId, item.id), "Аккаунт удалён");
@@ -285,7 +289,7 @@ function SteamAccountForm({ funpayAccountId, item, onCancel, onSaved }: { funpay
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Название"><InputField required value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="Например, CS2 #1" /></Field>
             <Field label="Логин Steam" hint={item ? "*** — оставить без изменений" : undefined}><InputField required value={form.steam_login} onChange={(e) => setForm({ ...form, steam_login: e.target.value })} autoComplete="off" /></Field>
-            <Field label="Пароль Steam" hint={item ? "Оставьте ***, чтобы не менять" : undefined}><InputField required type="password" value={form.steam_password} onChange={(e) => setForm({ ...form, steam_password: e.target.value })} autoComplete="new-password" /></Field>
+            <Field label="Пароль Steam" hint={item?.password_rotation_required ? "Сначала измените пароль в Steam, затем введите новый пароль здесь" : item ? "Оставьте ***, чтобы не менять" : undefined}><InputField required type="password" value={form.steam_password} onChange={(e) => setForm({ ...form, steam_password: e.target.value })} autoComplete="new-password" /></Field>
             <Field label="Email Steam" hint="Gmail, Яндекс, Mail.ru или Rambler"><InputField required type="text" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} autoComplete="off" /></Field>
             <Field label="Пароль приложения почты" hint="Не основной пароль. Включите IMAP и создайте отдельный пароль приложения."><InputField required type="password" value={form.email_secret} onChange={(e) => setForm({ ...form, email_secret: e.target.value })} autoComplete="new-password" /></Field>
             <Field label="Состояние"><Select value={form.status || "available"} onChange={(value) => setForm({ ...form, status: value as "available" | "disabled" })}><option value="available">Доступен для аренды</option><option value="disabled">Отключён</option></Select></Field>
