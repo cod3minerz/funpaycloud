@@ -1172,6 +1172,118 @@ export const pluginsApi = {
     apiRequest<Record<string, number>>(`/api/plugins/${slug}/stats?account_id=${account_id}&days=${days}`),
 };
 
+// ── Steam account rental ─────────────────────────────────────────────────────
+
+export type SteamRentalAccount = {
+  id: number;
+  funpay_account_id: number;
+  label: string;
+  steam_login_masked: string;
+  email_masked: string;
+  email_provider: 'gmail' | 'yandex' | 'mailru' | 'rambler' | string;
+  status: 'available' | 'rented' | 'quarantine' | 'disabled';
+  notes: string;
+  has_steam_password: boolean;
+  has_email_credential: boolean;
+  last_checked_at?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SteamRentalAccountInput = {
+  label: string;
+  steam_login: string;
+  steam_password: string;
+  email: string;
+  email_secret: string;
+  status?: 'available' | 'disabled';
+  notes?: string;
+};
+
+export type SteamRentalMapping = {
+  id: number;
+  funpay_account_id: number;
+  lot_id: string;
+  duration_minutes: number;
+  delivery_template: string;
+  guard_command: string;
+  guard_limit: number;
+  is_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SteamRentalMappingInput = {
+  lot_id: string;
+  duration_minutes: number;
+  delivery_template: string;
+  guard_command: string;
+  guard_limit: number;
+  is_enabled: boolean;
+};
+
+export type SteamRentalLease = {
+  id: number;
+  funpay_account_id: number;
+  steam_account_id: number;
+  steam_account_label: string;
+  mapping_id?: number | null;
+  funpay_order_id: string;
+  lot_id: string;
+  buyer_username: string;
+  buyer_id: number;
+  chat_node_id: string;
+  status: 'active' | 'expired' | 'refunded' | 'failed' | 'manual_review';
+  starts_at: string;
+  ends_at: string;
+  guard_requests: number;
+  delivered_at?: string | null;
+  closed_at?: string | null;
+  close_reason: string;
+  last_error?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export const steamRentalApi = {
+  accounts: (accountId: number | string) =>
+    apiRequest<SteamRentalAccount[]>(`/api/steam-rental/accounts?account_id=${accountId}`),
+  createAccount: (accountId: number | string, payload: SteamRentalAccountInput) =>
+    apiRequest<SteamRentalAccount>(`/api/steam-rental/accounts?account_id=${accountId}`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateAccount: (accountId: number | string, id: number | string, payload: SteamRentalAccountInput) =>
+    apiRequest<SteamRentalAccount>(`/api/steam-rental/accounts/${id}?account_id=${accountId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  deleteAccount: (accountId: number | string, id: number | string) =>
+    apiRequest(`/api/steam-rental/accounts/${id}?account_id=${accountId}`, { method: 'DELETE' }),
+  testEmail: (accountId: number | string, id: number | string) =>
+    apiRequest<{ message: string }>(`/api/steam-rental/accounts/${id}/test-email?account_id=${accountId}`, { method: 'POST', timeoutMs: 25000 }),
+  releaseAccount: (accountId: number | string, id: number | string) =>
+    apiRequest(`/api/steam-rental/accounts/${id}/release?account_id=${accountId}`, { method: 'POST' }),
+  mappings: (accountId: number | string) =>
+    apiRequest<SteamRentalMapping[]>(`/api/steam-rental/mappings?account_id=${accountId}`),
+  createMapping: (accountId: number | string, payload: SteamRentalMappingInput) =>
+    apiRequest<SteamRentalMapping>(`/api/steam-rental/mappings?account_id=${accountId}`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateMapping: (accountId: number | string, id: number | string, payload: SteamRentalMappingInput) =>
+    apiRequest<SteamRentalMapping>(`/api/steam-rental/mappings/${id}?account_id=${accountId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  deleteMapping: (accountId: number | string, id: number | string) =>
+    apiRequest(`/api/steam-rental/mappings/${id}?account_id=${accountId}`, { method: 'DELETE' }),
+  leases: (accountId: number | string, limit = 100) =>
+    apiRequest<SteamRentalLease[]>(`/api/steam-rental/leases?account_id=${accountId}&limit=${limit}`),
+  closeLease: (accountId: number | string, id: number | string) =>
+    apiRequest<SteamRentalLease>(`/api/steam-rental/leases/${id}/close?account_id=${accountId}`, { method: 'POST' }),
+};
+
 // ── Settings ──────────────────────────────────────────────────────────────────
 
 export type ProfileData = {

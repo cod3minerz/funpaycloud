@@ -13,7 +13,7 @@ export type PluginDef = {
 export const ALL_PLUGINS: PluginDef[] = [
   { slug: "smm", name: "SMM-накрутка", path: "/platform/plugins/smm", available: true },
   { slug: "robux", name: "Robux / Stars", path: "/platform/plugins", available: false },
-  { slug: "steam", name: "Аренда Steam", path: "/platform/plugins", available: false },
+  { slug: "steam", name: "Аренда Steam", path: "/platform/plugins/steam", available: true },
   { slug: "keys", name: "Ключи и коды", path: "/platform/plugins", available: false },
 ];
 

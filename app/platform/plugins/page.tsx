@@ -50,8 +50,8 @@ const pluginMeta: Record<string, { description: string; icon: string; color: str
   steam: {
     description: "Управление арендой Steam-аккаунтов: автовыдача, таймеры, возврат доступа.",
     icon: "beaker",
-    color: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
-    badge: "Скоро",
+    color: "bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400",
+    badge: "NEW",
   },
   keys: {
     description: "Авто-выдача ключей активации из склада — игры, подписки, программы.",
