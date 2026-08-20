@@ -11,6 +11,7 @@ import {
   SparklesIcon,
   InformationCircleIcon,
   BellIcon,
+  KeyIcon,
 } from "@heroicons/react/24/outline";
 
 const TYPE_FILTERS = [
@@ -18,6 +19,7 @@ const TYPE_FILTERS = [
   { label: "Сообщения", value: "new_message" },
   { label: "Заказы", value: "new_order" },
   { label: "Отзывы", value: "new_review" },
+  { label: "Steam", value: "steam_rental_expired" },
   { label: "Система", value: "system" },
 ];
 
@@ -26,6 +28,7 @@ function typeIcon(type: string) {
     case "new_message": return <EnvelopeIcon className="h-5 w-5 text-blue-500" />;
     case "new_order":   return <TaskIcon className="h-5 w-5 text-green-500" />;
     case "new_review":  return <SparklesIcon className="h-5 w-5 text-amber-500" />;
+    case "steam_rental_expired": return <KeyIcon className="h-5 w-5 text-sky-500" />;
     default:            return <InformationCircleIcon className="h-5 w-5 text-gray-400" />;
   }
 }
@@ -111,6 +114,8 @@ export default function Notifications() {
       if (accountID > 0 && chatID > 0) {
         router.push(`/platform/chats?account_id=${accountID}&chat_id=${chatID}`);
       }
+    } else if (n.type === "steam_rental_expired") {
+      router.push("/platform/plugins/steam");
     }
   };
 
@@ -146,7 +151,7 @@ export default function Notifications() {
             )}
           </h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            События по вашим аккаунтам — сообщения, заказы, отзывы
+            События по вашим аккаунтам — сообщения, заказы, отзывы и аренда Steam
           </p>
         </div>
         {unread > 0 && (

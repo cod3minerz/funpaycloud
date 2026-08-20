@@ -1183,6 +1183,8 @@ export type SteamRentalAccount = {
   email_provider: 'gmail' | 'yandex' | 'mailru' | 'rambler' | string;
   status: 'available' | 'rented' | 'quarantine' | 'disabled';
   password_rotation_required: boolean;
+  notify_owner_on_expiry: boolean;
+  notify_owner_in_telegram: boolean;
   notes: string;
   has_steam_password: boolean;
   has_email_credential: boolean;
@@ -1198,6 +1200,8 @@ export type SteamRentalAccountInput = {
   email: string;
   email_secret: string;
   status?: 'available' | 'disabled';
+  notify_owner_on_expiry?: boolean;
+  notify_owner_in_telegram?: boolean;
   notes?: string;
 };
 
@@ -2702,7 +2706,7 @@ export const smmApi = {
 export interface UserNotification {
   id: number;
   funpay_account_id: number;
-  type: 'new_message' | 'new_order' | 'new_review' | 'system';
+  type: 'new_message' | 'new_order' | 'new_review' | 'steam_rental_expired' | 'system';
   title: string;
   body: string;
   meta?: Record<string, unknown>;

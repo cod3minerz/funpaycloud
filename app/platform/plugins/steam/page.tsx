@@ -236,6 +236,8 @@ function AccountsTab({ funpayAccountId, items, reload }: { funpayAccountId: numb
               <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
                 <div>Почта: <span className="text-gray-900 dark:text-gray-200">{item.email_masked}</span></div>
                 <div>Провайдер: <span className="uppercase text-gray-900 dark:text-gray-200">{item.email_provider}</span></div>
+                <div>Напоминание о смене пароля: <span className="text-gray-900 dark:text-gray-200">{item.notify_owner_on_expiry ? "включено" : "выключено"}</span></div>
+                <div>Уведомление в Telegram: <span className="text-gray-900 dark:text-gray-200">{item.notify_owner_in_telegram ? "включено" : "выключено"}</span></div>
                 <div>Последняя IMAP-проверка: {formatDate(item.last_checked_at)}</div>
               </div>
               {item.notes && <p className="rounded-lg bg-gray-50 p-3 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400">{item.notes}</p>}
@@ -259,15 +261,15 @@ function AccountsTab({ funpayAccountId, items, reload }: { funpayAccountId: numb
 }
 
 function accountUpdatePayload(item: SteamRentalAccount, status: "available" | "disabled"): SteamRentalAccountInput {
-  return { label: item.label, steam_login: "***", steam_password: "***", email: "***", email_secret: "***", status, notes: item.notes };
+  return { label: item.label, steam_login: "***", steam_password: "***", email: "***", email_secret: "***", status, notify_owner_on_expiry: item.notify_owner_on_expiry, notify_owner_in_telegram: item.notify_owner_in_telegram, notes: item.notes };
 }
 
 function SteamAccountForm({ funpayAccountId, item, onCancel, onSaved }: { funpayAccountId: number; item: SteamRentalAccount | null; onCancel: () => void; onSaved: () => Promise<void> }) {
-  const [form, setForm] = useState<SteamRentalAccountInput>({ label: "", steam_login: "", steam_password: "", email: "", email_secret: "", status: "available", notes: "" });
+  const [form, setForm] = useState<SteamRentalAccountInput>({ label: "", steam_login: "", steam_password: "", email: "", email_secret: "", status: "available", notify_owner_on_expiry: false, notify_owner_in_telegram: false, notes: "" });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setForm(item ? { label: item.label, steam_login: "***", steam_password: "***", email: "***", email_secret: "***", status: item.status === "disabled" ? "disabled" : "available", notes: item.notes } : { label: "", steam_login: "", steam_password: "", email: "", email_secret: "", status: "available", notes: "" });
+    setForm(item ? { label: item.label, steam_login: "***", steam_password: "***", email: "***", email_secret: "***", status: item.status === "disabled" ? "disabled" : "available", notify_owner_on_expiry: item.notify_owner_on_expiry, notify_owner_in_telegram: item.notify_owner_in_telegram, notes: item.notes } : { label: "", steam_login: "", steam_password: "", email: "", email_secret: "", status: "available", notify_owner_on_expiry: false, notify_owner_in_telegram: false, notes: "" });
   }, [item]);
 
   const submit = async (event: React.FormEvent) => {
@@ -294,6 +296,14 @@ function SteamAccountForm({ funpayAccountId, item, onCancel, onSaved }: { funpay
             <Field label="Пароль приложения почты" hint="Не основной пароль. Включите IMAP и создайте отдельный пароль приложения."><InputField required type="password" value={form.email_secret} onChange={(e) => setForm({ ...form, email_secret: e.target.value })} autoComplete="new-password" /></Field>
             <Field label="Состояние"><Select value={form.status || "available"} onChange={(value) => setForm({ ...form, status: value as "available" | "disabled" })}><option value="available">Доступен для аренды</option><option value="disabled">Отключён</option></Select></Field>
           </div>
+          <label className="flex items-start gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+            <input type="checkbox" checked={Boolean(form.notify_owner_on_expiry)} onChange={(e) => setForm({ ...form, notify_owner_on_expiry: e.target.checked })} className="mt-0.5 h-4 w-4 rounded border-gray-300" />
+            <span><span className="block text-sm font-medium text-gray-800 dark:text-gray-200">Напомнить о смене пароля после аренды</span><span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">После срабатывания таймера уведомление появится в центре уведомлений funpay.cloud.</span></span>
+          </label>
+          <label className="flex items-start gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+            <input type="checkbox" checked={Boolean(form.notify_owner_in_telegram)} onChange={(e) => setForm({ ...form, notify_owner_in_telegram: e.target.checked })} className="mt-0.5 h-4 w-4 rounded border-gray-300" />
+            <span><span className="block text-sm font-medium text-gray-800 dark:text-gray-200">Продублировать напоминание в Telegram</span><span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">Требуется привязанный Telegram и включённые уведомления в разделе «Интеграции».</span></span>
+          </label>
           <Field label="Заметка"><textarea value={form.notes || ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white" placeholder="Игры, ограничения, действия перед возвратом..." /></Field>
           <div className="flex justify-end gap-2"><Button variant="outline" onClick={onCancel}>Отмена</Button><Button type="submit" disabled={saving}>{saving ? "Сохранение..." : "Сохранить"}</Button></div>
         </form>
