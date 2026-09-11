@@ -238,6 +238,7 @@ test.beforeEach(async ({ page }) => {
     (window as any).__MOCK_WEEKLY_REPORT_STATUS__ = weeklyReportStatus;
     (window as any).__REVIEW_STATUS_GETS__ = 0;
     (window as any).__LAST_AI_TEST_PAYLOAD__ = null;
+    (window as any).__LAST_AI_CONFIG_BODY__ = null;
     const envelope = (data: unknown) =>
       new Response(JSON.stringify({ success: true, data }), {
         headers: { 'Content-Type': 'application/json' },
@@ -261,7 +262,7 @@ test.beforeEach(async ({ page }) => {
           id: 2,
           email: 'qa@test.local',
           is_verified: true,
-          plan: 'trial',
+          plan: 'pro',
           accounts_count: 1,
         });
       }
@@ -319,6 +320,11 @@ test.beforeEach(async ({ page }) => {
           call_seller_keywords: ['позови продавца'],
           silence_smalltalk: true,
         });
+      }
+      if (aiConfigMatch && method === 'PUT') {
+        const payload = JSON.parse(String(init?.body || '{}'));
+        (window as any).__LAST_AI_CONFIG_BODY__ = payload;
+        return envelope({ account_id: Number(aiConfigMatch[1]), ...payload });
       }
       if (/^\/api\/ai\/faq\/\d+$/.test(path) && method === 'GET') {
         return envelope([{ id: 71, question: 'Есть гарантия?', answer: 'Да, 24 часа', created_at: '2026-07-01T10:00:00Z' }]);
@@ -709,25 +715,26 @@ test('AI assistant embeds test chat and sends the current unsaved draft', async 
   await expect(page.getByTestId('ai-settings-account')).toHaveValue('9');
 });
 
-test('AI assistant test chat supports scenario draft and trace', async ({ page }) => {
+test('AI assistant mode control enables AI and links to no-AI auto replies', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/platform/ai-assistant');
 
-  await page.getByTestId('ai-mode-toggle').click();
-  await page.getByRole('tab', { name: 'Тест-чат' }).click();
-  await expect(page.getByText('Сценарий: Основной сценарий')).toBeVisible();
-  await page.getByTestId('ai-test-input').fill('Запусти сценарий');
-  await page.getByTestId('ai-test-send').click();
+  const enabledToggle = page.getByTestId('ai-enabled-toggle');
+  await expect(enabledToggle).toHaveRole('switch');
+  await expect(enabledToggle).toHaveAttribute('aria-checked', 'false');
+  await expect(page.getByTestId('ai-mode-toggle')).toHaveCount(0);
+  await expect(page.getByText('Автоответчик выключен')).toHaveCount(0);
+  await expect(page.getByText('Включает боевые ответы покупателям')).toHaveCount(0);
+  await expect(page.getByText(/Автоответы без использования AI-Ассистента/)).toBeVisible();
+  await expect(page.getByRole('link', { name: '«Автоответчик»' })).toHaveAttribute('href', '/platform/auto-responder');
 
-  await expect(page.getByText('Ответ тестового сценария')).toBeVisible();
-  await expect(page.getByTestId('ai-test-trace')).toContainText('reply-1');
-  await expect.poll(() => page.evaluate(() => (window as any).__LAST_AI_TEST_PAYLOAD__)).toMatchObject({
-    account_id: 8,
-    auto_mode: false,
-    override_mode: 'constructor',
-    scenario_id: 'scenario-chat',
+  await enabledToggle.click();
+  await expect(enabledToggle).toHaveAttribute('aria-checked', 'true');
+  await page.getByRole('button', { name: 'Сохранить настройки' }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).__LAST_AI_CONFIG_BODY__)).toMatchObject({
+    is_enabled: true,
+    chat_mode: 'assistant',
   });
-  expect(await page.evaluate(() => Object.prototype.hasOwnProperty.call((window as any).__LAST_AI_TEST_PAYLOAD__, 'config_override'))).toBe(false);
 });
 
 test('AI test chat keeps user messages when limit or provider fails', async ({ page }) => {
@@ -1035,17 +1042,14 @@ test('reviews page and navigation are available to non-admin user', async ({ pag
   await expect(page.getByText('DEV', { exact: true })).toHaveCount(0);
 });
 
-test('auto responder is visible only to admin and redirects non-admin', async ({ page }) => {
+test('auto responder and navigation are available to non-admin users while constructor is hidden', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto('/platform/auto-responder');
+  await page.goto('/platform/auto-responder?admin=0');
+  await expect(page).toHaveURL(/\/platform\/auto-responder/);
   await expect(page.getByRole('heading', { name: 'Автоответчик', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Автоответчик' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Отзывы' })).toBeVisible();
-
-  await page.goto('/platform/auto-responder?admin=0');
-  await expect(page).toHaveURL(/\/platform\/dashboard/);
-  await expect(page.getByRole('link', { name: 'Автоответчик' })).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'Отзывы' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Конструктор', exact: true })).toHaveCount(0);
 });
 
 test('auto responder cards support multiple account assignments and chip removal', async ({ page }) => {
@@ -1231,11 +1235,7 @@ test('auto responder CRUD, conditional actions and independent account toggles',
   await expect(page.getByText('Бот упомянет привязанный Telegram-аккаунт по его Telegram ID.')).toBeVisible();
   await expect(page.getByTestId('auto-responder-call-seller-username-1')).toHaveCount(0);
 
-  await page.getByTestId('add-auto-responder-command').click();
-  await page.getByTestId('auto-responder-trigger-2').fill('telegram');
-  await page.getByTestId('auto-responder-action-2').selectOption('run_plugin');
-  await expect(page.getByTestId('auto-responder-plugin-2')).toBeVisible();
-  await page.getByTestId('auto-responder-plugin-2').selectOption('telegram_notify');
+  await expect(page.getByTestId('auto-responder-action-0').locator('option[value="run_plugin"]')).toHaveCount(0);
 
   await page.getByTestId('save-auto-responder').click();
   await expect(page.getByTestId('auto-responder-modal')).toHaveCount(0);
@@ -1244,7 +1244,7 @@ test('auto responder CRUD, conditional actions and independent account toggles',
   const firstCard = page.getByTestId('auto-responder-card-41');
   await expect(firstCard).toContainText('задержка 4 сек.');
   await expect(firstCard).toContainText('Основной автоответчик');
-  await expect(firstCard).toContainText('3 команд');
+  await expect(firstCard).toContainText('2 команд');
 
   const firstToggle = page.getByTestId('auto-responder-toggle-41');
   await expect(firstCard).toContainText('Назначьте аккаунт');
@@ -1329,12 +1329,11 @@ test('auto responder order events support descriptions and ordered multiple acti
   await page.getByTestId('auto-responder-call-seller-reply-0-1').fill('Заказ {order_id} передан продавцу');
   await page.getByTestId('auto-responder-call-seller-mention-0-1-yes').click();
 
-  await page.getByTestId('add-auto-responder-action-0').click();
-  await page.getByTestId('auto-responder-action-0-2').selectOption('run_plugin');
-  await page.getByTestId('auto-responder-plugin-0-2').selectOption('telegram_notify');
-  await page.getByRole('button', { name: 'Переместить действие 3 команды 1 вверх' }).click();
-  await expect(page.getByTestId('auto-responder-action-0-1')).toHaveValue('run_plugin');
-  await expect(page.getByTestId('auto-responder-action-0-2')).toHaveValue('call_seller');
+  await expect(page.getByTestId('auto-responder-action-0').locator('option')).toHaveCount(2);
+  await expect(page.getByTestId('auto-responder-action-0').locator('option[value="run_plugin"]')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Переместить действие 2 команды 1 вверх' }).click();
+  await expect(page.getByTestId('auto-responder-action-0')).toHaveValue('call_seller');
+  await expect(page.getByTestId('auto-responder-action-0-1')).toHaveValue('send_message');
 
   await page.getByTestId('save-auto-responder').click();
   await expect(page.getByTestId('auto-responder-modal')).toHaveCount(0);
@@ -1342,27 +1341,24 @@ test('auto responder order events support descriptions and ordered multiple acti
   expect(createdPayload.commands[0].trigger_type).toBe('order_paid');
   expect(createdPayload.commands[0].trigger_value).toBe('');
   expect(createdPayload.commands[0].actions.map((action: any) => action.action_type)).toEqual([
-    'send_message',
-    'run_plugin',
     'call_seller',
+    'send_message',
   ]);
-  expect(createdPayload.commands[0].actions[2].include_telegram_username).toBe(true);
+  expect(createdPayload.commands[0].actions[0].include_telegram_username).toBe(true);
 
   const card = page.getByTestId('auto-responder-card-41');
   await card.getByRole('button', { name: 'Редактировать События заказов' }).click();
   await expect(page.getByTestId('auto-responder-trigger-type-0')).toHaveValue('order_paid');
   await expect(page.getByTestId('auto-responder-action-card-0-0')).toBeVisible();
   await expect(page.getByTestId('auto-responder-action-card-0-1')).toBeVisible();
-  await expect(page.getByTestId('auto-responder-action-card-0-2')).toBeVisible();
-  await page.getByRole('button', { name: 'Удалить действие 2 команды 1' }).click();
-  await expect(page.getByTestId('auto-responder-action-card-0-2')).toHaveCount(0);
-  await expect(page.getByTestId('auto-responder-action-0-1')).toHaveValue('call_seller');
+  await page.getByRole('button', { name: 'Удалить действие 1 команды 1' }).click();
+  await expect(page.getByTestId('auto-responder-action-card-0-1')).toHaveCount(0);
+  await expect(page.getByTestId('auto-responder-action-0')).toHaveValue('send_message');
   await page.getByTestId('save-auto-responder').click();
   await expect(page.getByTestId('auto-responder-modal')).toHaveCount(0);
   const updatedPayload = await page.evaluate(() => (window as any).__LAST_AUTO_RESPONDER_BODY__);
   expect(updatedPayload.commands[0].actions.map((action: any) => action.action_type)).toEqual([
     'send_message',
-    'call_seller',
   ]);
 });
 

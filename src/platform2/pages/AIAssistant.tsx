@@ -7,9 +7,9 @@ import { Button } from "@/platform2/components/ui/button";
 import { Modal } from "@/platform2/components/ui/modal";
 import Icon from "@/platform2/icons";
 import {
-  aiApi, scenariosApi, accountsApi, authApi,
+  aiApi, accountsApi, authApi,
   AIFaqItem, AITrigger, AILifecycleMessage, AILotConfig,
-  ApiScenario, ApiAccount,
+  ApiAccount,
 } from "@/lib/api";
 import { toast } from "sonner";
 import TextArea from "@/platform2/components/form/input/TextArea";
@@ -220,13 +220,9 @@ export default function AIAssistantPage({ initialTab = "settings" }: { initialTa
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [account, setAccount] = useState<string>("");
   const [accountLoading, setAccountLoading] = useState(true);
-  const [scenarios, setScenarios] = useState<ApiScenario[]>([]);
-  const [scenario, setScenario] = useState<string>("");
-
   const [isTrial, setIsTrial] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  const [mode, setMode] = useState<"bot" | "scenarios">("bot");
   const [autoReply, setAutoReply] = useState(false);
   const [tone, setTone] = useState<Tone>("formal");
   const [delay, setDelay] = useState(10);
@@ -299,12 +295,11 @@ export default function AIAssistantPage({ initialTab = "settings" }: { initialTa
     Promise.all([
       aiApi.getConfig(account).catch(() => null),
       aiApi.getFaq(account).catch(() => [] as AIFaqItem[]),
-      scenariosApi.list(account).catch(() => [] as ApiScenario[]),
       aiApi.getTriggers(account).catch(() => ({ data: [] as AITrigger[] })),
       aiApi.getLifecycle(account).catch(() => ({ data: [] as AILifecycleMessage[] })),
       aiApi.getLotConfigs(account).catch(() => ({ data: [] as AILotConfig[] })),
       aiApi.getLots(account).catch(() => ({ data: [] as { lot_id: string; title: string }[] })),
-    ]).then(([cfg, faqItems, accountScenarios, triggerItems, lifecycleItems, lotConfigItems, accountLots]) => {
+    ]).then(([cfg, faqItems, triggerItems, lifecycleItems, lotConfigItems, accountLots]) => {
       if (cancelled) return;
 
       if (cfg) {
@@ -315,7 +310,6 @@ export default function AIAssistantPage({ initialTab = "settings" }: { initialTa
         setInstruction(cfg.system_prompt ?? "");
         setUsedMessages(cfg.used_messages ?? 0);
         setLimitMessages(cfg.limit_messages || 1);
-        setMode(cfg.chat_mode === "constructor" ? "scenarios" : "bot");
         if (cfg.call_seller_reply) setCallSellerReply(cfg.call_seller_reply);
         setCallSellerKeywordsText(
           Array.isArray(cfg.call_seller_keywords)
@@ -326,13 +320,6 @@ export default function AIAssistantPage({ initialTab = "settings" }: { initialTa
       }
 
       setKb(faqItems);
-      setScenarios(accountScenarios);
-      const configuredScenario = cfg?.constructor_scenario_id?.trim();
-      setScenario(
-        configuredScenario && accountScenarios.some((item) => item.id === configuredScenario)
-          ? configuredScenario
-          : accountScenarios[0]?.id ?? ""
-      );
       setTriggers(triggerItems.data ?? []);
       setLifecycle(lifecycleItems.data ?? []);
       const nextLotConfigs: Record<string, AILotConfig> = {};
@@ -388,8 +375,7 @@ export default function AIAssistantPage({ initialTab = "settings" }: { initialTa
         system_prompt: instruction.trim(),
         delay_seconds: delay,
         show_ai_signature: signature,
-        chat_mode: mode === "scenarios" ? "constructor" : "assistant",
-        constructor_scenario_id: mode === "scenarios" ? scenario : undefined,
+        chat_mode: "assistant",
       });
       toast.success("Настройки AI сохранены");
     } catch {
@@ -535,29 +521,22 @@ export default function AIAssistantPage({ initialTab = "settings" }: { initialTa
       >
       <AIHowItWorksPanel />
 
-      {/* COMBINED: AUTO-REPLY + MODE */}
+      {/* AI ENABLEMENT */}
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="mb-1 flex items-center gap-2">
-                {autoReply ? (
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success-400 opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-success-500" />
-                  </span>
-                ) : (
-                  <span className="h-2 w-2 rounded-full bg-warning-400" />
-                )}
-                <span className="text-xs text-gray-400">
-                  {autoReply ? "Автоответчик включён" : "Автоответчик выключен"}
-                </span>
-              </div>
-              <h3 className="text-base font-bold text-gray-800 dark:text-white">Автоответчик</h3>
-              <p className="mt-0.5 text-sm text-gray-500">Включает боевые ответы покупателям</p>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-400">Режим работы</p>
+              <h3 className="text-base font-bold text-gray-800 dark:text-white">AI-Ассистент</h3>
+              <p className="mt-0.5 text-sm text-gray-500">Включает ответы покупателям с использованием AI</p>
             </div>
             <div className="flex flex-col items-end gap-1">
               <button
+                type="button"
+                role="switch"
+                aria-label="Включить или выключить AI-Ассистент"
+                aria-checked={autoReply}
+                data-testid="ai-enabled-toggle"
                 onClick={() => {
                   if (!autoReply && isTrial) { setShowUpgradeModal(true); return; }
                   setAutoReply((v) => !v);
@@ -572,24 +551,11 @@ export default function AIAssistantPage({ initialTab = "settings" }: { initialTa
             </div>
           </div>
 
-          <div className="mt-5 border-t border-gray-100 pt-5 dark:border-gray-800">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Режим работы</p>
-            <div className="flex items-center gap-4">
-              <span className={`text-sm font-semibold transition-colors ${mode === "bot" ? "text-gray-900 dark:text-white" : "text-gray-400"}`}>ИИ Бот</span>
-              <button
-                onClick={() => setMode((m) => (m === "bot" ? "scenarios" : "bot"))}
-                aria-label="Переключить режим AI-Ассистента"
-                aria-pressed={mode === "scenarios"}
-                data-testid="ai-mode-toggle"
-                className="relative inline-flex h-7 w-12 items-center rounded-full bg-brand-500 transition-colors"
-              >
-                <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${mode === "scenarios" ? "translate-x-6" : "translate-x-1"}`} />
-              </button>
-              <span className={`text-sm font-semibold transition-colors ${mode === "scenarios" ? "text-gray-900 dark:text-white" : "text-gray-400"}`}>Сценарии</span>
-            </div>
-            <p className="mt-2 text-xs text-gray-400">
-              {mode === "bot" ? "ИИ отвечает по инструкции и базе знаний" : "Ответы идут строго по выбранному сценарию"}
-            </p>
+          <div className="mt-5 rounded-xl border border-brand-100 bg-brand-50/60 px-4 py-3 text-sm text-gray-600 dark:border-brand-900/50 dark:bg-brand-900/10 dark:text-gray-300">
+            Автоответы без использования AI-Ассистента можно настроить во вкладке{" "}
+            <Link href="/platform/auto-responder" className="font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400">
+              «Автоответчик»
+            </Link>.
           </div>
 
           <div className="mt-5 border-t border-gray-100 pt-4 dark:border-gray-800">
@@ -632,36 +598,6 @@ export default function AIAssistantPage({ initialTab = "settings" }: { initialTa
           </CardContent>
         </Card>
       </div>
-
-      {/* SCENARIO SELECTOR */}
-      {mode === "scenarios" && (
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Сценарий для чатов этого аккаунта</p>
-          <Card>
-            <CardContent className="p-5">
-              <div className="relative">
-                <select
-                  value={scenario}
-                  onChange={(e) => setScenario(e.target.value)}
-                  className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-10 text-sm text-gray-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                >
-                  {scenarios.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-                <Icon name="chevron-down" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              </div>
-              <div className="mt-2 flex items-center justify-between">
-                <p className="text-xs text-gray-400">Выбранный сценарий будет единственным автоответчиком для этого аккаунта.</p>
-                <Link href="/constructor" className="ml-4 shrink-0 text-xs font-medium text-brand-500 hover:text-brand-600">Открыть конструктор</Link>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* BOT-ONLY BLOCKS */}
-      {mode === "bot" && <>
 
       {/* TONE */}
       <div>
@@ -1047,8 +983,6 @@ export default function AIAssistantPage({ initialTab = "settings" }: { initialTa
         </div>
       )}
 
-      </>} {/* end bot-only */}
-
       {/* STICKY SAVE */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/80 px-4 py-3 backdrop-blur-sm dark:border-gray-700 dark:bg-gray-900/80 lg:pl-[310px]">
         <button
@@ -1074,9 +1008,8 @@ export default function AIAssistantPage({ initialTab = "settings" }: { initialTa
             accounts={accounts}
             accountId={account ? Number(account) : null}
             accountLoading={accountLoading}
-            mode={mode}
-            scenarioId={scenario}
-            scenarioName={scenarios.find((item) => item.id === scenario)?.name}
+            mode="bot"
+            scenarioId=""
             tone={tone}
             delaySeconds={delay}
             systemPrompt={instruction}

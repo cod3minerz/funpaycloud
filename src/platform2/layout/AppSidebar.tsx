@@ -18,7 +18,6 @@ import {
   PlugInIcon,
   ChartBarIcon,
   CpuChipIcon,
-  WrenchScrewdriverIcon,
   UserPlusIcon,
   TaskIcon,
   ServerStackIcon,
@@ -26,7 +25,7 @@ import {
 } from "../icons/index";
 import SidebarWidget from "./SidebarWidget";
 import { usePinnedPlugins, ALL_PLUGINS } from "@/lib/pinnedPlugins";
-import { notificationsApi, settingsApi } from "@/lib/api";
+import { notificationsApi } from "@/lib/api";
 
 type NavItem = {
   name: string;
@@ -94,13 +93,13 @@ const managementNavItems: NavItem[] = [
   },
   {
     icon: <BoltIcon className="h-5 w-5" />,
-    name: "Интеграции",
-    path: `${BASE}/integrations`,
+    name: "Автоответчик",
+    path: `${BASE}/auto-responder`,
   },
   {
-    icon: <WrenchScrewdriverIcon className="h-5 w-5" />,
-    name: "Конструктор",
-    path: `${BASE}/constructor`,
+    icon: <BoltIcon className="h-5 w-5" />,
+    name: "Интеграции",
+    path: `${BASE}/integrations`,
   },
   {
     icon: <TaskIcon className="h-5 w-5" />,
@@ -124,34 +123,11 @@ const managementNavItems: NavItem[] = [
   },
 ];
 
-const devNavItems: NavItem[] = [
-  {
-    icon: <BoltIcon className="h-5 w-5" />,
-    name: "Автоответчик",
-    path: `${BASE}/auto-responder`,
-  },
-];
-
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered, toggleMobileSidebar } = useSidebar();
   const pathname = usePathname();
   const { pinned } = usePinnedPlugins();
   const [unreadCount, setUnreadCount] = useState(0);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    settingsApi.getProfile()
-      .then((profile) => {
-        if (alive) setIsAdmin(Boolean(profile.is_admin));
-      })
-      .catch(() => {
-        if (alive) setIsAdmin(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -505,24 +481,6 @@ const AppSidebar: React.FC = () => {
               {renderMenuItems(dynamicManagementNavItems, "others")}
             </div>
 
-            {isAdmin && devNavItems.length > 0 && (
-              <div className="">
-                <h2
-                  className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                    !isExpanded && !isHovered
-                      ? "lg:justify-center"
-                      : "justify-start"
-                  }`}
-                >
-                  {isExpanded || isHovered || isMobileOpen ? (
-                    "DEV"
-                  ) : (
-                    <HorizontaLDots />
-                  )}
-                </h2>
-                {renderMenuItems(devNavItems, "others")}
-              </div>
-            )}
           </div>
         </nav>
         {isExpanded || isHovered || isMobileOpen ? <SidebarWidget /> : null}

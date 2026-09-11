@@ -19,14 +19,12 @@ import { toast } from "sonner";
 import {
   accountsApi,
   autoRespondersApi,
-  settingsApi,
   type ApiAccount,
   type AutoResponder,
   type AutoResponderActionInput,
   type AutoResponderActionType,
   type AutoResponderCommandInput,
   type AutoResponderInput,
-  type AutoResponderPlugin,
   type AutoResponderTriggerType,
 } from "@/lib/api";
 
@@ -100,11 +98,8 @@ function draftFromResponder(item: AutoResponder): Draft {
     name: item.name,
     menu_text: item.menu_text,
     delay_seconds: item.delay_seconds ?? 0,
-    commands: item.commands.map((command, position) => ({
-      clientId: nextCommandId++,
-      trigger_type: command.trigger_type,
-      trigger_value: command.trigger_value,
-      actions: (command.actions?.length ? command.actions : [{
+    commands: item.commands.map((command, position) => {
+      const availableActions = (command.actions?.length ? command.actions : [{
         id: 0,
         auto_responder_command_id: command.id,
         action_type: command.action_type,
@@ -112,16 +107,22 @@ function draftFromResponder(item: AutoResponder): Draft {
         plugin_slug: command.plugin_slug,
         include_telegram_username: command.include_telegram_username,
         position: 0,
-      }]).map((action, actionPosition) => ({
-        clientId: nextActionId++,
-        action_type: action.action_type,
-        action_value: action.action_value || "",
-        plugin_slug: action.plugin_slug || null,
-        include_telegram_username: Boolean(action.include_telegram_username),
-        position: actionPosition,
-      })),
-      position,
-    })),
+      }]).filter((action) => action.action_type !== "run_plugin");
+      return {
+        clientId: nextCommandId++,
+        trigger_type: command.trigger_type,
+        trigger_value: command.trigger_value,
+        actions: (availableActions.length ? availableActions : [newAction()]).map((action, actionPosition) => ({
+          clientId: nextActionId++,
+          action_type: action.action_type,
+          action_value: action.action_value || "",
+          plugin_slug: null,
+          include_telegram_username: Boolean(action.include_telegram_username),
+          position: actionPosition,
+        })),
+        position,
+      };
+    }),
   };
 }
 
@@ -193,7 +194,6 @@ function CommandEditor({
   command,
   index,
   total,
-  plugins,
   descriptionOpen,
   onToggleDescription,
   onUpdateCommand,
@@ -207,7 +207,6 @@ function CommandEditor({
   command: DraftCommand;
   index: number;
   total: number;
-  plugins: AutoResponderPlugin[];
   descriptionOpen: boolean;
   onToggleDescription: () => void;
   onUpdateCommand: (patch: Partial<DraftCommand>) => void;
@@ -309,7 +308,6 @@ function CommandEditor({
                 <select data-testid={`auto-responder-action-${suffix}`} value={action.action_type} onChange={(event) => onUpdateAction(action.clientId, { action_type: event.target.value as AutoResponderActionType, action_value: "", plugin_slug: null, include_telegram_username: false })} className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-white">
                   <option value="send_message">Отправить сообщение</option>
                   <option value="call_seller">Вызов продавца</option>
-                  <option value="run_plugin">Выполнить плагин</option>
                 </select>
               </label>
 
@@ -343,15 +341,6 @@ function CommandEditor({
                 </div>
               )}
 
-              {action.action_type === "run_plugin" && (
-                <label className="mt-3 block">
-                  <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">Плагин с поддержкой команд</span>
-                  <select data-testid={`auto-responder-plugin-${suffix}`} value={action.plugin_slug || ""} onChange={(event) => onUpdateAction(action.clientId, { plugin_slug: event.target.value || null })} disabled={plugins.length === 0} className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-brand-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-950 dark:text-white">
-                    <option value="">{plugins.length ? "Выберите плагин" : "Нет поддерживаемых плагинов"}</option>
-                    {plugins.map((plugin) => <option key={plugin.slug} value={plugin.slug}>{plugin.name}</option>)}
-                  </select>
-                </label>
-              )}
             </div>
           );
         })}
@@ -362,10 +351,8 @@ function CommandEditor({
 
 export default function AutoResponderPage() {
   const router = useRouter();
-  const [checkingAccess, setCheckingAccess] = useState(true);
   const [accounts, setAccounts] = useState<ApiAccount[]>([]);
   const [items, setItems] = useState<AutoResponder[]>([]);
-  const [plugins, setPlugins] = useState<AutoResponderPlugin[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -384,14 +371,12 @@ export default function AutoResponderPage() {
     setLoading(true);
     setLoadError("");
     try {
-      const [loadedAccounts, responders, pluginCatalog] = await Promise.all([
+      const [loadedAccounts, responders] = await Promise.all([
         accountsApi.list(),
         autoRespondersApi.listAll(),
-        autoRespondersApi.plugins(),
       ]);
       setAccounts(loadedAccounts);
       setItems(responders);
-      setPlugins(pluginCatalog);
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "Не удалось загрузить автоответчики");
     } finally {
@@ -400,25 +385,8 @@ export default function AutoResponderPage() {
   }, []);
 
   useEffect(() => {
-    let alive = true;
-    settingsApi.getProfile()
-      .then((profile) => {
-        if (!alive) return;
-        if (!profile.is_admin) {
-          router.replace("/platform/dashboard");
-          return;
-        }
-        setCheckingAccess(false);
-      })
-      .catch(() => {
-        if (alive) router.replace("/platform/dashboard");
-      });
-    return () => { alive = false; };
-  }, [router]);
-
-  useEffect(() => {
-    if (!checkingAccess) void loadData();
-  }, [checkingAccess, loadData]);
+    void loadData();
+  }, [loadData]);
 
   useEffect(() => {
     if (!modalOpen) return;
@@ -567,10 +535,6 @@ export default function AutoResponderPage() {
           toast.error(`Введите сообщение для действия ${actionIndex + 1} команды ${index + 1}`);
           return null;
         }
-        if (action.action_type === "run_plugin" && !action.plugin_slug) {
-          toast.error(`Выберите плагин для действия ${actionIndex + 1} команды ${index + 1}`);
-          return null;
-        }
       }
     }
     return {
@@ -585,7 +549,7 @@ export default function AutoResponderPage() {
           action_value: action.action_type === "send_message" || action.action_type === "call_seller"
             ? action.action_value?.trim() || ""
             : "",
-          plugin_slug: action.action_type === "run_plugin" ? action.plugin_slug || null : null,
+          plugin_slug: null,
           include_telegram_username: action.action_type === "call_seller"
             ? Boolean(action.include_telegram_username)
             : false,
@@ -732,14 +696,9 @@ export default function AutoResponderPage() {
     [items],
   );
 
-  if (checkingAccess) return <LoadingState label="Проверяем доступ…" />;
-
   return (
     <div className="mx-auto max-w-6xl space-y-6" data-testid="auto-responder-page">
       <div>
-        <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-brand-500/10 px-3 py-1 text-xs font-semibold text-brand-600 dark:text-brand-400">
-          <Bot className="h-4 w-4" /> DEV · только для администраторов
-        </div>
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-white sm:text-3xl">Автоответчик</h1>
         <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
           Настройте меню и команды, затем назначьте конфигурацию одному или нескольким FunPay-аккаунтам.
@@ -926,7 +885,6 @@ export default function AutoResponderPage() {
                     command={command}
                     index={index}
                     total={draft.commands.length}
-                    plugins={plugins}
                     descriptionOpen={describedCommandId === command.clientId}
                     onToggleDescription={() => setDescribedCommandId((current) => current === command.clientId ? null : command.clientId)}
                     onUpdateCommand={(patch) => updateCommand(command.clientId, patch)}
