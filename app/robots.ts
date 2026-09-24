@@ -7,13 +7,6 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: '*',
         allow: '/',
         disallow: [
-          '/admin',
-          '/admin/',
-          '/platform',
-          '/platform/',
-          '/auth',
-          '/auth/',
-          '/login',
           '/admin-api/',
           '/api/',
           '/*?*utm_*',
@@ -28,13 +21,6 @@ export default function robots(): MetadataRoute.Robots {
         allow: '/',
         crawlDelay: 1,
         disallow: [
-          '/admin',
-          '/admin/',
-          '/platform',
-          '/platform/',
-          '/auth',
-          '/auth/',
-          '/login',
           '/admin-api/',
           '/api/',
           '/*?*utm_*',
@@ -47,10 +33,6 @@ export default function robots(): MetadataRoute.Robots {
     ],
     sitemap: [
       'https://funpay.cloud/sitemap.xml',
-      'https://funpay.cloud/sitemap-main.xml',
-      'https://funpay.cloud/sitemap-blog.xml',
-      'https://funpay.cloud/sitemap-legal.xml',
-      'https://funpay.cloud/rss.xml',
     ],
     host: 'https://funpay.cloud',
   };

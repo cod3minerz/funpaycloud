@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Badge, Card, CardContent, Stack } from '@/design-system';
 
 type BlogChecklistCalloutProps = {
   title?: string;
@@ -7,9 +8,6 @@ type BlogChecklistCalloutProps = {
 
 export function BlogChecklistCallout({ title = 'Чеклист внедрения', children }: BlogChecklistCalloutProps) {
   return (
-    <aside className="my-8 rounded-2xl border border-[var(--line-2)] bg-[var(--bg-secondary)] p-4 sm:p-5">
-      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--accent)]">{title}</p>
-      <div className="prose-blog max-w-none text-[15px] leading-relaxed">{children}</div>
-    </aside>
+    <Card className="blog-callout"><CardContent><Stack gap={3}><Badge tone="brand">{title}</Badge><div className="prose-blog">{children}</div></Stack></CardContent></Card>
   );
 }

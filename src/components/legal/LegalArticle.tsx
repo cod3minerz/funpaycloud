@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { Badge, Card, Container, Heading, Stack, Text } from '@/design-system';
+import { VariantBoundary } from '@/public/variants';
 
 type LegalArticleProps = {
   title: string;
@@ -9,15 +11,18 @@ type LegalArticleProps = {
 
 export default function LegalArticle({ title, description, updatedAt, children }: LegalArticleProps) {
   return (
-    <article className="legal-article">
-      <header className="legal-hero">
-        <span className="legal-chip">Юридическая информация</span>
-        <h1>{title}</h1>
-        <p>{description}</p>
-        <div className="legal-updated">Последнее обновление: {updatedAt}</div>
-      </header>
-      <div className="legal-content">{children}</div>
-    </article>
+    <VariantBoundary id="legal-article" className="legal-variant">
+      <Container className="legal-container">
+        <article className="legal-article">
+          <Stack gap={5} className="legal-hero">
+            <Badge tone="brand">Юридическая информация</Badge>
+            <Heading as="h1" size="display">{title}</Heading>
+            <Text size="lead" tone="muted">{description}</Text>
+            <Text size="sm" tone="muted">Последнее обновление: {updatedAt}</Text>
+          </Stack>
+          <Card className="legal-content">{children}</Card>
+        </article>
+      </Container>
+    </VariantBoundary>
   );
 }
-

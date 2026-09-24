@@ -25,7 +25,7 @@ export function ReadingProgress() {
 
   return (
     <progress
-      className="blog-reading-progress fixed inset-x-0 top-0 z-[60] h-0.5 w-full border-0 bg-transparent"
+      className="blog-reading-progress"
       max={100}
       value={progress}
       aria-label="Прогресс чтения"

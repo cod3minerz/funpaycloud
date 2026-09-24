@@ -1,6 +1,6 @@
 import { buildSitemapIndexXml } from '@/lib/sitemap-data';
 
-const SITEMAP_PATHS = ['/sitemap-main.xml', '/sitemap-blog.xml', '/sitemap-legal.xml'] as const;
+const SITEMAP_PATHS = ['/sitemap-main.xml', '/sitemap-blog.xml'] as const;
 
 export async function GET() {
   const xml = buildSitemapIndexXml([...SITEMAP_PATHS]);

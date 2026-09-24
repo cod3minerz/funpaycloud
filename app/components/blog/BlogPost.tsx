@@ -56,7 +56,7 @@ export async function BlogPost({ content, slug, topic }: { content: string; slug
         width={1200}
         height={630}
         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 680px"
-        className="h-auto w-full rounded-lg border border-[var(--border)]"
+        className="blog-content-image"
       />
     ),
     InlineCTA: ({ topic: localTopic }: { topic?: BlogCtaTopic }) => (
@@ -90,7 +90,7 @@ export async function BlogPost({ content, slug, topic }: { content: string; slug
   const MDXContent = evaluated.default;
 
   return (
-    <article className="prose-blog w-full max-w-none">
+    <article className="prose-blog">
       <MDXContent components={components} />
     </article>
   );

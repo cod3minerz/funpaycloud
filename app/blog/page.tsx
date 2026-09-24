@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { BlogFeedClient } from '../components/blog/BlogFeedClient';
+import { BlogFeed } from '@/public/blog/BlogFeed';
 import { getAllPostSummaries, getCategories } from '@/lib/blog';
 
 export const metadata: Metadata = {
@@ -20,5 +20,5 @@ export default function BlogPage() {
   const posts = getAllPostSummaries();
   const categories = getCategories();
 
-  return <BlogFeedClient posts={posts} categories={categories} />;
+  return <BlogFeed posts={posts} categories={categories} />;
 }

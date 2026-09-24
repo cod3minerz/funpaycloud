@@ -4,6 +4,8 @@ import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Loader2 } from '@/shared/streamline/icons';
 import { storeReferralCode } from '@/lib/referral';
+import { PublicPageRoot } from '@/public/PublicShell';
+import { Card, Heading, Stack, Text } from '@/design-system';
 
 export default function ReferralRedirectPage() {
   const params = useParams<{ code: string }>();
@@ -16,11 +18,14 @@ export default function ReferralRedirectPage() {
   }, [params?.code, router]);
 
   return (
-    <div className="landing flex min-h-[100dvh] items-center justify-center bg-[var(--bg)] text-[var(--ink)]">
-      <div className="inline-flex items-center gap-2 text-sm text-[var(--ink-2)]">
-        <Loader2 size={16} className="animate-spin" />
-        Перенаправляем на регистрацию...
-      </div>
-    </div>
+    <PublicPageRoot defaultTheme="dark" className="system-page">
+      <Card className="system-state">
+        <Stack gap={4}>
+          <Loader2 size={28} className="system-state__spinner" />
+          <Heading as="h1" size="h3">Почти готово</Heading>
+          <Text tone="muted">Сохраняем приглашение и открываем регистрацию.</Text>
+        </Stack>
+      </Card>
+    </PublicPageRoot>
   );
 }

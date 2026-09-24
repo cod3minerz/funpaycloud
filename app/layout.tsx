@@ -3,7 +3,16 @@ import { Caveat, Geist, Inter, JetBrains_Mono, Outfit, Roboto_Flex, Syne } from 
 import { Suspense } from 'react';
 import { Toaster } from '@/app/components/ui/sonner';
 import { YandexMetrika } from './components/analytics/YandexMetrika';
+import { PublicThemeScript } from '@/design-system';
+import { PUBLIC_THEME_COLORS } from '@/design-system/meta';
 import './globals.css';
+import '@/design-system/styles.css';
+import '@/public/public.css';
+import '@/public/blog/blog.css';
+import '@/public/auth/auth.css';
+import '@/public/legal/legal.css';
+import '@/public/seo/seo.css';
+import '@/public/system/system.css';
 
 const geist = Geist({
   subsets: ['latin', 'cyrillic'],
@@ -69,8 +78,8 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   themeColor: [
-    { media: '(prefers-color-scheme: dark)', color: '#0a0f1a' },
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: PUBLIC_THEME_COLORS.dark },
+    { media: '(prefers-color-scheme: light)', color: PUBLIC_THEME_COLORS.light },
   ],
 };
 
@@ -82,6 +91,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
     >
       <body className="antialiased">
+        <PublicThemeScript />
         {children}
         <Suspense fallback={null}>
           <YandexMetrika />

@@ -31,7 +31,7 @@ export default defineConfig({
   ],
   webServer: {
     command: `"${process.execPath}" ./node_modules/next/dist/bin/next dev --webpack --port 3100`,
-    url: 'http://localhost:3100/platform/dashboard',
+    url: 'http://localhost:3100/',
     timeout: 120_000,
     reuseExistingServer: !process.env.CI,
     env: {

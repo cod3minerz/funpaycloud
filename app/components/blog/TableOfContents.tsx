@@ -37,7 +37,7 @@ export function TableOfContents({ headings, mobile = false }: { headings: TocHea
   if (headings.length === 0) return null;
 
   return (
-    <nav aria-label="Содержание статьи" className={mobile ? 'space-y-1' : 'space-y-1.5'}>
+    <nav aria-label="Содержание статьи" className="blog-toc">
       {headings.map(heading => {
         const isActive = activeId === heading.id;
 
@@ -45,15 +45,10 @@ export function TableOfContents({ headings, mobile = false }: { headings: TocHea
           <Link
             key={heading.id}
             href={`#${heading.id}`}
-            className={`group flex rounded-lg border-l-2 py-1.5 text-sm transition-colors ${
-              heading.level === 3 ? 'pl-4 pr-2' : 'pl-3 pr-2'
-            } ${
-              isActive
-                ? 'border-l-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
-                : 'border-l-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]'
-            }`}
+            data-level={heading.level}
+            aria-current={isActive ? 'location' : undefined}
           >
-            <span className="line-clamp-2">{heading.text}</span>
+            <span>{heading.text}</span>
           </Link>
         );
       })}

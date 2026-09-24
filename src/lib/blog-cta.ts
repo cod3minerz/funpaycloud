@@ -8,58 +8,16 @@ export interface BlogCtaConfig {
   topic: BlogCtaTopic;
   title: string;
   description: string;
-  featureHref: string;
-  featureLabel: string;
-  registerHref: string;
-  registerLabel: string;
+  actionHref: string;
+  actionLabel: string;
 }
 
 const CTA_CONFIGS: Record<BlogCtaTopic, BlogCtaConfig> = {
-  raise: {
-    topic: 'raise',
-    title: 'Запустите автоподнятие лотов без VPS',
-    description: 'Поднимайте лоты по расписанию 24/7 и держите выдачу в топе без ручной рутины.',
-    featureHref: '/auto-raise-lots-funpay',
-    featureLabel: 'Открыть автоподнятие',
-    registerHref: '/auth/register',
-    registerLabel: 'Начать бесплатно',
-  },
-  delivery: {
-    topic: 'delivery',
-    title: 'Включите автовыдачу за 10 минут',
-    description: 'Выдавайте цифровые товары сразу после оплаты, без ночных ручных отправок и простоев.',
-    featureHref: '/auto-delivery-funpay',
-    featureLabel: 'Открыть автовыдачу',
-    registerHref: '/auth/register',
-    registerLabel: 'Начать бесплатно',
-  },
-  ai: {
-    topic: 'ai',
-    title: 'Подключите AI-автоответы под продажи',
-    description: 'Сократите время ответа в чате и не теряйте покупателей в пиковые и ночные часы.',
-    featureHref: '/funpay-auto-reply',
-    featureLabel: 'Открыть AI-автоответы',
-    registerHref: '/auth/register',
-    registerLabel: 'Начать бесплатно',
-  },
-  comparison: {
-    topic: 'comparison',
-    title: 'Сравните SaaS и self-hosted на практике',
-    description: 'Выберите модель автоматизации по рискам, стоимости владения и скорости масштабирования.',
-    featureHref: '/funpay-cardinal-alternative',
-    featureLabel: 'Смотреть сравнение',
-    registerHref: '/auth/register',
-    registerLabel: 'Попробовать облако бесплатно',
-  },
-  automation: {
-    topic: 'automation',
-    title: 'Соберите полный контур автоматизации FunPay',
-    description: 'Лоты, склад, чаты и заказы в одном облачном сервисе — без серверной инфраструктуры.',
-    featureHref: '/funpay-automation',
-    featureLabel: 'Открыть автоматизацию',
-    registerHref: '/auth/register',
-    registerLabel: 'Начать бесплатно',
-  },
+  raise: { topic: 'raise', title: 'Готовим новую версию FunPay Cloud', description: 'Сейчас мы переписываем ядро сервиса. О запуске сообщим отдельно.', actionHref: '/', actionLabel: 'Статус обновления' },
+  delivery: { topic: 'delivery', title: 'Готовим новую версию FunPay Cloud', description: 'Сейчас мы переписываем ядро сервиса. О запуске сообщим отдельно.', actionHref: '/', actionLabel: 'Статус обновления' },
+  ai: { topic: 'ai', title: 'Готовим новую версию FunPay Cloud', description: 'Сейчас мы переписываем ядро сервиса. О запуске сообщим отдельно.', actionHref: '/', actionLabel: 'Статус обновления' },
+  comparison: { topic: 'comparison', title: 'Готовим новую версию FunPay Cloud', description: 'Сейчас мы переписываем ядро сервиса. О запуске сообщим отдельно.', actionHref: '/', actionLabel: 'Статус обновления' },
+  automation: { topic: 'automation', title: 'Готовим новую версию FunPay Cloud', description: 'Сейчас мы переписываем ядро сервиса. О запуске сообщим отдельно.', actionHref: '/', actionLabel: 'Статус обновления' },
 };
 
 const TOPIC_RULES: Array<{ topic: BlogCtaTopic; keywords: string[] }> = [

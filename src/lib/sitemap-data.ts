@@ -1,5 +1,4 @@
 import { getAllPostSummaries, getCategories, slugifyCategory } from '@/lib/blog';
-import { getSeoSlugs } from '@/lib/marketing-seo-pages';
 
 export type SitemapEntry = {
   url: string;
@@ -64,21 +63,13 @@ export function buildSitemapIndexXml(paths: string[]): string {
 
 export function getMainSitemapEntries(): SitemapEntry[] {
   const now = new Date();
-  const marketingEntries = getSeoSlugs().map(slug => ({
-    url: `${BASE_URL}/${slug}`,
-    lastModified: now,
-    changeFrequency: 'weekly' as const,
-    priority: 0.8,
-  }));
-
   return [
     {
       url: BASE_URL,
       lastModified: now,
-      changeFrequency: 'weekly',
+      changeFrequency: 'monthly',
       priority: 1.0,
     },
-    ...marketingEntries,
   ];
 }
 
